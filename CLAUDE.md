@@ -70,6 +70,21 @@
 | ホスティング | Xserver | 五度圏アプリと同じ |
 | デプロイ | GitHub Actions | 五度圏アプリと同じ |
 
+### デプロイ設定
+
+| 項目 | 値 |
+|------|-----|
+| **GitHubリポジトリ** | https://github.com/daikainozaki-cyber/64-pad-visualizer (private) |
+| **公開URL** | https://murinaikurashi.com/apps/64-pad/ |
+| **デプロイトリガー** | mainブランチへのpush（自動） |
+| **Xserverホスト** | xs071284.xsrv.jp:10022 |
+| **デプロイ先** | ~/murinaikurashi.com/public_html/apps/64-pad/ |
+| **認証** | GitHub Secrets `XSERVER_SSH_KEY`（五度圏アプリと同じ鍵） |
+| **ワークフロー** | `.github/workflows/deploy.yml`（rsync-deployments@6.0.0） |
+| **除外ファイル** | .git, .github, CLAUDE.md, deploy.sh, config.sh |
+
+**pushすれば自動でデプロイされる。手動操作は不要。**
+
 ---
 
 ## 第3層：データ定義

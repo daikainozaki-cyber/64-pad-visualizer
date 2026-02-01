@@ -675,7 +675,39 @@ function selectVoicingBox(idx) {
   render();
   // Play audio when selecting (not deselecting)
   if (!wasSelected && lastComputedBoxes[idx]) {
-    playMidiNotes(lastComputedBoxes[idx].midiNotes);
+    let midiNotes = [...lastComputedBoxes[idx].midiNotes];
+
+    // Shell voicing: add chord tones not in the voicing box (tensions etc.)
+    if (shellVoicing && currentMode === 'chord' && bRoot !== null && bQuality) {
+      const fullPCS = getBuilderPCS();
+      if (fullPCS) {
+        const rootPC = bRoot;
+        const boxRoot = midiNotes.find(m => m % 12 === rootPC);
+        if (boxRoot !== undefined) {
+          const existingPCs = new Set(midiNotes.map(m => m % 12));
+          // Shell voicing implicitly omits 5th (voicingOmit5 forced true)
+          existingPCs.add((rootPC + 7) % 12);
+          for (const iv of fullPCS) {
+            const notePC = (rootPC + iv) % 12;
+            if (!existingPCs.has(notePC)) {
+              midiNotes.push(boxRoot + iv);
+              existingPCs.add(notePC);
+            }
+          }
+        }
+      }
+    }
+
+    // Bass note for slash chords
+    if (bBass !== null) {
+      const lowest = Math.min(...midiNotes);
+      let bassMidi = 36 + bBass;
+      while (bassMidi >= lowest) bassMidi -= 12;
+      midiNotes.unshift(bassMidi);
+    }
+
+    midiNotes.sort((a, b) => a - b);
+    playMidiNotes(midiNotes);
   }
 }
 

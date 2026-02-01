@@ -2380,10 +2380,11 @@ function selectRoot(pc) {
     // In bass input mode, set bass note instead of root
     bBass = pc;
     bassInputMode = false;
-    highlightPianoKey('piano-keyboard', pc);
+    // Restore root highlight (bass selection was temporary use of this keyboard)
+    if (bRoot !== null) highlightPianoKey('piano-keyboard', bRoot);
     document.getElementById('step-label').style.background = '';
     if (bQuality) { setBuilderStep(3); }
-    else { document.getElementById('step-label').textContent = 'Root'; }
+    else { setBuilderStep(2); }
     updateChordDisplay();
     render();
     return;

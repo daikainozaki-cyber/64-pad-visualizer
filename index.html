@@ -1576,50 +1576,13 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
         staffSvg.style.display = 'none'; staffSvg.setAttribute('height', 0); return;
       }
     } else {
-    const inv = Math.min(voicingInversion, chordPCS.length - 1);
-    const hasVoicing = voicingInversion > 0 || voicingDrop || shellVoicing;
-    let voicedIntervals;
-    if (shellVoicing) {
-      // Shell: R, 3rd, 7th + extension notes
-      let thirdIv = null, seventhIv = null;
-      if (qualityPCS) {
-        if (qualityPCS.includes(4)) thirdIv = 4;
-        else if (qualityPCS.includes(3)) thirdIv = 3;
-        if (qualityPCS.includes(11)) seventhIv = 11;
-        else if (qualityPCS.includes(10)) seventhIv = 10;
-        else if (qualityPCS.includes(9)) seventhIv = 9;
-      }
-      const shell = [0];
-      if (thirdIv !== null) shell.push(thirdIv);
-      if (seventhIv !== null) shell.push(seventhIv);
-      if (shellExtension > 0) {
-        const shellSet = new Set(shell);
-        const extras = chordPCS.filter(iv => !shellSet.has(iv)).sort((a, b) => {
-          const at = a >= 12 ? 0 : 1;
-          const bt = b >= 12 ? 0 : 1;
-          if (at !== bt) return at - bt;
-          return a - b;
-        });
-        const extCount = Math.min(shellExtension, extras.length);
-        for (let i = 0; i < extCount; i++) shell.push(extras[i]);
-      }
-      if (shellVoicing === '173' && thirdIv !== null) {
-        voicedIntervals = shell.map(iv => iv === thirdIv ? iv + 12 : iv);
-      } else {
-        voicedIntervals = [...shell];
-      }
-      voicedIntervals.sort((a, b) => a - b);
-    } else if (voicingInversion > 0 || voicingDrop) {
-      const result = calcVoicingOffsets(chordPCS, inv, voicingDrop);
-      voicedIntervals = result.voiced;
-    } else {
-      voicedIntervals = [...chordPCS].sort((a, b) => a - b);
-    }
+    // Staff always shows all chord tones (voicing is a performance choice, not theory)
+    const allIntervals = [...chordPCS].sort((a, b) => a - b);
     if (overrideMidiNotes) {
       midiNotes = overrideMidiNotes;
     } else {
       const staffBase = 48 + rootPC; // C3 octave (fixed)
-      midiNotes = voicedIntervals.map(iv => staffBase + iv);
+      midiNotes = allIntervals.map(iv => staffBase + iv);
     }
     }
   }

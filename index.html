@@ -335,25 +335,15 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
       <div class="step-label" id="step-label">Root</div>
 
       <div class="step-container">
-        <!-- Step 1: Piano Keyboard -->
+        <!-- Step 1: Root + Quality (同時表示) -->
         <div id="step1">
           <div class="piano-wrap" id="piano-keyboard"></div>
-        </div>
-
-        <!-- Step 2: Quality Grid -->
-        <div id="step2" style="display:none;">
           <div class="quality-grid" id="quality-grid"></div>
         </div>
 
-        <!-- Step 3: Tension Grid -->
-        <div id="step3" style="display:none;">
+        <!-- Step 2: Tension Grid -->
+        <div id="step2" style="display:none;">
           <div class="tension-grid" id="tension-grid"></div>
-        </div>
-
-        <!-- On-Chord: Bass Note -->
-        <div id="step-onchord" style="display:none;">
-          <div class="onchord-label">Bass note for slash chord</div>
-          <div class="piano-wrap" id="onchord-keyboard"></div>
         </div>
       </div>
 
@@ -385,8 +375,9 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 
   <!-- Right: Staff + Sound Controls -->
   <div id="staff-ep-panel" style="display:flex;flex-direction:column;gap:4px;min-width:200px;">
-    <div style="display:flex;justify-content:center;">
+    <div style="display:flex;justify-content:center;gap:4px;">
       <button id="inst-toggle-staff" class="inst-toggle active" onclick="toggleInstrument('staff')">Staff</button>
+      <button id="inst-toggle-sound" class="inst-toggle active" onclick="toggleInstrument('sound')">Sound</button>
     </div>
     <div id="staff-area" style="display:flex;justify-content:center;">
       <svg id="staff-notation" width="280" height="0" style="display:none;"></svg>
@@ -1779,18 +1770,22 @@ const DIAGRAM_WIDTH = 564;              // shared width for pad, guitar & piano 
 let showGuitar = true;
 let showPiano = true;
 let showStaff = true;
+let showSound = true;
 let guitarLabelMode = 'name'; // 'name' or 'degree'
 
 function toggleInstrument(which) {
   if (which === 'guitar') showGuitar = !showGuitar;
   if (which === 'piano') showPiano = !showPiano;
   if (which === 'staff') showStaff = !showStaff;
+  if (which === 'sound') showSound = !showSound;
   document.getElementById('inst-toggle-guitar').classList.toggle('active', showGuitar);
   document.getElementById('inst-toggle-piano').classList.toggle('active', showPiano);
   document.getElementById('inst-toggle-staff').classList.toggle('active', showStaff);
+  document.getElementById('inst-toggle-sound').classList.toggle('active', showSound);
   document.getElementById('guitar-wrap').style.display = showGuitar ? '' : 'none';
   document.getElementById('piano-wrap-display').style.display = showPiano ? '' : 'none';
   document.getElementById('staff-area').style.display = showStaff ? '' : 'none';
+  document.getElementById('sound-controls').style.display = showSound ? '' : 'none';
   document.getElementById('guitar-label-btn').style.display = showGuitar ? '' : 'none';
   render();
 }
@@ -2312,14 +2307,42 @@ function setBuilderStep(step) {
   bStep = step;
   document.getElementById('step1').style.display = step === 1 ? '' : 'none';
   document.getElementById('step2').style.display = step === 2 ? '' : 'none';
-  document.getElementById('step3').style.display = step === 3 ? '' : 'none';
-  document.getElementById('step-onchord').style.display = step === 4 ? '' : 'none';
-  const labels = {1:'Root', 2:'Quality', 3:'Tension', 4:'On Chord'};
-  document.getElementById('step-label').textContent = labels[step] || '';
-  // Show Next button on step 3 (tension is optional)
-  document.getElementById('btn-next').style.display = step === 3 ? '' : 'none';
+  if (!bassInputMode) {
+    const label = step === 2 ? 'Tension' : (bRoot !== null ? 'Quality' : 'Root');
+    document.getElementById('step-label').textContent = label;
+    document.getElementById('step-label').style.background = '';
+  }
+  document.getElementById('btn-next').style.display = 'none';
   updateChordDisplay();
 }
+
+// ======== SWIPE NAVIGATION (Step 1 ↔ Step 2) ========
+(function initSwipe() {
+  let _sx = 0, _sy = 0;
+  const MIN_DX = 50; // minimum horizontal distance
+  const MAX_DY_RATIO = 0.7; // max vertical/horizontal ratio (prevent diagonal)
+
+  function onTouchStart(e) { _sx = e.touches[0].clientX; _sy = e.touches[0].clientY; }
+  function onTouchEnd(e) {
+    const dx = e.changedTouches[0].clientX - _sx;
+    const dy = Math.abs(e.changedTouches[0].clientY - _sy);
+    if (Math.abs(dx) < MIN_DX || dy / Math.abs(dx) > MAX_DY_RATIO) return;
+    if (dx < 0 && bStep === 1 && bQuality) {
+      // Swipe left → Tension
+      setBuilderStep(2);
+    } else if (dx > 0 && bStep === 2) {
+      // Swipe right → Root + Quality
+      setBuilderStep(1);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const sc = document.querySelector('.step-container');
+    if (!sc) return;
+    sc.addEventListener('touchstart', onTouchStart, { passive: true });
+    sc.addEventListener('touchend', onTouchEnd, { passive: true });
+  });
+})();
 
 function updateChordDisplay() {
   const nameEl = document.getElementById('chord-name');
@@ -2354,25 +2377,31 @@ function builderClear() {
 function builderBack() {
   if (bassInputMode) {
     bassInputMode = false;
-    document.getElementById('step-label').style.background = '';
-    if (bQuality) setBuilderStep(3);
+    if (bQuality) setBuilderStep(2);
     else setBuilderStep(1);
     render();
     return;
   }
-  if (bStep === 4) { bBass = null; setBuilderStep(3); }
-  else if (bStep === 3) { bTension = null; clearTensionSelection(); setBuilderStep(2); }
-  else if (bStep === 2) { bQuality = null; clearQualitySelection(); setBuilderStep(1); }
-  else if (bStep === 1) { bRoot = null; clearPianoSelection('piano-keyboard'); }
+  if (bStep === 2) {
+    bTension = null;
+    clearTensionSelection();
+    setBuilderStep(1);
+  } else if (bStep === 1) {
+    if (bQuality) {
+      bQuality = null;
+      clearQualitySelection();
+      setBuilderStep(1);
+    } else if (bRoot !== null) {
+      bRoot = null;
+      clearPianoSelection('piano-keyboard');
+      setBuilderStep(1);
+    }
+  }
   render();
 }
 
 function builderNext() {
-  if (bStep === 3) {
-    // Skip tension, go to on-chord
-    setBuilderStep(4);
-    initOnChordKeyboard();
-  }
+  // No longer used in 2-step design (on-chord handled by / button)
 }
 
 function selectRoot(pc) {
@@ -2382,9 +2411,8 @@ function selectRoot(pc) {
     bassInputMode = false;
     // Restore root highlight (bass selection was temporary use of this keyboard)
     if (bRoot !== null) highlightPianoKey('piano-keyboard', bRoot);
-    document.getElementById('step-label').style.background = '';
-    if (bQuality) { setBuilderStep(3); }
-    else { setBuilderStep(2); }
+    if (bQuality) { setBuilderStep(2); }
+    else { setBuilderStep(1); }
     updateChordDisplay();
     render();
     return;
@@ -2393,7 +2421,9 @@ function selectRoot(pc) {
   bQuality = null; bTension = null; bBass = null;
   selectedVoicingBoxIdx = null;
   highlightPianoKey('piano-keyboard', pc);
-  setBuilderStep(2);
+  clearQualitySelection();
+  clearTensionSelection();
+  setBuilderStep(1); // Stay on step 1 (Root + Quality visible)
   render();
 }
 
@@ -2402,7 +2432,7 @@ function selectQuality(q) {
   bTension = null;
   selectedVoicingBoxIdx = null;
   highlightQuality(q);
-  setBuilderStep(3);
+  setBuilderStep(2); // Go to Tension
   render();
   playCurrentChord();
 }
@@ -2431,9 +2461,7 @@ function startOnChord() {
     document.getElementById('step-label').textContent = 'Bass Note';
     document.getElementById('step-label').style.background = '#009E73';
   } else {
-    document.getElementById('step-label').textContent = bQuality ? 'Tension' : 'Root';
-    document.getElementById('step-label').style.background = '';
-    if (bQuality) setBuilderStep(3);
+    if (bQuality) setBuilderStep(2);
     else setBuilderStep(1);
   }
 }

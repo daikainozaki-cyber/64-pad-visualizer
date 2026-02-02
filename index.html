@@ -429,7 +429,9 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 </div>
 
 <script>
-// ======== NOTE NAMES ========
+// ========================================
+// DATA & CONSTANTS
+// ========================================
 const NOTE_NAMES_SHARP = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const NOTE_NAMES_FLAT  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
 
@@ -620,6 +622,9 @@ let bassInputMode = false; // true when piano keyboard is used for bass selectio
 let selectedVoicingBoxIdx = null; // selected bounding box index for staff display
 let lastComputedBoxes = []; // [{midiNotes: [...]}, ...] stored from last render
 
+// ========================================
+// PAD GRID FUNCTIONS
+// ========================================
 function baseMidi() { return BASE_MIDI + octaveShift * 12; }
 
 function shiftOctave(delta) {
@@ -795,11 +800,9 @@ function playCurrentChord() {
   playMidiNotes(midiNotes, 2);
 }
 
-// ======== AUDIO (WebAudioFont SoundFont Engine) ========
-// ================================================================
-// SoundFont-based organ — sample playback via WebAudioFont
-// Presets: Drawbar Organ, Percussive Organ, Rock Organ, Church Organ
-// ================================================================
+// ========================================
+// AUDIO ENGINE
+// ========================================
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // --- Master audio graph ---
@@ -1099,7 +1102,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderSoundControls();
 });
 
-// Calculate voicing offsets: inversion + drop applied to chord PCS
+// ========================================
+// VOICING CALCULATION
+// ========================================
 function calcVoicingOffsets(chordPCS, inversion, drop) {
   let voiced = [...chordPCS].sort((a, b) => a - b);
   // Apply inversion: rotate bottom notes up an octave
@@ -1216,7 +1221,9 @@ function calcShellPositions(rootRow, rootCol, thirdInterval, seventhInterval, sh
   return best;
 }
 
-// Chord degree naming: 9/11/13 for tensions, sus4=4, sus2=2
+// ========================================
+// CHORD NAMING & HELPERS
+// ========================================
 function chordDegreeName(interval, qualityPCS, finalPCS) {
   switch(interval) {
     case 0: return 'R';
@@ -1359,7 +1366,9 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet) {
   });
 }
 
-// ======== DIATONIC CHORD BAR ========
+// ========================================
+// DIATONIC CHORD BAR
+// ========================================
 function noteNameForKey(pc, key) {
   // Use flats for flat keys (Db, Eb, F, Ab, Bb)
   const flatKeys = new Set([1, 3, 5, 8, 10]);
@@ -1470,7 +1479,9 @@ function onDiatonicClick(tetrad) {
   render();
 }
 
-// ======== RENDER PAD GRID ========
+// ========================================
+// RENDER (MAIN)
+// ========================================
 function render() {
   const svg = document.getElementById('pad-grid');
   const totalW = COLS * (PAD_SIZE + PAD_GAP) - PAD_GAP + MARGIN * 2;
@@ -1839,6 +1850,9 @@ function render() {
   renderDiatonicBar();
 }
 
+// ========================================
+// STAFF NOTATION
+// ========================================
 function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMidiNotes) {
   const staffSvg = document.getElementById('staff-notation');
   let midiNotes;
@@ -2029,7 +2043,9 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
   });
 }
 
-// ======== GUITAR FRETBOARD (Chordie-style: all positions) ========
+// ========================================
+// GUITAR DIAGRAM
+// ========================================
 // Colors: white/black clean style
 const INST_ROOT_COLOR = '#333';         // dark (root)
 const INST_ACTIVE_COLOR = '#666';       // medium gray (active notes)
@@ -2237,7 +2253,9 @@ function renderGuitarDiagram(rootPC, pcsSet) {
   }
 }
 
-// ======== PIANO KEYBOARD DISPLAY (horizontal, white/black) ========
+// ========================================
+// PIANO DISPLAY
+// ========================================
 function renderPianoDisplay(rootPC, pcsSet) {
   const svg = document.getElementById('piano-display');
   if (!pcsSet) pcsSet = new Set();
@@ -2392,7 +2410,9 @@ function renderPianoDisplay(rootPC, pcsSet) {
   }
 }
 
-// ======== INSTRUMENT INPUT MODE (Guitar + Piano) ========
+// ========================================
+// INSTRUMENT INPUT
+// ========================================
 const GUITAR_OPEN_MIDI = [64, 59, 55, 50, 45, 40]; // E4, B3, G3, D3, A2, E2
 let guitarSelectedFrets = [null, null, null, null, null, null];
 let pianoSelectedNotes = new Set(); // MIDI note numbers
@@ -2516,7 +2536,9 @@ function playInstrumentInput() {
 let lastRenderRootPC = 0;
 let lastRenderActivePCS = new Set();
 
-// ======== MODE ========
+// ========================================
+// MODE & UI CONTROLS
+// ========================================
 function setMode(mode) {
   currentMode = mode;
   document.getElementById('mode-scale').classList.toggle('active', mode === 'scale');
@@ -2861,7 +2883,9 @@ function initOnChordKeyboard() {
   if (bBass !== null) highlightPianoKey('onchord-keyboard', bBass);
 }
 
-// ======== WEB MIDI INPUT + CHORD DETECTION ========
+// ========================================
+// WEB MIDI & CHORD DETECTION
+// ========================================
 const midiActiveNotes = new Set(); // currently held MIDI notes
 let midiAccess = null;
 
@@ -3259,7 +3283,9 @@ function initWebMIDI() {
   }).catch(() => {});
 }
 
-// ======== INIT ========
+// ========================================
+// INITIALIZATION
+// ========================================
 initKeyButtons();
 initScaleSelect();
 buildPianoKeyboard('piano-keyboard', selectRoot);

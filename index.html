@@ -591,24 +591,6 @@ const TENSION_ROWS = [
   ],
 ];
 
-// ======== STATE ========
-const AppState = {
-  key: 0,
-  mode: 'scale',
-  scaleIdx: 0,
-  octaveShift: 0, // -1, 0, +1, +2 — shifts entire grid like Push's octave up/down
-};
-
-// Builder state
-const BuilderState = {
-  step: 0,       // 0=not started, 1=root, 2=quality, 3=tension, 4=onchord
-  root: null,     // 0-11
-  quality: null,  // {name, label, pcs}
-  tension: null,  // {label, mods}
-  bass: null,     // 0-11 for slash chord
-  bassInputMode: false, // true when piano keyboard is used for bass selection
-};
-
 // ======== PAD GRID ========
 const GRID = {
   ROWS: 8, COLS: 8,
@@ -618,7 +600,23 @@ const GRID = {
 const { ROWS, COLS, BASE_MIDI, ROW_INTERVAL, COL_INTERVAL, PAD_SIZE, PAD_GAP, MARGIN } = GRID;
 const SCALE_DEGREE_NAMES = ['R','b2','2','b3','3','4','b5','5','b6','6','b7','7'];
 
-// Voicing state
+// ======== STATE ========
+const AppState = {
+  key: 0,
+  mode: 'scale',
+  scaleIdx: 0,
+  octaveShift: 0, // -1, 0, +1, +2 — shifts entire grid like Push's octave up/down
+};
+
+const BuilderState = {
+  step: 0,       // 0=not started, 1=root, 2=quality, 3=tension, 4=onchord
+  root: null,     // 0-11
+  quality: null,  // {name, label, pcs}
+  tension: null,  // {label, mods}
+  bass: null,     // 0-11 for slash chord
+  bassInputMode: false, // true when piano keyboard is used for bass selection
+};
+
 const VoicingState = {
   omit5: false,
   rootless: false,

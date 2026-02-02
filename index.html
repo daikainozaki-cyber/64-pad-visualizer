@@ -752,35 +752,8 @@ function playCurrentChord() {
   let intervals;
 
   if (shellVoicing) {
-    // Reproduce shell voicing logic from render
-    const qualityPCS = bQuality.pcs;
-    let thirdIv = null, seventhIv = null;
-    if (qualityPCS.includes(4)) thirdIv = 4;
-    else if (qualityPCS.includes(3)) thirdIv = 3;
-    if (qualityPCS.includes(11)) seventhIv = 11;
-    else if (qualityPCS.includes(10)) seventhIv = 10;
-    else if (qualityPCS.includes(9) && !qualityPCS.includes(10) && !qualityPCS.includes(11)) {
-      seventhIv = 9;
-    }
-    if (thirdIv === null || seventhIv === null) return;
-    intervals = [0, thirdIv, seventhIv];
-    // Shell extension (tensions prioritized over basic chord tones)
-    if (shellExtension > 0) {
-      const shellSet = new Set([0, thirdIv, seventhIv]);
-      const extras = pcs.filter(iv => !shellSet.has(iv)).sort((a, b) => {
-        const at = a >= 12 ? 0 : 1;
-        const bt = b >= 12 ? 0 : 1;
-        if (at !== bt) return at - bt;
-        return a - b;
-      });
-      const extCount = Math.min(shellExtension, extras.length);
-      for (let i = 0; i < extCount; i++) intervals.push(extras[i]);
-    }
-    // 173: displace 3rd up an octave
-    if (shellVoicing === '173') {
-      intervals = intervals.map(iv => iv === thirdIv ? iv + 12 : iv);
-    }
-    intervals.sort((a, b) => a - b);
+    intervals = getShellIntervals(bQuality.pcs, shellVoicing, shellExtension, pcs);
+    if (!intervals) return;
   } else {
     // Normal voicing: apply omit/rootless filters
     if (voicingOmit5) pcs = pcs.filter(iv => iv % 12 !== 7);
@@ -1105,6 +1078,40 @@ document.addEventListener('DOMContentLoaded', () => {
 // ========================================
 // VOICING CALCULATION
 // ========================================
+
+// Extract shell voicing intervals (R, 3rd, 7th + extensions)
+// Returns sorted interval array, or null if 3rd/7th not found
+function getShellIntervals(qualityPCS, shellMode, extension, fullPCS) {
+  let thirdIv = null, seventhIv = null;
+  if (qualityPCS) {
+    if (qualityPCS.includes(4)) thirdIv = 4;
+    else if (qualityPCS.includes(3)) thirdIv = 3;
+    if (qualityPCS.includes(11)) seventhIv = 11;
+    else if (qualityPCS.includes(10)) seventhIv = 10;
+    else if (qualityPCS.includes(9) && !qualityPCS.includes(10) && !qualityPCS.includes(11)) {
+      seventhIv = 9;
+    }
+  }
+  if (thirdIv === null || seventhIv === null) return null;
+  let intervals = [0, thirdIv, seventhIv];
+  if (extension > 0 && fullPCS) {
+    const shellSet = new Set([0, thirdIv, seventhIv]);
+    const extras = fullPCS.filter(iv => !shellSet.has(iv)).sort((a, b) => {
+      const at = a >= 12 ? 0 : 1;
+      const bt = b >= 12 ? 0 : 1;
+      if (at !== bt) return at - bt;
+      return a - b;
+    });
+    const extCount = Math.min(extension, extras.length);
+    for (let i = 0; i < extCount; i++) intervals.push(extras[i]);
+  }
+  if (shellMode === '173') {
+    intervals = intervals.map(iv => iv === thirdIv ? iv + 12 : iv);
+  }
+  intervals.sort((a, b) => a - b);
+  return intervals;
+}
+
 function calcVoicingOffsets(chordPCS, inversion, drop) {
   let voiced = [...chordPCS].sort((a, b) => a - b);
   // Apply inversion: rotate bottom notes up an octave
@@ -1657,39 +1664,8 @@ function render() {
 
   // Shell voicing bounding boxes (with +1/+2 extension)
   if (currentMode === 'chord' && shellVoicing && hasChordNotes) {
-    let thirdIv = null, seventhIv = null;
-    if (qualityPCS) {
-      if (qualityPCS.includes(4)) thirdIv = 4;
-      else if (qualityPCS.includes(3)) thirdIv = 3;
-      if (qualityPCS.includes(11)) seventhIv = 11;
-      else if (qualityPCS.includes(10)) seventhIv = 10;
-      else if (qualityPCS.includes(9) && !qualityPCS.includes(10) && !qualityPCS.includes(11)) {
-        seventhIv = 9;
-      }
-    }
-    if (thirdIv !== null && seventhIv !== null) {
-      // Build voicing intervals: shell (R, 3rd, 7th) + extension notes
-      let shellIntervals = [0, thirdIv, seventhIv];
-      if (shellExtension > 0) {
-        const fullPCS = getBuilderPCS();
-        if (fullPCS) {
-          const shellSet = new Set([0, thirdIv, seventhIv]);
-          const extras = fullPCS.filter(iv => !shellSet.has(iv)).sort((a, b) => {
-            // Prioritize tensions (compound intervals >= 12) over basic chord tones
-            const at = a >= 12 ? 0 : 1;
-            const bt = b >= 12 ? 0 : 1;
-            if (at !== bt) return at - bt;
-            return a - b;
-          });
-          const extCount = Math.min(shellExtension, extras.length);
-          for (let i = 0; i < extCount; i++) shellIntervals.push(extras[i]);
-        }
-      }
-      // 173: displace 3rd up an octave
-      if (shellVoicing === '173') {
-        shellIntervals = shellIntervals.map(iv => iv === thirdIv ? iv + 12 : iv);
-      }
-      shellIntervals.sort((a, b) => a - b);
+    const shellIntervals = getShellIntervals(qualityPCS, shellVoicing, shellExtension, getBuilderPCS());
+    if (shellIntervals) {
       const shellOffsets = shellIntervals.map(v => v - shellIntervals[0]);
       const maxRS = shellIntervals.length <= 3 ? 4 : 5;
       const maxCS = shellIntervals.length <= 3 ? 5 : 6;

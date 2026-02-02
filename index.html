@@ -2236,7 +2236,7 @@ function clearInstrumentInput() {
   document.querySelectorAll('.instrument-highlight').forEach(el => el.remove());
   const detectEl = document.getElementById('midi-detect');
   detectEl.innerHTML = '';
-  detectEl.style.display = 'none';
+  // detectEl always visible (no layout shift)
   renderGuitarDiagram(lastRenderRootPC, lastRenderActivePCS);
   renderPianoDisplay(lastRenderRootPC, lastRenderActivePCS);
 }

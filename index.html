@@ -251,6 +251,12 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   border-radius: 50%; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
 .ep-val { font-size: 0.5rem; color: #556677; font-variant-numeric: tabular-nums; }
+.engine-btn {
+  padding: 3px 8px; font-size: 0.65rem; border-radius: 3px;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  cursor: pointer; letter-spacing: 0.5px; font-weight: 600;
+}
+.engine-btn.active { background: var(--accent); color: #000; }
 </style>
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
@@ -258,6 +264,14 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 <script src="https://surikov.github.io/webaudiofontdata/sound/0170_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0180_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0190_FluidR3_GM_sf2_file.js"></script>
+<!-- EP presets (Rhodes + FM EP) -->
+<script src="https://surikov.github.io/webaudiofontdata/sound/0040_FluidR3_GM_sf2_file.js"></script>
+<script src="https://surikov.github.io/webaudiofontdata/sound/0040_GeneralUserGS_sf2_file.js"></script>
+<script src="https://surikov.github.io/webaudiofontdata/sound/0040_Chaos_sf2_file.js"></script>
+<script src="https://surikov.github.io/webaudiofontdata/sound/0040_JCLive_sf2_file.js"></script>
+<script src="https://surikov.github.io/webaudiofontdata/sound/0040_SBLive_sf2.js"></script>
+<script src="https://surikov.github.io/webaudiofontdata/sound/0050_FluidR3_GM_sf2_file.js"></script>
+<script src="https://surikov.github.io/webaudiofontdata/sound/0050_GeneralUserGS_sf2_file.js"></script>
 </head>
 <body>
 
@@ -399,7 +413,10 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
       <svg id="staff-notation" width="280" height="0" style="display:none;"></svg>
     </div>
     <div id="sound-controls" style="display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;padding:8px 10px;background:linear-gradient(180deg,#1a1a2a,#12121e);border:1px solid #333;border-radius:6px;">
-      <div style="font-size:0.6rem;font-weight:600;color:#6688aa;letter-spacing:1px;width:100%;text-align:center;margin-bottom:2px;">ORGAN (SF)</div>
+      <div id="engine-selector" style="display:flex;gap:4px;justify-content:center;width:100%;margin-bottom:2px;">
+        <button class="engine-btn active" id="eng-organ" onclick="setEngine('organ')">ORGAN</button>
+        <button class="engine-btn" id="eng-ep" onclick="setEngine('ep')">E.PIANO</button>
+      </div>
       <label class="ep-knob"><span>PRESET</span><select id="organ-preset" style="font-size:0.6rem;background:var(--surface);color:var(--text);border:1px solid var(--text-muted);border-radius:3px;padding:1px 2px;width:64px;"></select></label>
       <label class="ep-knob"><span>REV</span><input type="range" id="snd-reverb" min="0" max="0.5" step="0.01" value="0.08"><span id="snd-rev-val" class="ep-val">0.08</span></label>
       <label class="ep-knob"><span>TREM</span><input type="range" id="snd-tremolo" min="0" max="0.4" step="0.01" value="0"><span id="snd-trm-val" class="ep-val">0.00</span></label>
@@ -824,8 +841,11 @@ function ensureAudioResumed() {
   // Decode SoundFont samples after AudioContext is running
   if (!_audioDecoded) {
     _audioDecoded = true;
-    Object.values(ORGAN_INSTRUMENTS).forEach(inst => {
-      wafPlayer.loader.decodeAfterLoading(audioCtx, inst.data);
+    // Decode ALL engines' presets upfront to avoid delay on switch
+    Object.values(ENGINES).forEach(eng => {
+      Object.values(eng.presets).forEach(inst => {
+        wafPlayer.loader.decodeAfterLoading(audioCtx, inst.data);
+      });
     });
   }
 }
@@ -837,19 +857,75 @@ function getAudioCtx() { ensureAudioResumed(); return audioCtx; }
 // --- WebAudioFont player + instrument presets ---
 const wafPlayer = new WebAudioFontPlayer();
 
-const ORGAN_INSTRUMENTS = {
-  'Drawbar':    { data: _tone_0160_FluidR3_GM_sf2_file, label: 'Drawbar Organ' },
-  'Percussive': { data: _tone_0170_FluidR3_GM_sf2_file, label: 'Percussive Organ' },
-  'Rock':       { data: _tone_0180_FluidR3_GM_sf2_file, label: 'Rock Organ' },
-  'Church':     { data: _tone_0190_FluidR3_GM_sf2_file, label: 'Church Organ' },
+// ======== SOUND ENGINES ========
+const ENGINES = {
+  organ: {
+    name: 'ORGAN',
+    presets: {
+      'Drawbar':    { data: _tone_0160_FluidR3_GM_sf2_file, label: 'Drawbar Organ' },
+      'Percussive': { data: _tone_0170_FluidR3_GM_sf2_file, label: 'Percussive Organ' },
+      'Rock':       { data: _tone_0180_FluidR3_GM_sf2_file, label: 'Rock Organ' },
+      'Church':     { data: _tone_0190_FluidR3_GM_sf2_file, label: 'Church Organ' },
+    },
+    defaultPreset: 'Drawbar',
+  },
+  ep: {
+    name: 'E.PIANO',
+    presets: {
+      'Rhodes 1':  { data: _tone_0040_FluidR3_GM_sf2_file, label: 'Rhodes 1' },
+      'Rhodes 2':  { data: _tone_0040_GeneralUserGS_sf2_file, label: 'Rhodes 2' },
+      'Rhodes 3':  { data: _tone_0040_Chaos_sf2_file, label: 'Rhodes 3' },
+      'Rhodes 4':  { data: _tone_0040_JCLive_sf2_file, label: 'Rhodes 4' },
+      'Rhodes 5':  { data: _tone_0040_SBLive_sf2, label: 'Rhodes 5' },
+      'FM EP 1':   { data: _tone_0050_FluidR3_GM_sf2_file, label: 'FM EP 1' },
+      'FM EP 2':   { data: _tone_0050_GeneralUserGS_sf2_file, label: 'FM EP 2' },
+    },
+    defaultPreset: 'Rhodes 1',
+  },
 };
-let currentInstrument = ORGAN_INSTRUMENTS['Drawbar'];
 
-function setOrganPreset(name) {
-  if (ORGAN_INSTRUMENTS[name]) {
-    currentInstrument = ORGAN_INSTRUMENTS[name];
-    const sel = document.getElementById('organ-preset');
-    if (sel) sel.value = name;
+let currentEngineKey = 'organ';
+let currentEngine = ENGINES['organ'];
+let currentPresetKey = 'Drawbar';
+let currentInstrument = ENGINES['organ'].presets['Drawbar'];
+
+function setEngine(key) {
+  if (!ENGINES[key]) return;
+  noteOffAll();
+  currentEngineKey = key;
+  currentEngine = ENGINES[key];
+  currentPresetKey = currentEngine.defaultPreset;
+  currentInstrument = currentEngine.presets[currentPresetKey];
+  // Decode new engine's presets
+  Object.values(currentEngine.presets).forEach(p => {
+    wafPlayer.loader.decodeAfterLoading(audioCtx, p.data);
+  });
+  renderSoundControls();
+}
+
+function setPreset(name) {
+  if (!currentEngine.presets[name]) return;
+  currentPresetKey = name;
+  currentInstrument = currentEngine.presets[name];
+  const sel = document.getElementById('organ-preset');
+  if (sel) sel.value = name;
+}
+
+function renderSoundControls() {
+  // Update engine buttons
+  document.querySelectorAll('.engine-btn').forEach(btn => btn.classList.remove('active'));
+  const activeBtn = document.getElementById('eng-' + currentEngineKey);
+  if (activeBtn) activeBtn.classList.add('active');
+  // Update preset dropdown
+  const sel = document.getElementById('organ-preset');
+  if (sel) {
+    sel.innerHTML = '';
+    Object.entries(currentEngine.presets).forEach(([key, inst]) => {
+      const opt = document.createElement('option');
+      opt.value = key; opt.textContent = inst.label;
+      sel.appendChild(opt);
+    });
+    sel.value = currentPresetKey;
   }
 }
 
@@ -947,17 +1023,12 @@ document.addEventListener('DOMContentLoaded', () => {
     tremoloLFO.frequency.setValueAtTime(parseFloat(trmSpd.value), audioCtx.currentTime);
   });
 
-  // Organ preset selector (SoundFont instruments)
+  // Preset selector (populated by renderSoundControls)
   const presetSel = document.getElementById('organ-preset');
   if (presetSel) {
-    Object.entries(ORGAN_INSTRUMENTS).forEach(([key, inst]) => {
-      const opt = document.createElement('option');
-      opt.value = key; opt.textContent = inst.label;
-      presetSel.appendChild(opt);
-    });
-    presetSel.value = 'Drawbar';
-    presetSel.addEventListener('change', () => setOrganPreset(presetSel.value));
+    presetSel.addEventListener('change', () => setPreset(presetSel.value));
   }
+  renderSoundControls();
 });
 
 // Calculate voicing offsets: inversion + drop applied to chord PCS

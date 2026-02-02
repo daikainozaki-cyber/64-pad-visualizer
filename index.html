@@ -610,9 +610,12 @@ const BuilderState = {
 };
 
 // ======== PAD GRID ========
-const ROWS = 8, COLS = 8;
-const BASE_MIDI = 36, ROW_INTERVAL = 5, COL_INTERVAL = 1;
-const PAD_SIZE = 62, PAD_GAP = 4, MARGIN = 20;
+const GRID = {
+  ROWS: 8, COLS: 8,
+  BASE_MIDI: 36, ROW_INTERVAL: 5, COL_INTERVAL: 1,
+  PAD_SIZE: 62, PAD_GAP: 4, MARGIN: 20,
+};
+const { ROWS, COLS, BASE_MIDI, ROW_INTERVAL, COL_INTERVAL, PAD_SIZE, PAD_GAP, MARGIN } = GRID;
 const SCALE_DEGREE_NAMES = ['R','b2','2','b3','3','4','b5','5','b6','6','b7','7'];
 
 // Voicing state
@@ -918,29 +921,31 @@ const ENGINES = {
   },
 };
 
-let currentEngineKey = 'organ';
-let currentEngine = ENGINES['organ'];
-let currentPresetKey = 'Drawbar';
-let currentInstrument = ENGINES['organ'].presets['Drawbar'];
+const AudioState = {
+  engineKey: 'organ',
+  engine: ENGINES['organ'],
+  presetKey: 'Drawbar',
+  instrument: ENGINES['organ'].presets['Drawbar'],
+};
 
 function setEngine(key) {
   if (!ENGINES[key]) return;
   noteOffAll();
-  currentEngineKey = key;
-  currentEngine = ENGINES[key];
-  currentPresetKey = currentEngine.defaultPreset;
-  currentInstrument = currentEngine.presets[currentPresetKey];
+  AudioState.engineKey = key;
+  AudioState.engine = ENGINES[key];
+  AudioState.presetKey = AudioState.engine.defaultPreset;
+  AudioState.instrument = AudioState.engine.presets[AudioState.presetKey];
   // Decode new engine's presets
-  Object.values(currentEngine.presets).forEach(p => {
+  Object.values(AudioState.engine.presets).forEach(p => {
     wafPlayer.loader.decodeAfterLoading(audioCtx, p.data);
   });
   renderSoundControls();
 }
 
 function setPreset(name) {
-  if (!currentEngine.presets[name]) return;
-  currentPresetKey = name;
-  currentInstrument = currentEngine.presets[name];
+  if (!AudioState.engine.presets[name]) return;
+  AudioState.presetKey = name;
+  AudioState.instrument = AudioState.engine.presets[name];
   const sel = document.getElementById('organ-preset');
   if (sel) sel.value = name;
 }
@@ -948,18 +953,18 @@ function setPreset(name) {
 function renderSoundControls() {
   // Update engine buttons
   document.querySelectorAll('.engine-btn').forEach(btn => btn.classList.remove('active'));
-  const activeBtn = document.getElementById('eng-' + currentEngineKey);
+  const activeBtn = document.getElementById('eng-' + AudioState.engineKey);
   if (activeBtn) activeBtn.classList.add('active');
   // Update preset dropdown
   const sel = document.getElementById('organ-preset');
   if (sel) {
     sel.innerHTML = '';
-    Object.entries(currentEngine.presets).forEach(([key, inst]) => {
+    Object.entries(AudioState.engine.presets).forEach(([key, inst]) => {
       const opt = document.createElement('option');
       opt.value = key; opt.textContent = inst.label;
       sel.appendChild(opt);
     });
-    sel.value = currentPresetKey;
+    sel.value = AudioState.presetKey;
   }
 }
 
@@ -978,7 +983,7 @@ function noteOn(midi, velocity, poly) {
   velocity = velocity || 0.8;
   // queueWaveTable: sustain for very long duration, cancel on noteOff
   const envelope = wafPlayer.queueWaveTable(
-    audioCtx, masterGain, currentInstrument.data,
+    audioCtx, masterGain, AudioState.instrument.data,
     0, midi, 99999, velocity
   );
   if (!envelope) return; // Sample not yet decoded

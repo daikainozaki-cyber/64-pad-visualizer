@@ -1112,6 +1112,33 @@ function getShellIntervals(qualityPCS, shellMode, extension, fullPCS) {
   return intervals;
 }
 
+// Search grid for all valid voicing positions, draw bounding boxes, update lastComputedBoxes
+function computeAndDrawVoicingBoxes(svg, offsets, targetPC, strokeColor, badgeColor, maxRS, maxCS) {
+  const boxes = [];
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const midi = midiNote(row, col);
+      if (pitchClass(midi) !== targetPC) continue;
+      const vp = calcVoicingPositions(row, col, offsets);
+      if (!vp) continue;
+      if (maxRS) {
+        const rs = vp.maxRow - vp.minRow + 1, cs = vp.maxCol - vp.minCol + 1;
+        if (rs > maxRS || cs > maxCS) continue;
+      }
+      boxes.push({ midi, vp });
+    }
+  }
+  boxes.sort((a, b) => a.midi - b.midi);
+  lastComputedBoxes = boxes.map(b => ({
+    midiNotes: b.vp.positions.map(p => baseMidi() + p.row * ROW_INTERVAL + p.col).sort((a, b) => a - b)
+  }));
+  const midiCount = new Map();
+  boxes.forEach(b => midiCount.set(b.midi, (midiCount.get(b.midi) || 0) + 1));
+  const dupSet = new Set();
+  boxes.forEach((b, i) => { if (midiCount.get(b.midi) > 1) dupSet.add(i); });
+  drawVoicingBoxes(svg, boxes.map(b => b.vp), strokeColor, badgeColor, dupSet);
+}
+
 function calcVoicingOffsets(chordPCS, inversion, drop) {
   let voiced = [...chordPCS].sort((a, b) => a - b);
   // Apply inversion: rotate bottom notes up an octave
@@ -1669,28 +1696,7 @@ function render() {
       const shellOffsets = shellIntervals.map(v => v - shellIntervals[0]);
       const maxRS = shellIntervals.length <= 3 ? 4 : 5;
       const maxCS = shellIntervals.length <= 3 ? 5 : 6;
-      const shellBoxes = [];
-      for (let row = 0; row < ROWS; row++) {
-        for (let col = 0; col < COLS; col++) {
-          const midi = midiNote(row, col);
-          if (pitchClass(midi) !== rootPC) continue;
-          const vp = calcVoicingPositions(row, col, shellOffsets);
-          if (!vp) continue;
-          const rs = vp.maxRow - vp.minRow + 1, cs = vp.maxCol - vp.minCol + 1;
-          if (rs > maxRS || cs > maxCS) continue;
-          shellBoxes.push({ midi, vp });
-        }
-      }
-      shellBoxes.sort((a, b) => a.midi - b.midi);
-      lastComputedBoxes = shellBoxes.map(sb => ({
-        midiNotes: sb.vp.positions.map(p => baseMidi() + p.row * ROW_INTERVAL + p.col).sort((a, b) => a - b)
-      }));
-      // Mark duplicate MIDI positions for blinking
-      const shellMidiCount = new Map();
-      shellBoxes.forEach(sb => shellMidiCount.set(sb.midi, (shellMidiCount.get(sb.midi) || 0) + 1));
-      const shellDupSet = new Set();
-      shellBoxes.forEach((sb, i) => { if (shellMidiCount.get(sb.midi) > 1) shellDupSet.add(i); });
-      drawVoicingBoxes(svg, shellBoxes.map(sb => sb.vp), '#ffd740', '#CC79A7', shellDupSet);
+      computeAndDrawVoicingBoxes(svg, shellOffsets, rootPC, '#ffd740', '#CC79A7', maxRS, maxCS);
     }
   }
 
@@ -1700,31 +1706,10 @@ function render() {
     if (chordPCS && chordPCS.length >= 3) {
       const inv = Math.min(voicingInversion, chordPCS.length - 1);
       const result = calcVoicingOffsets(chordPCS, inv, voicingDrop);
-      const offsets = result.offsets;
-      // Bass pitch class from voicing calculation (handles drop correctly)
       const bassAbsPC = ((rootPC + result.bassInterval) % 12 + 12) % 12;
-      const voicingBoxes = [];
-      for (let row = 0; row < ROWS; row++) {
-        for (let col = 0; col < COLS; col++) {
-          const midi = midiNote(row, col);
-          const pc = pitchClass(midi);
-          if (pc !== bassAbsPC) continue;
-          const vp = calcVoicingPositions(row, col, offsets);
-          if (!vp) continue;
-          voicingBoxes.push({ midi, vp });
-        }
-      }
-      voicingBoxes.sort((a, b) => a.midi - b.midi);
-      lastComputedBoxes = voicingBoxes.map(vb => ({
-        midiNotes: vb.vp.positions.map(p => baseMidi() + p.row * ROW_INTERVAL + p.col).sort((a, b) => a - b)
-      }));
-      const voicMidiCount = new Map();
-      voicingBoxes.forEach(vb => voicMidiCount.set(vb.midi, (voicMidiCount.get(vb.midi) || 0) + 1));
-      const voicDupSet = new Set();
-      voicingBoxes.forEach((vb, i) => { if (voicMidiCount.get(vb.midi) > 1) voicDupSet.add(i); });
       const voicStroke = voicingDrop ? '#00e5ff' : '#ffd740';
       const voicBadge = voicingDrop ? '#00e5ff' : '#CC79A7';
-      drawVoicingBoxes(svg, voicingBoxes.map(vb => vb.vp), voicStroke, voicBadge, voicDupSet);
+      computeAndDrawVoicingBoxes(svg, result.offsets, bassAbsPC, voicStroke, voicBadge);
     }
   }
 
@@ -1734,25 +1719,7 @@ function render() {
     if (chordPCS && chordPCS.length >= 3) {
       const sorted = [...chordPCS].sort((a, b) => a - b);
       const basicOffsets = sorted.map(v => v - sorted[0]);
-      const basicBoxes = [];
-      for (let row = 0; row < ROWS; row++) {
-        for (let col = 0; col < COLS; col++) {
-          const midi = midiNote(row, col);
-          if (pitchClass(midi) !== rootPC) continue;
-          const vp = calcVoicingPositions(row, col, basicOffsets);
-          if (!vp) continue;
-          basicBoxes.push({ midi, vp });
-        }
-      }
-      basicBoxes.sort((a, b) => a.midi - b.midi);
-      lastComputedBoxes = basicBoxes.map(bb => ({
-        midiNotes: bb.vp.positions.map(p => baseMidi() + p.row * ROW_INTERVAL + p.col).sort((a, b) => a - b)
-      }));
-      const basicMidiCount = new Map();
-      basicBoxes.forEach(bb => basicMidiCount.set(bb.midi, (basicMidiCount.get(bb.midi) || 0) + 1));
-      const basicDupSet = new Set();
-      basicBoxes.forEach((bb, i) => { if (basicMidiCount.get(bb.midi) > 1) basicDupSet.add(i); });
-      drawVoicingBoxes(svg, basicBoxes.map(bb => bb.vp), '#ffd740', '#CC79A7', basicDupSet);
+      computeAndDrawVoicingBoxes(svg, basicOffsets, rootPC, '#ffd740', '#CC79A7');
     }
   }
 

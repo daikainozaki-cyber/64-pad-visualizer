@@ -597,11 +597,14 @@ let currentMode = 'scale';
 let currentScaleIdx = 0;
 
 // Builder state
-let bStep = 0;       // 0=not started, 1=root, 2=quality, 3=tension, 4=onchord
-let bRoot = null;     // 0-11
-let bQuality = null;  // {name, label, pcs}
-let bTension = null;  // {label, mods}
-let bBass = null;     // 0-11 for slash chord
+const BuilderState = {
+  step: 0,       // 0=not started, 1=root, 2=quality, 3=tension, 4=onchord
+  root: null,     // 0-11
+  quality: null,  // {name, label, pcs}
+  tension: null,  // {label, mods}
+  bass: null,     // 0-11 for slash chord
+  bassInputMode: false, // true when piano keyboard is used for bass selection
+};
 
 // ======== PAD GRID ========
 const ROWS = 8, COLS = 8;
@@ -618,7 +621,6 @@ let voicingInversion = 0; // 0=root, 1=1st, 2=2nd, 3=3rd
 let voicingDrop = null; // null, 'drop2', 'drop3'
 let shellExtension = 0; // 0 = shell only, 1 = +1 note, 2 = +2 notes
 let octaveShift = 0; // -1, 0, +1, +2 — shifts entire grid like Push's octave up/down
-let bassInputMode = false; // true when piano keyboard is used for bass selection
 let selectedVoicingBoxIdx = null; // selected bounding box index for staff display
 let lastComputedBoxes = []; // [{midiNotes: [...]}, ...] stored from last render
 
@@ -709,10 +711,10 @@ function selectVoicingBox(idx) {
     let midiNotes = [...lastComputedBoxes[idx].midiNotes];
 
     // Shell voicing: add chord tones not in the voicing box (tensions etc.)
-    if (shellVoicing && currentMode === 'chord' && bRoot !== null && bQuality) {
+    if (shellVoicing && currentMode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
       const fullPCS = getBuilderPCS();
       if (fullPCS) {
-        const rootPC = bRoot;
+        const rootPC = BuilderState.root;
         const boxRoot = midiNotes.find(m => m % 12 === rootPC);
         if (boxRoot !== undefined) {
           const existingPCs = new Set(midiNotes.map(m => m % 12));
@@ -730,9 +732,9 @@ function selectVoicingBox(idx) {
     }
 
     // Bass note for slash chords
-    if (bBass !== null) {
+    if (BuilderState.bass !== null) {
       const lowest = Math.min(...midiNotes);
-      let bassMidi = 36 + bBass;
+      let bassMidi = 36 + BuilderState.bass;
       while (bassMidi >= lowest) bassMidi -= 12;
       midiNotes.unshift(bassMidi);
     }
@@ -744,15 +746,15 @@ function selectVoicingBox(idx) {
 
 // Play current chord automatically (for tension/shell/voicing changes)
 function playCurrentChord() {
-  if (currentMode !== 'chord' || bRoot === null || !bQuality) return;
+  if (currentMode !== 'chord' || BuilderState.root === null || !BuilderState.quality) return;
   let pcs = getBuilderPCS();
   if (!pcs || pcs.length === 0) return;
 
-  const rootPC = bRoot;
+  const rootPC = BuilderState.root;
   let intervals;
 
   if (shellVoicing) {
-    intervals = getShellIntervals(bQuality.pcs, shellVoicing, shellExtension, pcs);
+    intervals = getShellIntervals(BuilderState.quality.pcs, shellVoicing, shellExtension, pcs);
     if (!intervals) return;
   } else {
     // Normal voicing: apply omit/rootless filters
@@ -767,8 +769,8 @@ function playCurrentChord() {
   const rootMidi = 48 + rootPC;
   const midiNotes = intervals.map(o => rootMidi + o);
   // Add bass note for slash chords
-  if (bBass !== null) {
-    midiNotes.unshift(36 + bBass);
+  if (BuilderState.bass !== null) {
+    midiNotes.unshift(36 + BuilderState.bass);
   }
   playMidiNotes(midiNotes, 2);
 }
@@ -1263,14 +1265,14 @@ function chordDegreeName(interval, qualityPCS, finalPCS) {
     case 0: return 'R';
     case 1: return 'b9';
     case 2:
-      if (bTension && bTension.mods && bTension.mods.replace3 === 2) return '2';
+      if (BuilderState.tension && BuilderState.tension.mods && BuilderState.tension.mods.replace3 === 2) return '2';
       return '9';
     case 3:
       if (finalPCS && finalPCS.has(4)) return '#9';
       return 'm3';
     case 4: return '3';
     case 5:
-      if (bTension && bTension.mods && bTension.mods.replace3 === 5) return '4';
+      if (BuilderState.tension && BuilderState.tension.mods && BuilderState.tension.mods.replace3 === 5) return '4';
       if (qualityPCS && !qualityPCS.includes(3) && !qualityPCS.includes(4)) return '4';
       return '11';
     case 6:
@@ -1323,18 +1325,18 @@ function applyTension(basePCS, mods) {
 
 // ======== GET ACTIVE PCS FOR CHORD BUILDER ========
 function getBuilderPCS() {
-  if (bRoot === null || !bQuality) return null;
-  let pcs = [...bQuality.pcs];
-  if (bTension) pcs = applyTension(pcs, bTension.mods);
+  if (BuilderState.root === null || !BuilderState.quality) return null;
+  let pcs = [...BuilderState.quality.pcs];
+  if (BuilderState.tension) pcs = applyTension(pcs, BuilderState.tension.mods);
   return pcs;
 }
 
 function getBuilderChordName() {
-  if (bRoot === null) return '';
-  let name = NOTE_NAMES_SHARP[bRoot];
-  if (bQuality) name += bQuality.name;
-  if (bTension) {
-    const tl = bTension.label.replace(/\n/g, '');
+  if (BuilderState.root === null) return '';
+  let name = NOTE_NAMES_SHARP[BuilderState.root];
+  if (BuilderState.quality) name += BuilderState.quality.name;
+  if (BuilderState.tension) {
+    const tl = BuilderState.tension.label.replace(/\n/g, '');
     // Wrap in parens if it looks like a compound tension
     if (tl && !['sus4','aug','add9','omit3','omit5','-5','+','2','4','6'].includes(tl)) {
       if (!tl.startsWith('(') && !tl.startsWith('sus') && !tl.startsWith('aug') && !tl.startsWith('add') && !tl.startsWith('omit')) {
@@ -1476,8 +1478,8 @@ function renderDiatonicBar() {
     const btn = document.createElement('button');
     btn.className = 'diatonic-btn';
     // Highlight if current chord matches this diatonic chord
-    if (currentMode === 'chord' && bRoot === t.rootPC && bQuality &&
-        bQuality.name === t.quality.name && !bTension) {
+    if (currentMode === 'chord' && BuilderState.root === t.rootPC && BuilderState.quality &&
+        BuilderState.quality.name === t.quality.name && !BuilderState.tension) {
       btn.classList.add('active');
     }
     btn.innerHTML = '<div>' + t.chordName + '</div><div class="degree">' + t.degree + '</div>';
@@ -1499,10 +1501,10 @@ function onDiatonicClick(tetrad) {
   document.getElementById('chord-panel').style.display = '';
 
   // Set builder state
-  bRoot = tetrad.rootPC;
-  bQuality = tetrad.quality;
-  bTension = null;
-  bBass = null;
+  BuilderState.root = tetrad.rootPC;
+  BuilderState.quality = tetrad.quality;
+  BuilderState.tension = null;
+  BuilderState.bass = null;
   selectedVoicingBoxIdx = null;
 
   // Update builder UI
@@ -1536,14 +1538,14 @@ function computeRenderState() {
     }
   } else {
     const pcs = getBuilderPCS();
-    rootPC = bRoot !== null ? bRoot : 0;
-    qualityPCS = bQuality ? bQuality.pcs : null;
+    rootPC = BuilderState.root !== null ? BuilderState.root : 0;
+    qualityPCS = BuilderState.quality ? BuilderState.quality.pcs : null;
     if (pcs) {
       activePCS = new Set(pcs.map(pc => (pc + rootPC) % 12));
       // Track tension notes (compound intervals >= 12)
       pcs.filter(pc => pc >= 12).forEach(pc => tensionPCS.add((pc + rootPC) % 12));
       activeLabel = getBuilderChordName();
-      if (bBass !== null) bassPC = bBass;
+      if (BuilderState.bass !== null) bassPC = BuilderState.bass;
       // Apply voicing toggles
       const p5 = (rootPC + 7) % 12;
       const p3maj = (rootPC + 4) % 12;
@@ -1583,7 +1585,7 @@ function computeRenderState() {
       }
     } else {
       activePCS = new Set();
-      activeLabel = bRoot !== null ? NOTE_NAMES_SHARP[bRoot] + '...' : 'Select root';
+      activeLabel = BuilderState.root !== null ? NOTE_NAMES_SHARP[BuilderState.root] + '...' : 'Select root';
     }
   }
 
@@ -1738,7 +1740,7 @@ function renderInfoText(state) {
     if (pcs) {
       const notes = pcs.map(pc => NOTE_NAMES_SHARP[(pc + rootPC) % 12]);
       let txt = activeLabel + ' (' + pcs.length + '音) : ' + notes.join(' - ');
-      if (bBass !== null) txt += ' / ' + NOTE_NAMES_SHARP[bBass];
+      if (BuilderState.bass !== null) txt += ' / ' + NOTE_NAMES_SHARP[BuilderState.bass];
       const mods = [];
       if (shellVoicing) {
         let shellLabel = 'Shell ' + shellVoicing.split('').join('-');
@@ -2509,8 +2511,8 @@ function setMode(mode) {
   document.getElementById('mode-chord').classList.toggle('active', mode === 'chord');
   document.getElementById('scale-panel').style.display = mode === 'scale' ? '' : 'none';
   document.getElementById('chord-panel').style.display = mode === 'chord' ? '' : 'none';
-  if (mode === 'chord' && bStep === 0) {
-    bRoot = currentKey; // carry over key
+  if (mode === 'chord' && BuilderState.step === 0) {
+    BuilderState.root = currentKey; // carry over key
     setBuilderStep(1);
   }
   render();
@@ -2559,11 +2561,11 @@ function initScaleSelect() {
 
 // ======== CHORD BUILDER ========
 function setBuilderStep(step) {
-  bStep = step;
+  BuilderState.step = step;
   document.getElementById('step1').style.display = step === 1 ? '' : 'none';
   document.getElementById('step2').style.display = step === 2 ? '' : 'none';
-  if (!bassInputMode) {
-    const label = step === 2 ? 'Tension' : (bRoot !== null ? 'Quality' : 'Root');
+  if (!BuilderState.bassInputMode) {
+    const label = step === 2 ? 'Tension' : (BuilderState.root !== null ? 'Quality' : 'Root');
     document.getElementById('step-label').textContent = label;
     document.getElementById('step-label').style.background = '';
   }
@@ -2582,10 +2584,10 @@ function setBuilderStep(step) {
     const dx = e.changedTouches[0].clientX - _sx;
     const dy = Math.abs(e.changedTouches[0].clientY - _sy);
     if (Math.abs(dx) < MIN_DX || dy / Math.abs(dx) > MAX_DY_RATIO) return;
-    if (dx < 0 && bStep === 1 && bQuality) {
+    if (dx < 0 && BuilderState.step === 1 && BuilderState.quality) {
       // Swipe left → Tension
       setBuilderStep(2);
-    } else if (dx > 0 && bStep === 2) {
+    } else if (dx > 0 && BuilderState.step === 2) {
       // Swipe right → Root + Quality
       setBuilderStep(1);
     }
@@ -2603,15 +2605,15 @@ function updateChordDisplay() {
   const nameEl = document.getElementById('chord-name');
   nameEl.textContent = getBuilderChordName() || '—';
   // Auto bass from voicing (inversion/drop) when no explicit on-chord bass
-  let displayBass = bBass;
-  if (displayBass === null && bRoot !== null && bQuality) {
+  let displayBass = BuilderState.bass;
+  if (displayBass === null && BuilderState.root !== null && BuilderState.quality) {
     const chordPCS = getBuilderPCS();
     if (chordPCS && chordPCS.length >= 3 && !shellVoicing) {
       if (voicingInversion > 0 || voicingDrop) {
         const inv = Math.min(voicingInversion, chordPCS.length - 1);
         const result = calcVoicingOffsets(chordPCS, inv, voicingDrop);
-        const bassAbsPC = ((bRoot + result.bassInterval) % 12 + 12) % 12;
-        if (bassAbsPC !== bRoot) displayBass = bassAbsPC;
+        const bassAbsPC = ((BuilderState.root + result.bassInterval) % 12 + 12) % 12;
+        if (bassAbsPC !== BuilderState.root) displayBass = bassAbsPC;
       }
     }
   }
@@ -2619,8 +2621,8 @@ function updateChordDisplay() {
 }
 
 function builderClear() {
-  bRoot = null; bQuality = null; bTension = null; bBass = null;
-  bassInputMode = false;
+  BuilderState.root = null; BuilderState.quality = null; BuilderState.tension = null; BuilderState.bass = null;
+  BuilderState.bassInputMode = false;
   document.getElementById('step-label').style.background = '';
   setBuilderStep(1);
   clearPianoSelection('piano-keyboard');
@@ -2630,24 +2632,24 @@ function builderClear() {
 }
 
 function builderBack() {
-  if (bassInputMode) {
-    bassInputMode = false;
-    if (bQuality) setBuilderStep(2);
+  if (BuilderState.bassInputMode) {
+    BuilderState.bassInputMode = false;
+    if (BuilderState.quality) setBuilderStep(2);
     else setBuilderStep(1);
     render();
     return;
   }
-  if (bStep === 2) {
-    bTension = null;
+  if (BuilderState.step === 2) {
+    BuilderState.tension = null;
     clearTensionSelection();
     setBuilderStep(1);
-  } else if (bStep === 1) {
-    if (bQuality) {
-      bQuality = null;
+  } else if (BuilderState.step === 1) {
+    if (BuilderState.quality) {
+      BuilderState.quality = null;
       clearQualitySelection();
       setBuilderStep(1);
-    } else if (bRoot !== null) {
-      bRoot = null;
+    } else if (BuilderState.root !== null) {
+      BuilderState.root = null;
       clearPianoSelection('piano-keyboard');
       setBuilderStep(1);
     }
@@ -2660,20 +2662,20 @@ function builderNext() {
 }
 
 function selectRoot(pc) {
-  if (bassInputMode) {
+  if (BuilderState.bassInputMode) {
     // In bass input mode, set bass note instead of root
-    bBass = pc;
-    bassInputMode = false;
+    BuilderState.bass = pc;
+    BuilderState.bassInputMode = false;
     // Restore root highlight (bass selection was temporary use of this keyboard)
-    if (bRoot !== null) highlightPianoKey('piano-keyboard', bRoot);
-    if (bQuality) { setBuilderStep(2); }
+    if (BuilderState.root !== null) highlightPianoKey('piano-keyboard', BuilderState.root);
+    if (BuilderState.quality) { setBuilderStep(2); }
     else { setBuilderStep(1); }
     updateChordDisplay();
     render();
     return;
   }
-  bRoot = pc;
-  bQuality = null; bTension = null; bBass = null;
+  BuilderState.root = pc;
+  BuilderState.quality = null; BuilderState.tension = null; BuilderState.bass = null;
   selectedVoicingBoxIdx = null;
   highlightPianoKey('piano-keyboard', pc);
   clearQualitySelection();
@@ -2683,8 +2685,8 @@ function selectRoot(pc) {
 }
 
 function selectQuality(q) {
-  bQuality = q;
-  bTension = null;
+  BuilderState.quality = q;
+  BuilderState.tension = null;
   selectedVoicingBoxIdx = null;
   highlightQuality(q);
   setBuilderStep(2); // Go to Tension
@@ -2693,11 +2695,11 @@ function selectQuality(q) {
 }
 
 function selectTension(t, el) {
-  if (bTension && bTension.label === t.label) {
-    bTension = null;
+  if (BuilderState.tension && BuilderState.tension.label === t.label) {
+    BuilderState.tension = null;
     clearTensionSelection();
   } else {
-    bTension = t;
+    BuilderState.tension = t;
     clearTensionSelection();
     el.classList.add('selected');
   }
@@ -2708,21 +2710,21 @@ function selectTension(t, el) {
 }
 
 function startOnChord() {
-  if (!bQuality && bRoot === null) return;
+  if (!BuilderState.quality && BuilderState.root === null) return;
   // Toggle bass input mode using the root piano keyboard
-  bassInputMode = !bassInputMode;
-  if (bassInputMode) {
-    if (bStep !== 1) setBuilderStep(1);
+  BuilderState.bassInputMode = !BuilderState.bassInputMode;
+  if (BuilderState.bassInputMode) {
+    if (BuilderState.step !== 1) setBuilderStep(1);
     document.getElementById('step-label').textContent = 'Bass Note';
     document.getElementById('step-label').style.background = '#009E73';
   } else {
-    if (bQuality) setBuilderStep(2);
+    if (BuilderState.quality) setBuilderStep(2);
     else setBuilderStep(1);
   }
 }
 
 function selectBass(pc) {
-  bBass = pc;
+  BuilderState.bass = pc;
   highlightPianoKey('onchord-keyboard', pc);
   updateChordDisplay();
   render();
@@ -2844,7 +2846,7 @@ function clearTensionSelection() {
 // ======== ON-CHORD KEYBOARD ========
 function initOnChordKeyboard() {
   buildPianoKeyboard('onchord-keyboard', selectBass);
-  if (bBass !== null) highlightPianoKey('onchord-keyboard', bBass);
+  if (BuilderState.bass !== null) highlightPianoKey('onchord-keyboard', BuilderState.bass);
 }
 
 // ========================================

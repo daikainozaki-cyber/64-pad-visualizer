@@ -612,17 +612,19 @@ const BASE_MIDI = 36, ROW_INTERVAL = 5, COL_INTERVAL = 1;
 const PAD_SIZE = 62, PAD_GAP = 4, MARGIN = 20;
 const SCALE_DEGREE_NAMES = ['R','b2','2','b3','3','4','b5','5','b6','6','b7','7'];
 
-// Voicing toggles
-let voicingOmit5 = false;
-let voicingRootless = false;
-let voicingOmit3 = false;
-let shellVoicing = null; // null, '137', '173'
-let voicingInversion = 0; // 0=root, 1=1st, 2=2nd, 3=3rd
-let voicingDrop = null; // null, 'drop2', 'drop3'
-let shellExtension = 0; // 0 = shell only, 1 = +1 note, 2 = +2 notes
+// Voicing state
+const VoicingState = {
+  omit5: false,
+  rootless: false,
+  omit3: false,
+  shell: null,           // null, '137', '173'
+  inversion: 0,          // 0=root, 1=1st, 2=2nd, 3=3rd
+  drop: null,            // null, 'drop2', 'drop3'
+  shellExtension: 0,     // 0 = shell only, 1 = +1 note, 2 = +2 notes
+  selectedBoxIdx: null,  // selected bounding box index for staff display
+  lastBoxes: [],         // [{midiNotes: [...]}, ...] stored from last render
+};
 let octaveShift = 0; // -1, 0, +1, +2 — shifts entire grid like Push's octave up/down
-let selectedVoicingBoxIdx = null; // selected bounding box index for staff display
-let lastComputedBoxes = []; // [{midiNotes: [...]}, ...] stored from last render
 
 // ========================================
 // PAD GRID FUNCTIONS
@@ -633,7 +635,7 @@ function shiftOctave(delta) {
   const next = octaveShift + delta;
   if (next < -1 || next > 3) return;
   octaveShift = next;
-  selectedVoicingBoxIdx = null;
+  VoicingState.selectedBoxIdx = null;
   updateOctaveLabel();
   render();
 }
@@ -646,79 +648,79 @@ function updateOctaveLabel() {
   document.getElementById('oct-up').disabled = (octaveShift >= 3);
 }
 
-function toggleOmit5() { voicingOmit5 = !voicingOmit5; shellVoicing = null; updateVoicingButtons(); render(); playCurrentChord(); }
-function toggleRootless() { voicingRootless = !voicingRootless; shellVoicing = null; updateVoicingButtons(); render(); playCurrentChord(); }
-function toggleOmit3() { voicingOmit3 = !voicingOmit3; shellVoicing = null; updateVoicingButtons(); render(); playCurrentChord(); }
+function toggleOmit5() { VoicingState.omit5 = !VoicingState.omit5; VoicingState.shell = null; updateVoicingButtons(); render(); playCurrentChord(); }
+function toggleRootless() { VoicingState.rootless = !VoicingState.rootless; VoicingState.shell = null; updateVoicingButtons(); render(); playCurrentChord(); }
+function toggleOmit3() { VoicingState.omit3 = !VoicingState.omit3; VoicingState.shell = null; updateVoicingButtons(); render(); playCurrentChord(); }
 function setShell(mode) {
-  shellVoicing = mode;
+  VoicingState.shell = mode;
   if (mode) {
-    voicingOmit5 = true; voicingRootless = false; voicingOmit3 = false;
-    voicingInversion = 0; voicingDrop = null;
+    VoicingState.omit5 = true; VoicingState.rootless = false; VoicingState.omit3 = false;
+    VoicingState.inversion = 0; VoicingState.drop = null;
   } else {
-    shellExtension = 0;
+    VoicingState.shellExtension = 0;
   }
-  selectedVoicingBoxIdx = null;
+  VoicingState.selectedBoxIdx = null;
   updateVoicingButtons(); updateChordDisplay(); render();
   playCurrentChord();
 }
 function setShellExtension(n) {
-  shellExtension = (shellExtension === n) ? 0 : n;
-  if (shellExtension > 0 && !shellVoicing) shellVoicing = '137'; // auto-enable shell
-  selectedVoicingBoxIdx = null;
+  VoicingState.shellExtension = (VoicingState.shellExtension === n) ? 0 : n;
+  if (VoicingState.shellExtension > 0 && !VoicingState.shell) VoicingState.shell = '137'; // auto-enable shell
+  VoicingState.selectedBoxIdx = null;
   updateVoicingButtons(); render();
   playCurrentChord();
 }
 function setInversion(inv) {
-  voicingInversion = inv;
-  shellVoicing = null;
-  selectedVoicingBoxIdx = null;
+  VoicingState.inversion = inv;
+  VoicingState.shell = null;
+  VoicingState.selectedBoxIdx = null;
   updateVoicingButtons(); updateChordDisplay(); render();
   playCurrentChord();
 }
 function setDrop(drop) {
-  voicingDrop = voicingDrop === drop ? null : drop;
-  shellVoicing = null;
-  selectedVoicingBoxIdx = null;
+  VoicingState.drop = VoicingState.drop === drop ? null : drop;
+  VoicingState.shell = null;
+  VoicingState.selectedBoxIdx = null;
   updateVoicingButtons(); updateChordDisplay(); render();
   playCurrentChord();
 }
 function updateVoicingButtons() {
-  document.getElementById('btn-omit5').classList.toggle('active', voicingOmit5);
-  document.getElementById('btn-rootless').classList.toggle('active', voicingRootless);
-  document.getElementById('btn-omit3').classList.toggle('active', voicingOmit3);
-  document.getElementById('btn-shell137').classList.toggle('active', shellVoicing === '137');
-  document.getElementById('btn-shell173').classList.toggle('active', shellVoicing === '173');
+  document.getElementById('btn-omit5').classList.toggle('active', VoicingState.omit5);
+  document.getElementById('btn-rootless').classList.toggle('active', VoicingState.rootless);
+  document.getElementById('btn-omit3').classList.toggle('active', VoicingState.omit3);
+  document.getElementById('btn-shell137').classList.toggle('active', VoicingState.shell === '137');
+  document.getElementById('btn-shell173').classList.toggle('active', VoicingState.shell === '173');
   const ext1 = document.getElementById('btn-shell-ext1');
   const ext2 = document.getElementById('btn-shell-ext2');
-  if (ext1) ext1.classList.toggle('active', shellExtension === 1);
-  if (ext2) ext2.classList.toggle('active', shellExtension === 2);
+  if (ext1) ext1.classList.toggle('active', VoicingState.shellExtension === 1);
+  if (ext2) ext2.classList.toggle('active', VoicingState.shellExtension === 2);
   for (let i = 0; i < 4; i++) {
     const el = document.getElementById('btn-inv' + i);
-    if (el) el.classList.toggle('active', voicingInversion === i);
+    if (el) el.classList.toggle('active', VoicingState.inversion === i);
   }
   const d2 = document.getElementById('btn-drop2');
   const d3 = document.getElementById('btn-drop3');
-  if (d2) d2.classList.toggle('active', voicingDrop === 'drop2');
-  if (d3) d3.classList.toggle('active', voicingDrop === 'drop3');
+  if (d2) d2.classList.toggle('active', VoicingState.drop === 'drop2');
+  if (d3) d3.classList.toggle('active', VoicingState.drop === 'drop3');
 }
 
 function selectVoicingBox(idx) {
-  const wasSelected = selectedVoicingBoxIdx === idx;
-  selectedVoicingBoxIdx = wasSelected ? null : idx;
+  const wasSelected = VoicingState.selectedBoxIdx === idx;
+  VoicingState.selectedBoxIdx = wasSelected ? null : idx;
   render();
   // Play audio when selecting (not deselecting)
-  if (!wasSelected && lastComputedBoxes[idx]) {
-    let midiNotes = [...lastComputedBoxes[idx].midiNotes];
+  if (!wasSelected && VoicingState.lastBoxes[idx]) {
+    let midiNotes = [...VoicingState.lastBoxes[idx].midiNotes];
 
     // Shell voicing: add chord tones not in the voicing box (tensions etc.)
-    if (shellVoicing && currentMode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
+    if (VoicingState.shell && currentMode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
       const fullPCS = getBuilderPCS();
       if (fullPCS) {
         const rootPC = BuilderState.root;
         const boxRoot = midiNotes.find(m => m % 12 === rootPC);
         if (boxRoot !== undefined) {
           const existingPCs = new Set(midiNotes.map(m => m % 12));
-          // Shell voicing implicitly omits 5th (voicingOmit5 forced true)
+          // Shell voicing implicitly omits 5th (VoicingState.omit5 forced true)
           existingPCs.add((rootPC + 7) % 12);
           for (const iv of fullPCS) {
             const notePC = (rootPC + iv) % 12;
@@ -753,16 +755,16 @@ function playCurrentChord() {
   const rootPC = BuilderState.root;
   let intervals;
 
-  if (shellVoicing) {
-    intervals = getShellIntervals(BuilderState.quality.pcs, shellVoicing, shellExtension, pcs);
+  if (VoicingState.shell) {
+    intervals = getShellIntervals(BuilderState.quality.pcs, VoicingState.shell, VoicingState.shellExtension, pcs);
     if (!intervals) return;
   } else {
     // Normal voicing: apply omit/rootless filters
-    if (voicingOmit5) pcs = pcs.filter(iv => iv % 12 !== 7);
-    if (voicingRootless) pcs = pcs.filter(iv => iv % 12 !== 0);
-    if (voicingOmit3) pcs = pcs.filter(iv => iv % 12 !== 3 && iv % 12 !== 4);
+    if (VoicingState.omit5) pcs = pcs.filter(iv => iv % 12 !== 7);
+    if (VoicingState.rootless) pcs = pcs.filter(iv => iv % 12 !== 0);
+    if (VoicingState.omit3) pcs = pcs.filter(iv => iv % 12 !== 3 && iv % 12 !== 4);
     if (pcs.length === 0) return;
-    intervals = calcVoicingOffsets(pcs, voicingInversion, voicingDrop).voiced;
+    intervals = calcVoicingOffsets(pcs, VoicingState.inversion, VoicingState.drop).voiced;
   }
 
   // Convert to MIDI (root at C3 = MIDI 48)
@@ -1114,7 +1116,7 @@ function getShellIntervals(qualityPCS, shellMode, extension, fullPCS) {
   return intervals;
 }
 
-// Search grid for all valid voicing positions, draw bounding boxes, update lastComputedBoxes
+// Search grid for all valid voicing positions, draw bounding boxes, update VoicingState.lastBoxes
 function computeAndDrawVoicingBoxes(svg, offsets, targetPC, strokeColor, badgeColor, maxRS, maxCS) {
   const boxes = [];
   for (let row = 0; row < ROWS; row++) {
@@ -1131,7 +1133,7 @@ function computeAndDrawVoicingBoxes(svg, offsets, targetPC, strokeColor, badgeCo
     }
   }
   boxes.sort((a, b) => a.midi - b.midi);
-  lastComputedBoxes = boxes.map(b => ({
+  VoicingState.lastBoxes = boxes.map(b => ({
     midiNotes: b.vp.positions.map(p => baseMidi() + p.row * ROW_INTERVAL + p.col).sort((a, b) => a - b)
   }));
   const midiCount = new Map();
@@ -1358,7 +1360,7 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet) {
     const by = MARGIN + (ROWS - 1 - vp.maxRow) * (PAD_SIZE + PAD_GAP) - 3;
     const bw = (vp.maxCol - vp.minCol + 1) * (PAD_SIZE + PAD_GAP) - PAD_GAP + 6;
     const bh = (vp.maxRow - vp.minRow + 1) * (PAD_SIZE + PAD_GAP) - PAD_GAP + 6;
-    const sel = selectedVoicingBoxIdx === idx;
+    const sel = VoicingState.selectedBoxIdx === idx;
     const isDup = dupSet && dupSet.has(idx);
     const boxRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     boxRect.setAttribute('x', bx); boxRect.setAttribute('y', by);
@@ -1505,7 +1507,7 @@ function onDiatonicClick(tetrad) {
   BuilderState.quality = tetrad.quality;
   BuilderState.tension = null;
   BuilderState.bass = null;
-  selectedVoicingBoxIdx = null;
+  VoicingState.selectedBoxIdx = null;
 
   // Update builder UI
   highlightPianoKey('piano-keyboard', tetrad.rootPC);
@@ -1550,18 +1552,18 @@ function computeRenderState() {
       const p5 = (rootPC + 7) % 12;
       const p3maj = (rootPC + 4) % 12;
       const p3min = (rootPC + 3) % 12;
-      if (voicingOmit5 && activePCS.has(p5)) {
+      if (VoicingState.omit5 && activePCS.has(p5)) {
         activePCS.delete(p5); omittedPCS.add(p5);
       }
-      if (voicingRootless && activePCS.has(rootPC)) {
+      if (VoicingState.rootless && activePCS.has(rootPC)) {
         activePCS.delete(rootPC); omittedPCS.add(rootPC);
       }
-      if (voicingOmit3) {
+      if (VoicingState.omit3) {
         if (activePCS.has(p3maj)) { activePCS.delete(p3maj); omittedPCS.add(p3maj); }
         if (activePCS.has(p3min)) { activePCS.delete(p3min); omittedPCS.add(p3min); }
       }
       // Shell voicing: keep only R, 3rd, 7th
-      if (shellVoicing) {
+      if (VoicingState.shell) {
         const shellIntervals = new Set([0]); // always root
         [3,4].forEach(iv => shellIntervals.add(iv));   // 3rd (b3 or 3)
         [10,11].forEach(iv => shellIntervals.add(iv));  // 7th (b7 or △7)
@@ -1689,13 +1691,13 @@ function renderVoicingBoxes(svg, state) {
   // Reset computed boxes (will be populated if any chord bounding boxes are drawn)
   const hasChordNotes = currentMode === 'chord' && activePCS instanceof Set && activePCS.size > 0;
   if (!hasChordNotes) {
-    lastComputedBoxes = [];
-    if (selectedVoicingBoxIdx !== null) selectedVoicingBoxIdx = null;
+    VoicingState.lastBoxes = [];
+    if (VoicingState.selectedBoxIdx !== null) VoicingState.selectedBoxIdx = null;
   }
 
   // Shell voicing bounding boxes (with +1/+2 extension)
-  if (currentMode === 'chord' && shellVoicing && hasChordNotes) {
-    const shellIntervals = getShellIntervals(qualityPCS, shellVoicing, shellExtension, getBuilderPCS());
+  if (currentMode === 'chord' && VoicingState.shell && hasChordNotes) {
+    const shellIntervals = getShellIntervals(qualityPCS, VoicingState.shell, VoicingState.shellExtension, getBuilderPCS());
     if (shellIntervals) {
       const shellOffsets = shellIntervals.map(v => v - shellIntervals[0]);
       const maxRS = shellIntervals.length <= 3 ? 4 : 5;
@@ -1705,20 +1707,20 @@ function renderVoicingBoxes(svg, state) {
   }
 
   // Inversion / Drop voicing bounding boxes
-  if (currentMode === 'chord' && !shellVoicing && (voicingInversion > 0 || voicingDrop) && activePCS.size > 0) {
+  if (currentMode === 'chord' && !VoicingState.shell && (VoicingState.inversion > 0 || VoicingState.drop) && activePCS.size > 0) {
     const chordPCS = getBuilderPCS();
     if (chordPCS && chordPCS.length >= 3) {
-      const inv = Math.min(voicingInversion, chordPCS.length - 1);
-      const result = calcVoicingOffsets(chordPCS, inv, voicingDrop);
+      const inv = Math.min(VoicingState.inversion, chordPCS.length - 1);
+      const result = calcVoicingOffsets(chordPCS, inv, VoicingState.drop);
       const bassAbsPC = ((rootPC + result.bassInterval) % 12 + 12) % 12;
-      const voicStroke = voicingDrop ? '#00e5ff' : '#ffd740';
-      const voicBadge = voicingDrop ? '#00e5ff' : '#CC79A7';
+      const voicStroke = VoicingState.drop ? '#00e5ff' : '#ffd740';
+      const voicBadge = VoicingState.drop ? '#00e5ff' : '#CC79A7';
       computeAndDrawVoicingBoxes(svg, result.offsets, bassAbsPC, voicStroke, voicBadge);
     }
   }
 
   // Basic chord bounding boxes (no shell/inversion/drop)
-  if (currentMode === 'chord' && !shellVoicing && voicingInversion === 0 && !voicingDrop && hasChordNotes) {
+  if (currentMode === 'chord' && !VoicingState.shell && VoicingState.inversion === 0 && !VoicingState.drop && hasChordNotes) {
     const chordPCS = getBuilderPCS();
     if (chordPCS && chordPCS.length >= 3) {
       const sorted = [...chordPCS].sort((a, b) => a - b);
@@ -1742,20 +1744,20 @@ function renderInfoText(state) {
       let txt = activeLabel + ' (' + pcs.length + '音) : ' + notes.join(' - ');
       if (BuilderState.bass !== null) txt += ' / ' + NOTE_NAMES_SHARP[BuilderState.bass];
       const mods = [];
-      if (shellVoicing) {
-        let shellLabel = 'Shell ' + shellVoicing.split('').join('-');
-        if (shellExtension > 0) shellLabel += ' +' + shellExtension;
+      if (VoicingState.shell) {
+        let shellLabel = 'Shell ' + VoicingState.shell.split('').join('-');
+        if (VoicingState.shellExtension > 0) shellLabel += ' +' + VoicingState.shellExtension;
         mods.push(shellLabel);
       }
-      if (voicingRootless) mods.push('Rootless');
-      if (!shellVoicing && voicingOmit5) mods.push('Omit5');
-      if (voicingOmit3) mods.push('Omit3');
-      if (!shellVoicing && voicingInversion > 0) {
+      if (VoicingState.rootless) mods.push('Rootless');
+      if (!VoicingState.shell && VoicingState.omit5) mods.push('Omit5');
+      if (VoicingState.omit3) mods.push('Omit3');
+      if (!VoicingState.shell && VoicingState.inversion > 0) {
         const invNames = ['', '1st Inv', '2nd Inv', '3rd Inv'];
-        mods.push(invNames[voicingInversion]);
+        mods.push(invNames[VoicingState.inversion]);
       }
-      if (!shellVoicing && voicingDrop) {
-        mods.push(voicingDrop === 'drop2' ? 'Drop 2' : 'Drop 3');
+      if (!VoicingState.shell && VoicingState.drop) {
+        mods.push(VoicingState.drop === 'drop2' ? 'Drop 2' : 'Drop 3');
       }
       if (mods.length > 0) txt += ' [' + mods.join(', ') + ']';
       infoEl.textContent = txt;
@@ -1802,8 +1804,8 @@ function render() {
   renderLegend(state);
 
   // Staff notation
-  const boxMidi = (selectedVoicingBoxIdx !== null && lastComputedBoxes[selectedVoicingBoxIdx])
-    ? lastComputedBoxes[selectedVoicingBoxIdx].midiNotes : null;
+  const boxMidi = (VoicingState.selectedBoxIdx !== null && VoicingState.lastBoxes[VoicingState.selectedBoxIdx])
+    ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx].midiNotes : null;
   renderStaff(currentMode, state.rootPC, state.activePCS, state.omittedPCS, state.qualityPCS, boxMidi);
 
   // Instrument diagrams (guitar + piano)
@@ -2608,10 +2610,10 @@ function updateChordDisplay() {
   let displayBass = BuilderState.bass;
   if (displayBass === null && BuilderState.root !== null && BuilderState.quality) {
     const chordPCS = getBuilderPCS();
-    if (chordPCS && chordPCS.length >= 3 && !shellVoicing) {
-      if (voicingInversion > 0 || voicingDrop) {
-        const inv = Math.min(voicingInversion, chordPCS.length - 1);
-        const result = calcVoicingOffsets(chordPCS, inv, voicingDrop);
+    if (chordPCS && chordPCS.length >= 3 && !VoicingState.shell) {
+      if (VoicingState.inversion > 0 || VoicingState.drop) {
+        const inv = Math.min(VoicingState.inversion, chordPCS.length - 1);
+        const result = calcVoicingOffsets(chordPCS, inv, VoicingState.drop);
         const bassAbsPC = ((BuilderState.root + result.bassInterval) % 12 + 12) % 12;
         if (bassAbsPC !== BuilderState.root) displayBass = bassAbsPC;
       }
@@ -2676,7 +2678,7 @@ function selectRoot(pc) {
   }
   BuilderState.root = pc;
   BuilderState.quality = null; BuilderState.tension = null; BuilderState.bass = null;
-  selectedVoicingBoxIdx = null;
+  VoicingState.selectedBoxIdx = null;
   highlightPianoKey('piano-keyboard', pc);
   clearQualitySelection();
   clearTensionSelection();
@@ -2687,7 +2689,7 @@ function selectRoot(pc) {
 function selectQuality(q) {
   BuilderState.quality = q;
   BuilderState.tension = null;
-  selectedVoicingBoxIdx = null;
+  VoicingState.selectedBoxIdx = null;
   highlightQuality(q);
   setBuilderStep(2); // Go to Tension
   render();
@@ -2703,7 +2705,7 @@ function selectTension(t, el) {
     clearTensionSelection();
     el.classList.add('selected');
   }
-  selectedVoicingBoxIdx = null;
+  VoicingState.selectedBoxIdx = null;
   updateChordDisplay();
   render();
   playCurrentChord();

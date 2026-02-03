@@ -465,7 +465,8 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
       <li><kbd>o</kbd> — Omit 5 切り替え</li>
       <li><kbd>s</kbd> — Shell循環（off → 1-3-7 → 1-7-3 → off）</li>
       <li><kbd>d</kbd> — Drop循環（off → Drop 2 → Drop 3 → off）</li>
-      <li><kbd>Esc</kbd> — ボイシングボックス選択解除</li>
+      <li><kbd>Esc</kbd> — ボイシングボックス選択解除 / ヘルプを閉じる</li>
+      <li><kbd>?</kbd> — ヘルプ表示切替</li>
     </ul>
 
     <p style="font-size:0.7rem;color:var(--text-muted);margin-top:12px;text-align:center;">
@@ -3819,12 +3820,22 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Escape: Deselect voicing box
+  // Escape: Close help modal or deselect voicing box
   if (key === 'Escape') {
-    if (VoicingState.selectedBoxIdx !== null) {
+    const helpOverlay = document.getElementById('help-overlay');
+    if (helpOverlay.classList.contains('active')) {
+      helpOverlay.classList.remove('active');
+    } else if (VoicingState.selectedBoxIdx !== null) {
       VoicingState.selectedBoxIdx = null;
       render();
     }
+    return;
+  }
+
+  // ?: Toggle help modal
+  if (key === '?') {
+    const helpOverlay = document.getElementById('help-overlay');
+    helpOverlay.classList.toggle('active');
     return;
   }
 });

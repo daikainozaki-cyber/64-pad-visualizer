@@ -3,7 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>64 Pad Visualizer</title>
+<title>64 Pad Visualizer V1.0</title>
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZWTBLDWP7P"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-ZWTBLDWP7P');
+</script>
 <style>
 :root {
   --bg: #1a1a2e;
@@ -34,6 +42,96 @@ body {
 }
 h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom: 2px; }
 .subtitle { font-size: 0.7rem; color: var(--text-muted); text-align: center; margin-bottom: 4px; }
+
+/* === Header Bar === */
+.header-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  position: relative;
+}
+.header-bar h1 { margin-bottom: 0; }
+.version-tag {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  background: var(--surface);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+.help-btn {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--text-muted);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.help-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* === Help Modal === */
+.help-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+.help-overlay.active { display: flex; }
+.help-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 640px;
+  max-height: 80vh;
+  overflow-y: auto;
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.help-modal h2 { color: var(--accent); font-size: 1.1rem; margin: 16px 0 8px; }
+.help-modal h2:first-child { margin-top: 0; }
+.help-modal h3 { color: var(--pad-root); font-size: 0.95rem; margin: 12px 0 4px; }
+.help-modal p { margin: 4px 0; }
+.help-modal ul { margin: 4px 0 8px 16px; }
+.help-modal li { margin: 2px 0; }
+.help-modal .close-btn {
+  display: block;
+  margin: 16px auto 0;
+  padding: 6px 24px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.help-modal kbd {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 0.75rem;
+  font-family: monospace;
+}
+.help-modal .color-sample {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
 
 /* === Layout === */
 .app-layout {
@@ -279,8 +377,89 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 </head>
 <body>
 
-<!-- <h1>64 Pad Visualizer</h1>
-<div class="subtitle">川三64パッド v2.0.1 ベース</div> -->
+<div class="header-bar">
+  <h1>64 Pad Visualizer</h1>
+  <span class="version-tag">V1.0</span>
+  <button class="help-btn" onclick="document.getElementById('help-overlay').classList.add('active')" title="Help">?</button>
+</div>
+
+<!-- Help Modal -->
+<div class="help-overlay" id="help-overlay" onclick="if(event.target===this)this.classList.remove('active')">
+  <div class="help-modal">
+    <h2>64 Pad Visualizer V1.0</h2>
+    <p>64パッド上のスケール・コード・ボイシングを可視化するツール。</p>
+
+    <h2>Scale Mode</h2>
+    <ul>
+      <li><strong>Key</strong> — 12キーから選択</li>
+      <li><strong>Scale</strong> — ダイアトニック、ハーモニックマイナー、メロディックマイナー、ペンタトニック、ビバップ等 31種</li>
+      <li><strong>Diatonic Bar</strong> — 選択したスケールのダイアトニックコードを表示。クリックでChordモードへ</li>
+    </ul>
+
+    <h2>Chord Mode（3ステップ）</h2>
+    <ul>
+      <li><strong>Step 1: Root</strong> — ピアノ鍵盤でルートを選択</li>
+      <li><strong>Step 2: Quality</strong> — コードタイプを選択（Maj, m, aug, dim, sus 等）</li>
+      <li><strong>Step 3: Tension</strong> — テンションを追加（9, b9, #9, 11, #11, 13, b13 等）。複数選択可</li>
+      <li><strong>On Chord</strong> — 「/」ボタンでスラッシュコード（分数コード）を指定</li>
+    </ul>
+
+    <h2>Voicing</h2>
+    <ul>
+      <li><strong>Omit 5 / Rootless / Omit 3</strong> — 音を省略</li>
+      <li><strong>Shell 1-3-7 / 1-7-3</strong> — シェルボイシング（+1, +2で音を追加）</li>
+      <li><strong>Inversion</strong> — 転回（Root, 1st, 2nd, 3rd）</li>
+      <li><strong>Drop 2 / Drop 3</strong> — ドロップボイシング</li>
+      <li><strong>ボイシングボックス</strong> — パッド上の配置候補をタップで切り替え（脈動バッジ = 代替配置あり）</li>
+    </ul>
+
+    <h2>表示</h2>
+    <ul>
+      <li><strong>Guitar / Piano / Staff</strong> — ギターフレットボード、ピアノ鍵盤、五線譜を個別にON/OFF</li>
+      <li><strong>音名/度数</strong> — ギター・パッド上の表示を音名(C, D, E)と度数(R, 2, 3)で切り替え</li>
+      <li><strong>Octave ▲▼</strong> — パッドの音域をオクターブシフト</li>
+    </ul>
+
+    <h2>Sound</h2>
+    <ul>
+      <li><strong>ORGAN</strong> — 4プリセット（Jazz, Perc, Full, Gospel）</li>
+      <li><strong>E.PIANO</strong> — 7プリセット（Rhodes, FM等）</li>
+      <li><strong>エフェクト</strong> — Reverb, Phaser, Flanger, Tremolo, Speed, Volume</li>
+      <li>パッドをクリック、またはボイシングボックスをクリックで発音</li>
+    </ul>
+
+    <h2>MIDI</h2>
+    <ul>
+      <li>WebMIDI対応デバイスを自動検出</li>
+      <li>Ableton Push のシリアルMIDI出力に対応</li>
+      <li>入力した音からコードを自動判定</li>
+    </ul>
+
+    <h2>色の意味</h2>
+    <ul>
+      <li><span class="color-sample" style="background:#E69F00"></span><strong>Root</strong> — ルート音</li>
+      <li><span class="color-sample" style="background:#56B4E9"></span><strong>Scale / Chord</strong> — スケール音・コードトーン</li>
+      <li><span class="color-sample" style="background:#F0E442"></span><strong>特性音</strong> — そのスケール/コードを特徴づける音</li>
+      <li><span class="color-sample" style="background:#CC79A7"></span><strong>3rd</strong> — ガイドトーン（3度）</li>
+      <li><span class="color-sample" style="background:#009E73"></span><strong>7th</strong> — ガイドトーン（7度）</li>
+      <li><span class="color-sample" style="background:#0072B2"></span><strong>Tension</strong> — テンション音</li>
+    </ul>
+    <p style="font-size:0.75rem;color:var(--text-muted);margin-top:8px;">配色: Okabe-Ito（色覚多様性対応）</p>
+
+    <h2>ギター・ピアノ入力</h2>
+    <ul>
+      <li>ギターフレットボード / ピアノ鍵盤をクリックして音を入力</li>
+      <li>入力した音からコードを自動判定してパッドに反映</li>
+      <li><strong>Clear</strong> — 入力をクリア、<strong>Play ▶</strong> — 入力した音を再生</li>
+    </ul>
+
+    <p style="font-size:0.7rem;color:var(--text-muted);margin-top:12px;text-align:center;">
+      64 Pad Visualizer V1.0 — HPS（Hardcore Pad Style）<br>
+      <a href="https://murinaikurashi.com/apps/hps-glossary/" style="color:var(--accent);">HPSポータル</a>
+    </p>
+    <button class="close-btn" onclick="document.getElementById('help-overlay').classList.remove('active')">閉じる</button>
+  </div>
+</div>
 
 <div class="app-layout">
   <!-- Left: Pad Grid -->

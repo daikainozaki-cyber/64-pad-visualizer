@@ -1894,17 +1894,15 @@ function computeRenderState() {
     }
   }
 
-  // Avoid notes: scale tones a half step above a chord tone (Chord mode only)
+  // Avoid notes: tension notes that are a half step above a non-tension chord tone
   let avoidPCS = new Set();
-  if (AppState.mode === 'chord' && activePCS.size > 0) {
-    const scale = SCALES[AppState.scaleIdx];
-    const scalePCS = new Set(scale.pcs.map(p => (p + AppState.key) % 12));
-    const chordAbsPCS = new Set([...activePCS, ...omittedPCS]);
-    for (const spc of scalePCS) {
-      if (chordAbsPCS.has(spc)) continue;
-      const below = (spc - 1 + 12) % 12;
-      if (chordAbsPCS.has(below)) {
-        avoidPCS.add(spc);
+  if (AppState.mode === 'chord' && tensionPCS.size > 0) {
+    const baseTones = new Set([...activePCS].filter(pc => !tensionPCS.has(pc)));
+    omittedPCS.forEach(pc => baseTones.add(pc));
+    for (const tpc of tensionPCS) {
+      const below = (tpc - 1 + 12) % 12;
+      if (baseTones.has(below)) {
+        avoidPCS.add(tpc);
       }
     }
   }
@@ -1930,7 +1928,7 @@ function renderPads(svg, state) {
       const isGuide7 = AppState.mode === 'chord' && guide7PCS.has(pc) && !isRoot && !tensionPCS.has(pc);
       const isGuide = isGuide3 || isGuide7;
       const isTension = AppState.mode === 'chord' && tensionPCS.has(pc) && !isRoot && !isGuide;
-      const isAvoid = AppState.mode === 'chord' && avoidPCS.has(pc) && !isRoot && !isActive;
+      const isAvoid = AppState.mode === 'chord' && avoidPCS.has(pc) && !isRoot;
 
       let fill = 'var(--pad-off)', textColor = 'var(--text-muted)';
       if (isOmitted) { fill = 'var(--pad-omitted)'; textColor = '#999'; }
@@ -1939,8 +1937,8 @@ function renderPads(svg, state) {
       else if (isGuide3) { fill = 'var(--pad-guide3)'; textColor = '#fff'; }
       else if (isGuide7) { fill = 'var(--pad-guide7)'; textColor = '#fff'; }
       else if (isChar) { fill = 'var(--pad-char)'; textColor = '#000'; }
-      else if (isTension) { fill = 'var(--pad-tension)'; textColor = '#fff'; }
       else if (isAvoid) { fill = 'var(--pad-avoid)'; textColor = '#fff'; }
+      else if (isTension) { fill = 'var(--pad-tension)'; textColor = '#fff'; }
       else if (isActive) {
         fill = AppState.mode === 'scale' ? 'var(--pad-scale)' : 'var(--pad-chord)';
         textColor = '#000';
@@ -1960,8 +1958,8 @@ function renderPads(svg, state) {
         rect.setAttribute('stroke', 'rgba(255,255,255,0.2)');
         rect.setAttribute('stroke-width', 1); rect.setAttribute('stroke-dasharray', '4 2');
       } else {
-        rect.setAttribute('stroke', isActive || isBass || isChar || isGuide || isAvoid ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.05)');
-        rect.setAttribute('stroke-width', isActive || isBass || isChar || isGuide || isAvoid ? 1.5 : 0.5);
+        rect.setAttribute('stroke', isActive || isBass || isChar || isGuide ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.05)');
+        rect.setAttribute('stroke-width', isActive || isBass || isChar || isGuide ? 1.5 : 0.5);
       }
       svg.appendChild(rect);
 

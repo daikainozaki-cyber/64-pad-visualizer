@@ -3732,8 +3732,8 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Letter keys A-I: Select voicing box (case-insensitive)
-  if (lk >= 'a' && lk <= 'i') {
+  // Letter keys A-I: Select voicing box (case-insensitive, single char only)
+  if (lk.length === 1 && lk >= 'a' && lk <= 'i') {
     const idx = lk.charCodeAt(0) - 97; // a=0, b=1, ...
     if (idx < VoicingState.lastBoxes.length) {
       selectVoicingBox(idx);

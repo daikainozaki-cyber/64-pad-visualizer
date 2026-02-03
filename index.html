@@ -439,6 +439,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 // ========================================
 const NOTE_NAMES_SHARP = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const NOTE_NAMES_FLAT  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const FLAT_MAJOR_KEYS = new Set([1, 3, 5, 6, 8, 10]); // Db, Eb, F, Gb, Ab, Bb (circle of fifths)
 
 // ======== SCALES ========
 const SCALES = [
@@ -480,6 +481,35 @@ const SCALES = [
   {id:29, cat:'♪', num:0, name:'Bebop Dominant (Mixolydian)', pcs:[0,2,4,5,7,9,10,11], cn:[11]},
   {id:30, cat:'♪', num:0, name:'Bebop Dorian', pcs:[0,2,3,4,5,7,9,10], cn:[4]},
 ];
+
+// ======== ENHARMONIC SPELLING (circle of fifths) ========
+function getParentMajorKey(scaleIdx, key) {
+  const scale = SCALES[scaleIdx];
+  if (scale.cat === '○') {
+    const DIATONIC = [0, 2, 4, 5, 7, 9, 11];
+    return (key - DIATONIC[scale.num - 1] + 12) % 12;
+  }
+  if (scale.cat === '■') {
+    const HM = [0, 2, 3, 5, 7, 8, 11];
+    const minorRoot = (key - HM[scale.num - 1] + 12) % 12;
+    return (minorRoot + 3) % 12;
+  }
+  if (scale.cat === '◆') {
+    const MM = [0, 2, 3, 5, 7, 9, 11];
+    const minorRoot = (key - MM[scale.num - 1] + 12) % 12;
+    return (minorRoot + 3) % 12;
+  }
+  // Non-modal: minor-like (has b3 without natural 3) → relative major
+  if (scale.pcs.includes(3) && !scale.pcs.includes(4)) {
+    return (key + 3) % 12;
+  }
+  return key;
+}
+
+function pcName(pc) {
+  const parentKey = getParentMajorKey(AppState.scaleIdx, AppState.key);
+  return FLAT_MAJOR_KEYS.has(parentKey) ? NOTE_NAMES_FLAT[pc] : NOTE_NAMES_SHARP[pc];
+}
 
 // ======== QUALITY DEFINITIONS (Step 2) ========
 // 4×3 grid matching Clover Chord Systems
@@ -1386,7 +1416,7 @@ function getBuilderPCS() {
 
 function getBuilderChordName() {
   if (BuilderState.root === null) return '';
-  let name = NOTE_NAMES_SHARP[BuilderState.root];
+  let name = pcName(BuilderState.root);
   if (BuilderState.quality) name += BuilderState.quality.name;
   if (BuilderState.tension) {
     const tl = BuilderState.tension.label.replaceAll(')\n(', ',').replace(/\n/g, '');
@@ -1489,9 +1519,8 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
 // DIATONIC CHORD BAR
 // ========================================
 function noteNameForKey(pc, key) {
-  // Use flats for flat keys (Db, Eb, F, Ab, Bb)
-  const flatKeys = new Set([1, 3, 5, 8, 10]);
-  return flatKeys.has(key) ? NOTE_NAMES_FLAT[pc] : NOTE_NAMES_SHARP[pc];
+  const parentKey = getParentMajorKey(AppState.scaleIdx, key);
+  return FLAT_MAJOR_KEYS.has(parentKey) ? NOTE_NAMES_FLAT[pc] : NOTE_NAMES_SHARP[pc];
 }
 
 function getDiatonicTetrads(scalePCS, key) {
@@ -1616,7 +1645,7 @@ function computeRenderState() {
     const scale = SCALES[AppState.scaleIdx];
     activePCS = new Set(scale.pcs.map(pc => (pc + AppState.key) % 12));
     rootPC = AppState.key;
-    activeLabel = NOTE_NAMES_SHARP[AppState.key] + ' ' + scale.name;
+    activeLabel = pcName(AppState.key) + ' ' + scale.name;
     if (scale.cn && scale.cn.length > 0) {
       charPCS = new Set(scale.cn.map(pc => (pc + AppState.key) % 12));
     }
@@ -1669,7 +1698,7 @@ function computeRenderState() {
       }
     } else {
       activePCS = new Set();
-      activeLabel = BuilderState.root !== null ? NOTE_NAMES_SHARP[BuilderState.root] + '...' : 'Select root';
+      activeLabel = BuilderState.root !== null ? pcName(BuilderState.root) + '...' : 'Select root';
     }
   }
 
@@ -1736,7 +1765,7 @@ function renderPads(svg, state) {
       text.setAttribute('fill', textColor);
       text.setAttribute('font-size', showDegree ? '10px' : '9px');
       text.setAttribute('font-weight', showDegree ? '600' : '400');
-      text.textContent = NOTE_NAMES_SHARP[pc];
+      text.textContent = pcName(pc);
       svg.appendChild(text);
 
       if (showDegree) {
@@ -1820,14 +1849,14 @@ function renderInfoText(state) {
   const infoEl = document.getElementById('info-text');
   if (AppState.mode === 'scale') {
     const scale = SCALES[AppState.scaleIdx];
-    const notes = scale.pcs.map(pc => NOTE_NAMES_SHARP[(pc + AppState.key) % 12]);
+    const notes = scale.pcs.map(pc => pcName((pc + AppState.key) % 12));
     infoEl.textContent = activeLabel + ' (' + scale.pcs.length + '音) : ' + notes.join(' - ');
   } else {
     const pcs = getBuilderPCS();
     if (pcs) {
-      const notes = pcs.map(pc => NOTE_NAMES_SHARP[(pc + rootPC) % 12]);
+      const notes = pcs.map(pc => pcName((pc + rootPC) % 12));
       let txt = activeLabel + ' (' + pcs.length + '音) : ' + notes.join(' - ');
-      if (BuilderState.bass !== null) txt += ' / ' + NOTE_NAMES_SHARP[BuilderState.bass];
+      if (BuilderState.bass !== null) txt += ' / ' + pcName(BuilderState.bass);
       const mods = [];
       if (VoicingState.shell) {
         let shellLabel = 'Shell ' + VoicingState.shell.split('').join('-');
@@ -1994,13 +2023,19 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
   // Treble: bottom line = E4(64), top line = F5(77). Each semitone = half step but staff uses diatonic.
   // Map: use note position in C major scale-like mapping
   // Staff position: 0 = middle C (C4=60). Each +1 = one diatonic step up (line or space)
-  function midiToStaffPos(midi) {
+  function midiToStaffPos(midi, flats) {
     const octave = Math.floor(midi / 12) - 1; // C4 = octave 4
     const pc = midi % 12;
+    if (flats) {
+      //             C  Db  D  Eb  E   F  Gb  G  Ab  A  Bb  B
+      const p =     [0,  1, 1,  2, 2,  3,  4, 4,  5, 5,  6, 6];
+      const isFlat = [0, 1, 0,  1, 0,  0,  1, 0,  1, 0,  1, 0][pc];
+      return { pos: (octave - 4) * 7 + p[pc], accidental: isFlat ? 'flat' : null };
+    }
     // Pitch class to diatonic position within octave: C=0,D=1,E=2,F=3,G=4,A=5,B=6
     const pcToPos = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
     const isSharp = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0][pc];
-    return { pos: (octave - 4) * 7 + pcToPos[pc], sharp: isSharp };
+    return { pos: (octave - 4) * 7 + pcToPos[pc], accidental: isSharp ? 'sharp' : null };
   }
 
   // Staff pos 0 = C4 (middle C). Treble staff bottom line (E4) = pos 2. Y coords:
@@ -2013,8 +2048,9 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
   // Draw notes
   const noteX = staffLeft + 80;
   const noteSpacing = 50;
+  const useFlatsForStaff = FLAT_MAJOR_KEYS.has(getParentMajorKey(AppState.scaleIdx, AppState.key));
   midiNotes.forEach((midi, idx) => {
-    const { pos, sharp } = midiToStaffPos(midi);
+    const { pos, accidental } = midiToStaffPos(midi, useFlatsForStaff);
     const ny = posToY(pos);
     const nx = noteX + idx * noteSpacing;
 
@@ -2069,12 +2105,12 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
     note.setAttribute('transform', 'rotate(-15 ' + nx + ' ' + ny + ')');
     staffSvg.appendChild(note);
 
-    // Sharp sign
-    if (sharp) {
+    // Accidental (sharp or flat)
+    if (accidental) {
       const sh = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       sh.setAttribute('x', nx - 12); sh.setAttribute('y', ny + 4);
       sh.setAttribute('font-size', '12px'); sh.setAttribute('fill', '#ff9800');
-      sh.textContent = '♯';
+      sh.textContent = accidental === 'sharp' ? '♯' : '♭';
       staffSvg.appendChild(sh);
     }
 
@@ -2094,7 +2130,7 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
     label.setAttribute('x', nx); label.setAttribute('y', totalH - 4);
     label.setAttribute('text-anchor', 'middle');
     label.setAttribute('font-size', '9px'); label.setAttribute('fill', '#999');
-    label.textContent = NOTE_NAMES_SHARP[pc];
+    label.textContent = pcName(pc);
     staffSvg.appendChild(label);
   });
 }
@@ -2247,7 +2283,7 @@ function renderGuitarDiagram(rootPC, pcsSet) {
       // Label inside dot
       if (f > 0) {
         const iv = ((pc - rootPC) + 12) % 12;
-        const labelText = guitarLabelMode === 'degree' ? SCALE_DEGREE_NAMES[iv] : NOTE_NAMES_SHARP[pc];
+        const labelText = guitarLabelMode === 'degree' ? SCALE_DEGREE_NAMES[iv] : pcName(pc);
         const lt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         lt.setAttribute('x', fx); lt.setAttribute('y', sy + (solo ? 4 : 3));
         lt.setAttribute('text-anchor', 'middle');
@@ -2276,7 +2312,7 @@ function renderGuitarDiagram(rootPC, pcsSet) {
       // Label inside (respects guitar label mode)
       const pc = (strings[s] % 12 + f) % 12;
       const iv = ((pc - rootPC) + 12) % 12;
-      const labelText = guitarLabelMode === 'degree' ? SCALE_DEGREE_NAMES[iv] : NOTE_NAMES_SHARP[pc];
+      const labelText = guitarLabelMode === 'degree' ? SCALE_DEGREE_NAMES[iv] : pcName(pc);
       const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       label.setAttribute('x', fx); label.setAttribute('y', sy + (solo ? 5 : 4));
       label.setAttribute('text-anchor', 'middle');
@@ -2355,7 +2391,7 @@ function renderPianoDisplay(rootPC, pcsSet) {
         label.setAttribute('font-size', '10px');
         label.setAttribute('fill', isRoot ? '#fff' : '#333');
         label.setAttribute('font-weight', '700');
-        label.textContent = NOTE_NAMES_SHARP[pc];
+        label.textContent = pcName(pc);
         svg.appendChild(label);
       }
       wx += whiteW;
@@ -2383,7 +2419,7 @@ function renderPianoDisplay(rootPC, pcsSet) {
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('font-size', '8px'); label.setAttribute('fill', '#ddd');
         label.setAttribute('font-weight', '700');
-        label.textContent = NOTE_NAMES_SHARP[pc];
+        label.textContent = pcName(pc);
         svg.appendChild(label);
       }
     }
@@ -2418,7 +2454,7 @@ function renderPianoDisplay(rootPC, pcsSet) {
       label.setAttribute('text-anchor', 'middle');
       label.setAttribute('font-size', '6px'); label.setAttribute('fill', '#333');
       label.setAttribute('font-weight', '700');
-      label.textContent = NOTE_NAMES_SHARP[i];
+      label.textContent = pcName(i);
       svg.appendChild(label);
     }
   }
@@ -2707,7 +2743,7 @@ function updateChordDisplay() {
       }
     }
   }
-  document.getElementById('chord-bass').textContent = displayBass !== null ? NOTE_NAMES_SHARP[displayBass] : '';
+  document.getElementById('chord-bass').textContent = displayBass !== null ? pcName(displayBass) : '';
 }
 
 function builderClear() {

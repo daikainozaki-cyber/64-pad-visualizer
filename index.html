@@ -963,12 +963,15 @@ function playVoicingBoxAudio(idx) {
     }
   }
 
-  // Bass note for slash chords
+  // Bass note for slash chords (guard against double bass from voicing boxes)
   if (BuilderState.bass !== null) {
-    const lowest = Math.min(...midiNotes);
-    let bassMidi = 36 + BuilderState.bass;
-    while (bassMidi >= lowest) bassMidi -= 12;
-    midiNotes.unshift(bassMidi);
+    const hasBass = midiNotes.some(m => m % 12 === BuilderState.bass);
+    if (!hasBass) {
+      const lowest = Math.min(...midiNotes);
+      let bassMidi = 36 + BuilderState.bass;
+      while (bassMidi >= lowest) bassMidi -= 12;
+      midiNotes.unshift(bassMidi);
+    }
   }
 
   midiNotes.sort((a, b) => a - b);
@@ -1441,6 +1444,24 @@ function calcVoicingOffsets(chordPCS, inversion, drop) {
   const minVal = voiced[0];
   const offsets = voiced.map(v => v - minVal);
   return { offsets, bassInterval, voiced };
+}
+
+// On-chord bass: determine if bass is a chord tone (Case 1) or not (Case 2)
+function getBassCase(bassPC, rootPC, chordPCS) {
+  const bassIv = ((bassPC - rootPC) % 12 + 12) % 12;
+  const sorted = [...new Set(chordPCS.map(iv => iv % 12))].sort((a, b) => a - b);
+  const idx = sorted.indexOf(bassIv);
+  return { isChordTone: idx >= 0, inversionIndex: idx >= 0 ? idx : null };
+}
+
+// On-chord bass: insert bass note below the voiced intervals
+function applyOnChordBass(voiced, rootPC, bassPC) {
+  const bassIv = ((bassPC - rootPC) % 12 + 12) % 12;
+  const lowestPC = ((voiced[0] % 12) + 12) % 12;
+  if (lowestPC === bassIv) return voiced;
+  let bassVal = bassIv;
+  while (bassVal >= voiced[0]) bassVal -= 12;
+  return [bassVal, ...voiced].sort((a, b) => a - b);
 }
 
 // Generalized voicing position calculator - returns ALL valid positions (sorted by compactness)
@@ -2028,10 +2049,16 @@ function renderVoicingBoxes(svg, state) {
   if (AppState.mode === 'chord' && VoicingState.shell && hasChordNotes) {
     const shellIntervals = getShellIntervals(qualityPCS, VoicingState.shell, VoicingState.shellExtension, getBuilderPCS());
     if (shellIntervals) {
-      const shellOffsets = shellIntervals.map(v => v - shellIntervals[0]);
-      const maxRS = shellIntervals.length <= 3 ? 4 : 5;
-      const maxCS = shellIntervals.length <= 3 ? 5 : 6;
-      computeAndDrawVoicingBoxes(svg, shellOffsets, rootPC, '#fff', '#fff', maxRS, maxCS);
+      let voiced = [...shellIntervals];
+      let targetPC = rootPC;
+      if (state.bassPC !== null) {
+        voiced = applyOnChordBass(voiced, rootPC, state.bassPC);
+        targetPC = state.bassPC;
+      }
+      const shellOffsets = voiced.map(v => v - voiced[0]);
+      const maxRS = voiced.length <= 3 ? 4 : 5;
+      const maxCS = voiced.length <= 3 ? 5 : 6;
+      computeAndDrawVoicingBoxes(svg, shellOffsets, targetPC, '#fff', '#fff', maxRS, maxCS);
     }
   }
 
@@ -2039,10 +2066,19 @@ function renderVoicingBoxes(svg, state) {
   if (AppState.mode === 'chord' && !VoicingState.shell && (VoicingState.inversion > 0 || VoicingState.drop) && activePCS.size > 0) {
     const chordPCS = getBuilderPCS();
     if (chordPCS && chordPCS.length >= 3) {
-      const inv = Math.min(VoicingState.inversion, chordPCS.length - 1);
+      let inv = Math.min(VoicingState.inversion, chordPCS.length - 1);
+      if (state.bassPC !== null) {
+        const bc = getBassCase(state.bassPC, rootPC, chordPCS);
+        if (bc.isChordTone) inv = bc.inversionIndex;
+      }
       const result = calcVoicingOffsets(chordPCS, inv, VoicingState.drop);
-      const bassAbsPC = ((rootPC + result.bassInterval) % 12 + 12) % 12;
-      computeAndDrawVoicingBoxes(svg, result.offsets, bassAbsPC, '#fff', '#fff');
+      let voiced = [...result.voiced];
+      if (state.bassPC !== null) {
+        voiced = applyOnChordBass(voiced, rootPC, state.bassPC);
+      }
+      const newOffsets = voiced.map(v => v - voiced[0]);
+      const bassAbsPC = ((rootPC + voiced[0]) % 12 + 12) % 12;
+      computeAndDrawVoicingBoxes(svg, newOffsets, bassAbsPC, '#fff', '#fff');
     }
   }
 
@@ -2050,9 +2086,20 @@ function renderVoicingBoxes(svg, state) {
   if (AppState.mode === 'chord' && !VoicingState.shell && VoicingState.inversion === 0 && !VoicingState.drop && hasChordNotes) {
     const chordPCS = getBuilderPCS();
     if (chordPCS && chordPCS.length >= 3) {
-      const sorted = [...chordPCS].sort((a, b) => a - b);
-      const basicOffsets = sorted.map(v => v - sorted[0]);
-      computeAndDrawVoicingBoxes(svg, basicOffsets, rootPC, '#fff', '#fff');
+      let voiced = [...chordPCS].sort((a, b) => a - b);
+      let targetPC = rootPC;
+      if (state.bassPC !== null) {
+        const bc = getBassCase(state.bassPC, rootPC, chordPCS);
+        if (bc.isChordTone) {
+          for (let i = 0; i < bc.inversionIndex; i++) voiced.push(voiced.shift() + 12);
+          voiced.sort((a, b) => a - b);
+        } else {
+          voiced = applyOnChordBass(voiced, rootPC, state.bassPC);
+        }
+        targetPC = state.bassPC;
+      }
+      const basicOffsets = voiced.map(v => v - voiced[0]);
+      computeAndDrawVoicingBoxes(svg, basicOffsets, targetPC, '#fff', '#fff');
     }
   }
 }
@@ -2148,13 +2195,13 @@ function render() {
   // Staff notation
   const boxMidi = (VoicingState.selectedBoxIdx !== null && VoicingState.lastBoxes[VoicingState.selectedBoxIdx])
     ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx].midiNotes : null;
-  renderStaff(AppState.mode, state.rootPC, state.activePCS, state.omittedPCS, state.qualityPCS, boxMidi);
+  renderStaff(AppState.mode, state.rootPC, state.activePCS, state.omittedPCS, state.qualityPCS, boxMidi, state.bassPC);
 
   // Instrument diagrams (guitar + piano)
   lastRenderRootPC = state.rootPC;
   lastRenderActivePCS = new Set(state.activePCS);
-  renderGuitarDiagram(state.rootPC, state.activePCS);
-  renderPianoDisplay(state.rootPC, state.activePCS);
+  renderGuitarDiagram(state.rootPC, state.activePCS, state.bassPC);
+  renderPianoDisplay(state.rootPC, state.activePCS, state.bassPC);
 
   // Diatonic chord bar
   renderDiatonicBar();
@@ -2163,7 +2210,7 @@ function render() {
 // ========================================
 // STAFF NOTATION
 // ========================================
-function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMidiNotes) {
+function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMidiNotes, bassPC) {
   const staffSvg = document.getElementById('staff-notation');
   let midiNotes;
   if (overrideMidiNotes && overrideMidiNotes.length > 0) {
@@ -2206,6 +2253,13 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
     } else {
       const staffBase = 48 + rootPC; // C3 octave (fixed)
       midiNotes = allIntervals.map(iv => staffBase + iv);
+      // Add on-chord bass note below the chord
+      if (bassPC !== undefined && bassPC !== null) {
+        let bassMidi = 36 + bassPC;
+        const lowest = Math.min(...midiNotes);
+        while (bassMidi >= lowest) bassMidi -= 12;
+        midiNotes.unshift(bassMidi);
+      }
     }
     }
   }
@@ -2386,6 +2440,8 @@ const INST_ROOT_COLOR = '#333';         // dark (root)
 const INST_ACTIVE_COLOR = '#666';       // medium gray (active notes)
 const INST_ROOT_TEXT = '#fff';
 const INST_ACTIVE_TEXT = '#fff';
+const INST_BASS_COLOR = '#ff9800';     // orange (matches pad bass color)
+const INST_BASS_TEXT = '#000';
 const DIAGRAM_WIDTH = 564;              // shared width for pad, guitar & piano (matches pad grid)
 let showGuitar = true;
 let showPiano = true;
@@ -2416,7 +2472,7 @@ function toggleGuitarLabelMode() {
   render();
 }
 
-function renderGuitarDiagram(rootPC, pcsSet) {
+function renderGuitarDiagram(rootPC, pcsSet, bassPC) {
   const svg = document.getElementById('guitar-diagram');
   if (!pcsSet) pcsSet = new Set();
 
@@ -2513,14 +2569,15 @@ function renderGuitarDiagram(rootPC, pcsSet) {
     const sy = topM + s * strH;
     for (let f = 0; f <= numFrets; f++) {
       const pc = (openPC + f) % 12;
-      if (!pcsSet.has(pc)) continue;
+      const isBass = bassPC !== undefined && bassPC !== null && pc === bassPC;
+      if (!pcsSet.has(pc) && !isBass) continue;
       const isRoot = pc === rootPC;
       const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
       const r = f === 0 ? (solo ? 7 : 5) : (solo ? 10 : 7);
       const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       dot.setAttribute('cx', fx); dot.setAttribute('cy', sy);
       dot.setAttribute('r', r);
-      dot.setAttribute('fill', isRoot ? INST_ROOT_COLOR : INST_ACTIVE_COLOR);
+      dot.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBass ? INST_BASS_COLOR : INST_ACTIVE_COLOR));
       dot.setAttribute('opacity', '0.9');
       svg.appendChild(dot);
       // Label inside dot
@@ -2532,7 +2589,7 @@ function renderGuitarDiagram(rootPC, pcsSet) {
         lt.setAttribute('text-anchor', 'middle');
         const fs = solo ? (labelText.length > 2 ? '7px' : '9px') : (labelText.length > 2 ? '5px' : '6px');
         lt.setAttribute('font-size', fs);
-        lt.setAttribute('fill', isRoot ? INST_ROOT_TEXT : INST_ACTIVE_TEXT);
+        lt.setAttribute('fill', isRoot ? INST_ROOT_TEXT : (isBass ? INST_BASS_TEXT : INST_ACTIVE_TEXT));
         lt.setAttribute('font-weight', '700');
         lt.textContent = labelText;
         svg.appendChild(lt);
@@ -2591,7 +2648,7 @@ function renderGuitarDiagram(rootPC, pcsSet) {
 // ========================================
 // PIANO DISPLAY
 // ========================================
-function renderPianoDisplay(rootPC, pcsSet) {
+function renderPianoDisplay(rootPC, pcsSet, bassPC) {
   const svg = document.getElementById('piano-display');
   if (!pcsSet) pcsSet = new Set();
 
@@ -2620,19 +2677,20 @@ function renderPianoDisplay(rootPC, pcsSet) {
       const pc = whiteNotes[i];
       const isActive = pcsSet.has(pc);
       const isRoot = pc === rootPC;
+      const isBass = bassPC !== undefined && bassPC !== null && pc === bassPC && !isRoot;
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', wx); rect.setAttribute('y', startY);
       rect.setAttribute('width', whiteW - 1); rect.setAttribute('height', whiteH);
       rect.setAttribute('rx', 1);
-      rect.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isActive ? '#999' : '#eee'));
+      rect.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBass ? INST_BASS_COLOR : (isActive ? '#999' : '#eee')));
       rect.setAttribute('stroke', '#bbb'); rect.setAttribute('stroke-width', 0.5);
       svg.appendChild(rect);
-      if (isActive || isRoot) {
+      if (isActive || isRoot || isBass) {
         const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         label.setAttribute('x', wx + (whiteW - 1) / 2); label.setAttribute('y', startY + whiteH - 6);
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('font-size', '10px');
-        label.setAttribute('fill', isRoot ? '#fff' : '#333');
+        label.setAttribute('fill', isRoot ? '#fff' : (isBass ? '#000' : '#333'));
         label.setAttribute('font-weight', '700');
         label.textContent = pcName(pc);
         svg.appendChild(label);
@@ -2647,20 +2705,21 @@ function renderPianoDisplay(rootPC, pcsSet) {
       const pc = blackNotes[i];
       const isActive = pcsSet.has(pc);
       const isRoot = pc === rootPC;
+      const isBass = bassPC !== undefined && bassPC !== null && pc === bassPC && !isRoot;
       const whiteIdx = blackPositions[i] + oct * 7;
       const bx = startX + (whiteIdx + 1) * whiteW - blackW / 2;
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', bx); rect.setAttribute('y', startY);
       rect.setAttribute('width', blackW); rect.setAttribute('height', blackH);
       rect.setAttribute('rx', 1);
-      rect.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isActive ? '#555' : '#222'));
+      rect.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBass ? INST_BASS_COLOR : (isActive ? '#555' : '#222')));
       rect.setAttribute('stroke', '#000'); rect.setAttribute('stroke-width', 0.5);
       svg.appendChild(rect);
-      if (isActive || isRoot) {
+      if (isActive || isRoot || isBass) {
         const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         label.setAttribute('x', bx + blackW / 2); label.setAttribute('y', startY + blackH - 3);
         label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('font-size', '8px'); label.setAttribute('fill', '#ddd');
+        label.setAttribute('font-size', '8px'); label.setAttribute('fill', isBass ? '#000' : '#ddd');
         label.setAttribute('font-weight', '700');
         label.textContent = pcName(pc);
         svg.appendChild(label);

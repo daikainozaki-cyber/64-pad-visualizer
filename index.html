@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>64 Pad Explorer V1.0</title>
+<title>64 Pad Explorer V1.1</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZWTBLDWP7P"></script>
@@ -380,14 +380,14 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V1.0</span>
+  <span class="version-tag">V1.1</span>
   <button class="help-btn" onclick="document.getElementById('help-overlay').classList.add('active')" title="Help">?</button>
 </div>
 
 <!-- Help Modal -->
 <div class="help-overlay" id="help-overlay" onclick="if(event.target===this)this.classList.remove('active')">
   <div class="help-modal">
-    <h2>64 Pad Explorer V1.0</h2>
+    <h2>64 Pad Explorer V1.1</h2>
     <p>64パッド上のスケール・コード・ボイシングを探索するツール。</p>
 
     <h2>Scale Mode</h2>
@@ -455,7 +455,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
     </ul>
 
     <p style="font-size:0.7rem;color:var(--text-muted);margin-top:12px;text-align:center;">
-      64 Pad Explorer V1.0 — HPS（Hardcore Pad Style）<br>
+      64 Pad Explorer V1.1 — HPS（Hardcore Pad Style）<br>
       <a href="https://murinaikurashi.com/apps/hps-glossary/" style="color:var(--accent);">HPSポータル</a>
     </p>
     <button class="close-btn" onclick="document.getElementById('help-overlay').classList.remove('active')">閉じる</button>
@@ -2118,7 +2118,14 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
   const staffSvg = document.getElementById('staff-notation');
   let midiNotes;
   if (overrideMidiNotes && overrideMidiNotes.length > 0) {
-    midiNotes = [...overrideMidiNotes].sort((a, b) => a - b);
+    // Deduplicate by pitch class (keep lowest octave) — staff shows chord structure, not octave doublings
+    const seen = new Set();
+    midiNotes = [...overrideMidiNotes].sort((a, b) => a - b).filter(m => {
+      const pc = m % 12;
+      if (seen.has(pc)) return false;
+      seen.add(pc);
+      return true;
+    });
   } else if (mode === 'scale') {
     if (activePCS.size === 0) {
       staffSvg.style.display = 'none'; staffSvg.setAttribute('height', 0); return;
@@ -2224,9 +2231,22 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
   // Draw notes
   const noteX = staffLeft + 80;
   const noteSpacing = 50;
-  const useFlatsForStaff = FLAT_MAJOR_KEYS.has(getParentMajorKey(AppState.scaleIdx, AppState.key));
+  const defaultFlats = FLAT_MAJOR_KEYS.has(getParentMajorKey(AppState.scaleIdx, AppState.key));
   midiNotes.forEach((midi, idx) => {
-    const { pos, accidental } = midiToStaffPos(midi, useFlatsForStaff);
+    const pc = midi % 12;
+    const interval = ((pc - rootPC) % 12 + 12) % 12;
+
+    // In chord mode, determine flat/sharp per note based on degree context
+    // b7 → Bb (not A#), #11 → F# (not Gb), etc.
+    let useFlats = defaultFlats;
+    let degName = SCALE_DEGREE_NAMES[interval];
+    if (mode === 'chord' && qualityPCS) {
+      degName = chordDegreeName(interval, qualityPCS, activePCS);
+      if (degName.startsWith('b') || degName === 'm3') useFlats = true;
+      else if (degName.startsWith('#') || degName.startsWith('△')) useFlats = false;
+    }
+
+    const { pos, accidental } = midiToStaffPos(midi, useFlats);
     const ny = posToY(pos);
     const nx = noteX + idx * noteSpacing;
 
@@ -2291,14 +2311,12 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
     }
 
     // Degree label above note
-    const pc = midi % 12;
-    const interval = ((pc - rootPC) % 12 + 12) % 12;
     const deg = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     deg.setAttribute('x', nx); deg.setAttribute('y', ny - 10);
     deg.setAttribute('text-anchor', 'middle');
     deg.setAttribute('font-size', '9px'); deg.setAttribute('font-weight', '600');
     deg.setAttribute('fill', interval === 0 ? '#E69F00' : '#aaa');
-    deg.textContent = SCALE_DEGREE_NAMES[interval];
+    deg.textContent = degName;
     staffSvg.appendChild(deg);
 
     // Note name label below
@@ -2306,7 +2324,7 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
     label.setAttribute('x', nx); label.setAttribute('y', totalH - 4);
     label.setAttribute('text-anchor', 'middle');
     label.setAttribute('font-size', '9px'); label.setAttribute('fill', '#999');
-    label.textContent = pcName(pc);
+    label.textContent = useFlats ? NOTE_NAMES_FLAT[pc] : NOTE_NAMES_SHARP[pc];
     staffSvg.appendChild(label);
   });
 }
@@ -2459,7 +2477,7 @@ function renderGuitarDiagram(rootPC, pcsSet) {
       // Label inside dot
       if (f > 0) {
         const iv = ((pc - rootPC) + 12) % 12;
-        const labelText = guitarLabelMode === 'degree' ? SCALE_DEGREE_NAMES[iv] : pcName(pc);
+        const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, pcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
         const lt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         lt.setAttribute('x', fx); lt.setAttribute('y', sy + (solo ? 4 : 3));
         lt.setAttribute('text-anchor', 'middle');
@@ -2488,7 +2506,7 @@ function renderGuitarDiagram(rootPC, pcsSet) {
       // Label inside (respects guitar label mode)
       const pc = (strings[s] % 12 + f) % 12;
       const iv = ((pc - rootPC) + 12) % 12;
-      const labelText = guitarLabelMode === 'degree' ? SCALE_DEGREE_NAMES[iv] : pcName(pc);
+      const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, pcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
       const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       label.setAttribute('x', fx); label.setAttribute('y', sy + (solo ? 5 : 4));
       label.setAttribute('text-anchor', 'middle');

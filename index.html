@@ -1126,8 +1126,14 @@ function getShellIntervals(qualityPCS, shellMode, extension, fullPCS) {
   }
   if (thirdIv === null || seventhIv === null) return null;
   let intervals = [0, thirdIv, seventhIv];
+  // Auto-include tension intervals (compound intervals >= 12)
+  if (fullPCS) {
+    fullPCS.filter(iv => iv >= 12).forEach(iv => {
+      if (!intervals.includes(iv)) intervals.push(iv);
+    });
+  }
   if (extension > 0 && fullPCS) {
-    const shellSet = new Set([0, thirdIv, seventhIv]);
+    const shellSet = new Set(intervals.map(iv => iv % 12));
     const extras = fullPCS.filter(iv => !shellSet.has(iv)).sort((a, b) => {
       const at = a >= 12 ? 0 : 1;
       const bt = b >= 12 ? 0 : 1;
@@ -1652,7 +1658,7 @@ function computeRenderState() {
         }
         for (const pc of [...activePCS]) {
           const iv = ((pc - rootPC) + 12) % 12;
-          if (!shellIntervals.has(iv)) {
+          if (!shellIntervals.has(iv) && !tensionPCS.has(pc)) {
             activePCS.delete(pc); omittedPCS.add(pc);
           }
         }
@@ -1709,7 +1715,6 @@ function renderPads(svg, state) {
       rect.setAttribute('x', x); rect.setAttribute('y', y);
       rect.setAttribute('width', PAD_SIZE); rect.setAttribute('height', PAD_SIZE);
       rect.setAttribute('rx', 6); rect.setAttribute('fill', fill);
-      if (isTension) rect.setAttribute('opacity', '0.5');
       // Hold pad: noteOn on press, noteOff on global release (no mouseleave)
       (function(m, r) {
         r.addEventListener('mousedown', (e) => { e.preventDefault(); _heldMidi = m; noteOn(m); });
@@ -1737,9 +1742,12 @@ function renderPads(svg, state) {
       svg.appendChild(text);
 
       if (showDegree) {
-        const degName = AppState.mode === 'scale'
+        let degName = AppState.mode === 'scale'
           ? SCALE_DEGREE_NAMES[interval]
           : chordDegreeName(interval, qualityPCS, activePCS);
+        if (isTension && AppState.mode === 'chord') {
+          degName = '(' + degName + ')';
+        }
         const degText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         degText.setAttribute('class', 'pad-label');
         degText.setAttribute('x', x + PAD_SIZE / 2);

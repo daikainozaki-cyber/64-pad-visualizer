@@ -454,6 +454,14 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
       <li><strong>Clear</strong> — 入力をクリア、<strong>Play ▶</strong> — 入力した音を再生</li>
     </ul>
 
+    <h2>キーボードショートカット</h2>
+    <ul>
+      <li><kbd>1</kbd>〜<kbd>7</kbd> — ダイアトニックコード選択（7音スケール時）</li>
+      <li><kbd>a</kbd>〜<kbd>i</kbd> — ボイシングボックス選択（代替配置の循環も可）</li>
+      <li><kbd>↑</kbd><kbd>↓</kbd> — 転回形の切り替え（Chordモード時）</li>
+      <li><kbd>Esc</kbd> — ボイシングボックス選択解除</li>
+    </ul>
+
     <p style="font-size:0.7rem;color:var(--text-muted);margin-top:12px;text-align:center;">
       64 Pad Explorer V1.1 — HPS（Hardcore Pad Style）<br>
       <a href="https://murinaikurashi.com/apps/hps-glossary/" style="color:var(--accent);">HPSポータル</a>
@@ -1675,13 +1683,14 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
     const darkBadge = badgeColor === '#00e5ff' || badgeColor === '#ffd740';
     bt.setAttribute('fill', sel ? '#000' : (darkBadge ? '#000' : '#fff'));
     bt.setAttribute('font-weight', '800');
+    const boxLetter = String.fromCharCode(97 + idx); // a, b, c, ...
     if (isCycleable && sel) {
       const box = VoicingState.lastBoxes[idx];
       bt.setAttribute('font-size', '10px');
-      bt.textContent = (box.currentAlt + 1) + '/' + box.alternatives.length;
+      bt.textContent = boxLetter + (box.currentAlt + 1) + '/' + box.alternatives.length;
     } else {
       bt.setAttribute('font-size', '13px');
-      bt.textContent = idx + 1;
+      bt.textContent = boxLetter;
     }
     if (isCycleable && !sel) {
       const textAnim = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
@@ -3705,27 +3714,24 @@ document.addEventListener('keydown', (e) => {
 
   const key = e.key;
 
-  // Number keys: behavior depends on mode
-  if (key >= '1' && key <= '9') {
+  // Number keys 1-7: Always select diatonic chord (any mode, if 7-note scale available)
+  if (key >= '1' && key <= '7') {
     const num = parseInt(key);
+    const scale = SCALES[AppState.scaleIdx];
+    if (scale.pcs.length === 7) {
+      const tetrads = getDiatonicTetrads(scale.pcs, AppState.key);
+      if (num - 1 < tetrads.length) {
+        onDiatonicClick(tetrads[num - 1]);
+      }
+    }
+    return;
+  }
 
-    if (AppState.mode === 'scale') {
-      // Scale mode: 1-7 select diatonic chord (switches to chord mode)
-      if (num <= 7) {
-        const scale = SCALES[AppState.scaleIdx];
-        if (scale.pcs.length === 7) {
-          const tetrads = getDiatonicTetrads(scale.pcs, AppState.key);
-          if (num - 1 < tetrads.length) {
-            onDiatonicClick(tetrads[num - 1]);
-          }
-        }
-      }
-    } else {
-      // Chord mode: 1-9 select voicing box
-      const idx = num - 1;
-      if (idx < VoicingState.lastBoxes.length) {
-        selectVoicingBox(idx);
-      }
+  // Letter keys a-i: Select voicing box
+  if (key >= 'a' && key <= 'i') {
+    const idx = key.charCodeAt(0) - 97; // a=0, b=1, ...
+    if (idx < VoicingState.lastBoxes.length) {
+      selectVoicingBox(idx);
     }
     return;
   }
@@ -3746,8 +3752,8 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // 0 or Escape: Deselect voicing box
-  if (key === '0' || key === 'Escape') {
+  // Escape: Deselect voicing box
+  if (key === 'Escape') {
     if (VoicingState.selectedBoxIdx !== null) {
       VoicingState.selectedBoxIdx = null;
       render();

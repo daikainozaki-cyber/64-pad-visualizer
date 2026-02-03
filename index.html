@@ -3695,6 +3695,35 @@ initQualityGrid();
 initTensionGrid();
 updateOctaveLabel();
 initWebMIDI();
+
+// ========================================
+// KEYBOARD SHORTCUTS
+// ========================================
+document.addEventListener('keydown', (e) => {
+  // Ignore when typing in input fields
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+  const key = e.key;
+
+  // 1-9: Select voicing box by number (1-indexed display → 0-indexed array)
+  if (key >= '1' && key <= '9') {
+    const idx = parseInt(key) - 1;
+    if (idx < VoicingState.lastBoxes.length) {
+      selectVoicingBox(idx);
+    }
+    return;
+  }
+
+  // 0 or Escape: Deselect voicing box
+  if (key === '0' || key === 'Escape') {
+    if (VoicingState.selectedBoxIdx !== null) {
+      VoicingState.selectedBoxIdx = null;
+      render();
+    }
+    return;
+  }
+});
+
 render();
 </script>
 </body>

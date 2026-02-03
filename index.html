@@ -459,6 +459,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
       <li><kbd>1</kbd>〜<kbd>7</kbd> — ダイアトニックコード選択（7音スケール時）</li>
       <li><kbd>a</kbd>〜<kbd>i</kbd> — ボイシングボックス選択（代替配置の循環も可）</li>
       <li><kbd>↑</kbd><kbd>↓</kbd> — 転回形の切り替え（Chordモード時）</li>
+      <li><kbd>←</kbd><kbd>→</kbd> — ルートを半音移動（同型コードのトランスポーズ）</li>
       <li><kbd>Esc</kbd> — ボイシングボックス選択解除</li>
     </ul>
 
@@ -3748,6 +3749,20 @@ document.addEventListener('keydown', (e) => {
         inv = inv > 0 ? inv - 1 : maxInv;
       }
       setInversion(inv);
+    }
+    return;
+  }
+
+  // Arrow Left/Right: Chromatic transpose (root ±1 semitone, keep quality/tension/voicing)
+  if (key === 'ArrowLeft' || key === 'ArrowRight') {
+    if (AppState.mode === 'chord' && BuilderState.root !== null) {
+      e.preventDefault();
+      const delta = key === 'ArrowRight' ? 1 : 11; // +1 or -1 (mod 12)
+      BuilderState.root = (BuilderState.root + delta) % 12;
+      highlightPianoKey('piano-keyboard', BuilderState.root);
+      resetVoicingSelection();
+      updateChordDisplay();
+      render();
     }
     return;
   }

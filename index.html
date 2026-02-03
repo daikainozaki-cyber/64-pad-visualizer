@@ -1678,14 +1678,13 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
     br.setAttribute('x', bX); br.setAttribute('y', bY);
     br.setAttribute('width', bsz); br.setAttribute('height', bsz);
     br.setAttribute('rx', 4);
-    br.setAttribute('fill', sel ? '#fff' : badgeColor);
+    br.setAttribute('fill', sel ? '#000' : '#fff');
     br.setAttribute('opacity', '0.9');
     g.appendChild(br);
     const bt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     bt.setAttribute('x', bX + bsz / 2); bt.setAttribute('y', bY + bsz / 2 + 1);
     bt.setAttribute('text-anchor', 'middle'); bt.setAttribute('dominant-baseline', 'middle');
-    const darkBadge = badgeColor === '#00e5ff' || badgeColor === '#ffd740';
-    bt.setAttribute('fill', sel ? '#000' : (darkBadge ? '#000' : '#fff'));
+    bt.setAttribute('fill', sel ? '#fff' : '#000');
     bt.setAttribute('font-weight', '800');
     const boxLetter = String.fromCharCode(65 + idx); // A, B, C, ...
     if (isCycleable && sel) {
@@ -2005,7 +2004,7 @@ function renderVoicingBoxes(svg, state) {
       const shellOffsets = shellIntervals.map(v => v - shellIntervals[0]);
       const maxRS = shellIntervals.length <= 3 ? 4 : 5;
       const maxCS = shellIntervals.length <= 3 ? 5 : 6;
-      computeAndDrawVoicingBoxes(svg, shellOffsets, rootPC, '#ffd740', '#CC79A7', maxRS, maxCS);
+      computeAndDrawVoicingBoxes(svg, shellOffsets, rootPC, '#fff', '#fff', maxRS, maxCS);
     }
   }
 
@@ -2016,9 +2015,7 @@ function renderVoicingBoxes(svg, state) {
       const inv = Math.min(VoicingState.inversion, chordPCS.length - 1);
       const result = calcVoicingOffsets(chordPCS, inv, VoicingState.drop);
       const bassAbsPC = ((rootPC + result.bassInterval) % 12 + 12) % 12;
-      const voicStroke = VoicingState.drop ? '#00e5ff' : '#ffd740';
-      const voicBadge = VoicingState.drop ? '#00e5ff' : '#CC79A7';
-      computeAndDrawVoicingBoxes(svg, result.offsets, bassAbsPC, voicStroke, voicBadge);
+      computeAndDrawVoicingBoxes(svg, result.offsets, bassAbsPC, '#fff', '#fff');
     }
   }
 
@@ -2028,7 +2025,7 @@ function renderVoicingBoxes(svg, state) {
     if (chordPCS && chordPCS.length >= 3) {
       const sorted = [...chordPCS].sort((a, b) => a - b);
       const basicOffsets = sorted.map(v => v - sorted[0]);
-      computeAndDrawVoicingBoxes(svg, basicOffsets, rootPC, '#ffd740', '#CC79A7');
+      computeAndDrawVoicingBoxes(svg, basicOffsets, rootPC, '#fff', '#fff');
     }
   }
 }

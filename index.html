@@ -197,6 +197,9 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .tension-btn:hover { background: #1e2d50; border-color: var(--accent); }
 .tension-btn.selected { background: var(--pad-chord); color: #000; border-color: var(--pad-chord); }
 .tension-btn.empty { visibility: hidden; }
+.tension-btn.quality-hidden { visibility: hidden; pointer-events: none; }
+.voicing-bar.hidden { display: none; }
+.voicing-btn.hidden { display: none; }
 
 /* === On-Chord Step === */
 .onchord-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; text-align: center; }
@@ -383,7 +386,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
         <button class="voicing-btn" id="btn-rootless" onclick="toggleRootless()">Rootless</button>
         <button class="voicing-btn" id="btn-omit3" onclick="toggleOmit3()">Omit 3</button>
       </div>
-      <div class="voicing-bar">
+      <div class="voicing-bar" id="shell-bar">
         <button class="voicing-btn" id="btn-shell137" onclick="setShell('137')">Shell 1-3-7</button>
         <button class="voicing-btn" id="btn-shell173" onclick="setShell('173')">Shell 1-7-3</button>
         <button class="voicing-btn" id="btn-shell-off" onclick="setShell(null)">Shell Off</button>
@@ -396,7 +399,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
         <button class="voicing-btn" id="btn-inv2" onclick="setInversion(2)">2nd</button>
         <button class="voicing-btn" id="btn-inv3" onclick="setInversion(3)">3rd</button>
       </div>
-      <div class="voicing-bar">
+      <div class="voicing-bar" id="drop-bar">
         <button class="voicing-btn" id="btn-drop2" onclick="setDrop('drop2')">Drop 2</button>
         <button class="voicing-btn" id="btn-drop3" onclick="setDrop('drop3')">Drop 3</button>
       </div>
@@ -1397,14 +1400,18 @@ function getBuilderChordName() {
 
 // ======== DRAW BOUNDING BOXES HELPER ========
 function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleableSet) {
+  const hasSelection = VoicingState.selectedBoxIdx !== null;
   vpArray.forEach((vp, idx) => {
+    const sel = VoicingState.selectedBoxIdx === idx;
+    // Hide non-selected boxes when one is selected
+    if (hasSelection && !sel) return;
+    const isDup = dupSet && dupSet.has(idx);
+    const isCycleable = cycleableSet && cycleableSet.has(idx);
+    // Bounding box
     const bx = MARGIN + vp.minCol * (PAD_SIZE + PAD_GAP) - 3;
     const by = MARGIN + (ROWS - 1 - vp.maxRow) * (PAD_SIZE + PAD_GAP) - 3;
     const bw = (vp.maxCol - vp.minCol + 1) * (PAD_SIZE + PAD_GAP) - PAD_GAP + 6;
     const bh = (vp.maxRow - vp.minRow + 1) * (PAD_SIZE + PAD_GAP) - PAD_GAP + 6;
-    const sel = VoicingState.selectedBoxIdx === idx;
-    const isDup = dupSet && dupSet.has(idx);
-    const isCycleable = cycleableSet && cycleableSet.has(idx);
     const boxRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     boxRect.setAttribute('x', bx); boxRect.setAttribute('y', by);
     boxRect.setAttribute('width', bw); boxRect.setAttribute('height', bh);
@@ -1421,6 +1428,20 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
       boxRect.appendChild(anim);
     }
     svg.appendChild(boxRect);
+    // Individual pad frames for selected box
+    if (sel) {
+      vp.positions.forEach(pos => {
+        const px = MARGIN + pos.col * (PAD_SIZE + PAD_GAP) - 2;
+        const py = MARGIN + (ROWS - 1 - pos.row) * (PAD_SIZE + PAD_GAP) - 2;
+        const padRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        padRect.setAttribute('x', px); padRect.setAttribute('y', py);
+        padRect.setAttribute('width', PAD_SIZE + 4); padRect.setAttribute('height', PAD_SIZE + 4);
+        padRect.setAttribute('rx', 6); padRect.setAttribute('fill', 'none');
+        padRect.setAttribute('stroke', '#fff'); padRect.setAttribute('stroke-width', 2.5);
+        svg.appendChild(padRect);
+      });
+    }
+    // Badge
     const bassPos = vp.positions[0];
     const bsz = isCycleable ? 28 : 20;
     const bX = MARGIN + bassPos.col * (PAD_SIZE + PAD_GAP);
@@ -1441,7 +1462,6 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
     const darkBadge = badgeColor === '#00e5ff' || badgeColor === '#ffd740';
     bt.setAttribute('fill', sel ? '#000' : (darkBadge ? '#000' : '#fff'));
     bt.setAttribute('font-weight', '800');
-    // Show cycling info: "1/5" when selected and cycleable, otherwise just index
     if (isCycleable && sel) {
       const box = VoicingState.lastBoxes[idx];
       bt.setAttribute('font-size', '10px');
@@ -1450,7 +1470,6 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
       bt.setAttribute('font-size', '13px');
       bt.textContent = idx + 1;
     }
-    // Cycleable badge pulse on text (number blinks for visibility)
     if (isCycleable && !sel) {
       const textAnim = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
       textAnim.setAttribute('attributeName', 'opacity');
@@ -1572,6 +1591,7 @@ function onDiatonicClick(tetrad) {
   highlightPianoKey('piano-keyboard', tetrad.rootPC);
   highlightQuality(tetrad.quality);
   clearTensionSelection();
+  updateControlsForQuality(tetrad.quality);
   setBuilderStep(2);
   render();
 }
@@ -2750,6 +2770,7 @@ function selectQuality(q) {
   BuilderState.tension = null;
   resetVoicingSelection();
   highlightQuality(q);
+  updateControlsForQuality(q);
   setBuilderStep(2); // Go to Tension
   render();
   playCurrentChord();
@@ -2877,6 +2898,111 @@ function clearQualitySelection() {
   document.querySelectorAll('.quality-btn.selected').forEach(b => b.classList.remove('selected'));
 }
 
+// ======== QUALITY-DEPENDENT CONTROL VISIBILITY ========
+function updateControlsForQuality(quality) {
+  if (!quality) return;
+  const isTriad = quality.pcs.length <= 3;
+
+  // === Category A: Voicing controls ===
+  document.getElementById('shell-bar').classList.toggle('hidden', isTriad);
+  document.getElementById('btn-inv3').classList.toggle('hidden', isTriad);
+  document.getElementById('drop-bar').classList.toggle('hidden', isTriad);
+
+  // Triad switch: reset Shell/Drop/3rd Inv if they were active
+  if (isTriad) {
+    if (VoicingState.shell) {
+      VoicingState.shell = null;
+      VoicingState.shellExtension = 0;
+      VoicingState.omit5 = false;
+    }
+    if (VoicingState.inversion > 2) VoicingState.inversion = 0;
+    if (VoicingState.drop) VoicingState.drop = null;
+    updateVoicingButtons();
+  }
+
+  // === Category D: Theory-based tension restrictions ===
+  const btns = document.querySelectorAll('#tension-grid .tension-btn');
+  const has7th = quality.pcs.includes(10) || quality.pcs.includes(11) ||
+                 (quality.pcs.includes(9) && quality.pcs.includes(6));
+
+  // Reset all quality-hidden first
+  btns.forEach(btn => btn.classList.remove('quality-hidden'));
+
+  // D: Without 7th, no altered tensions (except sus4 which is chord modification)
+  if (!has7th) {
+    btns.forEach(btn => {
+      if (!btn._tension) return;
+      const m = btn._tension.mods;
+      if (m.replace3 !== undefined) return; // sus4 variants always OK
+      if (m.sharp5 || m.flat5) { btn.classList.add('quality-hidden'); return; }
+      if (m.add) {
+        for (const pc of m.add) {
+          if (pc === 1 || pc === 3 || pc === 8) { btn.classList.add('quality-hidden'); return; } // b9, #9, b13
+        }
+      }
+      if (btn._tension.label.includes('13')) { btn.classList.add('quality-hidden'); return; }
+    });
+  }
+
+  // E: With 7th, hide "6" labels (use "13" instead)
+  if (has7th) {
+    const sixLabels = new Set(['6', '6/9', '6/9\n(#11)']);
+    btns.forEach(btn => {
+      if (btn._tension && sixLabels.has(btn._tension.label)) {
+        btn.classList.add('quality-hidden');
+      }
+    });
+  }
+
+  // F: sus4 only for dominant 7 (C7sus4 is standard; Cmaj7sus4, Cm7sus4 etc. are not)
+  if (has7th) {
+    const isDominant7 = quality.pcs.includes(4) && quality.pcs.includes(10) && !quality.pcs.includes(11);
+    if (!isDominant7) {
+      btns.forEach(btn => {
+        if (btn._tension && btn._tension.mods.replace3 !== undefined) {
+          btn.classList.add('quality-hidden');
+        }
+      });
+    }
+  }
+
+  // === Category B+C: PCS-based no-op and duplicate detection ===
+  const basePCS = [...quality.pcs].sort((a, b) => a - b);
+  const baseKey = basePCS.join(',');
+
+  // Pass 1: compute result for each non-hidden tension
+  const entries = [];
+  btns.forEach(btn => {
+    if (!btn._tension || btn.classList.contains('quality-hidden')) { entries.push(null); return; }
+    const result = applyTension([...quality.pcs], btn._tension.mods);
+    const resultKey = result.join(',');
+    const complexity = Object.keys(btn._tension.mods).length;
+    entries.push({ btn, resultKey, complexity, isNoOp: resultKey === baseKey });
+  });
+
+  // Pass 2: group by result → find min complexity per group
+  const groups = new Map();
+  entries.forEach(e => {
+    if (!e || e.isNoOp) return;
+    if (!groups.has(e.resultKey)) groups.set(e.resultKey, []);
+    groups.get(e.resultKey).push(e.complexity);
+  });
+
+  // Pass 3: show/hide
+  entries.forEach(e => {
+    if (!e) return;
+    if (e.isNoOp) {
+      e.btn.classList.add('quality-hidden');
+      return;
+    }
+    const group = groups.get(e.resultKey);
+    const minComplexity = Math.min(...group);
+    if (group.length > 1 && e.complexity > minComplexity) {
+      e.btn.classList.add('quality-hidden');
+    }
+  });
+}
+
 // ======== TENSION GRID ========
 function initTensionGrid() {
   const grid = document.getElementById('tension-grid');
@@ -2891,6 +3017,7 @@ function initTensionGrid() {
       const t = row[i] || null;
       const btn = document.createElement('button');
       btn.className = 'tension-btn' + (!t ? ' empty' : '');
+      btn._tension = t || null;
       if (t) {
         btn.textContent = t.label;
         btn.onclick = function() { selectTension(t, this); };

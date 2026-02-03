@@ -1601,10 +1601,6 @@ function renderDiatonicBar() {
 }
 
 function onDiatonicClick(tetrad) {
-  // Play chord (octave 4)
-  const baseMidi = 60 + tetrad.rootPC;
-  playMidiNotes(tetrad.pcs.map(iv => baseMidi + iv));
-
   // Switch to Chord mode (direct manipulation to preserve builder state)
   AppState.mode = 'chord';
   document.getElementById('mode-scale').classList.toggle('active', false);

@@ -626,8 +626,14 @@ const VoicingState = {
   drop: null,            // null, 'drop2', 'drop3'
   shellExtension: 0,     // 0 = shell only, 1 = +1 note, 2 = +2 notes
   selectedBoxIdx: null,  // selected bounding box index for staff display
-  lastBoxes: [],         // [{midiNotes: [...]}, ...] stored from last render
+  lastBoxes: [],         // [{midiNotes: [...], alternatives: [...], currentAlt: n}, ...] stored from last render
+  cycleIndices: {},      // { boxIdx: alternativeIdx } - tracks cycling state per box
 };
+
+function resetVoicingSelection() {
+  VoicingState.selectedBoxIdx = null;
+  VoicingState.cycleIndices = {};
+}
 
 // ========================================
 // PAD GRID FUNCTIONS
@@ -638,7 +644,7 @@ function shiftOctave(delta) {
   const next = AppState.octaveShift + delta;
   if (next < -1 || next > 3) return;
   AppState.octaveShift = next;
-  VoicingState.selectedBoxIdx = null;
+  resetVoicingSelection();
   updateOctaveLabel();
   render();
 }
@@ -662,28 +668,28 @@ function setShell(mode) {
   } else {
     VoicingState.shellExtension = 0;
   }
-  VoicingState.selectedBoxIdx = null;
+  resetVoicingSelection();
   updateVoicingButtons(); updateChordDisplay(); render();
   playCurrentChord();
 }
 function setShellExtension(n) {
   VoicingState.shellExtension = (VoicingState.shellExtension === n) ? 0 : n;
   if (VoicingState.shellExtension > 0 && !VoicingState.shell) VoicingState.shell = '137'; // auto-enable shell
-  VoicingState.selectedBoxIdx = null;
+  resetVoicingSelection();
   updateVoicingButtons(); render();
   playCurrentChord();
 }
 function setInversion(inv) {
   VoicingState.inversion = inv;
   VoicingState.shell = null;
-  VoicingState.selectedBoxIdx = null;
+  resetVoicingSelection();
   updateVoicingButtons(); updateChordDisplay(); render();
   playCurrentChord();
 }
 function setDrop(drop) {
   VoicingState.drop = VoicingState.drop === drop ? null : drop;
   VoicingState.shell = null;
-  VoicingState.selectedBoxIdx = null;
+  resetVoicingSelection();
   updateVoicingButtons(); updateChordDisplay(); render();
   playCurrentChord();
 }
@@ -707,45 +713,62 @@ function updateVoicingButtons() {
   if (d3) d3.classList.toggle('active', VoicingState.drop === 'drop3');
 }
 
-function selectVoicingBox(idx) {
-  const wasSelected = VoicingState.selectedBoxIdx === idx;
-  VoicingState.selectedBoxIdx = wasSelected ? null : idx;
-  render();
-  // Play audio when selecting (not deselecting)
-  if (!wasSelected && VoicingState.lastBoxes[idx]) {
-    let midiNotes = [...VoicingState.lastBoxes[idx].midiNotes];
+function playVoicingBoxAudio(idx) {
+  if (!VoicingState.lastBoxes[idx]) return;
+  let midiNotes = [...VoicingState.lastBoxes[idx].midiNotes];
 
-    // Shell voicing: add chord tones not in the voicing box (tensions etc.)
-    if (VoicingState.shell && AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
-      const fullPCS = getBuilderPCS();
-      if (fullPCS) {
-        const rootPC = BuilderState.root;
-        const boxRoot = midiNotes.find(m => m % 12 === rootPC);
-        if (boxRoot !== undefined) {
-          const existingPCs = new Set(midiNotes.map(m => m % 12));
-          // Shell voicing implicitly omits 5th (VoicingState.omit5 forced true)
-          existingPCs.add((rootPC + 7) % 12);
-          for (const iv of fullPCS) {
-            const notePC = (rootPC + iv) % 12;
-            if (!existingPCs.has(notePC)) {
-              midiNotes.push(boxRoot + iv);
-              existingPCs.add(notePC);
-            }
+  // Shell voicing: add chord tones not in the voicing box (tensions etc.)
+  if (VoicingState.shell && AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
+    const fullPCS = getBuilderPCS();
+    if (fullPCS) {
+      const rootPC = BuilderState.root;
+      const boxRoot = midiNotes.find(m => m % 12 === rootPC);
+      if (boxRoot !== undefined) {
+        const existingPCs = new Set(midiNotes.map(m => m % 12));
+        existingPCs.add((rootPC + 7) % 12);
+        for (const iv of fullPCS) {
+          const notePC = (rootPC + iv) % 12;
+          if (!existingPCs.has(notePC)) {
+            midiNotes.push(boxRoot + iv);
+            existingPCs.add(notePC);
           }
         }
       }
     }
+  }
 
-    // Bass note for slash chords
-    if (BuilderState.bass !== null) {
-      const lowest = Math.min(...midiNotes);
-      let bassMidi = 36 + BuilderState.bass;
-      while (bassMidi >= lowest) bassMidi -= 12;
-      midiNotes.unshift(bassMidi);
-    }
+  // Bass note for slash chords
+  if (BuilderState.bass !== null) {
+    const lowest = Math.min(...midiNotes);
+    let bassMidi = 36 + BuilderState.bass;
+    while (bassMidi >= lowest) bassMidi -= 12;
+    midiNotes.unshift(bassMidi);
+  }
 
-    midiNotes.sort((a, b) => a - b);
-    playMidiNotes(midiNotes);
+  midiNotes.sort((a, b) => a - b);
+  playMidiNotes(midiNotes);
+}
+
+function selectVoicingBox(idx) {
+  const wasSelected = VoicingState.selectedBoxIdx === idx;
+  const box = VoicingState.lastBoxes[idx];
+  const hasCycle = box && box.alternatives && box.alternatives.length > 1;
+
+  if (!wasSelected) {
+    // Case 1: Not selected -> select it
+    VoicingState.selectedBoxIdx = idx;
+    render();
+    playVoicingBoxAudio(idx);
+  } else if (hasCycle) {
+    // Case 2: Already selected + has alternatives -> cycle to next
+    const nextAlt = (box.currentAlt + 1) % box.alternatives.length;
+    VoicingState.cycleIndices[idx] = nextAlt;
+    render();
+    playVoicingBoxAudio(idx);
+  } else {
+    // Case 3: Already selected + no alternatives -> deselect
+    VoicingState.selectedBoxIdx = null;
+    render();
   }
 }
 
@@ -1128,24 +1151,41 @@ function computeAndDrawVoicingBoxes(svg, offsets, targetPC, strokeColor, badgeCo
     for (let col = 0; col < COLS; col++) {
       const midi = midiNote(row, col);
       if (pitchClass(midi) !== targetPC) continue;
-      const vp = calcVoicingPositions(row, col, offsets);
-      if (!vp) continue;
-      if (maxRS) {
+      const allVP = calcAllVoicingPositions(row, col, offsets);
+      if (allVP.length === 0) continue;
+      // Apply maxRS/maxCS filter to all alternatives
+      const filtered = maxRS ? allVP.filter(vp => {
         const rs = vp.maxRow - vp.minRow + 1, cs = vp.maxCol - vp.minCol + 1;
-        if (rs > maxRS || cs > maxCS) continue;
-      }
-      boxes.push({ midi, vp });
+        return rs <= maxRS && cs <= maxCS;
+      }) : allVP;
+      if (filtered.length === 0) continue;
+      boxes.push({ midi, alternatives: filtered });
     }
   }
   boxes.sort((a, b) => a.midi - b.midi);
-  VoicingState.lastBoxes = boxes.map(b => ({
-    midiNotes: b.vp.positions.map(p => baseMidi() + p.row * ROW_INTERVAL + p.col).sort((a, b) => a - b)
-  }));
+  // Build lastBoxes with alternatives and current cycling index
+  const cycleableSet = new Set();
+  VoicingState.lastBoxes = boxes.map((b, idx) => {
+    const altIdx = VoicingState.cycleIndices[idx] || 0;
+    const safeIdx = altIdx < b.alternatives.length ? altIdx : 0;
+    const currentVP = b.alternatives[safeIdx];
+    if (b.alternatives.length > 1) cycleableSet.add(idx);
+    return {
+      midiNotes: currentVP.positions.map(p => baseMidi() + p.row * ROW_INTERVAL + p.col).sort((a, b) => a - b),
+      alternatives: b.alternatives,
+      currentAlt: safeIdx
+    };
+  });
   const midiCount = new Map();
   boxes.forEach(b => midiCount.set(b.midi, (midiCount.get(b.midi) || 0) + 1));
   const dupSet = new Set();
   boxes.forEach((b, i) => { if (midiCount.get(b.midi) > 1) dupSet.add(i); });
-  drawVoicingBoxes(svg, boxes.map(b => b.vp), strokeColor, badgeColor, dupSet);
+  // Use current alternative's vp for drawing
+  const vpArray = boxes.map((b, idx) => {
+    const safeIdx = VoicingState.lastBoxes[idx].currentAlt;
+    return b.alternatives[safeIdx];
+  });
+  drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleableSet);
 }
 
 function calcVoicingOffsets(chordPCS, inversion, drop) {
@@ -1171,11 +1211,11 @@ function calcVoicingOffsets(chordPCS, inversion, drop) {
   return { offsets, bassInterval, voiced };
 }
 
-// Generalized voicing position calculator (N notes)
-function calcVoicingPositions(bassRow, bassCol, offsets) {
+// Generalized voicing position calculator - returns ALL valid positions (sorted by compactness)
+function calcAllVoicingPositions(bassRow, bassCol, offsets, maxResults) {
+  if (maxResults === undefined) maxResults = 10;
   const bm = baseMidi();
   const bassMidi2 = bm + bassRow * ROW_INTERVAL + bassCol;
-  // For each offset > 0, find valid pad positions
   const candidates = offsets.slice(1).map(offset => {
     const targetMidi = bassMidi2 + offset;
     const positions = [];
@@ -1185,9 +1225,9 @@ function calcVoicingPositions(bassRow, bassCol, offsets) {
     }
     return positions;
   });
-  if (candidates.some(c => c.length === 0)) return null;
+  if (candidates.some(c => c.length === 0)) return [];
   const bassPos = { row: bassRow, col: bassCol };
-  let best = null, bestMaxDim = Infinity, bestArea = Infinity;
+  const results = [];
   function search(idx, chosen) {
     if (idx === candidates.length) {
       const all = [bassPos, ...chosen];
@@ -1196,23 +1236,23 @@ function calcVoicingPositions(bassRow, bassCol, offsets) {
       const minC = Math.min(...all.map(p => p.col));
       const maxC = Math.max(...all.map(p => p.col));
       const rowSpan = maxR - minR + 1, colSpan = maxC - minC + 1;
+      if (rowSpan > 5 || colSpan > 6) return;
       const maxDim = Math.max(rowSpan, colSpan);
       const area = rowSpan * colSpan;
-      if (maxDim < bestMaxDim || (maxDim === bestMaxDim && area < bestArea)) {
-        bestMaxDim = maxDim; bestArea = area;
-        best = { positions: all, minRow: minR, maxRow: maxR, minCol: minC, maxCol: maxC };
-      }
+      results.push({ positions: all, minRow: minR, maxRow: maxR, minCol: minC, maxCol: maxC, maxDim, area });
       return;
     }
     for (const pos of candidates[idx]) search(idx + 1, [...chosen, pos]);
   }
   search(0, []);
-  if (best) {
-    const rs = best.maxRow - best.minRow + 1;
-    const cs = best.maxCol - best.minCol + 1;
-    if (rs > 5 || cs > 6) return null;
-  }
-  return best;
+  results.sort((a, b) => a.maxDim - b.maxDim || a.area - b.area);
+  return results.slice(0, maxResults);
+}
+
+// Backward-compatible wrapper: returns single best position or null
+function calcVoicingPositions(bassRow, bassCol, offsets) {
+  const all = calcAllVoicingPositions(bassRow, bassCol, offsets, 1);
+  return all.length > 0 ? all[0] : null;
 }
 
 // Shell voicing position calculator
@@ -1359,7 +1399,7 @@ function getBuilderChordName() {
 }
 
 // ======== DRAW BOUNDING BOXES HELPER ========
-function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet) {
+function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleableSet) {
   vpArray.forEach((vp, idx) => {
     const bx = MARGIN + vp.minCol * (PAD_SIZE + PAD_GAP) - 3;
     const by = MARGIN + (ROWS - 1 - vp.maxRow) * (PAD_SIZE + PAD_GAP) - 3;
@@ -1367,6 +1407,7 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet) {
     const bh = (vp.maxRow - vp.minRow + 1) * (PAD_SIZE + PAD_GAP) - PAD_GAP + 6;
     const sel = VoicingState.selectedBoxIdx === idx;
     const isDup = dupSet && dupSet.has(idx);
+    const isCycleable = cycleableSet && cycleableSet.has(idx);
     const boxRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     boxRect.setAttribute('x', bx); boxRect.setAttribute('y', by);
     boxRect.setAttribute('width', bw); boxRect.setAttribute('height', bh);
@@ -1384,7 +1425,7 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet) {
     }
     svg.appendChild(boxRect);
     const bassPos = vp.positions[0];
-    const bsz = 20;
+    const bsz = isCycleable ? 28 : 20;
     const bX = MARGIN + bassPos.col * (PAD_SIZE + PAD_GAP);
     const bY = MARGIN + (ROWS - 1 - bassPos.row) * (PAD_SIZE + PAD_GAP);
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -1396,14 +1437,30 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet) {
     br.setAttribute('rx', 4);
     br.setAttribute('fill', sel ? '#fff' : badgeColor);
     br.setAttribute('opacity', '0.9');
+    // Cycleable badge pulse (distinct from dupSet box pulse)
+    if (isCycleable && !sel) {
+      const badgeAnim = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+      badgeAnim.setAttribute('attributeName', 'opacity');
+      badgeAnim.setAttribute('values', '0.9;0.5;0.9');
+      badgeAnim.setAttribute('dur', '2s'); badgeAnim.setAttribute('repeatCount', 'indefinite');
+      br.appendChild(badgeAnim);
+    }
     g.appendChild(br);
     const bt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     bt.setAttribute('x', bX + bsz / 2); bt.setAttribute('y', bY + bsz / 2 + 1);
     bt.setAttribute('text-anchor', 'middle'); bt.setAttribute('dominant-baseline', 'middle');
     const darkBadge = badgeColor === '#00e5ff' || badgeColor === '#ffd740';
     bt.setAttribute('fill', sel ? '#000' : (darkBadge ? '#000' : '#fff'));
-    bt.setAttribute('font-size', '13px'); bt.setAttribute('font-weight', '800');
-    bt.textContent = idx + 1;
+    bt.setAttribute('font-weight', '800');
+    // Show cycling info: "1/5" when selected and cycleable, otherwise just index
+    if (isCycleable && sel) {
+      const box = VoicingState.lastBoxes[idx];
+      bt.setAttribute('font-size', '10px');
+      bt.textContent = (box.currentAlt + 1) + '/' + box.alternatives.length;
+    } else {
+      bt.setAttribute('font-size', '13px');
+      bt.textContent = idx + 1;
+    }
     g.appendChild(bt);
     svg.appendChild(g);
   });
@@ -1512,7 +1569,7 @@ function onDiatonicClick(tetrad) {
   BuilderState.quality = tetrad.quality;
   BuilderState.tension = null;
   BuilderState.bass = null;
-  VoicingState.selectedBoxIdx = null;
+  resetVoicingSelection();
 
   // Update builder UI
   highlightPianoKey('piano-keyboard', tetrad.rootPC);
@@ -1697,7 +1754,7 @@ function renderVoicingBoxes(svg, state) {
   const hasChordNotes = AppState.mode === 'chord' && activePCS instanceof Set && activePCS.size > 0;
   if (!hasChordNotes) {
     VoicingState.lastBoxes = [];
-    if (VoicingState.selectedBoxIdx !== null) VoicingState.selectedBoxIdx = null;
+    if (VoicingState.selectedBoxIdx !== null) resetVoicingSelection();
   }
 
   // Shell voicing bounding boxes (with +1/+2 extension)
@@ -2683,7 +2740,7 @@ function selectRoot(pc) {
   }
   BuilderState.root = pc;
   BuilderState.quality = null; BuilderState.tension = null; BuilderState.bass = null;
-  VoicingState.selectedBoxIdx = null;
+  resetVoicingSelection();
   highlightPianoKey('piano-keyboard', pc);
   clearQualitySelection();
   clearTensionSelection();
@@ -2694,7 +2751,7 @@ function selectRoot(pc) {
 function selectQuality(q) {
   BuilderState.quality = q;
   BuilderState.tension = null;
-  VoicingState.selectedBoxIdx = null;
+  resetVoicingSelection();
   highlightQuality(q);
   setBuilderStep(2); // Go to Tension
   render();
@@ -2710,7 +2767,7 @@ function selectTension(t, el) {
     clearTensionSelection();
     el.classList.add('selected');
   }
-  VoicingState.selectedBoxIdx = null;
+  resetVoicingSelection();
   updateChordDisplay();
   render();
   playCurrentChord();

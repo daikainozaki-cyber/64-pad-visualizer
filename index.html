@@ -3705,11 +3705,43 @@ document.addEventListener('keydown', (e) => {
 
   const key = e.key;
 
-  // 1-9: Select voicing box by number (1-indexed display → 0-indexed array)
+  // Number keys: behavior depends on mode
   if (key >= '1' && key <= '9') {
-    const idx = parseInt(key) - 1;
-    if (idx < VoicingState.lastBoxes.length) {
-      selectVoicingBox(idx);
+    const num = parseInt(key);
+
+    if (AppState.mode === 'scale') {
+      // Scale mode: 1-7 select diatonic chord (switches to chord mode)
+      if (num <= 7) {
+        const scale = SCALES[AppState.scaleIdx];
+        if (scale.pcs.length === 7) {
+          const tetrads = getDiatonicTetrads(scale.pcs, AppState.key);
+          if (num - 1 < tetrads.length) {
+            onDiatonicClick(tetrads[num - 1]);
+          }
+        }
+      }
+    } else {
+      // Chord mode: 1-9 select voicing box
+      const idx = num - 1;
+      if (idx < VoicingState.lastBoxes.length) {
+        selectVoicingBox(idx);
+      }
+    }
+    return;
+  }
+
+  // Arrow Up/Down: Inversion cycle (chord mode, non-shell)
+  if (key === 'ArrowUp' || key === 'ArrowDown') {
+    if (AppState.mode === 'chord' && BuilderState.quality && !VoicingState.shell) {
+      e.preventDefault();
+      const maxInv = Math.min(3, (getBuilderPCS()?.length || 4) - 1);
+      let inv = VoicingState.inversion;
+      if (key === 'ArrowUp') {
+        inv = inv < maxInv ? inv + 1 : 0;
+      } else {
+        inv = inv > 0 ? inv - 1 : maxInv;
+      }
+      setInversion(inv);
     }
     return;
   }

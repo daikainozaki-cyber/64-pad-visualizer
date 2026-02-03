@@ -16,6 +16,7 @@
   --pad-char: #F0E442;
   --pad-guide3: #CC79A7;
   --pad-guide7: #009E73;
+  --pad-tension: #0072B2;
   --pad-omitted: #555;
   --text: #e0e0e0;
   --text-muted: #888;
@@ -293,6 +294,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
         <div class="legend-item"><div class="legend-swatch" id="legend-swatch"></div><span id="legend-text">Scale Note</span></div>
         <div class="legend-item" id="legend-guide3" style="display:none"><div class="legend-swatch" style="background:var(--pad-guide3)"></div>3rd</div>
         <div class="legend-item" id="legend-guide7" style="display:none"><div class="legend-swatch" style="background:var(--pad-guide7)"></div>7th</div>
+        <div class="legend-item" id="legend-tension" style="display:none"><div class="legend-swatch" style="background:var(--pad-tension)"></div>Tension</div>
         <div class="legend-item" id="legend-omit" style="display:none"><div class="legend-swatch" style="background:var(--pad-omitted)"></div>Omitted</div>
         <div class="legend-item"><div class="legend-swatch" style="background:var(--pad-off)"></div>Off</div>
       </div>
@@ -503,17 +505,15 @@ const TENSION_ROWS = [
     {label:'9', mods:{add:[2]}},
     {label:'11', mods:{add:[2,5]}},
     {label:'13', mods:{add:[2,9]}},
-    {label:'omit3', mods:{omit3:true}},
   ],
   // Row 1
   [
     {label:'add9', mods:{add:[2]}},
-    {label:'-5', mods:{flat5:true}},
+    {label:'b5', mods:{flat5:true}},
     {label:'6/9', mods:{add:[9,2]}},
-    {label:'-9', mods:{add:[1]}},
+    {label:'b9', mods:{add:[1]}},
     {label:'#11', mods:{add:[6]}},
-    {label:'-13', mods:{add:[8]}},
-    {label:'omit5', mods:{omit5:true}},
+    {label:'b13', mods:{add:[8]}},
   ],
   // Row 2
   [
@@ -526,29 +526,29 @@ const TENSION_ROWS = [
   // Row 3
   [
     {label:'sus4\n(9)', mods:{replace3:5, add:[2]}},
-    {label:'-5\n(-9)', mods:{add:[1], flat5:true}},
+    {label:'b5\n(b9)', mods:{add:[1], flat5:true}},
     null,
     null,
-    {label:'(-11)\n(-13)', mods:{add:[8,4]}},
-    {label:'(-13)', mods:{add:[8]}},
+    {label:'(b11)\n(b13)', mods:{add:[8,4]}},
+    {label:'(b13)', mods:{add:[8]}},
     null,
     null,
   ],
   // Row 4
   [
-    {label:'sus4\n(-9)', mods:{replace3:5, add:[1]}},
-    {label:'aug\n(-9)', mods:{sharp5:true, add:[1]}},
+    {label:'sus4\n(b9)', mods:{replace3:5, add:[1]}},
+    {label:'aug\n(b9)', mods:{sharp5:true, add:[1]}},
     null,
     {label:'(9)\n(#11)', mods:{add:[6,2]}},
-    {label:'(#11)\n(-13)', mods:{add:[8,6]}},
+    {label:'(#11)\n(b13)', mods:{add:[8,6]}},
     null,
     null,
     null,
   ],
   // Row 5
   [
-    {label:'aug\n(-9)', mods:{add:[1], sharp5:true}},
-    {label:'-5\n(-9)', mods:{add:[1], flat5:true}},
+    {label:'aug\n(b9)', mods:{add:[1], sharp5:true}},
+    {label:'b5\n(b9)', mods:{add:[1], flat5:true}},
     {label:'(9)\n(#11)\n(13)', mods:{add:[9,2,6]}},
     null,
     null,
@@ -560,8 +560,8 @@ const TENSION_ROWS = [
   [
     null,
     {label:'aug\n(#9)', mods:{add:[3], sharp5:true}},
-    {label:'-5\n(#9)', mods:{add:[3], flat5:true}},
-    {label:'(9)\n(-13)', mods:{add:[8,2]}},
+    {label:'b5\n(#9)', mods:{add:[3], flat5:true}},
+    {label:'(9)\n(b13)', mods:{add:[8,2]}},
     null,
     null,
     null,
@@ -571,8 +571,8 @@ const TENSION_ROWS = [
   [
     null,
     null,
-    {label:'-5\n(#9)', mods:{add:[3], flat5:true}},
-    {label:'(-9)\n(-13)', mods:{add:[8,1]}},
+    {label:'b5\n(#9)', mods:{add:[3], flat5:true}},
+    {label:'(b9)\n(b13)', mods:{add:[8,1]}},
     null,
     null,
     null,
@@ -583,7 +583,7 @@ const TENSION_ROWS = [
     null,
     null,
     null,
-    {label:'(-9)\n(#9)\n(-13)', mods:{add:[8,1,3]}},
+    {label:'(b9)\n(#9)\n(b13)', mods:{add:[8,1,3]}},
     null,
     null,
     null,
@@ -1389,16 +1389,13 @@ function getBuilderChordName() {
   let name = NOTE_NAMES_SHARP[BuilderState.root];
   if (BuilderState.quality) name += BuilderState.quality.name;
   if (BuilderState.tension) {
-    const tl = BuilderState.tension.label.replace(/\n/g, '');
-    // Wrap in parens if it looks like a compound tension
-    if (tl && !['sus4','aug','add9','omit3','omit5','-5','+','2','4','6'].includes(tl)) {
-      if (!tl.startsWith('(') && !tl.startsWith('sus') && !tl.startsWith('aug') && !tl.startsWith('add') && !tl.startsWith('omit')) {
-        name += '(' + tl + ')';
-      } else {
-        name += tl;
-      }
-    } else {
+    const tl = BuilderState.tension.label.replaceAll(')\n(', ',').replace(/\n/g, '');
+    const noWrap = tl.startsWith('(') || tl.startsWith('sus') || tl.startsWith('aug') ||
+                   tl.startsWith('add') || tl.startsWith('b5') || tl.startsWith('6');
+    if (noWrap) {
       name += tl;
+    } else {
+      name += '(' + tl + ')';
     }
   }
   return name;
@@ -1705,6 +1702,7 @@ function renderPads(svg, state) {
       else if (isGuide3) { fill = 'var(--pad-guide3)'; textColor = '#fff'; }
       else if (isGuide7) { fill = 'var(--pad-guide7)'; textColor = '#fff'; }
       else if (isChar) { fill = 'var(--pad-char)'; textColor = '#000'; }
+      else if (isTension) { fill = 'var(--pad-tension)'; textColor = '#fff'; }
       else if (isActive) {
         fill = AppState.mode === 'scale' ? 'var(--pad-scale)' : 'var(--pad-chord)';
         textColor = '#000';
@@ -1855,23 +1853,26 @@ function renderInfoText(state) {
 }
 
 function renderLegend(state) {
-  const { charPCS, guide3PCS, guide7PCS, omittedPCS } = state;
+  const { charPCS, guide3PCS, guide7PCS, omittedPCS, tensionPCS } = state;
   const swatch = document.getElementById('legend-swatch');
   const ltxt = document.getElementById('legend-text');
   const legendChar = document.getElementById('legend-char');
   const legendGuide3 = document.getElementById('legend-guide3');
   const legendGuide7 = document.getElementById('legend-guide7');
+  const legendTension = document.getElementById('legend-tension');
   const legendOmit = document.getElementById('legend-omit');
   if (AppState.mode === 'scale') {
     swatch.style.background = 'var(--pad-scale)'; ltxt.textContent = 'Scale Note';
     legendChar.style.display = charPCS.size > 0 ? '' : 'none';
     legendGuide3.style.display = 'none'; legendGuide7.style.display = 'none';
+    legendTension.style.display = 'none';
     legendOmit.style.display = 'none';
   } else {
     swatch.style.background = 'var(--pad-chord)'; ltxt.textContent = 'Chord Tone';
     legendChar.style.display = 'none';
     legendGuide3.style.display = guide3PCS.size > 0 ? '' : 'none';
     legendGuide7.style.display = guide7PCS.size > 0 ? '' : 'none';
+    legendTension.style.display = tensionPCS.size > 0 ? '' : 'none';
     legendOmit.style.display = omittedPCS.size > 0 ? '' : 'none';
   }
 }

@@ -514,21 +514,18 @@ const TENSION_ROWS = [
   ],
   // Row 2
   [
-    {label:'2', mods:{replace3:2}},
     {label:'aug\n(9)', mods:{add:[2], sharp5:true}},
     {label:'6/9\n(#11)', mods:{add:[6,9,2]}},
     {label:'#9', mods:{add:[3]}},
     {label:'(9)\n(11)', mods:{add:[5,2]}},
     {label:'(11)\n(13)', mods:{add:[9,5]}},
-    {label:'(13)', mods:{add:[9]}},
-    {label:'+', mods:{sharp5:true}},
   ],
   // Row 3
   [
     {label:'sus4\n(9)', mods:{replace3:5, add:[2]}},
     {label:'-5\n(-9)', mods:{add:[1], flat5:true}},
     null,
-    {label:'(9)\n(11)', mods:{add:[5,2]}},
+    null,
     {label:'(-11)\n(-13)', mods:{add:[8,4]}},
     {label:'(-13)', mods:{add:[8]}},
     null,
@@ -547,11 +544,11 @@ const TENSION_ROWS = [
   ],
   // Row 5
   [
-    {label:'4', mods:{replace3:5}},
     {label:'aug\n(-9)', mods:{add:[1], sharp5:true}},
     {label:'-5\n(-9)', mods:{add:[1], flat5:true}},
     {label:'(9)\n(#11)\n(13)', mods:{add:[9,2,6]}},
-    {label:'(#11)\n(-13)', mods:{add:[8,6]}},
+    null,
+    null,
     null,
     null,
     null,
@@ -1437,14 +1434,6 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
     br.setAttribute('rx', 4);
     br.setAttribute('fill', sel ? '#fff' : badgeColor);
     br.setAttribute('opacity', '0.9');
-    // Cycleable badge pulse (distinct from dupSet box pulse)
-    if (isCycleable && !sel) {
-      const badgeAnim = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
-      badgeAnim.setAttribute('attributeName', 'opacity');
-      badgeAnim.setAttribute('values', '0.9;0.5;0.9');
-      badgeAnim.setAttribute('dur', '2s'); badgeAnim.setAttribute('repeatCount', 'indefinite');
-      br.appendChild(badgeAnim);
-    }
     g.appendChild(br);
     const bt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     bt.setAttribute('x', bX + bsz / 2); bt.setAttribute('y', bY + bsz / 2 + 1);
@@ -1460,6 +1449,14 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
     } else {
       bt.setAttribute('font-size', '13px');
       bt.textContent = idx + 1;
+    }
+    // Cycleable badge pulse on text (number blinks for visibility)
+    if (isCycleable && !sel) {
+      const textAnim = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+      textAnim.setAttribute('attributeName', 'opacity');
+      textAnim.setAttribute('values', '1;0.3;1');
+      textAnim.setAttribute('dur', '2s'); textAnim.setAttribute('repeatCount', 'indefinite');
+      bt.appendChild(textAnim);
     }
     g.appendChild(bt);
     svg.appendChild(g);

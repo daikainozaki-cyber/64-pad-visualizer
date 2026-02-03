@@ -1912,6 +1912,9 @@ function computeRenderState() {
 
 function renderPads(svg, state) {
   const { activePCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS } = state;
+  // Build MIDI set for selected voicing box (for dimming non-selected pads)
+  const selBox = VoicingState.selectedBoxIdx !== null ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx] : null;
+  const selMidi = selBox ? new Set(selBox.midiNotes) : null;
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col < COLS; col++) {
       const midi = midiNote(row, col);
@@ -1961,6 +1964,9 @@ function renderPads(svg, state) {
         rect.setAttribute('stroke', isActive || isBass || isChar || isGuide ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.05)');
         rect.setAttribute('stroke-width', isActive || isBass || isChar || isGuide ? 1.5 : 0.5);
       }
+      // Dim non-selected pads when a voicing box is selected
+      const isDimmed = selMidi && !selMidi.has(midi) && fill !== 'var(--pad-off)';
+      if (isDimmed) rect.setAttribute('opacity', '0.3');
       svg.appendChild(rect);
 
       const showDegree = isActive || isRoot || isBass || isOmitted || isChar || isGuide || isAvoid;
@@ -1973,6 +1979,7 @@ function renderPads(svg, state) {
       text.setAttribute('font-size', showDegree ? '10px' : '9px');
       text.setAttribute('font-weight', showDegree ? '600' : '400');
       text.textContent = pcName(pc);
+      if (isDimmed) text.setAttribute('opacity', '0.3');
       svg.appendChild(text);
 
       if (showDegree) {
@@ -1991,6 +1998,7 @@ function renderPads(svg, state) {
         degText.setAttribute('font-size', '13px'); degText.setAttribute('font-weight', '700');
         if (isOmitted) degText.setAttribute('text-decoration', 'line-through');
         degText.textContent = degName;
+        if (isDimmed) degText.setAttribute('opacity', '0.3');
         svg.appendChild(degText);
       }
 
@@ -2000,7 +2008,7 @@ function renderPads(svg, state) {
       octText.setAttribute('y', showDegree ? y + 51 : y + PAD_SIZE / 2 + 12);
       octText.setAttribute('text-anchor', 'middle'); octText.setAttribute('dominant-baseline', 'middle');
       octText.setAttribute('fill', textColor);
-      octText.setAttribute('font-size', '8px'); octText.setAttribute('opacity', '0.6');
+      octText.setAttribute('font-size', '8px'); octText.setAttribute('opacity', isDimmed ? '0.15' : '0.6');
       octText.textContent = noteName(midi);
       svg.appendChild(octText);
     }

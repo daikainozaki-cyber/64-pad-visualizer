@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>64 Pad Explorer V1.2</title>
+<title>64 Pad Explorer V1.3</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZWTBLDWP7P"></script>
@@ -26,6 +26,7 @@
   --pad-guide3: #CC79A7;
   --pad-guide7: #009E73;
   --pad-tension: #0072B2;
+  --pad-avoid: #D55E00;
   --pad-omitted: #555;
   --text: #e0e0e0;
   --text-muted: #888;
@@ -380,14 +381,14 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V1.2</span>
+  <span class="version-tag">V1.3</span>
   <button class="help-btn" onclick="document.getElementById('help-overlay').classList.add('active')" title="Help">?</button>
 </div>
 
 <!-- Help Modal -->
 <div class="help-overlay" id="help-overlay" onclick="if(event.target===this)this.classList.remove('active')">
   <div class="help-modal">
-    <h2>64 Pad Explorer V1.2</h2>
+    <h2>64 Pad Explorer V1.3</h2>
     <p>64パッド上のスケール・コード・ボイシングを探索するツール。</p>
 
     <h2>Scale Mode</h2>
@@ -444,6 +445,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
       <li><span class="color-sample" style="background:#CC79A7"></span><strong>3rd</strong> — ガイドトーン（3度）</li>
       <li><span class="color-sample" style="background:#009E73"></span><strong>7th</strong> — ガイドトーン（7度）</li>
       <li><span class="color-sample" style="background:#0072B2"></span><strong>Tension</strong> — テンション音</li>
+      <li><span class="color-sample" style="background:#D55E00"></span><strong>Avoid</strong> — コードトーンの半音上のスケール音（Chordモード時）</li>
     </ul>
     <p style="font-size:0.75rem;color:var(--text-muted);margin-top:8px;">配色: Okabe-Ito（色覚多様性対応）</p>
 
@@ -467,7 +469,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
     </ul>
 
     <p style="font-size:0.7rem;color:var(--text-muted);margin-top:12px;text-align:center;">
-      64 Pad Explorer V1.2 — HPS（Hardcore Pad Style）<br>
+      64 Pad Explorer V1.3 — HPS（Hardcore Pad Style）<br>
       <a href="https://murinaikurashi.com/apps/hps-glossary/" style="color:var(--accent);">HPSポータル</a>
     </p>
     <button class="close-btn" onclick="document.getElementById('help-overlay').classList.remove('active')">閉じる</button>
@@ -487,6 +489,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
         <div class="legend-item" id="legend-guide3" style="display:none"><div class="legend-swatch" style="background:var(--pad-guide3)"></div>3rd</div>
         <div class="legend-item" id="legend-guide7" style="display:none"><div class="legend-swatch" style="background:var(--pad-guide7)"></div>7th</div>
         <div class="legend-item" id="legend-tension" style="display:none"><div class="legend-swatch" style="background:var(--pad-tension)"></div>Tension</div>
+        <div class="legend-item" id="legend-avoid" style="display:none"><div class="legend-swatch" style="background:var(--pad-avoid)"></div>Avoid</div>
         <div class="legend-item" id="legend-omit" style="display:none"><div class="legend-swatch" style="background:var(--pad-omitted)"></div>Omitted</div>
         <div class="legend-item"><div class="legend-swatch" style="background:var(--pad-off)"></div>Off</div>
       </div>
@@ -1890,11 +1893,26 @@ function computeRenderState() {
     }
   }
 
-  return { activePCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS };
+  // Avoid notes: scale tones a half step above a chord tone (Chord mode only)
+  let avoidPCS = new Set();
+  if (AppState.mode === 'chord' && activePCS.size > 0) {
+    const scale = SCALES[AppState.scaleIdx];
+    const scalePCS = new Set(scale.pcs.map(p => (p + AppState.key) % 12));
+    const chordAbsPCS = new Set([...activePCS, ...omittedPCS]);
+    for (const spc of scalePCS) {
+      if (chordAbsPCS.has(spc)) continue;
+      const below = (spc - 1 + 12) % 12;
+      if (chordAbsPCS.has(below)) {
+        avoidPCS.add(spc);
+      }
+    }
+  }
+
+  return { activePCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS };
 }
 
 function renderPads(svg, state) {
-  const { activePCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS } = state;
+  const { activePCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS } = state;
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col < COLS; col++) {
       const midi = midiNote(row, col);
@@ -1911,6 +1929,7 @@ function renderPads(svg, state) {
       const isGuide7 = AppState.mode === 'chord' && guide7PCS.has(pc) && !isRoot && !tensionPCS.has(pc);
       const isGuide = isGuide3 || isGuide7;
       const isTension = AppState.mode === 'chord' && tensionPCS.has(pc) && !isRoot && !isGuide;
+      const isAvoid = AppState.mode === 'chord' && avoidPCS.has(pc) && !isRoot && !isActive;
 
       let fill = 'var(--pad-off)', textColor = 'var(--text-muted)';
       if (isOmitted) { fill = 'var(--pad-omitted)'; textColor = '#999'; }
@@ -1920,6 +1939,7 @@ function renderPads(svg, state) {
       else if (isGuide7) { fill = 'var(--pad-guide7)'; textColor = '#fff'; }
       else if (isChar) { fill = 'var(--pad-char)'; textColor = '#000'; }
       else if (isTension) { fill = 'var(--pad-tension)'; textColor = '#fff'; }
+      else if (isAvoid) { fill = 'var(--pad-avoid)'; textColor = '#fff'; }
       else if (isActive) {
         fill = AppState.mode === 'scale' ? 'var(--pad-scale)' : 'var(--pad-chord)';
         textColor = '#000';
@@ -1939,12 +1959,12 @@ function renderPads(svg, state) {
         rect.setAttribute('stroke', 'rgba(255,255,255,0.2)');
         rect.setAttribute('stroke-width', 1); rect.setAttribute('stroke-dasharray', '4 2');
       } else {
-        rect.setAttribute('stroke', isActive || isBass || isChar || isGuide ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.05)');
-        rect.setAttribute('stroke-width', isActive || isBass || isChar || isGuide ? 1.5 : 0.5);
+        rect.setAttribute('stroke', isActive || isBass || isChar || isGuide || isAvoid ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.05)');
+        rect.setAttribute('stroke-width', isActive || isBass || isChar || isGuide || isAvoid ? 1.5 : 0.5);
       }
       svg.appendChild(rect);
 
-      const showDegree = isActive || isRoot || isBass || isOmitted || isChar || isGuide;
+      const showDegree = isActive || isRoot || isBass || isOmitted || isChar || isGuide || isAvoid;
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('class', 'pad-label');
       text.setAttribute('x', x + PAD_SIZE / 2);
@@ -1960,7 +1980,7 @@ function renderPads(svg, state) {
         let degName = AppState.mode === 'scale'
           ? SCALE_DEGREE_NAMES[interval]
           : chordDegreeName(interval, qualityPCS, activePCS);
-        if (isTension && AppState.mode === 'chord') {
+        if ((isTension || isAvoid) && AppState.mode === 'chord') {
           degName = '(' + degName + ')';
         }
         const degText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -2077,19 +2097,21 @@ function renderInfoText(state) {
 }
 
 function renderLegend(state) {
-  const { charPCS, guide3PCS, guide7PCS, omittedPCS, tensionPCS } = state;
+  const { charPCS, guide3PCS, guide7PCS, omittedPCS, tensionPCS, avoidPCS } = state;
   const swatch = document.getElementById('legend-swatch');
   const ltxt = document.getElementById('legend-text');
   const legendChar = document.getElementById('legend-char');
   const legendGuide3 = document.getElementById('legend-guide3');
   const legendGuide7 = document.getElementById('legend-guide7');
   const legendTension = document.getElementById('legend-tension');
+  const legendAvoid = document.getElementById('legend-avoid');
   const legendOmit = document.getElementById('legend-omit');
   if (AppState.mode === 'scale') {
     swatch.style.background = 'var(--pad-scale)'; ltxt.textContent = 'Scale Note';
     legendChar.style.display = charPCS.size > 0 ? '' : 'none';
     legendGuide3.style.display = 'none'; legendGuide7.style.display = 'none';
     legendTension.style.display = 'none';
+    legendAvoid.style.display = 'none';
     legendOmit.style.display = 'none';
   } else {
     swatch.style.background = 'var(--pad-chord)'; ltxt.textContent = 'Chord Tone';
@@ -2097,6 +2119,7 @@ function renderLegend(state) {
     legendGuide3.style.display = guide3PCS.size > 0 ? '' : 'none';
     legendGuide7.style.display = guide7PCS.size > 0 ? '' : 'none';
     legendTension.style.display = tensionPCS.size > 0 ? '' : 'none';
+    legendAvoid.style.display = avoidPCS.size > 0 ? '' : 'none';
     legendOmit.style.display = omittedPCS.size > 0 ? '' : 'none';
   }
 }

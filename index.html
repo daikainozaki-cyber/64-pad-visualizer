@@ -1687,13 +1687,13 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
     const darkBadge = badgeColor === '#00e5ff' || badgeColor === '#ffd740';
     bt.setAttribute('fill', sel ? '#000' : (darkBadge ? '#000' : '#fff'));
     bt.setAttribute('font-weight', '800');
-    const boxLetter = String.fromCharCode(97 + idx); // a, b, c, ...
+    const boxLetter = String.fromCharCode(65 + idx); // A, B, C, ...
     if (isCycleable && sel) {
       const box = VoicingState.lastBoxes[idx];
-      bt.setAttribute('font-size', '10px');
+      bt.setAttribute('font-size', '11px');
       bt.textContent = boxLetter + (box.currentAlt + 1) + '/' + box.alternatives.length;
     } else {
-      bt.setAttribute('font-size', '13px');
+      bt.setAttribute('font-size', '14px');
       bt.textContent = boxLetter;
     }
     if (isCycleable && !sel) {
@@ -1908,8 +1908,8 @@ function renderPads(svg, state) {
       const isActive = activePCS.has(pc);
       const isOmitted = omittedPCS.has(pc);
       const isChar = AppState.mode === 'scale' && charPCS.has(pc) && !isRoot;
-      const isGuide3 = AppState.mode === 'chord' && guide3PCS.has(pc) && !isRoot;
-      const isGuide7 = AppState.mode === 'chord' && guide7PCS.has(pc) && !isRoot;
+      const isGuide3 = AppState.mode === 'chord' && guide3PCS.has(pc) && !isRoot && !tensionPCS.has(pc);
+      const isGuide7 = AppState.mode === 'chord' && guide7PCS.has(pc) && !isRoot && !tensionPCS.has(pc);
       const isGuide = isGuide3 || isGuide7;
       const isTension = AppState.mode === 'chord' && tensionPCS.has(pc) && !isRoot && !isGuide;
 
@@ -3717,6 +3717,7 @@ document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
   const key = e.key;
+  const lk = key.toLowerCase(); // for letter key matching (case-insensitive)
 
   // Number keys 1-7: Always select diatonic chord (any mode, if 7-note scale available)
   if (key >= '1' && key <= '7') {
@@ -3731,9 +3732,9 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Letter keys a-i: Select voicing box
-  if (key >= 'a' && key <= 'i') {
-    const idx = key.charCodeAt(0) - 97; // a=0, b=1, ...
+  // Letter keys A-I: Select voicing box (case-insensitive)
+  if (lk >= 'a' && lk <= 'i') {
+    const idx = lk.charCodeAt(0) - 97; // a=0, b=1, ...
     if (idx < VoicingState.lastBoxes.length) {
       selectVoicingBox(idx);
     }
@@ -3771,7 +3772,7 @@ document.addEventListener('keydown', (e) => {
   }
 
   // o: Toggle Omit 5
-  if (key === 'o') {
+  if (lk === 'o') {
     if (AppState.mode === 'chord' && BuilderState.quality) {
       toggleOmit5();
     }
@@ -3779,7 +3780,7 @@ document.addEventListener('keydown', (e) => {
   }
 
   // s: Cycle Shell (off → 1-3-7 → 1-7-3 → off)
-  if (key === 's') {
+  if (lk === 's') {
     if (AppState.mode === 'chord' && BuilderState.quality) {
       if (!VoicingState.shell) setShell('137');
       else if (VoicingState.shell === '137') setShell('173');
@@ -3789,7 +3790,7 @@ document.addEventListener('keydown', (e) => {
   }
 
   // d: Cycle Drop (off → Drop 2 → Drop 3 → off)
-  if (key === 'd') {
+  if (lk === 'd') {
     if (AppState.mode === 'chord' && BuilderState.quality) {
       if (!VoicingState.drop) setDrop('drop2');
       else if (VoicingState.drop === 'drop2') setDrop('drop3');

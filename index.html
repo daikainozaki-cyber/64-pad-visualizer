@@ -2030,7 +2030,16 @@ function renderInfoText(state) {
   } else {
     const pcs = getBuilderPCS();
     if (pcs) {
-      const notes = pcs.map(pc => pcName((pc + rootPC) % 12));
+      const notes = pcs.map(pc => {
+        const absPC = (pc + rootPC) % 12;
+        const iv = pc % 12;
+        if (BuilderState.quality) {
+          const deg = chordDegreeName(iv, BuilderState.quality.pcs, null);
+          if (deg.startsWith('b') || deg === 'm3') return NOTE_NAMES_FLAT[absPC];
+          if (deg.startsWith('#') || deg.startsWith('△')) return NOTE_NAMES_SHARP[absPC];
+        }
+        return pcName(absPC);
+      });
       let txt = activeLabel + ' (' + pcs.length + '音) : ' + notes.join(' - ');
       if (BuilderState.bass !== null) txt += ' / ' + pcName(BuilderState.bass);
       const mods = [];

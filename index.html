@@ -78,6 +78,18 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   transition: all 0.2s;
 }
 .help-btn:hover { border-color: var(--accent); color: var(--accent); }
+.header-links {
+  text-align: center;
+  margin-bottom: 4px;
+  font-size: 0.65rem;
+}
+.header-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.header-links a:hover { color: var(--accent); }
+.link-sep { color: var(--border); margin: 0 4px; }
 
 /* === Help Modal === */
 .help-overlay {
@@ -384,6 +396,13 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   <span class="version-tag">V1.4</span>
   <button class="help-btn" onclick="document.getElementById('help-overlay').classList.add('active')" title="Help">?</button>
 </div>
+<div class="header-links">
+  <a href="https://murinaikurashi.com/apps/hps-glossary/" target="_blank">HPSポータル</a>
+  <span class="link-sep">|</span>
+  <a href="https://note.com/urinami" target="_blank">HPS</a>
+  <span class="link-sep">|</span>
+  <a href="https://murinaikurashi.com/" target="_blank">無理ない暮らし</a>
+</div>
 
 <!-- Help Modal -->
 <div class="help-overlay" id="help-overlay" onclick="if(event.target===this)this.classList.remove('active')">
@@ -471,7 +490,9 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 
     <p style="font-size:0.7rem;color:var(--text-muted);margin-top:12px;text-align:center;">
       64 Pad Explorer V1.4 — HPS（Hardcore Pad Style）<br>
-      <a href="https://murinaikurashi.com/apps/hps-glossary/" style="color:var(--accent);">HPSポータル</a>
+      <a href="https://murinaikurashi.com/apps/hps-glossary/" style="color:var(--accent);">HPSポータル</a> |
+      <a href="https://note.com/urinami" style="color:var(--accent);">HPS</a> |
+      <a href="https://murinaikurashi.com/" style="color:var(--accent);">無理ない暮らし</a>
     </p>
     <button class="close-btn" onclick="document.getElementById('help-overlay').classList.remove('active')">閉じる</button>
   </div>

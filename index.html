@@ -3544,8 +3544,10 @@ function exportPlainMidi() {
   const ticksPerBeat = 480;
   const track = [];
 
+  // ASCII-safe chord name for MIDI meta events (△→M for DAW compatibility)
+  function midiSafe(name) { return name.replace(/△/g, 'M'); }
   // Track name meta event (FF 03): chord names joined by " | "
-  const titleStr = slots.map(s => s.chordName).join(' | ');
+  const titleStr = slots.map(s => midiSafe(s.chordName)).join(' | ');
   const titleBytes = new TextEncoder().encode(titleStr);
   track.push(0, 0xFF, 0x03);
   toVLQ(titleBytes.length).forEach(b => track.push(b));
@@ -3555,8 +3557,8 @@ function exportPlainMidi() {
   track.push(0, 0xFF, 0x51, 0x03, 0x07, 0xA1, 0x20);
 
   slots.forEach((slot) => {
-    // Marker meta event (FF 06): chord name for this beat
-    const markerBytes = new TextEncoder().encode(slot.chordName);
+    // Marker meta event (FF 06): chord name for this bar
+    const markerBytes = new TextEncoder().encode(midiSafe(slot.chordName));
     track.push(0, 0xFF, 0x06);
     toVLQ(markerBytes.length).forEach(b => track.push(b));
     markerBytes.forEach(b => track.push(b));

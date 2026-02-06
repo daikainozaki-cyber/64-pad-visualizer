@@ -1,8 +1,8 @@
 # 64 Pad Explorer - CLAUDE.md
 
-**最終更新**: 2026-02-04
+**最終更新**: 2026-02-06
 **担当人格**: 蔵人（実装）、継次（設計）、フロ男（テンション・ボイシング設計）
-**バージョン**: V1.4（2026-02-04）
+**バージョン**: V1.5（2026-02-06）
 
 ---
 
@@ -85,6 +85,18 @@
 | **除外ファイル** | .git, .github, CLAUDE.md, deploy.sh, config.sh |
 
 **pushすれば自動でデプロイされる。手動操作は不要。**
+
+### テスト環境（Dev）
+
+| 項目 | 値 |
+|------|-----|
+| **公開URL** | https://murinaikurashi.com/apps/64-pad-dev/ |
+| **デプロイトリガー** | 手動（GitHub Actions → Run workflow） |
+| **デプロイ先** | ~/murinaikurashi.com/public_html/apps/64-pad-dev/ |
+| **ワークフロー** | `.github/workflows/deploy-dev.yml` |
+| **ブランチ** | main（本番と同じ。コードの分岐なし） |
+
+**用途**: HTTPS環境でのshowSaveFilePicker検証、新機能テスト等。本番に影響を与えずにHTTPS動作を確認できる。
 
 ---
 
@@ -246,6 +258,7 @@ fingerings.json に追加
 | Phase 4.8 | **コードリファクタリング** | **完了** | セクションバナー統一、重複排除(getShellIntervals/computeAndDrawVoicingBoxes)、render()5分割、名前空間オブジェクト化(AppState/BuilderState/VoicingState/AudioState/GRID)、セクション整理 |
 | Phase 4.9 | **ボイシングポジション切替** | **完了** | バッジタップで代替配置を循環（calcAllVoicingPositions）、候補数表示(1/3等)、脈動インジケーター |
 | Phase 4.95 | **テンション理論フィルタ + ボイシングUI改善** | **完了** | 6カテゴリ(A〜F)のテンション非表示ルール、ボイシングボックス選択時改善 |
+| Phase 4.96 | **プレーン判定モード** | **完了** | Capture/Edit/Endワークフロー、13メモリースロット、MIDI/CHS書き出し、全モード共通スロット保存 |
 | Phase 5 | **指番号判定ロジック** | 未着手 | 4分割×最低音判定。うりなみさんと壁打ち |
 | Phase 6 | **モジュール化** | 未着手 | ロジックを共有モジュールとして切り出し。ファイル分割も可能（単一ファイル制約なし） |
 | Phase 7 | **五度圏アプリに手形表示を統合** | 未着手 | モジュールを五度圏アプリにインポート |
@@ -304,6 +317,49 @@ fingerings.json に追加
 - 7thなしでもsus4/add9/6/6,9/omit3/omit5は許可（コード変形・単独追加）
 - 6コードで9,11,#11は許可（リディアン等）。マイナーコードで6,9,11も許可
 
+### Phase 4.96 詳細（プレーン判定モード、2026-02-06実装）
+
+**目的**: 理論フィルタなしでパッドを自由に押さえ → コード名を即座に判定。Chordcatのコードセット作成の入力装置にもなる。
+
+| 機能 | 内容 |
+|------|------|
+| **Plainモード追加** | `AppState.mode` に `'plain'` を追加。Scale/Chord/Plainの3モード切替 |
+| **subModeワークフロー** | idle → `c`キーでCapture → パッドクリックでon/off → `e`キーでEnd → idle。idle時は`e`キーでEdit(直近スロット再編集) |
+| **リアルタイムコード判定** | 既存 `detectChord()` でコード名をリアルタイム表示。一音変えると即更新 |
+| **13メモリースロット** | Chordcat互換（13コード対応）。`1-0`でスロット1-10呼出（Plain時） |
+| **全モード共通スロット保存** | `Shift+1-0`で現在のコードをスロットに保存（Scale/Chord/Plain全モード） |
+| **MIDI書き出し** | メモリースロットをSMF Type 0で書き出し。各スロット=四分音符1拍。ライブラリ不要 |
+| **CHS書き出し** | Chordcat .chs形式（4096バイト）のバイナリ書き出し。13スロット対応 |
+| **Memory Slotsパネル** | 右パネルに常時表示。全モードでスロット状態が見える。MIDI/CHS Exportボタン付き |
+| **五線譜・楽器連動** | Plainモードでも五線譜・ギター・ピアノに選択音を表示 |
+
+**PlainState構造**:
+```js
+const PlainState = {
+  activeNotes: new Set(),       // クリックでon/offされたMIDIノート
+  memory: Array(13).fill(null), // [{midiNotes: [...], chordName: string}] × 13
+  currentSlot: null,            // 現在のスロット (0-12)
+  subMode: 'idle',              // 'idle' | 'capture' | 'edit'
+};
+```
+
+**ショートカット（Plainモード時）**:
+- `c`: Capture開始（新規コード構築）
+- `e`: End(Capture終了→スロット保存) / Edit(idle時に直近スロット再編集)
+- `1-0`: メモリー呼び出し（Plainモードではダイアトニック不要）
+- `←→`: 半音移動（全ノート±1半音トランスポーズ）
+- `↑↓`: 転回形（↑=最低音を1oct上へ、↓=最高音を1oct下へ）
+- `x`: 全クリア
+
+**ショートカット（全モード共通）**:
+- `Shift+1-0`: 現在のコードをメモリースロットに保存（`e.code`で判定、キーボードレイアウト非依存）
+
+**クロスモードデータ取得**: `getCurrentChordMidiNotes()` — Plainモード:activeNotes、Chord/Scaleモード:ボイシングボックス優先→ビルダーコード
+
+**Plain → Chord転送**: `transferToChordMode()` — PlainのactiveNotesからdetectChord()でコード判定 → BUILDER_QUALITIESからquality逆引き → TENSION_ROWSからtension逆引き → BuilderStateにセットしてChordモードへ切替。テンション付きコードも正しく転送。
+
+**再利用コード**: `detectChord()`, `updateInstrumentInput()`, `highlightInstrumentPads()`, `noteOn()/noteOff()`, `transferToChordMode()`
+
 ### V1.0リリース（2026-02-04）
 
 | 項目 | 内容 |
@@ -359,19 +415,58 @@ fingerings.json に追加
 - ギター・ピアノではベース音をオレンジ（`#ff9800`）で表示（Root > Bass > Active の優先順位）
 - オーディオ: ボイシングボックスにベースが含まれる場合は二重追加を防止
 
+### V1.5（2026-02-06 プレーン判定モード + 全モード共通メモリースロット）
+
+| 機能 | 内容 |
+|------|------|
+| **Plainモード** | Scale/Chord/Plainの3モード切替。理論フィルタなしでパッドを自由にon/off → リアルタイムコード判定 |
+| **subModeワークフロー** | idle→Capture(c)→End(e)→idle。idle→Edit(e)→idle。idleではパッド操作不可（誤操作防止） |
+| **13メモリースロット** | Chordcat互換。スロット保存・呼出・UI表示。全モードから保存可能 |
+| **全モード共通Shift+数字保存** | Scale/Chord/PlainどのモードでもShift+1-0でスロット保存。`e.code`で判定（キーボードレイアウト非依存） |
+| **クロスモードデータ取得** | `getCurrentChordMidiNotes()` — ボイシングボックス→ビルダー→activeNotesの優先順位でMIDIノート取得 |
+| **Memory Slotsパネル** | 右パネルに常時表示。全モードでスロット状態・MIDI/CHS Exportボタンが見える |
+| **MIDI書き出し** | メモリースロットをSMF Type 0で書き出し（手組み、ライブラリ不要） |
+| **CHS書き出し** | Chordcat .chs形式（4096バイト）バイナリ書き出し。magic bytes `83 49`、13スロット対応 |
+| **トースト通知** | スロット保存時に画面中央にフローティング通知（「Slot 2 ← Dm7」形式） |
+| **detectChord()** | トライアド18種+テトラッド31種のDBからコード判定。全転回形・異名同音対応 |
+| **矢印キー（Plain）** | ←→で全ノート半音移動、↑↓で転回形（最低音↑1oct / 最高音↓1oct） |
+| **Plain→Chord転送** | `transferToChordMode()` — Plainで作ったコードをChordモードのビルダーに転送。Quality+Tension逆引きマッチ |
+
 ### 次の実装目標
 
 | 順番 | 機能 | 内容 | 方針 |
 |------|------|------|------|
 | 1 | **PWA化** | manifest.json + Service Worker。ホーム画面追加でフルスクリーン+オフライン対応 | Webユーザー向け。実装コスト小 |
-| 2 | ~~ショートカットキー~~ | **V1.2で実装済み** | ダイアトニック/ボイシング/転回/トランスポーズ/Omit5/Shell/Drop |
-| 3 | **ピボットコード / スケール可能性表示** | コード選択時に「このコードが属しうる全キー + 度数 + 使えるスケール」を逆引き表示 | 3スケールシステム(Major/Harmonic Minor/Melodic Minor)×7度=21パターン |
-| 4 | ~~Avoidノート色表示~~ | **V1.3で実装済み** | テンション選択時にAvoid色表示 |
-| 5 | **ファイル分割** | 単一HTMLから複数JSファイルへ分割 | `<script src>`方式（ビルドツール不要） |
-| 6 | **iOSネイティブアプリ** | Capacitor + CoreMIDIブリッジ。iPad+パッドのUSB-C接続でMIDI入力対応 | Apple Developer年99ドル。**買い切りアプリとして販売**（Web版は無償のまま）。USB-C接続で即音が出る体験が差別化。ファイル分割後に着手 |
-| 7 | **デザイン** | UIの見た目・操作性の改善 | 実機能が揃ってからデザインを詰める |
+| 2 | **ピボットコード / スケール可能性表示** | コード選択時に「このコードが属しうる全キー + 度数 + 使えるスケール」を逆引き表示 | 3スケールシステム(Major/Harmonic Minor/Melodic Minor)×7度=21パターン |
+| 3 | **ファイル分割** | 単一HTMLから複数JSファイルへ分割 | `<script src>`方式（ビルドツール不要） |
+| 4 | **iOSネイティブアプリ** | Capacitor + CoreMIDIブリッジ。iPad+パッドのUSB-C接続でMIDI入力対応 | Apple Developer年99ドル。**買い切りアプリとして販売**（Web版は無償のまま）。USB-C接続で即音が出る体験が差別化。ファイル分割後に着手 |
+| 5 | **デザイン** | UIの見た目・操作性の改善 | 実機能が揃ってからデザインを詰める |
 
 **実装済み（記録漏れ）**: シェル+テンション — シェルボイシング状態でテンションを選択すると、シェル音にテンション音が加わる。実際の演奏に近い操作感。
+
+### 既知の制限事項
+
+#### MIDI/CHS Export: テスト環境（http://localhost）でのChromeダウンロード問題（2026-02-06確認）
+
+**症状**: `http://localhost:8765`でChrome使用時、blob URLダウンロード（`<a download>`属性）でファイル名がUUIDになる。`showSaveFilePicker`（File System Access API）はダイアログが開かない。プログラム的`a.click()`もブロックされる。
+
+**原因**: Chromiumの既知バグ（[bug #892133](https://bugs.chromium.org/p/chromium/issues/detail?id=892133)）。blob URLの`download`属性がChromeで無視される。`showSaveFilePicker`はlocalhost環境で原因不明のサイレント失敗。
+
+**動作状況**:
+
+| 環境 | ブラウザ | 方式 | 状態 |
+|------|---------|------|------|
+| `http://localhost` | Chrome | blob URL `<a download>` | ファイル名UUID（バグ） |
+| `http://localhost` | Chrome | `showSaveFilePicker` | ダイアログが開かない |
+| `http://localhost` | Chrome | プログラム的`a.click()` | ブロックされる |
+| `http://localhost` | Safari | `navigator.share()` シェアシート | **動作確認済み** |
+| `http://localhost` | Playwright (Chromium) | blob URL | **動作確認済み**（テスト環境のみ） |
+| `https://` (本番) | Chrome | `showSaveFilePicker` | **未検証（動く可能性高い）** |
+| ネイティブアプリ | Capacitor | ファイルシステム直接 | **確実** |
+
+**現在のコード**: ダウンロードリンクをトースト内に表示する方式。ユーザーが直接クリックしてダウンロード。
+
+**今後の方針**: 本番環境（HTTPS）デプロイ時に`showSaveFilePicker`を再検証。iOSネイティブアプリ（Capacitor）では問題なし。Web MIDI APIもChromium専用（Safari非対応）。
 
 ---
 

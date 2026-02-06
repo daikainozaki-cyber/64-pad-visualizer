@@ -404,6 +404,9 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   <a href="https://murinaikurashi.com/" target="_blank">無理ない暮らし</a>
 </div>
 
+<!-- Slot Save Toast -->
+<div id="slot-save-toast" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(42,110,42,0.95);color:#fff;padding:10px 24px;border-radius:8px;font-size:0.85rem;font-weight:700;z-index:9999;pointer-events:none;opacity:0;transition:opacity 0.3s;"></div>
+
 <!-- Help Modal -->
 <div class="help-overlay" id="help-overlay" onclick="if(event.target===this)this.classList.remove('active')">
   <div class="help-modal">
@@ -475,7 +478,16 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
       <li><strong>Clear</strong> — 入力をクリア、<strong>Play ▶</strong> — 入力した音を再生</li>
     </ul>
 
+    <h2>Plain Mode</h2>
+    <ul>
+      <li>パッドをクリックして自由に音を選択 → コード名をリアルタイム判定</li>
+      <li>理論フィルタなし。探索 → 発見 → 理論を後から知る</li>
+      <li><strong>Memory</strong> — 10スロットにコードを保存・呼び出し</li>
+      <li><strong>MIDI Export</strong> — メモリーのコードをMIDIファイルとして書き出し</li>
+    </ul>
+
     <h2>キーボードショートカット</h2>
+    <h3>Scale / Chord モード</h3>
     <ul>
       <li><kbd>1</kbd>〜<kbd>7</kbd> — ダイアトニックコード選択（7音スケール時）</li>
       <li><kbd>a</kbd>〜<kbd>i</kbd> — ボイシングボックス選択（代替配置の循環も可）</li>
@@ -486,6 +498,20 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
       <li><kbd>s</kbd> — Shell循環（off → 1-3-7 → 1-7-3 → off）</li>
       <li><kbd>d</kbd> — Drop循環（off → Drop 2 → Drop 3 → off）</li>
       <li><kbd>x</kbd> — コードクリア（Chordモード）</li>
+    </ul>
+    <h3>Plain モード</h3>
+    <ul>
+      <li><kbd>c</kbd> — Capture 開始/次のスロットへ保存</li>
+      <li><kbd>e</kbd> — Capture 終了</li>
+      <li><kbd>1</kbd>〜<kbd>9</kbd>, <kbd>0</kbd> — メモリースロット呼び出し（Edit）</li>
+      <li><kbd>←</kbd><kbd>→</kbd> — 半音移動（全ノート±1）</li>
+      <li><kbd>↑</kbd><kbd>↓</kbd> — 転回形（最低音↑1oct / 最高音↓1oct）</li>
+      <li><kbd>x</kbd> — 全クリア</li>
+      <li><b>Chord切替</b> — 検出コードをChordモードに引き継ぎ</li>
+    </ul>
+    <h3>共通（全モード）</h3>
+    <ul>
+      <li><kbd>Shift</kbd>+<kbd>1</kbd>〜<kbd>0</kbd> — Plainメモリースロットに保存（どのモードからでも）</li>
       <li><kbd>Esc</kbd> — ボイシングボックス選択解除 / ヘルプを閉じる</li>
       <li><kbd>?</kbd> — ヘルプ表示切替</li>
     </ul>
@@ -558,6 +584,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
     <div class="mode-toggle">
       <button class="mode-btn active" onclick="setMode('scale')" id="mode-scale">Scale</button>
       <button class="mode-btn" onclick="setMode('chord')" id="mode-chord">Chord</button>
+      <button class="mode-btn" onclick="setMode('plain')" id="mode-plain">Plain</button>
     </div>
 
     <!-- Scale Mode -->
@@ -625,6 +652,29 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
         <button class="voicing-btn" id="btn-drop3" onclick="setDrop('drop3')">Drop 3</button>
       </div>
     </div>
+
+    <!-- Plain Mode -->
+    <div id="plain-panel" style="display:none;">
+      <div id="plain-status" style="text-align:center;margin-bottom:4px;">
+        <span id="plain-status-text" style="font-size:0.75rem;color:var(--text-muted);">Press Capture to start building chords</span>
+      </div>
+      <div id="plain-chord-display" style="text-align:center;min-height:28px;margin-bottom:4px;">
+        <span id="plain-chord-name" style="color:var(--accent);font-weight:700;font-size:1.1rem;"></span>
+        <div id="plain-chord-alts" style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin-top:2px;"></div>
+        <div id="plain-notes-display" style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;"></div>
+      </div>
+      <div style="display:flex;gap:3px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:4px;">
+        <button id="btn-plain-capture" onclick="plainCapture()" style="font-size:0.65rem;padding:3px 12px;background:#2a6e2a;color:#fff;border:1px solid #4a4;border-radius:4px;cursor:pointer;font-weight:700;">Capture</button>
+        <button id="btn-plain-end" onclick="plainEnd()" style="font-size:0.65rem;padding:3px 12px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;display:none;">End</button>
+        <button onclick="clearPlainNotes()" style="font-size:0.65rem;padding:2px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">Clear</button>
+        <button onclick="playPlainNotes()" style="font-size:0.65rem;padding:2px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">Play ▶</button>
+      </div>
+      <div style="display:flex;gap:3px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:4px;">
+        <button onclick="exportPlainMidi()" style="font-size:0.65rem;padding:2px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">MIDI Export</button>
+        <button onclick="exportPlainChs()" style="font-size:0.65rem;padding:2px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">CHS Export</button>
+      </div>
+    </div>
+
   </div>
 
   <!-- Right: Staff + Sound Controls -->
@@ -648,6 +698,17 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
       <label class="ep-knob"><span>TREM</span><input type="range" id="snd-tremolo" min="0" max="0.4" step="0.01" value="0"><span id="snd-trm-val" class="ep-val">0.00</span></label>
       <label class="ep-knob"><span>SPEED</span><input type="range" id="snd-tremolo-spd" min="1" max="12" step="0.1" value="4.5"><span id="snd-trm-spd-val" class="ep-val">4.5</span></label>
       <label class="ep-knob"><span>VOL</span><input type="range" id="snd-volume" min="0" max="1" step="0.01" value="0.6"><span id="snd-vol-val" class="ep-val">0.60</span></label>
+    </div>
+    <!-- Memory Slots (always visible, all modes) -->
+    <div style="margin-top:6px;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;">
+      <div style="font-size:0.65rem;font-weight:700;color:var(--accent);text-align:center;margin-bottom:3px;">Memory Slots</div>
+      <div id="memory-slots" style="display:grid;grid-template-columns:1fr 1fr;gap:3px;"></div>
+      <div style="display:flex;gap:3px;justify-content:center;margin-top:4px;">
+        <button id="btn-slot-save" onclick="saveToSelectedSlot()" style="font-size:0.6rem;padding:2px 10px;background:#2a6e2a;color:#fff;border:1px solid #4a4;border-radius:4px;cursor:pointer;font-weight:700;display:none;">Save</button>
+        <button onclick="exportPlainMidi()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">MIDI Export</button>
+        <button onclick="exportPlainChs()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">CHS Export</button>
+      </div>
+      <div style="font-size:0.5rem;color:var(--text-muted);text-align:center;margin-top:2px;">クリックで選択 → Save(c) で保存 / Esc で解除 / Shift+クリックで消去</div>
     </div>
   </div>
 </div>
@@ -877,6 +938,14 @@ const VoicingState = {
   selectedBoxIdx: null,  // selected bounding box index for staff display
   lastBoxes: [],         // [{midiNotes: [...], alternatives: [...], currentAlt: n}, ...] stored from last render
   cycleIndices: {},      // { boxIdx: alternativeIdx } - tracks cycling state per box
+};
+
+const PlainState = {
+  activeNotes: new Set(),        // MIDIノート（クリックでon/off）
+  memory: Array(13).fill(null),  // [{midiNotes: number[], chordName: string}] × 13
+  currentSlot: null,             // 現在選択中スロット (0-12)
+  subMode: 'idle',               // 'idle' | 'capture' | 'edit'
+  captureIndex: 0,               // 次にキャプチャするスロット番号
 };
 
 function resetVoicingSelection() {
@@ -1668,6 +1737,9 @@ function getBuilderChordName() {
       name += '(' + tl + ')';
     }
   }
+  if (BuilderState.bass !== null) {
+    name += '/' + pcName(BuilderState.bass);
+  }
   return name;
 }
 
@@ -1817,6 +1889,11 @@ function getDiatonicTetrads(scalePCS, key) {
 function renderDiatonicBar() {
   const bar = document.getElementById('diatonic-bar');
   if (!bar) return;
+  if (AppState.mode === 'plain') {
+    bar.style.display = 'none';
+    bar.innerHTML = '';
+    return;
+  }
   const scale = SCALES[AppState.scaleIdx];
   if (scale.pcs.length !== 7) {
     bar.style.display = 'none';
@@ -1845,8 +1922,10 @@ function onDiatonicClick(tetrad) {
   AppState.mode = 'chord';
   document.getElementById('mode-scale').classList.toggle('active', false);
   document.getElementById('mode-chord').classList.toggle('active', true);
+  document.getElementById('mode-plain').classList.toggle('active', false);
   document.getElementById('scale-panel').style.display = 'none';
   document.getElementById('chord-panel').style.display = '';
+  document.getElementById('plain-panel').style.display = 'none';
 
   // Set builder state
   BuilderState.root = tetrad.rootPC;
@@ -1876,8 +1955,30 @@ function computeRenderState() {
   let guide7PCS = new Set();
   let tensionPCS = new Set();
   let qualityPCS = null;
+  let avoidPCS = new Set();
 
-  if (AppState.mode === 'scale') {
+  if (AppState.mode === 'plain') {
+    const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
+    activePCS = new Set(notes.map(n => n % 12));
+    if (notes.length >= 2) {
+      const candidates = detectChord(notes);
+      if (candidates.length > 0) {
+        rootPC = candidates[0].rootPC;
+        activeLabel = candidates[0].name;
+      } else {
+        rootPC = notes[0] % 12;
+        activeLabel = notes.map(n => NOTE_NAMES_SHARP[n % 12]).join(' ');
+      }
+    } else if (notes.length === 1) {
+      rootPC = notes[0] % 12;
+      activeLabel = NOTE_NAMES_SHARP[rootPC];
+    } else {
+      rootPC = 0;
+      activePCS = new Set();
+      activeLabel = '';
+    }
+    return { activePCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS };
+  } else if (AppState.mode === 'scale') {
     const scale = SCALES[AppState.scaleIdx];
     activePCS = new Set(scale.pcs.map(pc => (pc + AppState.key) % 12));
     rootPC = AppState.key;
@@ -1939,7 +2040,7 @@ function computeRenderState() {
   }
 
   // Avoid notes: tension notes that are a half step above a non-tension chord tone
-  let avoidPCS = new Set();
+  avoidPCS = new Set();
   if (AppState.mode === 'chord' && tensionPCS.size > 0) {
     const baseTones = new Set([...activePCS].filter(pc => !tensionPCS.has(pc)));
     omittedPCS.forEach(pc => baseTones.add(pc));
@@ -1977,8 +2078,16 @@ function renderPads(svg, state) {
       const isTension = AppState.mode === 'chord' && tensionPCS.has(pc) && !isRoot && !isGuide;
       const isAvoid = AppState.mode === 'chord' && avoidPCS.has(pc) && !isRoot;
 
+      // Plain mode: highlight selected notes only
+      const isPlainActive = AppState.mode === 'plain' && PlainState.activeNotes.has(midi);
+
       let fill = 'var(--pad-off)', textColor = 'var(--text-muted)';
-      if (isOmitted) { fill = 'var(--pad-omitted)'; textColor = '#999'; }
+      if (AppState.mode === 'plain') {
+        if (isPlainActive) {
+          if (isRoot) { fill = 'var(--pad-root)'; textColor = '#000'; }
+          else { fill = 'var(--pad-chord)'; textColor = '#000'; }
+        }
+      } else if (isOmitted) { fill = 'var(--pad-omitted)'; textColor = '#999'; }
       else if (isRoot) { fill = 'var(--pad-root)'; textColor = '#000'; }
       else if (isBass) { fill = '#ff9800'; textColor = '#000'; }
       else if (isGuide3) { fill = 'var(--pad-guide3)'; textColor = '#fff'; }
@@ -1997,9 +2106,18 @@ function renderPads(svg, state) {
       rect.setAttribute('width', PAD_SIZE); rect.setAttribute('height', PAD_SIZE);
       rect.setAttribute('rx', 6); rect.setAttribute('fill', fill);
       // Hold pad: noteOn on press, noteOff on global release (no mouseleave)
+      // Plain mode: click toggles note on/off
       (function(m, r) {
-        r.addEventListener('mousedown', (e) => { e.preventDefault(); _heldMidi = m; noteOn(m); });
-        r.addEventListener('touchstart', (e) => { e.preventDefault(); _heldTouchMidi = m; noteOn(m); });
+        r.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          if (AppState.mode === 'plain') { togglePlainNote(m); }
+          else { _heldMidi = m; noteOn(m); }
+        });
+        r.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          if (AppState.mode === 'plain') { togglePlainNote(m); }
+          else { _heldTouchMidi = m; noteOn(m); }
+        });
       })(midi, rect);
       if (isOmitted) {
         rect.setAttribute('stroke', 'rgba(255,255,255,0.2)');
@@ -2211,14 +2329,22 @@ function render() {
 
   const state = computeRenderState();
   renderPads(svg, state);
-  renderVoicingBoxes(svg, state);
+  if (AppState.mode !== 'plain') {
+    renderVoicingBoxes(svg, state);
+  }
   renderInfoText(state);
   renderLegend(state);
 
   // Staff notation
-  const boxMidi = (VoicingState.selectedBoxIdx !== null && VoicingState.lastBoxes[VoicingState.selectedBoxIdx])
-    ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx].midiNotes : null;
-  renderStaff(AppState.mode, state.rootPC, state.activePCS, state.omittedPCS, state.qualityPCS, boxMidi, state.bassPC);
+  if (AppState.mode === 'plain') {
+    // Plain mode: show selected notes on staff
+    const plainNotes = [...PlainState.activeNotes].sort((a, b) => a - b);
+    renderStaff('plain', state.rootPC, state.activePCS, state.omittedPCS, null, plainNotes.length > 0 ? plainNotes : null, null);
+  } else {
+    const boxMidi = (VoicingState.selectedBoxIdx !== null && VoicingState.lastBoxes[VoicingState.selectedBoxIdx])
+      ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx].midiNotes : null;
+    renderStaff(AppState.mode, state.rootPC, state.activePCS, state.omittedPCS, state.qualityPCS, boxMidi, state.bassPC);
+  }
 
   // Instrument diagrams (guitar + piano)
   lastRenderRootPC = state.rootPC;
@@ -2954,17 +3080,632 @@ let lastRenderRootPC = 0;
 let lastRenderActivePCS = new Set();
 
 // ========================================
+// PLAIN MODE FUNCTIONS
+// ========================================
+
+// Get current chord MIDI notes from any mode (for cross-mode slot save)
+function getCurrentChordMidiNotes() {
+  if (AppState.mode === 'plain') {
+    if (PlainState.activeNotes.size === 0) return null;
+    return [...PlainState.activeNotes].sort((a, b) => a - b);
+  }
+  // Chord/Scale mode
+  if (AppState.mode === 'chord' || AppState.mode === 'scale') {
+    // Priority 1: Selected voicing box
+    if (VoicingState.selectedBoxIdx !== null && VoicingState.lastBoxes[VoicingState.selectedBoxIdx]) {
+      let midiNotes = [...VoicingState.lastBoxes[VoicingState.selectedBoxIdx].midiNotes];
+      if (BuilderState.bass !== null) {
+        const hasBass = midiNotes.some(m => m % 12 === BuilderState.bass);
+        if (!hasBass) {
+          const lowest = Math.min(...midiNotes);
+          let bassMidi = 36 + BuilderState.bass;
+          while (bassMidi >= lowest) bassMidi -= 12;
+          midiNotes.unshift(bassMidi);
+        }
+      }
+      return midiNotes.sort((a, b) => a - b);
+    }
+    // Priority 2: Builder chord (no specific voicing box)
+    if (BuilderState.root === null || !BuilderState.quality) return null;
+    let pcs = getBuilderPCS();
+    if (!pcs || pcs.length === 0) return null;
+    const rootPC = BuilderState.root;
+    let intervals;
+    if (VoicingState.shell) {
+      intervals = getShellIntervals(BuilderState.quality.pcs, VoicingState.shell, VoicingState.shellExtension, pcs);
+      if (!intervals) return null;
+    } else {
+      if (VoicingState.omit5) pcs = pcs.filter(iv => iv % 12 !== 7);
+      if (VoicingState.rootless) pcs = pcs.filter(iv => iv % 12 !== 0);
+      if (VoicingState.omit3) pcs = pcs.filter(iv => iv % 12 !== 3 && iv % 12 !== 4);
+      if (pcs.length === 0) return null;
+      intervals = calcVoicingOffsets(pcs, VoicingState.inversion, VoicingState.drop).voiced;
+    }
+    const rootMidi = 48 + rootPC;
+    const midiNotes = intervals.map(o => rootMidi + o);
+    if (BuilderState.bass !== null) midiNotes.unshift(36 + BuilderState.bass);
+    return midiNotes.sort((a, b) => a - b);
+  }
+  return null;
+}
+
+// Get chord name for current state (cross-mode)
+function getCurrentChordName() {
+  if (AppState.mode === 'plain') {
+    const notes = getCurrentChordMidiNotes();
+    if (!notes || notes.length === 0) return '?';
+    const candidates = detectChord(notes);
+    return candidates.length > 0 ? candidates[0].name : '?';
+  }
+  // Chord/Scale mode: use builder name
+  const name = getBuilderChordName();
+  return name || '?';
+}
+
+// Save current chord to Plain memory slot (works from any mode)
+// Transfer detected chord from Plain mode to Chord mode builder
+function transferToChordMode() {
+  if (PlainState.activeNotes.size < 2) return false;
+  const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
+  const candidates = detectChord(notes);
+  if (candidates.length === 0) return false;
+
+  const best = candidates[0];
+  const rootPC = best.rootPC;
+
+  // Compute intervals relative to root
+  const intervals = [...new Set(notes.map(n => ((n % 12) - rootPC + 12) % 12))].sort((a, b) => a - b);
+  const intervalSet = new Set(intervals);
+
+  // Find best matching quality (longest PCS subset match)
+  let bestQuality = null;
+  let bestQLen = 0;
+  for (const row of BUILDER_QUALITIES) {
+    for (const q of row) {
+      if (!q) continue;
+      if (q.pcs.every(iv => intervalSet.has(iv)) && q.pcs.length > bestQLen) {
+        bestQLen = q.pcs.length;
+        bestQuality = q;
+      }
+    }
+  }
+  if (!bestQuality) return false;
+
+  // Find extra intervals → tension candidates
+  const qualitySet = new Set(bestQuality.pcs);
+  const extras = intervals.filter(iv => !qualitySet.has(iv) && iv !== 0);
+
+  // Try to match tension from DOM buttons
+  let matchedTension = null;
+  let matchedEl = null;
+  if (extras.length > 0) {
+    const extraSet = new Set(extras);
+    document.querySelectorAll('#tension-grid .tension-btn').forEach(btn => {
+      if (matchedTension) return;
+      const t = btn._tension;
+      if (!t) return;
+      const adds = t.mods.add || [];
+      if (adds.length === extras.length && adds.every(iv => extraSet.has(iv)) &&
+          !t.mods.replace3 && !t.mods.sharp5 && !t.mods.flat5) {
+        matchedTension = t;
+        matchedEl = btn;
+      }
+    });
+  }
+
+  // Handle bass note (slash chord)
+  let bassPC = null;
+  const lowestPC = notes[0] % 12;
+  if (lowestPC !== rootPC) bassPC = lowestPC;
+
+  // Set BuilderState
+  BuilderState.root = rootPC;
+  BuilderState.quality = bestQuality;
+  BuilderState.tension = matchedTension;
+  BuilderState.bass = bassPC;
+  resetVoicingSelection();
+
+  // Switch to Chord mode UI
+  AppState.mode = 'chord';
+  document.getElementById('mode-scale').classList.toggle('active', false);
+  document.getElementById('mode-chord').classList.toggle('active', true);
+  document.getElementById('mode-plain').classList.toggle('active', false);
+  document.getElementById('scale-panel').style.display = 'none';
+  document.getElementById('chord-panel').style.display = '';
+  document.getElementById('plain-panel').style.display = 'none';
+
+  // Update builder UI
+  highlightPianoKey('piano-keyboard', rootPC);
+  highlightQuality(bestQuality);
+  clearTensionSelection();
+  if (matchedTension && matchedEl) matchedEl.classList.add('selected');
+  updateControlsForQuality(bestQuality);
+  if (bassPC !== null) highlightPianoKey('onchord-keyboard', bassPC);
+  setBuilderStep(2);
+  render();
+  return true;
+}
+
+function saveToSelectedSlot() {
+  if (PlainState.currentSlot !== null) {
+    saveToPlainSlot(PlainState.currentSlot);
+  }
+}
+
+function saveToPlainSlot(idx) {
+  if (idx < 0 || idx >= 13) return false;
+  const midiNotes = getCurrentChordMidiNotes();
+  if (!midiNotes || midiNotes.length === 0) return false;
+  const chordName = getCurrentChordName();
+  PlainState.memory[idx] = { midiNotes: [...midiNotes], chordName };
+  updateMemorySlotUI();
+  // Visual feedback: flash slot button (if visible)
+  const slotBtns = document.querySelectorAll('.slot-btn');
+  if (slotBtns[idx]) {
+    slotBtns[idx].style.background = '#4CAF50';
+    slotBtns[idx].style.transition = 'background 0.3s';
+    setTimeout(() => { slotBtns[idx].style.background = ''; }, 400);
+  }
+  // Toast notification (especially useful in non-Plain modes)
+  const toast = document.getElementById('slot-save-toast');
+  if (toast) {
+    toast.textContent = `Slot ${idx + 1} ← ${chordName}`;
+    toast.style.opacity = '1';
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
+  }
+  return true;
+}
+
+function togglePlainNote(midi) {
+  // idle時はcaptureを自動開始
+  if (PlainState.subMode === 'idle') {
+    PlainState.subMode = 'capture';
+    PlainState.captureIndex = findNextEmptySlot(0);
+    updatePlainUI();
+  }
+  if (PlainState.activeNotes.has(midi)) {
+    PlainState.activeNotes.delete(midi);
+    noteOff(midi);
+  } else {
+    PlainState.activeNotes.add(midi);
+    noteOn(midi, undefined, true);
+  }
+  // editモード時は自動保存
+  if (PlainState.subMode === 'edit' && PlainState.currentSlot !== null) {
+    savePlainSlot(PlainState.currentSlot);
+  }
+  updatePlainDisplay();
+  render();
+}
+
+function plainCapture() {
+  if (PlainState.subMode === 'idle') {
+    // idle → capture: キャプチャ開始
+    PlainState.subMode = 'capture';
+    PlainState.captureIndex = findNextEmptySlot(0);
+    PlainState.activeNotes.forEach(m => noteOff(m));
+    PlainState.activeNotes.clear();
+    PlainState.currentSlot = null;
+  } else if (PlainState.subMode === 'capture') {
+    // capture中にCapture押下: 現在のノートを保存して次へ
+    if (PlainState.activeNotes.size > 0) {
+      savePlainSlot(PlainState.captureIndex);
+      PlainState.captureIndex = findNextEmptySlot(PlainState.captureIndex + 1);
+    }
+    PlainState.activeNotes.forEach(m => noteOff(m));
+    PlainState.activeNotes.clear();
+    PlainState.currentSlot = null;
+    // 全スロット埋まったら自動でidle
+    if (PlainState.captureIndex >= 13) {
+      PlainState.subMode = 'idle';
+    }
+  } else if (PlainState.subMode === 'edit') {
+    // edit → capture: 編集終了してキャプチャへ
+    PlainState.subMode = 'capture';
+    PlainState.captureIndex = findNextEmptySlot(0);
+    PlainState.activeNotes.forEach(m => noteOff(m));
+    PlainState.activeNotes.clear();
+    PlainState.currentSlot = null;
+    if (PlainState.captureIndex >= 13) {
+      PlainState.subMode = 'idle';
+    }
+  }
+  updatePlainUI();
+  updatePlainDisplay();
+  render();
+}
+
+function plainEnd() {
+  if (PlainState.subMode === 'capture' && PlainState.activeNotes.size > 0) {
+    // 未保存のノートがあれば保存
+    savePlainSlot(PlainState.captureIndex);
+  }
+  PlainState.subMode = 'idle';
+  PlainState.activeNotes.forEach(m => noteOff(m));
+  PlainState.activeNotes.clear();
+  PlainState.currentSlot = null;
+  updatePlainUI();
+  updatePlainDisplay();
+  render();
+}
+
+function plainEditSlot(idx) {
+  const slot = PlainState.memory[idx];
+  if (!slot) return;
+  // 既存のノートをクリア
+  PlainState.activeNotes.forEach(m => noteOff(m));
+  PlainState.activeNotes.clear();
+  // スロットのノートを読み込み
+  slot.midiNotes.forEach(m => PlainState.activeNotes.add(m));
+  PlainState.currentSlot = idx;
+  PlainState.subMode = 'edit';
+  playMidiNotes(slot.midiNotes, 1.0);
+  updatePlainUI();
+  updatePlainDisplay();
+  render();
+}
+
+function findNextEmptySlot(from) {
+  for (let i = from; i < 13; i++) {
+    if (!PlainState.memory[i]) return i;
+  }
+  return 13; // 全部埋まっている
+}
+
+function updatePlainUI() {
+  const statusEl = document.getElementById('plain-status-text');
+  const captureBtn = document.getElementById('btn-plain-capture');
+  const endBtn = document.getElementById('btn-plain-end');
+  if (!statusEl) return;
+  if (PlainState.subMode === 'idle') {
+    statusEl.textContent = 'Press Capture to start building chords';
+    statusEl.style.color = 'var(--text-muted)';
+    captureBtn.textContent = 'Capture';
+    captureBtn.style.background = '#2a6e2a';
+    endBtn.style.display = 'none';
+  } else if (PlainState.subMode === 'capture') {
+    const slotNum = Math.min(PlainState.captureIndex + 1, 13);
+    statusEl.textContent = 'Capturing: Slot ' + slotNum + '/13 — Click pads, then Capture to save';
+    statusEl.style.color = '#4a4';
+    captureBtn.textContent = 'Capture (' + slotNum + ')';
+    captureBtn.style.background = '#2a6e2a';
+    endBtn.style.display = '';
+  } else if (PlainState.subMode === 'edit') {
+    const slotNum = PlainState.currentSlot !== null ? PlainState.currentSlot + 1 : '?';
+    statusEl.textContent = 'Editing: Slot ' + slotNum + ' — Click pads to modify';
+    statusEl.style.color = 'var(--accent)';
+    captureBtn.textContent = 'Capture';
+    captureBtn.style.background = '#2a6e2a';
+    endBtn.style.display = '';
+  }
+  updateMemorySlotUI();
+}
+
+function clearPlainNotes() {
+  PlainState.activeNotes.forEach(m => noteOff(m));
+  PlainState.activeNotes.clear();
+  if (PlainState.subMode === 'edit' && PlainState.currentSlot !== null) {
+    // editモードでクリア → スロットも空に
+    PlainState.memory[PlainState.currentSlot] = null;
+    PlainState.subMode = 'idle';
+    PlainState.currentSlot = null;
+    updatePlainUI();
+  }
+  updatePlainDisplay();
+  render();
+}
+
+function playPlainNotes() {
+  const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
+  if (notes.length > 0) playMidiNotes(notes, 1.0);
+}
+
+function updatePlainDisplay() {
+  const nameEl = document.getElementById('plain-chord-name');
+  const altsEl = document.getElementById('plain-chord-alts');
+  const notesEl = document.getElementById('plain-notes-display');
+  if (!nameEl) return;
+  const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
+  if (notes.length === 0) {
+    nameEl.textContent = '';
+    altsEl.innerHTML = '';
+    notesEl.textContent = '';
+    return;
+  }
+  const noteNames = notes.map(n => NOTE_NAMES_SHARP[n % 12]);
+  const candidates = detectChord(notes);
+  if (candidates.length > 0) {
+    nameEl.textContent = candidates[0].name;
+    let altHtml = '';
+    if (candidates.length > 1) {
+      candidates.slice(1).forEach(c => {
+        altHtml += '<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.08);color:var(--text-muted);">' + c.name + '</span>';
+      });
+    }
+    altsEl.innerHTML = altHtml;
+  } else {
+    nameEl.textContent = noteNames.join(' ');
+    altsEl.innerHTML = '';
+  }
+  notesEl.textContent = 'Notes: ' + noteNames.join(' ');
+  updateMemorySlotUI();
+}
+
+function savePlainSlot(idx) {
+  if (idx >= 13) return;
+  if (PlainState.activeNotes.size === 0) return;
+  const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
+  const candidates = detectChord(notes);
+  const chordName = candidates.length > 0 ? candidates[0].name : notes.map(n => NOTE_NAMES_SHARP[n % 12]).join(' ');
+  PlainState.memory[idx] = { midiNotes: notes, chordName };
+  PlainState.currentSlot = idx;
+  updateMemorySlotUI();
+}
+
+function recallPlainSlot(idx) {
+  const slot = PlainState.memory[idx];
+  if (!slot) {
+    // Empty slot: select as target (don't save yet, wait for Capture)
+    PlainState.currentSlot = idx;
+    updateMemorySlotUI();
+    const toast = document.getElementById('slot-save-toast');
+    if (toast) {
+      toast.textContent = `Slot ${idx + 1} selected`;
+      toast.style.opacity = '1';
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
+    }
+    return;
+  }
+  // Filled slot: switch to Plain and edit
+  if (AppState.mode !== 'plain') {
+    setMode('plain');
+  }
+  plainEditSlot(idx);
+}
+
+function initMemorySlots() {
+  const container = document.getElementById('memory-slots');
+  if (!container) return;
+  container.innerHTML = '';
+  for (let i = 0; i < 13; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'slot-btn';
+    btn.dataset.slot = i;
+    btn.style.cssText = 'font-size:0.7rem;padding:4px 6px;background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:4px;cursor:pointer;transition:all 0.15s;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    btn.textContent = (i + 1) + ': Empty';
+    btn.onclick = (ev) => {
+      if (ev.shiftKey && PlainState.memory[i]) {
+        // Shift+click: delete slot
+        PlainState.memory[i] = null;
+        if (PlainState.currentSlot === i) PlainState.currentSlot = null;
+        updateMemorySlotUI();
+        const toast = document.getElementById('slot-save-toast');
+        if (toast) {
+          toast.textContent = `Slot ${i + 1} cleared`;
+          toast.style.opacity = '1';
+          clearTimeout(toast._timer);
+          toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
+        }
+        return;
+      }
+      recallPlainSlot(i);
+    };
+    container.appendChild(btn);
+  }
+}
+
+function updateMemorySlotUI() {
+  const container = document.getElementById('memory-slots');
+  if (!container) return;
+  const btns = container.querySelectorAll('.slot-btn');
+  btns.forEach((btn, i) => {
+    const slot = PlainState.memory[i];
+    const label = String(i + 1);
+    const isCaptureTarget = PlainState.subMode === 'capture' && i === PlainState.captureIndex;
+    const isCurrent = PlainState.currentSlot === i;
+    if (slot) {
+      btn.textContent = label + ': ' + slot.chordName;
+      btn.style.color = 'var(--text)';
+      btn.style.borderColor = isCurrent ? 'var(--accent)' : 'var(--border)';
+      btn.style.background = isCurrent ? 'rgba(74,158,255,0.15)' : 'var(--surface)';
+    } else {
+      btn.textContent = label + ': Empty';
+      const isSelected = isCurrent || isCaptureTarget;
+      btn.style.color = isSelected ? '#4a4' : 'var(--text-muted)';
+      btn.style.borderColor = isSelected ? '#4a4' : 'var(--border)';
+      btn.style.background = isSelected ? 'rgba(74,170,74,0.1)' : 'var(--surface)';
+    }
+  });
+  // Save button visibility
+  const saveBtn = document.getElementById('btn-slot-save');
+  if (saveBtn) {
+    saveBtn.style.display = PlainState.currentSlot !== null ? '' : 'none';
+  }
+}
+
+// SMF Type 0 MIDI export (selected slot → single, no selection → all)
+function exportPlainMidi() {
+  let slots;
+  if (PlainState.currentSlot !== null && PlainState.memory[PlainState.currentSlot]) {
+    slots = [PlainState.memory[PlainState.currentSlot]];
+  } else {
+    slots = PlainState.memory.filter(s => s !== null);
+  }
+  if (slots.length === 0) { const t = document.getElementById('slot-save-toast'); t.textContent = 'No chords in memory slots'; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 2000); return; }
+  const ticksPerBeat = 480;
+  const track = [];
+
+  // Track name meta event (FF 03): chord names joined by " | "
+  const titleStr = slots.map(s => s.chordName).join(' | ');
+  const titleBytes = new TextEncoder().encode(titleStr);
+  track.push(0, 0xFF, 0x03);
+  toVLQ(titleBytes.length).forEach(b => track.push(b));
+  titleBytes.forEach(b => track.push(b));
+
+  // Tempo: 120 BPM (500000 microseconds per beat)
+  track.push(0, 0xFF, 0x51, 0x03, 0x07, 0xA1, 0x20);
+
+  slots.forEach((slot) => {
+    // Marker meta event (FF 06): chord name for this beat
+    const markerBytes = new TextEncoder().encode(slot.chordName);
+    track.push(0, 0xFF, 0x06);
+    toVLQ(markerBytes.length).forEach(b => track.push(b));
+    markerBytes.forEach(b => track.push(b));
+
+    // Note on (delta=0 for all notes in chord)
+    slot.midiNotes.forEach((note, ni) => {
+      track.push(0); // delta
+      track.push(0x90, note & 0x7F, 100); // noteOn ch0 vel100
+    });
+    // Note off after 1 beat
+    slot.midiNotes.forEach((note, ni) => {
+      if (ni === 0) {
+        const vl = toVLQ(ticksPerBeat);
+        vl.forEach(b => track.push(b));
+      } else {
+        track.push(0); // delta 0
+      }
+      track.push(0x80, note & 0x7F, 0); // noteOff
+    });
+  });
+  // End of track
+  track.push(0, 0xFF, 0x2F, 0x00);
+
+  const trackBytes = new Uint8Array(track);
+  // Header: MThd
+  const header = new Uint8Array([
+    0x4D, 0x54, 0x68, 0x64, // MThd
+    0x00, 0x00, 0x00, 0x06, // length=6
+    0x00, 0x00,             // format 0
+    0x00, 0x01,             // 1 track
+    (ticksPerBeat >> 8) & 0xFF, ticksPerBeat & 0xFF, // ticks
+    0x4D, 0x54, 0x72, 0x6B, // MTrk
+    (trackBytes.length >> 24) & 0xFF,
+    (trackBytes.length >> 16) & 0xFF,
+    (trackBytes.length >> 8) & 0xFF,
+    trackBytes.length & 0xFF,
+  ]);
+  // Combine header + track into single array
+  const full = new Uint8Array(header.length + trackBytes.length);
+  full.set(header, 0);
+  full.set(trackBytes, header.length);
+  const fileName = slots.map(s => s.chordName).join('_').replace(/[\/\\:*?"<>|#△]/g, '').replace(/_+/g, '_') || 'pad-chords';
+  downloadBinary(full, fileName + '.mid', 'audio/midi');
+}
+
+// Download binary: Safari→share sheet, HTTPS+Chrome→showSaveFilePicker, fallback→link in toast
+function downloadBinary(uint8Array, filename, mimeType) {
+  const blob = new Blob([uint8Array], { type: mimeType || 'application/octet-stream' });
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const isHTTPS = location.protocol === 'https:';
+  // Safari: share sheet
+  if (isSafari && navigator.canShare) {
+    const file = new File([blob], filename, { type: blob.type });
+    if (navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file] }).catch(() => {});
+      return;
+    }
+  }
+  // HTTPS + Chrome: showSaveFilePicker
+  if (isHTTPS && window.showSaveFilePicker) {
+    const ext = filename.split('.').pop();
+    const types = ext === 'mid' ? [{ description: 'MIDI', accept: { 'audio/midi': ['.mid'] } }]
+      : ext === 'chs' ? [{ description: 'Chordcat', accept: { 'application/octet-stream': ['.chs'] } }]
+      : [];
+    showSaveFilePicker({ suggestedName: filename, types: types }).then(function(handle) {
+      return handle.createWritable().then(function(w) { return w.write(blob).then(function() { return w.close(); }); });
+    }).catch(function(e) {
+      if (e.name !== 'AbortError') downloadBinaryFallback(blob, filename);
+    });
+    return;
+  }
+  // Fallback: download link in toast
+  downloadBinaryFallback(blob, filename);
+}
+function downloadBinaryFallback(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const toast = document.getElementById('slot-save-toast');
+  toast.style.pointerEvents = 'auto';
+  toast.innerHTML = '<a href="' + url + '" download="' + filename
+    + '" style="color:#4fc3f7;text-decoration:underline;font-size:1.1rem;">'
+    + filename + ' ⬇</a>';
+  toast.style.opacity = '1';
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.pointerEvents = 'none'; URL.revokeObjectURL(url); }, 15000);
+}
+
+function toVLQ(value) {
+  if (value < 0x80) return [value];
+  const bytes = [];
+  bytes.push(value & 0x7F);
+  value >>= 7;
+  while (value > 0) {
+    bytes.push((value & 0x7F) | 0x80);
+    value >>= 7;
+  }
+  return bytes.reverse();
+}
+
+// Chordcat .chs export (4096 bytes binary)
+function exportPlainChs() {
+  const filledSlots = PlainState.memory.filter(s => s !== null);
+  if (filledSlots.length === 0) { const t = document.getElementById('slot-save-toast'); t.textContent = 'No chords in memory slots'; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 2000); return; }
+  const buf = new Uint8Array(4096); // 全体ゼロ初期化
+  // マジックバイト
+  buf[0] = 0x83; buf[1] = 0x49;
+  // ヘッダ
+  buf[0x08] = 0x10;
+  // 13スロット × 8バイト（オフセット0x10〜0x77）
+  for (let i = 0; i < 13; i++) {
+    const slot = PlainState.memory[i];
+    if (!slot) continue;
+    const offset = 0x10 + i * 8;
+    // 5音固定、高→低の降順で格納（バイト2〜6）
+    const notes = [...slot.midiNotes].sort((a, b) => b - a); // 降順
+    // 5音まで。足りなければ0パディング（バイト2～6に配置）
+    for (let j = 0; j < 5; j++) {
+      buf[offset + 2 + j] = j < notes.length ? (notes[j] & 0x7F) : 0;
+    }
+  }
+  // Chordset名（オフセット0x78〜0x87、NULL終端）
+  const name = 'PadExplorer';
+  for (let i = 0; i < name.length && i < 15; i++) {
+    buf[0x78 + i] = name.charCodeAt(i);
+  }
+  // フラグ（オフセット0x88）
+  buf[0x88] = 0x01; buf[0x8C] = 0x01;
+  // ダウンロード
+  const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+  downloadBinary(buf, 'PadExplorer_' + ts + '.chs', 'application/octet-stream');
+}
+
+// ========================================
 // MODE & UI CONTROLS
 // ========================================
 function setMode(mode) {
+  // Plain → Chord: transfer detected chord to builder
+  if (mode === 'chord' && AppState.mode === 'plain' && PlainState.activeNotes.size >= 2) {
+    if (transferToChordMode()) return; // transferToChordMode handles everything
+  }
   AppState.mode = mode;
   document.getElementById('mode-scale').classList.toggle('active', mode === 'scale');
   document.getElementById('mode-chord').classList.toggle('active', mode === 'chord');
+  document.getElementById('mode-plain').classList.toggle('active', mode === 'plain');
   document.getElementById('scale-panel').style.display = mode === 'scale' ? '' : 'none';
   document.getElementById('chord-panel').style.display = mode === 'chord' ? '' : 'none';
+  document.getElementById('plain-panel').style.display = mode === 'plain' ? '' : 'none';
   if (mode === 'chord' && BuilderState.step === 0) {
     BuilderState.root = AppState.key; // carry over key
     setBuilderStep(1);
+  }
+  // モード切替時にスロット選択を解除
+  PlainState.currentSlot = null;
+  updateMemorySlotUI();
+  if (mode === 'plain') {
+    PlainState.subMode = 'idle';
+    updatePlainUI();
+    updatePlainDisplay();
   }
   render();
 }
@@ -3650,9 +4391,19 @@ function remapMidiNote(note) {
 function onMidiNoteOn(note, velocity) {
   const mapped = remapMidiNote(note);
   midiActiveNotes.add(mapped);
-  // Direct noteOn — sustain until physical noteOff arrives
   ensureAudioResumed();
   noteOn(mapped, (velocity || 100) / 127, true);
+  // Plain mode: add to activeNotes (auto-start capture if idle)
+  if (AppState.mode === 'plain') {
+    if (PlainState.subMode === 'idle') {
+      PlainState.subMode = 'capture';
+      PlainState.captureIndex = findNextEmptySlot(0);
+      updatePlainUI();
+    }
+    PlainState.activeNotes.add(mapped);
+    updatePlainDisplay();
+    render();
+  }
   scheduleMidiUpdate();
 }
 
@@ -3660,6 +4411,14 @@ function onMidiNoteOff(note) {
   const mapped = remapMidiNote(note);
   midiActiveNotes.delete(mapped);
   noteOff(mapped);
+  // Plain capture/edit: latch (don't remove on noteOff)
+  if (AppState.mode === 'plain' && PlainState.subMode !== 'idle') {
+    // keep note in activeNotes — user clears with x or edits manually
+  } else if (AppState.mode === 'plain') {
+    PlainState.activeNotes.delete(mapped);
+    updatePlainDisplay();
+    render();
+  }
   scheduleMidiUpdate();
 }
 
@@ -3816,6 +4575,7 @@ buildPianoKeyboard('piano-keyboard', selectRoot);
 initQualityGrid();
 initTensionGrid();
 updateOctaveLabel();
+initMemorySlots();
 initWebMIDI();
 
 // ========================================
@@ -3828,7 +4588,118 @@ document.addEventListener('keydown', (e) => {
   const key = e.key;
   const lk = key.toLowerCase(); // for letter key matching (case-insensitive)
 
-  // Number keys 1-7: Always select diatonic chord (any mode, if 7-note scale available)
+  // Shift+数字: Save current chord to Plain memory slot (全モード共通)
+  if (e.shiftKey && e.code && e.code.startsWith('Digit')) {
+    const num = parseInt(e.code.charAt(5)); // Digit0→0, Digit1→1, ...
+    const idx = num === 0 ? 9 : num - 1;    // 1→slot0, ..., 9→slot8, 0→slot9
+    if (idx < 13) {
+      if (saveToPlainSlot(idx)) {
+        e.preventDefault();
+      }
+    }
+    return;
+  }
+
+  // c: Save to selected slot (全モード共通) or Plain capture
+  if (lk === 'c') {
+    if (PlainState.currentSlot !== null) {
+      saveToPlainSlot(PlainState.currentSlot);
+      return;
+    }
+    if (AppState.mode === 'plain') { plainCapture(); return; }
+    return;
+  }
+
+  // Escape: Close help modal → exit Plain edit → deselect slot → deselect voicing box
+  if (key === 'Escape') {
+    const helpOverlay = document.getElementById('help-overlay');
+    if (helpOverlay.classList.contains('active')) {
+      helpOverlay.classList.remove('active');
+    } else if (AppState.mode === 'plain' && (PlainState.subMode === 'edit' || PlainState.subMode === 'capture')) {
+      PlainState.subMode = 'idle';
+      PlainState.activeNotes.forEach(m => noteOff(m));
+      PlainState.activeNotes.clear();
+      PlainState.currentSlot = null;
+      updatePlainUI(); updatePlainDisplay(); updateMemorySlotUI(); render();
+    } else if (PlainState.currentSlot !== null) {
+      PlainState.currentSlot = null;
+      updateMemorySlotUI();
+    } else if (VoicingState.selectedBoxIdx !== null) {
+      VoicingState.selectedBoxIdx = null;
+      render();
+    }
+    return;
+  }
+
+  // ?: Toggle help modal
+  if (key === '?') {
+    const helpOverlay = document.getElementById('help-overlay');
+    helpOverlay.classList.toggle('active');
+    return;
+  }
+
+  // Arrow Up/Down: Inversion (Plain: move lowest/highest note ±1oct, Chord: cycle inversion)
+  if (key === 'ArrowUp' || key === 'ArrowDown') {
+    if (AppState.mode === 'plain' && PlainState.activeNotes.size >= 2) {
+      e.preventDefault();
+      const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
+      PlainState.activeNotes.clear();
+      if (key === 'ArrowUp') {
+        const lowest = notes.shift();
+        notes.push(lowest + 12);
+      } else {
+        const highest = notes.pop();
+        notes.unshift(highest - 12);
+      }
+      notes.forEach(n => PlainState.activeNotes.add(n));
+      updatePlainDisplay(); render();
+    } else if (AppState.mode === 'chord' && BuilderState.quality && !VoicingState.shell) {
+      e.preventDefault();
+      const maxInv = Math.min(3, (getBuilderPCS()?.length || 4) - 1);
+      let inv = VoicingState.inversion;
+      if (key === 'ArrowUp') { inv = inv < maxInv ? inv + 1 : 0; }
+      else { inv = inv > 0 ? inv - 1 : maxInv; }
+      setInversion(inv);
+    }
+    return;
+  }
+
+  // Arrow Left/Right: Chromatic transpose (Plain: all notes ±1, Chord: root ±1)
+  if (key === 'ArrowLeft' || key === 'ArrowRight') {
+    if (AppState.mode === 'plain' && PlainState.activeNotes.size > 0) {
+      e.preventDefault();
+      const delta = key === 'ArrowRight' ? 1 : -1;
+      const newNotes = new Set();
+      PlainState.activeNotes.forEach(n => newNotes.add(n + delta));
+      PlainState.activeNotes = newNotes;
+      updatePlainDisplay(); render();
+    } else if (AppState.mode === 'chord' && BuilderState.root !== null) {
+      e.preventDefault();
+      const delta = key === 'ArrowRight' ? 1 : 11;
+      BuilderState.root = (BuilderState.root + delta) % 12;
+      highlightPianoKey('piano-keyboard', BuilderState.root);
+      resetVoicingSelection();
+      updateChordDisplay(); render();
+    }
+    return;
+  }
+
+  // Plain mode shortcuts
+  if (AppState.mode === 'plain') {
+    if (lk === 'e') { plainEnd(); return; }
+    if (lk === 'x') { clearPlainNotes(); return; }
+    // Number keys 1-9, 0: recall/edit slot (1-9→slot 0-8, 0→slot 9)
+    if (key >= '0' && key <= '9') {
+      const idx = key === '0' ? 9 : parseInt(key) - 1;
+      if (idx < 13) recallPlainSlot(idx);
+      return;
+    }
+    return;
+  }
+
+
+
+  // Number keys 1-7: Select diatonic chord (Scale/Chord mode)
   if (key >= '1' && key <= '7') {
     const num = parseInt(key);
     const scale = SCALES[AppState.scaleIdx];
@@ -3850,36 +4721,6 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Arrow Up/Down: Inversion cycle (chord mode, non-shell)
-  if (key === 'ArrowUp' || key === 'ArrowDown') {
-    if (AppState.mode === 'chord' && BuilderState.quality && !VoicingState.shell) {
-      e.preventDefault();
-      const maxInv = Math.min(3, (getBuilderPCS()?.length || 4) - 1);
-      let inv = VoicingState.inversion;
-      if (key === 'ArrowUp') {
-        inv = inv < maxInv ? inv + 1 : 0;
-      } else {
-        inv = inv > 0 ? inv - 1 : maxInv;
-      }
-      setInversion(inv);
-    }
-    return;
-  }
-
-  // Arrow Left/Right: Chromatic transpose (root ±1 semitone, keep quality/tension/voicing)
-  if (key === 'ArrowLeft' || key === 'ArrowRight') {
-    if (AppState.mode === 'chord' && BuilderState.root !== null) {
-      e.preventDefault();
-      const delta = key === 'ArrowRight' ? 1 : 11; // +1 or -1 (mod 12)
-      BuilderState.root = (BuilderState.root + delta) % 12;
-      highlightPianoKey('piano-keyboard', BuilderState.root);
-      resetVoicingSelection();
-      updateChordDisplay();
-      render();
-    }
-    return;
-  }
-
   // o: Toggle Omit 5
   if (lk === 'o') {
     if (AppState.mode === 'chord' && BuilderState.quality) {
@@ -3888,9 +4729,11 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // x: Clear chord
+  // x: Clear (chord or plain)
   if (lk === 'x') {
-    if (AppState.mode === 'chord') {
+    if (AppState.mode === 'plain') {
+      clearPlainNotes();
+    } else if (AppState.mode === 'chord') {
       builderClear();
     }
     return;
@@ -3924,24 +4767,6 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Escape: Close help modal or deselect voicing box
-  if (key === 'Escape') {
-    const helpOverlay = document.getElementById('help-overlay');
-    if (helpOverlay.classList.contains('active')) {
-      helpOverlay.classList.remove('active');
-    } else if (VoicingState.selectedBoxIdx !== null) {
-      VoicingState.selectedBoxIdx = null;
-      render();
-    }
-    return;
-  }
-
-  // ?: Toggle help modal
-  if (key === '?') {
-    const helpOverlay = document.getElementById('help-overlay');
-    helpOverlay.classList.toggle('active');
-    return;
-  }
 });
 
 render();

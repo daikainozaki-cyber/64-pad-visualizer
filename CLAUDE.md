@@ -488,6 +488,17 @@ const PlainState = {
 
 **今後の方針**: 本番環境（HTTPS）デプロイ時に`showSaveFilePicker`を再検証。iOSネイティブアプリ（Capacitor）では問題なし。Web MIDI APIもChromium専用（Safari非対応）。
 
+#### CHS Export: 本番非公開（Chordcatリバースエンジニアリング）
+
+**状況**: CHS形式（`.chs`、4096バイト）はChordcatアプリのバイナリフォーマットをリバースエンジニアリングしたもの。Chordcatの会社との交渉前に本番公開するのはNG。
+
+**現在の対応**:
+- `IS_DEV = location.pathname.indexOf('64-pad-dev') !== -1` でURL判定
+- 本番（`/apps/64-pad/`）→ CHS Exportボタン非表示
+- テスト環境（`/apps/64-pad-dev/`）→ CHS Export表示（HPS内輪デバッグ用）
+
+**解除条件**: Chordcatの会社と交渉し、許可を得たら `IS_DEV` チェックを外す
+
 ---
 
 ## 第7層：元データ参照

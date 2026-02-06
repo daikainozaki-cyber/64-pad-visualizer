@@ -3608,16 +3608,19 @@ function downloadBinary(uint8Array, filename, mimeType) {
       return;
     }
   }
-  // HTTPS + Chrome: showSaveFilePicker
+  // HTTPS + Chrome: showSaveFilePicker (with 3s timeout for headless/broken environments)
   if (isHTTPS && window.showSaveFilePicker) {
     const ext = filename.split('.').pop();
     const types = ext === 'mid' ? [{ description: 'MIDI', accept: { 'audio/midi': ['.mid'] } }]
       : ext === 'chs' ? [{ description: 'Chordcat', accept: { 'application/octet-stream': ['.chs'] } }]
       : [];
+    var pickerDone = false;
+    var pickerTimer = setTimeout(function() { if (!pickerDone) { pickerDone = true; downloadBinaryFallback(blob, filename); } }, 3000);
     showSaveFilePicker({ suggestedName: filename, types: types }).then(function(handle) {
+      pickerDone = true; clearTimeout(pickerTimer);
       return handle.createWritable().then(function(w) { return w.write(blob).then(function() { return w.close(); }); });
     }).catch(function(e) {
-      if (e.name !== 'AbortError') downloadBinaryFallback(blob, filename);
+      if (!pickerDone && e.name !== 'AbortError') { pickerDone = true; clearTimeout(pickerTimer); downloadBinaryFallback(blob, filename); }
     });
     return;
   }

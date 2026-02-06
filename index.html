@@ -670,8 +670,8 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
         <button onclick="playPlainNotes()" style="font-size:0.65rem;padding:2px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">Play ▶</button>
       </div>
       <div style="display:flex;gap:3px;justify-content:center;align-items:center;flex-wrap:wrap;margin-bottom:4px;">
-        <button onclick="exportPlainMidi()" style="font-size:0.65rem;padding:2px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">MIDI Export</button>
-        <button onclick="exportPlainChs()" style="font-size:0.65rem;padding:2px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">CHS Export</button>
+        <button id="btn-midi-export-plain" onclick="exportPlainMidi()" style="font-size:0.65rem;padding:2px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">MIDI Export All</button>
+        <button id="btn-chs-export-plain" onclick="exportPlainChs()" style="font-size:0.65rem;padding:2px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">CHS Export All</button>
       </div>
     </div>
 
@@ -705,8 +705,8 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
       <div id="memory-slots" style="display:grid;grid-template-columns:1fr 1fr;gap:3px;"></div>
       <div style="display:flex;gap:3px;justify-content:center;margin-top:4px;">
         <button id="btn-slot-save" onclick="saveToSelectedSlot()" style="font-size:0.6rem;padding:2px 10px;background:#2a6e2a;color:#fff;border:1px solid #4a4;border-radius:4px;cursor:pointer;font-weight:700;display:none;">Save</button>
-        <button onclick="exportPlainMidi()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">MIDI Export</button>
-        <button onclick="exportPlainChs()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">CHS Export</button>
+        <button id="btn-midi-export-mem" onclick="exportPlainMidi()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">MIDI Export All</button>
+        <button id="btn-chs-export-mem" onclick="exportPlainChs()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">CHS Export All</button>
       </div>
       <div style="font-size:0.5rem;color:var(--text-muted);text-align:center;margin-top:2px;">クリックで選択 → Save(c) で保存 / Esc で解除 / Shift+クリックで消去</div>
     </div>
@@ -3523,6 +3523,13 @@ function updateMemorySlotUI() {
   if (saveBtn) {
     saveBtn.style.display = PlainState.currentSlot !== null ? '' : 'none';
   }
+  // Export button labels: show what will be exported
+  const slotCount = PlainState.memory.filter(s => s !== null).length;
+  const sel = PlainState.currentSlot !== null && PlainState.memory[PlainState.currentSlot];
+  const midiLabel = sel ? 'MIDI: ' + sel.chordName : 'MIDI Export All' + (slotCount ? ' (' + slotCount + ')' : '');
+  const chsLabel = sel ? 'CHS: ' + sel.chordName : 'CHS Export All' + (slotCount ? ' (' + slotCount + ')' : '');
+  ['btn-midi-export-plain', 'btn-midi-export-mem'].forEach(function(id) { var b = document.getElementById(id); if (b) b.textContent = midiLabel; });
+  ['btn-chs-export-plain', 'btn-chs-export-mem'].forEach(function(id) { var b = document.getElementById(id); if (b) b.textContent = chsLabel; });
 }
 
 // SMF Type 0 MIDI export (selected slot → single, no selection → all)

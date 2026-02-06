@@ -3409,7 +3409,12 @@ function playMemorySlots() {
   // If already playing, stop
   if (_slotPlayTimer) { stopSlotPlayback(); return; }
   var slots = [];
-  PlainState.memory.forEach(function(s, i) { if (s) slots.push({ index: i, notes: s.midiNotes }); });
+  // Selected slot → play only that one, otherwise → play all
+  if (PlainState.currentSlot !== null && PlainState.memory[PlainState.currentSlot]) {
+    slots.push({ index: PlainState.currentSlot, notes: PlainState.memory[PlainState.currentSlot].midiNotes });
+  } else {
+    PlainState.memory.forEach(function(s, i) { if (s) slots.push({ index: i, notes: s.midiNotes }); });
+  }
   if (slots.length === 0) return;
   btn.textContent = 'Stop ■';
   btn.style.background = '#6e2a2a';
@@ -3574,6 +3579,11 @@ function updateMemorySlotUI() {
   const chsLabel = sel ? 'CHS: ' + sel.chordName : 'CHS Export All' + (slotCount ? ' (' + slotCount + ')' : '');
   ['btn-midi-export-plain', 'btn-midi-export-mem'].forEach(function(id) { var b = document.getElementById(id); if (b) b.textContent = midiLabel; });
   ['btn-chs-export-plain', 'btn-chs-export-mem'].forEach(function(id) { var b = document.getElementById(id); if (b) b.textContent = chsLabel; });
+  // Play button label (only update if not currently playing)
+  if (!_slotPlayTimer) {
+    var playBtn = document.getElementById('btn-play-slots');
+    if (playBtn) playBtn.textContent = sel ? 'Play: ' + sel.chordName : 'Play All ▶' + (slotCount ? ' (' + slotCount + ')' : '');
+  }
 }
 
 // SMF Type 0 MIDI export (selected slot → single, no selection → all)

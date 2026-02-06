@@ -703,8 +703,9 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
     <div style="margin-top:6px;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;">
       <div style="font-size:0.65rem;font-weight:700;color:var(--accent);text-align:center;margin-bottom:3px;">Memory Slots</div>
       <div id="memory-slots" style="display:grid;grid-template-columns:1fr 1fr;gap:3px;"></div>
-      <div style="display:flex;gap:3px;justify-content:center;margin-top:4px;">
+      <div style="display:flex;gap:3px;justify-content:center;margin-top:4px;flex-wrap:wrap;">
         <button id="btn-slot-save" onclick="saveToSelectedSlot()" style="font-size:0.6rem;padding:2px 10px;background:#2a6e2a;color:#fff;border:1px solid #4a4;border-radius:4px;cursor:pointer;font-weight:700;display:none;">Save</button>
+        <button id="btn-play-slots" onclick="playMemorySlots()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">Play ▶</button>
         <button id="btn-midi-export-mem" onclick="exportPlainMidi()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">MIDI Export All</button>
         <button id="btn-chs-export-mem" onclick="exportPlainChs()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">CHS Export All</button>
       </div>
@@ -3399,6 +3400,49 @@ function clearPlainNotes() {
 function playPlainNotes() {
   const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
   if (notes.length > 0) playMidiNotes(notes, 1.0);
+}
+
+// Play memory slots sequentially
+var _slotPlayTimer = null;
+function playMemorySlots() {
+  var btn = document.getElementById('btn-play-slots');
+  // If already playing, stop
+  if (_slotPlayTimer) { stopSlotPlayback(); return; }
+  var slots = [];
+  PlainState.memory.forEach(function(s, i) { if (s) slots.push({ index: i, notes: s.midiNotes }); });
+  if (slots.length === 0) return;
+  btn.textContent = 'Stop ■';
+  btn.style.background = '#6e2a2a';
+  btn.style.color = '#fff';
+  var pos = 0;
+  function playNext() {
+    if (pos >= slots.length) { stopSlotPlayback(); return; }
+    var slot = slots[pos];
+    // Highlight current slot
+    PlainState.currentSlot = slot.index;
+    updateMemorySlotUI();
+    // Play notes
+    slot.notes.forEach(function(m) { noteOn(m, undefined, true); });
+    // Schedule noteOff + next
+    _slotPlayTimer = setTimeout(function() {
+      slot.notes.forEach(function(m) { noteOff(m); });
+      pos++;
+      if (pos < slots.length) {
+        _slotPlayTimer = setTimeout(playNext, 150); // short gap between chords
+      } else {
+        stopSlotPlayback();
+      }
+    }, 1500); // 1.5 seconds per chord
+  }
+  playNext();
+}
+function stopSlotPlayback() {
+  if (_slotPlayTimer) { clearTimeout(_slotPlayTimer); _slotPlayTimer = null; }
+  noteOffAll();
+  var btn = document.getElementById('btn-play-slots');
+  if (btn) { btn.textContent = 'Play ▶'; btn.style.background = ''; btn.style.color = ''; }
+  PlainState.currentSlot = null;
+  updateMemorySlotUI();
 }
 
 function updatePlainDisplay() {

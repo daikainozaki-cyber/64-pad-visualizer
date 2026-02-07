@@ -1,8 +1,8 @@
 # 64 Pad Explorer - CLAUDE.md
 
-**最終更新**: 2026-02-06
+**最終更新**: 2026-02-07
 **担当人格**: 蔵人（実装）、継次（設計）、フロ男（テンション・ボイシング設計）
-**バージョン**: V1.7（2026-02-06）
+**バージョン**: V1.7（2026-02-06）+ Phase 4.97 ファイル分割（2026-02-07）
 
 ---
 
@@ -484,6 +484,14 @@ const PlainState = {
 - `onReady(fn)`: DOMContentLoaded発火済みの場合を考慮したユーティリティ（data.jsに配置）
 - audio.js/builder.jsの`DOMContentLoaded`を`onReady()`に置き換え
 - deploy.ymlに`--exclude='*.bak'`を追加
+
+### V1.7.1（2026-02-07 度数ラベルバグ修正）
+
+| 修正 | 内容 |
+|------|------|
+| **chordDegreeName絶対PC→インターバル変換バグ修正** | `chordDegreeName()`の第3引数`finalPCS`に絶対ピッチクラスSet（activePCS）を渡していたが、関数はインターバルSetを期待。キーC以外で度数ラベルが誤表示（例: キーGのF#m7(b5)でAが"m3"ではなく"#9"と表示）。`activeIvPCS`（インターバル変換済みSet）を計算して全4箇所（パッド・五線譜・ギターダイアグラム×2）で使用するよう修正 |
+
+**原因詳細**: `case 3: if (finalPCS && finalPCS.has(4)) return '#9'; return 'm3';` — F#m7(b5)のactivePCS={6,9,0,4}でE(b7)の絶対PC=4が`has(4)`にマッチし、interval 3(A=m3)を"#9"と誤判定。rootPC=0（キーC）のみ絶対PC=インターバルなので正しく動作していた。
 
 ### 次の実装目標
 

@@ -107,11 +107,16 @@ function computeRenderState() {
     }
   }
 
-  return { activePCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS };
+  // Interval-based PCS for chordDegreeName (expects intervals, not absolute pitch classes)
+  const activeIvPCS = (AppState.mode === 'chord' && activePCS.size > 0)
+    ? new Set([...activePCS].map(pc => ((pc - rootPC) % 12 + 12) % 12))
+    : null;
+
+  return { activePCS, activeIvPCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS };
 }
 
 function renderPads(svg, state) {
-  const { activePCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS } = state;
+  const { activePCS, activeIvPCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS } = state;
   // Build MIDI set for selected voicing box (for dimming non-selected pads)
   const selBox = VoicingState.selectedBoxIdx !== null ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx] : null;
   const selMidi = selBox ? new Set(selBox.midiNotes) : null;
@@ -202,7 +207,7 @@ function renderPads(svg, state) {
       if (showDegree) {
         let degName = AppState.mode === 'scale'
           ? SCALE_DEGREE_NAMES[interval]
-          : chordDegreeName(interval, qualityPCS, activePCS);
+          : chordDegreeName(interval, qualityPCS, activeIvPCS);
         if ((isTension || isAvoid) && AppState.mode === 'chord') {
           degName = '(' + degName + ')';
         }
@@ -398,7 +403,7 @@ function render() {
   } else {
     const boxMidi = (VoicingState.selectedBoxIdx !== null && VoicingState.lastBoxes[VoicingState.selectedBoxIdx])
       ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx].midiNotes : null;
-    renderStaff(AppState.mode, state.rootPC, state.activePCS, state.omittedPCS, state.qualityPCS, boxMidi, state.bassPC);
+    renderStaff(AppState.mode, state.rootPC, state.activePCS, state.omittedPCS, state.qualityPCS, boxMidi, state.bassPC, state.activeIvPCS);
   }
 
   // Instrument diagrams (guitar + piano)
@@ -414,7 +419,7 @@ function render() {
 // ========================================
 // STAFF NOTATION
 // ========================================
-function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMidiNotes, bassPC) {
+function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMidiNotes, bassPC, activeIvPCS) {
   const staffSvg = document.getElementById('staff-notation');
   let midiNotes;
   if (overrideMidiNotes && overrideMidiNotes.length > 0) {
@@ -548,7 +553,7 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
     let useFlats = defaultFlats;
     let degName = SCALE_DEGREE_NAMES[interval];
     if (mode === 'chord' && qualityPCS) {
-      degName = chordDegreeName(interval, qualityPCS, activePCS);
+      degName = chordDegreeName(interval, qualityPCS, activeIvPCS || null);
       if (degName.startsWith('b') || degName === 'm3') useFlats = true;
       else if (degName.startsWith('#') || degName.startsWith('△')) useFlats = false;
     }
@@ -679,6 +684,10 @@ function toggleGuitarLabelMode() {
 function renderGuitarDiagram(rootPC, pcsSet, bassPC) {
   const svg = document.getElementById('guitar-diagram');
   if (!pcsSet) pcsSet = new Set();
+  // Interval-based PCS for chordDegreeName
+  const ivPcsSet = pcsSet.size > 0
+    ? new Set([...pcsSet].map(pc => ((pc - rootPC) % 12 + 12) % 12))
+    : null;
 
   svg.innerHTML = '';
 
@@ -787,7 +796,7 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC) {
       // Label inside dot
       if (f > 0) {
         const iv = ((pc - rootPC) + 12) % 12;
-        const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, pcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
+        const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
         const lt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         lt.setAttribute('x', fx); lt.setAttribute('y', sy + (solo ? 4 : 3));
         lt.setAttribute('text-anchor', 'middle');
@@ -816,7 +825,7 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC) {
       // Label inside (respects guitar label mode)
       const pc = (strings[s] % 12 + f) % 12;
       const iv = ((pc - rootPC) + 12) % 12;
-      const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, pcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
+      const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
       const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       label.setAttribute('x', fx); label.setAttribute('y', sy + (solo ? 5 : 4));
       label.setAttribute('text-anchor', 'middle');

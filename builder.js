@@ -508,6 +508,7 @@ function buildChordDB() {
     { name: '7(#9,b13)', pcs: [0,4,7,10,3,8] },   // 7 sharp 9 flat 13
     { name: '7(b9,13)', pcs: [0,4,7,10,1,9] },    // 7 flat 9 natural 13
     { name: '7(#9,13)', pcs: [0,4,7,10,3,9] },    // 7 sharp 9 natural 13
+    { name: '7(#11,13)', pcs: [0,4,7,10,6,9] },        // R,3,5,b7,#11,13
     { name: '7(9,#11,13)', pcs: [0,4,7,10,2,6,9] },   // 13 sharp 11
     { name: '7(b9,#11,13)', pcs: [0,4,7,10,1,6,9] },  // 7 b9 #11 13
     // Compact combined tensions (no 5th)
@@ -519,6 +520,7 @@ function buildChordDB() {
     { name: '7(b9,13)', pcs: [0,4,10,1,9] },      // R,3,b7,b9,13 (no 5th)
     { name: '7(#9,b13)', pcs: [0,4,10,3,8] },     // R,3,b7,#9,b13 (no 5th)
     { name: '7(#9,13)', pcs: [0,4,10,3,9] },      // R,3,b7,#9,13 (no 5th)
+    { name: '7(#11,13)', pcs: [0,4,10,6,9] },    // R,3,b7,#11,13 (no 5th)
     // Compact tension voicings (no 5th) — 7th + tension
     { name: '7(13)', pcs: [0,4,10,9] },       // R,3,b7,13
     { name: 'm7(13)', pcs: [0,3,10,9] },      // R,m3,b7,13

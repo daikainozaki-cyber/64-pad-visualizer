@@ -36,21 +36,23 @@
 ### アーキテクチャ
 
 ```
-[五度圏アプリ（既存・別アプリ）]
-       │ URLパラメータ（?key=C&chord=Dm7,G7,CMaj7）
-       ▼
-[64パッドアプリ（本アプリ）]
-       │
-       ├── shared/           ← 五度圏アプリと共有するデータ層
-       │   ├── scales.json   ← 28+スケール（Pitch Class Set）
-       │   ├── chords.json   ← 31+コード + テンション拡張
-       │   ├── degrees.json  ← Degree定義
-       │   └── progressions.json ← コード進行プリセット
-       │
-       ├── fingerings.json   ← 指番号データ（本アプリ固有）
-       │
-       └── index.html        ← UI（Canvas/SVG + JS）
+64パッドアプリ/
+├── index.html      (366行)  HTML構造 + script tags
+├── style.css       (359行)  CSS全量
+├── data.js         (247行)  定数・スケール・コード・状態オブジェクト・onReady()
+├── audio.js        (307行)  オーディオエンジン・エフェクト・noteOn/Off
+├── theory.js       (687行)  ボイシング計算・コード理論・ダイアトニック
+├── render.js      (1136行)  描画(パッド・五線譜・楽器)・render()統合
+├── plain.js        (666行)  Plainモード・メモリースロット・MIDI/CHS書き出し
+├── builder.js      (885行)  モード管理・ビルダーUI・コード検出・Web MIDI
+├── main.js         (204行)  初期化・キーボードショートカット
+└── .github/workflows/
+    ├── deploy.yml            mainへのpush → 自動デプロイ
+    └── deploy-dev.yml        手動トリガー → dev環境デプロイ
 ```
+
+**読み込み順序**: data.js → audio.js → theory.js → render.js → plain.js → builder.js → main.js
+（body末尾の`<script src>`方式。DOMContentLoaded対策に`onReady()`ユーティリティをdata.jsに配置）
 
 **五度圏アプリとは別アプリ**（でかくなるため）。データ層は将来的に共有。
 
@@ -267,8 +269,9 @@ fingerings.json に追加
 | Phase 4.9 | **ボイシングポジション切替** | **完了** | バッジタップで代替配置を循環（calcAllVoicingPositions）、候補数表示(1/3等)、脈動インジケーター |
 | Phase 4.95 | **テンション理論フィルタ + ボイシングUI改善** | **完了** | 6カテゴリ(A〜F)のテンション非表示ルール、ボイシングボックス選択時改善 |
 | Phase 4.96 | **プレーン判定モード** | **完了** | Capture/Edit/Endワークフロー、13メモリースロット、MIDI/CHS書き出し、全モード共通スロット保存 |
+| Phase 4.97 | **ファイル分割** | **完了** | 単一HTML(4,846行/202KB)→9ファイル(HTML+CSS+JS×7)。`<script src>`方式、ビルドツール不要 |
 | Phase 5 | **指番号判定ロジック** | 未着手 | 4分割×最低音判定。うりなみさんと壁打ち |
-| Phase 6 | **モジュール化** | 未着手 | ロジックを共有モジュールとして切り出し。ファイル分割も可能（単一ファイル制約なし） |
+| Phase 6 | **モジュール化** | 未着手 | ロジックを共有モジュールとして切り出し。ファイル分割は4.97で完了済み |
 | Phase 7 | **五度圏アプリに手形表示を統合** | 未着手 | モジュールを五度圏アプリにインポート |
 | Phase 8 | 記事からのデータ抽出パイプライン | 未着手 | 指番号データの自動蓄積 |
 
@@ -459,16 +462,39 @@ const PlainState = {
 | **スロット再生** | Memory Slotsに`Play ▶`ボタン追加。全スロット順次再生（1.5秒/コード）+ 再生中スロットハイライト |
 | **選択/全体切替** | Play/Export共通: スロット選択中→その1つだけ、未選択→全スロット。ボタンラベルで明示 |
 
+### Phase 4.97 詳細（ファイル分割、2026-02-07実装）
+
+**目的**: 単一HTML(4,846行/202KB)を複数ファイルに分割。機能追加前にファイルサイズの限界を解消。
+
+| ファイル | 行数 | 内容 |
+|---------|------|------|
+| index.html | 366 | HTML構造 + `<script src>` tags |
+| style.css | 359 | CSS全量 |
+| data.js | 247 | 定数(SCALES, QUALITIES, TENSIONS)、GRID、状態オブジェクト(AppState/BuilderState/VoicingState/PlainState)、`onReady()` |
+| audio.js | 307 | AudioContext、エフェクトチェーン、AudioState、setEngine/setPreset、noteOn/Off |
+| theory.js | 687 | baseMidi、ボイシング計算(getShellIntervals/calcVoicingOffsets/calcAllVoicingPositions)、コード理論、ダイアトニック |
+| render.js | 1136 | computeRenderState、renderPads、renderVoicingBoxes、render()統合、五線譜、ギター、ピアノ、楽器入力 |
+| plain.js | 666 | transferToChordMode、togglePlainNote、plainCapture/End、initMemorySlots、exportPlainMidi/Chs |
+| builder.js | 885 | setMode、initKeyButtons、setBuilderStep、selectRoot/Quality/Tension、buildChordDB、detectChord、initWebMIDI |
+| main.js | 204 | 初期化シーケンス、keydownハンドラ、render()初回呼び出し |
+
+**技術的対応**:
+- `<script src>`方式（ビルドツール不要、ES modules不使用）
+- body末尾で読み込み（DOM構築後）
+- `onReady(fn)`: DOMContentLoaded発火済みの場合を考慮したユーティリティ（data.jsに配置）
+- audio.js/builder.jsの`DOMContentLoaded`を`onReady()`に置き換え
+- deploy.ymlに`--exclude='*.bak'`を追加
+
 ### 次の実装目標
 
 | 順番 | 機能 | 内容 | 方針 |
 |------|------|------|------|
-| 1 | **PWA化** | manifest.json + Service Worker。ホーム画面追加でフルスクリーン+オフライン対応 | Webユーザー向け。実装コスト小 |
-| 2 | **ピボットコード / スケール可能性表示** | コード選択時に「このコードが属しうる全キー + 度数 + 使えるスケール」を逆引き表示 | 3スケールシステム(Major/Harmonic Minor/Melodic Minor)×7度=21パターン |
-| 3 | **ファイル分割** | 単一HTMLから複数JSファイルへ分割 | `<script src>`方式（ビルドツール不要） |
-| 4 | **iOSネイティブアプリ** | Capacitor + CoreMIDIブリッジ。iPad+パッドのUSB-C接続でMIDI入力対応 | Apple Developer年99ドル。**買い切りアプリとして販売**（Web版は無償のまま）。USB-C接続で即音が出る体験が差別化。ファイル分割後に着手 |
-| 5 | **マスターリズム譜** | MIDIエクスポートにリズム情報（拍数・繰り返し）を付加。DAWでマスターリズム譜として機能する形式 | 現状「1小節=1コード均等割り」→ 拍数指定・リピート等に拡張 |
-| 6 | **デザイン** | UIの見た目・操作性の改善 | 実機能が揃ってからデザインを詰める |
+| ~~1~~ | ~~**ファイル分割**~~ | ~~単一HTMLから複数JSファイルへ分割~~ | **Phase 4.97で完了**（2026-02-07） |
+| 2 | **ピボットコード / スケール可能性表示** | コード選択時に「このコードが属しうる全キー + 度数 + 使えるスケール」を逆引き表示 | 3スケールシステム(Major/Harmonic Minor/Melodic Minor)×7度=21パターン。壁打ち必要。**ここまででコード・スケール編完成** |
+| 3 | **16パッド演奏モード + シーケンサー** | メモリースロットのコードを16パッドにアサインし、タップでリアルタイム演奏。叩いた順序・タイミングを記録→MIDI書き出し | ネイバーコード（C6+Ddim7等）の各転回形をパッドに並べ、メロディに合わせてハモる等のユースケース。学習→演奏の橋渡し。内部シーケンサー。マスターリズム譜と統合。HPSポータルシーケンサー・将来DAW開発の土台にもなる |
+| 4 | **モジュール化** | 音源エンジン・コード判定・シーケンサー等を再利用可能な単位に切り出し | シーケンサー完成後に境界が確定してから。五度圏アプリ統合・HPSポータル転用のため |
+| 5 | **PWA化** | manifest.json + Service Worker。ホーム画面追加でフルスクリーン+オフライン対応 | 携帯UIデザインが必要なため、機能が揃ってから着手 |
+| 6 | **iOSネイティブアプリ** | Capacitor + CoreMIDIブリッジ。iPad+パッドのUSB-C接続でMIDI入力対応 | Apple Developer年99ドル。**買い切りアプリとして販売**（Web版は無償のまま）。USB-C接続で即音が出る体験が差別化 |
 
 **実装済み（記録漏れ）**: シェル+テンション — シェルボイシング状態でテンションを選択すると、シェル音にテンション音が加わる。実際の演奏に近い操作感。
 

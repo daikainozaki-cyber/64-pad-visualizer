@@ -13,7 +13,7 @@ jobs:
       - name: Deploy via rsync
         uses: burnett01/rsync-deployments@6.0.0
         with:
-          switches: -avz --exclude='.git' --exclude='.github' --exclude='CLAUDE.md' --exclude='deploy.sh' --exclude='config.sh'
+          switches: -avz --exclude='.git' --exclude='.github' --exclude='CLAUDE.md' --exclude='deploy.sh' --exclude='config.sh' --exclude='*.bak'
           path: ./
           remote_path: ~/murinaikurashi.com/public_html/apps/64-pad-dev/
           remote_host: xs071284.xsrv.jp

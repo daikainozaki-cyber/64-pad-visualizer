@@ -78,14 +78,14 @@ phaserMix.connect(flangerMix);
 // --- Lo Cut (Highpass) & Hi Cut (Lowpass) filters ---
 const loCutFilter = audioCtx.createBiquadFilter();
 loCutFilter.type = 'highpass';
-loCutFilter.frequency.setValueAtTime(80, 0);
-loCutFilter.Q.setValueAtTime(0.707, 0);
+loCutFilter.frequency.value = 80;
+loCutFilter.Q.value = 0.707;
 let loCutEnabled = false;
 
 const hiCutFilter = audioCtx.createBiquadFilter();
 hiCutFilter.type = 'lowpass';
-hiCutFilter.frequency.setValueAtTime(10000, 0);
-hiCutFilter.Q.setValueAtTime(0.707, 0);
+hiCutFilter.frequency.value = 10000;
+hiCutFilter.Q.value = 0.707;
 let hiCutEnabled = false;
 
 // Chain: flangerMix → loCut → hiCut → masterComp / masterReverb

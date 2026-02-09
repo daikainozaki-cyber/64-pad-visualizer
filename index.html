@@ -88,7 +88,7 @@
     <ul>
       <li><strong>ORGAN</strong> — 4プリセット（Jazz, Perc, Full, Gospel）</li>
       <li><strong>E.PIANO</strong> — 7プリセット（Rhodes, FM等）</li>
-      <li><strong>エフェクト</strong> — Reverb, Phaser, Flanger, Tremolo, Speed, Volume</li>
+      <li><strong>エフェクト</strong> — Lo Cut, Hi Cut, Reverb, Phaser, Flanger, Tremolo, Speed, Volume</li>
       <li>パッドをクリック、またはボイシングボックスをクリックで発音</li>
     </ul>
 
@@ -335,6 +335,8 @@
       <label class="ep-knob"><span>REV</span><input type="range" id="snd-reverb" min="0" max="0.5" step="0.01" value="0.08"><span id="snd-rev-val" class="ep-val">0.08</span></label>
       <label class="ep-knob"><span>PHASE</span><input type="range" id="snd-phaser" min="0" max="1" step="0.01" value="0"><span id="snd-phs-val" class="ep-val">0.00</span></label>
       <label class="ep-knob"><span>FLANG</span><input type="range" id="snd-flanger" min="0" max="1" step="0.01" value="0"><span id="snd-flg-val" class="ep-val">0.00</span></label>
+      <label class="ep-knob"><span>LO CUT</span><span class="filter-toggle"><input type="checkbox" id="snd-locut-toggle"></span><input type="range" id="snd-locut" min="20" max="500" step="1" value="80"><span id="snd-locut-val" class="ep-val">80</span></label>
+      <label class="ep-knob"><span>HI CUT</span><span class="filter-toggle"><input type="checkbox" id="snd-hicut-toggle"></span><input type="range" id="snd-hicut" min="1000" max="20000" step="100" value="10000"><span id="snd-hicut-val" class="ep-val">10000</span></label>
       <label class="ep-knob"><span>TREM</span><input type="range" id="snd-tremolo" min="0" max="0.4" step="0.01" value="0"><span id="snd-trm-val" class="ep-val">0.00</span></label>
       <label class="ep-knob"><span>SPEED</span><input type="range" id="snd-tremolo-spd" min="1" max="12" step="0.1" value="4.5"><span id="snd-trm-spd-val" class="ep-val">4.5</span></label>
       <label class="ep-knob"><span>VOL</span><input type="range" id="snd-volume" min="0" max="1" step="0.01" value="0.6"><span id="snd-vol-val" class="ep-val">0.60</span></label>

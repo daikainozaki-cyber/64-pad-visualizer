@@ -75,6 +75,42 @@ flangerDelay.connect(flangerWet);
 flangerWet.connect(flangerMix);
 phaserMix.connect(flangerMix);
 
+// --- Lo Cut (Highpass) & Hi Cut (Lowpass) filters ---
+const loCutFilter = audioCtx.createBiquadFilter();
+loCutFilter.type = 'highpass';
+loCutFilter.frequency.setValueAtTime(80, 0);
+loCutFilter.Q.setValueAtTime(0.707, 0);
+let loCutEnabled = false;
+
+const hiCutFilter = audioCtx.createBiquadFilter();
+hiCutFilter.type = 'lowpass';
+hiCutFilter.frequency.setValueAtTime(10000, 0);
+hiCutFilter.Q.setValueAtTime(0.707, 0);
+let hiCutEnabled = false;
+
+// Chain: flangerMix → loCut → hiCut → masterComp / masterReverb
+// When filters are disabled, bypass by connecting directly
+function rebuildFilterChain() {
+  flangerMix.disconnect();
+  loCutFilter.disconnect();
+  hiCutFilter.disconnect();
+
+  let chain = flangerMix;
+
+  if (loCutEnabled) {
+    chain.connect(loCutFilter);
+    chain = loCutFilter;
+  }
+
+  if (hiCutEnabled) {
+    chain.connect(hiCutFilter);
+    chain = hiCutFilter;
+  }
+
+  chain.connect(masterComp);
+  chain.connect(masterReverb);
+}
+
 flangerMix.connect(masterComp);
 flangerMix.connect(masterReverb);
 
@@ -297,6 +333,38 @@ onReady(() => {
     flangerLFODepth.gain.setValueAtTime(v * 0.002, audioCtx.currentTime);
     flangerWet.gain.setValueAtTime(v, audioCtx.currentTime);
   });
+
+  // Lo Cut (Highpass) toggle + frequency
+  const loCutToggle = document.getElementById('snd-locut-toggle');
+  const loCutSlider = document.getElementById('snd-locut');
+  const loCutVal = document.getElementById('snd-locut-val');
+  if (loCutToggle) loCutToggle.addEventListener('change', () => {
+    loCutEnabled = loCutToggle.checked;
+    loCutToggle.closest('.ep-knob').classList.toggle('filter-active', loCutEnabled);
+    rebuildFilterChain();
+  });
+  if (loCutSlider && loCutVal) {
+    loCutSlider.addEventListener('input', () => {
+      loCutVal.textContent = parseInt(loCutSlider.value);
+      loCutFilter.frequency.setValueAtTime(parseFloat(loCutSlider.value), audioCtx.currentTime);
+    });
+  }
+
+  // Hi Cut (Lowpass) toggle + frequency
+  const hiCutToggle = document.getElementById('snd-hicut-toggle');
+  const hiCutSlider = document.getElementById('snd-hicut');
+  const hiCutVal = document.getElementById('snd-hicut-val');
+  if (hiCutToggle) hiCutToggle.addEventListener('change', () => {
+    hiCutEnabled = hiCutToggle.checked;
+    hiCutToggle.closest('.ep-knob').classList.toggle('filter-active', hiCutEnabled);
+    rebuildFilterChain();
+  });
+  if (hiCutSlider && hiCutVal) {
+    hiCutSlider.addEventListener('input', () => {
+      hiCutVal.textContent = parseInt(hiCutSlider.value);
+      hiCutFilter.frequency.setValueAtTime(parseFloat(hiCutSlider.value), audioCtx.currentTime);
+    });
+  }
 
   // Preset selector (populated by renderSoundControls)
   const presetSel = document.getElementById('organ-preset');

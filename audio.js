@@ -223,7 +223,7 @@ function renderSoundControls() {
 // --- Voice management ---
 const activeVoices = new Map(); // midi → { envelope }
 
-function noteOn(midi, velocity, poly) {
+function noteOn(midi, velocity, poly, _retries) {
   ensureAudioResumed();
   // Kill same note if re-triggered
   const existing = activeVoices.get(midi);
@@ -238,7 +238,14 @@ function noteOn(midi, velocity, poly) {
     audioCtx, masterGain, AudioState.instrument.data,
     0, midi, 99999, velocity
   );
-  if (!envelope) return; // Sample not yet decoded
+  if (!envelope) {
+    // Sample not yet decoded — retry after short delay (up to 3 times)
+    _retries = _retries || 0;
+    if (_retries < 3) {
+      setTimeout(() => noteOn(midi, velocity, poly, _retries + 1), 100);
+    }
+    return;
+  }
   activeVoices.set(midi, { envelope });
 }
 

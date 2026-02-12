@@ -406,14 +406,29 @@ function render() {
     renderStaff(AppState.mode, state.rootPC, state.activePCS, state.omittedPCS, state.qualityPCS, boxMidi, state.bassPC, state.activeIvPCS);
   }
 
-  // Instrument diagrams (guitar + piano)
+  // Instrument diagrams (guitar + bass + piano)
   lastRenderRootPC = state.rootPC;
   lastRenderActivePCS = new Set(state.activePCS);
   renderGuitarDiagram(state.rootPC, state.activePCS, state.bassPC);
+  renderBassDiagram(state.rootPC, state.activePCS, state.bassPC);
   renderPianoDisplay(state.rootPC, state.activePCS, state.bassPC);
 
   // Diatonic chord bar
   renderDiatonicBar();
+
+  // Auto-save to selected slot (Chord/Scale mode)
+  if (PlainState.currentSlot !== null && (AppState.mode === 'chord' || AppState.mode === 'scale')) {
+    const midiNotes = getCurrentChordMidiNotes();
+    if (midiNotes && midiNotes.length > 0) {
+      const key = midiNotes.join(',');
+      const slot = PlainState.memory[PlainState.currentSlot];
+      if (!slot || slot.midiNotes.join(',') !== key) {
+        const chordName = getCurrentChordName();
+        PlainState.memory[PlainState.currentSlot] = { midiNotes: [...midiNotes], chordName };
+        updateMemorySlotUI();
+      }
+    }
+  }
 }
 
 // ========================================
@@ -652,26 +667,49 @@ const INST_ACTIVE_TEXT = '#fff';
 const INST_BASS_COLOR = '#ff9800';     // orange (matches pad bass color)
 const INST_BASS_TEXT = '#000';
 const DIAGRAM_WIDTH = 564;              // shared width for pad, guitar & piano (matches pad grid)
-let showGuitar = true;
-let showPiano = true;
+let showGuitar = false;
+let showPiano = false;
 let showStaff = true;
 let showSound = true;
+let showBass = false;
 let guitarLabelMode = 'name'; // 'name' or 'degree'
+let soundExpanded = false;
+let memoryViewMode = 'memory'; // 'memory' or 'perform'
+
+function toggleMemoryView(mode) {
+  memoryViewMode = mode;
+  document.getElementById('mem-view-memory').classList.toggle('active', mode === 'memory');
+  document.getElementById('mem-view-perform').classList.toggle('active', mode === 'perform');
+  // Clear perform active pad when switching away
+  if (mode === 'memory') {
+    PerformState.activePad = null;
+  }
+  updateMemorySlotUI();
+}
+
+function toggleSoundExpand() {
+  soundExpanded = !soundExpanded;
+  document.getElementById('sound-details').style.display = soundExpanded ? '' : 'none';
+  document.getElementById('sound-expand-btn').innerHTML = soundExpanded ? '&#x25B2;' : '&#x25BC;';
+}
 
 function toggleInstrument(which) {
   if (which === 'guitar') showGuitar = !showGuitar;
+  if (which === 'bass') showBass = !showBass;
   if (which === 'piano') showPiano = !showPiano;
   if (which === 'staff') showStaff = !showStaff;
   if (which === 'sound') showSound = !showSound;
   document.getElementById('inst-toggle-guitar').classList.toggle('active', showGuitar);
+  document.getElementById('inst-toggle-bass').classList.toggle('active', showBass);
   document.getElementById('inst-toggle-piano').classList.toggle('active', showPiano);
   document.getElementById('inst-toggle-staff').classList.toggle('active', showStaff);
   document.getElementById('inst-toggle-sound').classList.toggle('active', showSound);
   document.getElementById('guitar-wrap').style.display = showGuitar ? '' : 'none';
+  document.getElementById('bass-wrap').style.display = showBass ? '' : 'none';
   document.getElementById('piano-wrap-display').style.display = showPiano ? '' : 'none';
   document.getElementById('staff-area').style.display = showStaff ? '' : 'none';
   document.getElementById('sound-controls').style.display = showSound ? '' : 'none';
-  document.getElementById('guitar-label-btn').style.display = showGuitar ? '' : 'none';
+  document.getElementById('guitar-label-btn').style.display = (showGuitar || showBass) ? '' : 'none';
   render();
 }
 
@@ -859,6 +897,193 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC) {
 }
 
 // ========================================
+// BASS DIAGRAM
+// ========================================
+const BASS_OPEN_MIDI = [43, 38, 33, 28]; // G2, D2, A1, E1
+let bassSelectedFrets = [null, null, null, null];
+
+function renderBassDiagram(rootPC, pcsSet, bassPC) {
+  const svg = document.getElementById('bass-diagram');
+  if (!svg) return;
+  if (!pcsSet) pcsSet = new Set();
+  const ivPcsSet = pcsSet.size > 0
+    ? new Set([...pcsSet].map(pc => ((pc - rootPC) % 12 + 12) % 12))
+    : null;
+  svg.innerHTML = '';
+  const solo = showBass && !showGuitar && !showPiano;
+  const numFrets = 21;
+  const leftM = 16;
+  const topM = solo ? 10 : 6;
+  const fretW = Math.floor((DIAGRAM_WIDTH - leftM - 12) / numFrets);
+  const strH = solo ? 28 : 14;
+  const nutX = leftM;
+  const W = DIAGRAM_WIDTH;
+  const H = topM + 3 * strH + (solo ? 30 : 22);
+  svg.setAttribute('width', W); svg.setAttribute('height', H);
+  const strings = BASS_OPEN_MIDI;
+  const strNames = ['G', 'D', 'A', 'E'];
+
+  // Nut
+  const nutLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  nutLine.setAttribute('x1', nutX); nutLine.setAttribute('y1', topM);
+  nutLine.setAttribute('x2', nutX); nutLine.setAttribute('y2', topM + 3 * strH);
+  nutLine.setAttribute('stroke', '#ccc'); nutLine.setAttribute('stroke-width', 4);
+  svg.appendChild(nutLine);
+
+  // Fret lines
+  for (let f = 1; f <= numFrets; f++) {
+    const fx = nutX + f * fretW;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', fx); line.setAttribute('y1', topM);
+    line.setAttribute('x2', fx); line.setAttribute('y2', topM + 3 * strH);
+    line.setAttribute('stroke', '#555'); line.setAttribute('stroke-width', 1);
+    svg.appendChild(line);
+  }
+
+  // String lines
+  for (let s = 0; s < 4; s++) {
+    const sy = topM + s * strH;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', nutX); line.setAttribute('y1', sy);
+    line.setAttribute('x2', nutX + numFrets * fretW); line.setAttribute('y2', sy);
+    line.setAttribute('stroke', '#888'); line.setAttribute('stroke-width', s >= 2 ? 2 : 1.5);
+    svg.appendChild(line);
+  }
+
+  // Fret markers
+  const markerFrets = [3, 5, 7, 9, 15, 17, 19, 21];
+  const doubleMarker = [12];
+  const markerY = topM + 1.5 * strH;
+  markerFrets.forEach(f => {
+    const mx = nutX + (f - 0.5) * fretW;
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('cx', mx); dot.setAttribute('cy', markerY);
+    dot.setAttribute('r', 2.5); dot.setAttribute('fill', '#444');
+    svg.appendChild(dot);
+  });
+  doubleMarker.forEach(f => {
+    const mx = nutX + (f - 0.5) * fretW;
+    [topM + 0.5 * strH, topM + 2.5 * strH].forEach(dy => {
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('cx', mx); dot.setAttribute('cy', dy);
+      dot.setAttribute('r', 2.5); dot.setAttribute('fill', '#444');
+      svg.appendChild(dot);
+    });
+  });
+
+  // String names
+  for (let s = 0; s < 4; s++) {
+    const sy = topM + s * strH;
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('x', nutX - 9); t.setAttribute('y', sy + 4);
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('font-size', '10px'); t.setAttribute('fill', '#aaa');
+    t.setAttribute('font-weight', '700');
+    t.textContent = strNames[s];
+    svg.appendChild(t);
+  }
+
+  // Fret numbers
+  for (let f = 1; f <= numFrets; f++) {
+    const fx = nutX + (f - 0.5) * fretW;
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('x', fx); t.setAttribute('y', topM + 3 * strH + 14);
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('font-size', '8px'); t.setAttribute('fill', '#888');
+    t.textContent = f;
+    svg.appendChild(t);
+  }
+
+  // Note dots
+  for (let s = 0; s < 4; s++) {
+    const openPC = strings[s] % 12;
+    const sy = topM + s * strH;
+    for (let f = 0; f <= numFrets; f++) {
+      const pc = (openPC + f) % 12;
+      const isBassNote = bassPC !== undefined && bassPC !== null && pc === bassPC;
+      if (!pcsSet.has(pc) && !isBassNote) continue;
+      const isRoot = pc === rootPC;
+      const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
+      const r = f === 0 ? (solo ? 7 : 5) : (solo ? 10 : 7);
+      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      dot.setAttribute('cx', fx); dot.setAttribute('cy', sy);
+      dot.setAttribute('r', r);
+      dot.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBassNote ? INST_BASS_COLOR : INST_ACTIVE_COLOR));
+      dot.setAttribute('opacity', '0.9');
+      svg.appendChild(dot);
+      if (f > 0) {
+        const iv = ((pc - rootPC) + 12) % 12;
+        const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
+        const lt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        lt.setAttribute('x', fx); lt.setAttribute('y', sy + (solo ? 4 : 3));
+        lt.setAttribute('text-anchor', 'middle');
+        const fs = solo ? (labelText.length > 2 ? '7px' : '9px') : (labelText.length > 2 ? '5px' : '6px');
+        lt.setAttribute('font-size', fs);
+        lt.setAttribute('fill', isRoot ? INST_ROOT_TEXT : (isBassNote ? INST_BASS_TEXT : INST_ACTIVE_TEXT));
+        lt.setAttribute('font-weight', '700');
+        lt.textContent = labelText;
+        svg.appendChild(lt);
+      }
+    }
+  }
+
+  // Selected fret markers
+  for (let s = 0; s < 4; s++) {
+    if (bassSelectedFrets[s] !== null) {
+      const f = bassSelectedFrets[s];
+      const sy = topM + s * strH;
+      const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
+      const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      ring.setAttribute('cx', fx); ring.setAttribute('cy', sy);
+      ring.setAttribute('r', solo ? 12 : 9);
+      ring.setAttribute('fill', '#fff'); ring.setAttribute('opacity', '0.95');
+      ring.setAttribute('stroke', '#333'); ring.setAttribute('stroke-width', 2);
+      svg.appendChild(ring);
+      const pc = (strings[s] % 12 + f) % 12;
+      const iv = ((pc - rootPC) + 12) % 12;
+      const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', fx); label.setAttribute('y', sy + (solo ? 5 : 4));
+      label.setAttribute('text-anchor', 'middle');
+      const selFs = solo ? (labelText.length > 2 ? '8px' : '10px') : (labelText.length > 2 ? '6px' : '8px');
+      label.setAttribute('font-size', selFs); label.setAttribute('fill', '#333');
+      label.setAttribute('font-weight', '700');
+      label.textContent = labelText;
+      svg.appendChild(label);
+    }
+  }
+
+  // Clickable hit areas
+  for (let s = 0; s < 4; s++) {
+    const sy = topM + s * strH - strH / 2;
+    for (let f = 0; f <= numFrets; f++) {
+      const fx = f === 0 ? 0 : nutX + (f - 1) * fretW;
+      const fw = f === 0 ? nutX : fretW;
+      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      hit.setAttribute('x', fx); hit.setAttribute('y', sy);
+      hit.setAttribute('width', fw); hit.setAttribute('height', strH);
+      hit.setAttribute('fill', 'transparent');
+      hit.setAttribute('cursor', 'pointer');
+      hit.dataset.string = s;
+      hit.dataset.fret = f;
+      hit.addEventListener('click', function() {
+        toggleBassFret(parseInt(this.dataset.string), parseInt(this.dataset.fret));
+      });
+      svg.appendChild(hit);
+    }
+  }
+}
+
+function toggleBassFret(stringIdx, fret) {
+  if (bassSelectedFrets[stringIdx] === fret) {
+    bassSelectedFrets[stringIdx] = null;
+  } else {
+    bassSelectedFrets[stringIdx] = fret;
+  }
+  updateInstrumentInput();
+}
+
+// ========================================
 // PIANO DISPLAY
 // ========================================
 function renderPianoDisplay(rootPC, pcsSet, bassPC) {
@@ -1032,6 +1257,12 @@ function getAllInputMidiNotes() {
       notes.push(GUITAR_OPEN_MIDI[s] + guitarSelectedFrets[s]);
     }
   }
+  for (let s = 0; s < 4; s++) {
+    if (bassSelectedFrets[s] !== null) {
+      const m = BASS_OPEN_MIDI[s] + bassSelectedFrets[s];
+      if (!notes.includes(m)) notes.push(m);
+    }
+  }
   pianoSelectedNotes.forEach(n => {
     if (!notes.includes(n)) notes.push(n);
   });
@@ -1065,6 +1296,7 @@ function updateInstrumentInput() {
     detectEl.innerHTML = '';
     // detectEl always visible (no layout shift)
     renderGuitarDiagram(lastRenderRootPC, lastRenderActivePCS);
+    renderBassDiagram(lastRenderRootPC, lastRenderActivePCS);
     renderPianoDisplay(lastRenderRootPC, lastRenderActivePCS);
     return;
   }
@@ -1086,10 +1318,12 @@ function updateInstrumentInput() {
     html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">Notes: ' + noteNames.join(' ') + '</div>';
     detectEl.innerHTML = html;
     renderGuitarDiagram(best.rootPC, inputPCS);
+    renderBassDiagram(best.rootPC, inputPCS);
     renderPianoDisplay(best.rootPC, inputPCS);
   } else {
     detectEl.textContent = noteNames.join(' ');
     renderGuitarDiagram(null, inputPCS);
+    renderBassDiagram(null, inputPCS);
     renderPianoDisplay(null, inputPCS);
   }
   highlightInstrumentPads(notes);
@@ -1122,6 +1356,7 @@ function highlightInstrumentPads(midiNotes) {
 
 function clearInstrumentInput() {
   guitarSelectedFrets = [null, null, null, null, null, null];
+  bassSelectedFrets = [null, null, null, null];
   pianoSelectedNotes.clear();
   instrumentInputActive = false;
   document.querySelectorAll('.instrument-highlight').forEach(el => el.remove());
@@ -1129,6 +1364,7 @@ function clearInstrumentInput() {
   detectEl.innerHTML = '';
   // detectEl always visible (no layout shift)
   renderGuitarDiagram(lastRenderRootPC, lastRenderActivePCS);
+  renderBassDiagram(lastRenderRootPC, lastRenderActivePCS);
   renderPianoDisplay(lastRenderRootPC, lastRenderActivePCS);
 }
 

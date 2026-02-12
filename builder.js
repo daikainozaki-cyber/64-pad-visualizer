@@ -710,6 +710,11 @@ function remapMidiNote(note) {
 
 function onMidiNoteOn(note, velocity) {
   const mapped = remapMidiNote(note);
+  // Perform mode: intercept MIDI for pad triggering
+  if (handlePerformMidi(mapped)) {
+    ensureAudioResumed();
+    return;
+  }
   midiActiveNotes.add(mapped);
   ensureAudioResumed();
   noteOn(mapped, (velocity || 100) / 127, true);
@@ -759,6 +764,7 @@ function updateMidiDisplay() {
     document.querySelectorAll('.midi-highlight').forEach(el => el.remove());
     // Restore instrument diagrams from builder state
     renderGuitarDiagram(lastRenderRootPC, lastRenderActivePCS);
+    renderBassDiagram(lastRenderRootPC, lastRenderActivePCS);
     renderPianoDisplay(lastRenderRootPC, lastRenderActivePCS);
     return;
   }
@@ -784,6 +790,7 @@ function updateMidiDisplay() {
   if (candidates.length > 0) {
     const midiPCS = new Set(notes.map(n => n % 12));
     renderGuitarDiagram(candidates[0].rootPC, midiPCS);
+    renderBassDiagram(candidates[0].rootPC, midiPCS);
     renderPianoDisplay(candidates[0].rootPC, midiPCS);
   }
   highlightMidiPads(notes);

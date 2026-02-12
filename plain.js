@@ -2,6 +2,29 @@
 // PLAIN MODE FUNCTIONS
 // ========================================
 
+// --- Undo stack for memory slots ---
+const undoStack = [];
+const MAX_UNDO = 30;
+
+function pushUndoState() {
+  undoStack.push(PlainState.memory.map(s => s ? { midiNotes: [...s.midiNotes], chordName: s.chordName } : null));
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+}
+
+function undoMemory() {
+  if (undoStack.length === 0) return;
+  PlainState.memory = undoStack.pop();
+  PlainState.currentSlot = null;
+  updateMemorySlotUI();
+  const toast = document.getElementById('slot-save-toast');
+  if (toast) {
+    toast.textContent = 'Undo';
+    toast.style.opacity = '1';
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
+  }
+}
+
 // Get current chord MIDI notes from any mode (for cross-mode slot save)
 function getCurrentChordMidiNotes() {
   if (AppState.mode === 'plain') {
@@ -152,10 +175,11 @@ function saveToSelectedSlot() {
 }
 
 function saveToPlainSlot(idx) {
-  if (idx < 0 || idx >= 13) return false;
+  if (idx < 0 || idx >= 16) return false;
   const midiNotes = getCurrentChordMidiNotes();
   if (!midiNotes || midiNotes.length === 0) return false;
   const chordName = getCurrentChordName();
+  pushUndoState();
   PlainState.memory[idx] = { midiNotes: [...midiNotes], chordName };
   updateMemorySlotUI();
   // Visual feedback: flash slot button (if visible)
@@ -216,7 +240,7 @@ function plainCapture() {
     PlainState.activeNotes.clear();
     PlainState.currentSlot = null;
     // 全スロット埋まったら自動でidle
-    if (PlainState.captureIndex >= 13) {
+    if (PlainState.captureIndex >= 16) {
       PlainState.subMode = 'idle';
     }
   } else if (PlainState.subMode === 'edit') {
@@ -226,7 +250,7 @@ function plainCapture() {
     PlainState.activeNotes.forEach(m => noteOff(m));
     PlainState.activeNotes.clear();
     PlainState.currentSlot = null;
-    if (PlainState.captureIndex >= 13) {
+    if (PlainState.captureIndex >= 16) {
       PlainState.subMode = 'idle';
     }
   }
@@ -266,10 +290,10 @@ function plainEditSlot(idx) {
 }
 
 function findNextEmptySlot(from) {
-  for (let i = from; i < 13; i++) {
+  for (let i = from; i < 16; i++) {
     if (!PlainState.memory[i]) return i;
   }
-  return 13; // 全部埋まっている
+  return 16; // 全部埋まっている
 }
 
 function updatePlainUI() {
@@ -284,8 +308,8 @@ function updatePlainUI() {
     captureBtn.style.background = '#2a6e2a';
     endBtn.style.display = 'none';
   } else if (PlainState.subMode === 'capture') {
-    const slotNum = Math.min(PlainState.captureIndex + 1, 13);
-    statusEl.textContent = 'Capturing: Slot ' + slotNum + '/13 — Click pads, then Capture to save';
+    const slotNum = Math.min(PlainState.captureIndex + 1, 16);
+    statusEl.textContent = 'Capturing: Slot ' + slotNum + '/16 — Click pads, then Capture to save';
     statusEl.style.color = '#4a4';
     captureBtn.textContent = 'Capture (' + slotNum + ')';
     captureBtn.style.background = '#2a6e2a';
@@ -306,6 +330,7 @@ function clearPlainNotes() {
   PlainState.activeNotes.clear();
   if (PlainState.subMode === 'edit' && PlainState.currentSlot !== null) {
     // editモードでクリア → スロットも空に
+    pushUndoState();
     PlainState.memory[PlainState.currentSlot] = null;
     PlainState.subMode = 'idle';
     PlainState.currentSlot = null;
@@ -400,11 +425,12 @@ function updatePlainDisplay() {
 }
 
 function savePlainSlot(idx) {
-  if (idx >= 13) return;
+  if (idx >= 16) return;
   if (PlainState.activeNotes.size === 0) return;
   const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
   const candidates = detectChord(notes);
   const chordName = candidates.length > 0 ? candidates[0].name : notes.map(n => NOTE_NAMES_SHARP[n % 12]).join(' ');
+  pushUndoState();
   PlainState.memory[idx] = { midiNotes: notes, chordName };
   PlainState.currentSlot = idx;
   updateMemorySlotUI();
@@ -412,8 +438,15 @@ function savePlainSlot(idx) {
 
 function recallPlainSlot(idx) {
   const slot = PlainState.memory[idx];
-  if (!slot) {
-    // Empty slot: select as target (don't save yet, wait for Capture)
+  // Perform view: clicking a filled slot triggers playback
+  if (memoryViewMode === 'perform') {
+    if (slot) {
+      performPadTap(idx);
+    }
+    return;
+  }
+  // Chord/Scale mode: just select slot as target (auto-save on next chord change)
+  if (AppState.mode === 'chord' || AppState.mode === 'scale') {
     PlainState.currentSlot = idx;
     updateMemorySlotUI();
     const toast = document.getElementById('slot-save-toast');
@@ -425,7 +458,20 @@ function recallPlainSlot(idx) {
     }
     return;
   }
-  // Filled slot: switch to Plain and edit
+  if (!slot) {
+    // Empty slot in Plain: select as target
+    PlainState.currentSlot = idx;
+    updateMemorySlotUI();
+    const toast = document.getElementById('slot-save-toast');
+    if (toast) {
+      toast.textContent = `Slot ${idx + 1} selected`;
+      toast.style.opacity = '1';
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
+    }
+    return;
+  }
+  // Filled slot in Plain: edit
   if (AppState.mode !== 'plain') {
     setMode('plain');
   }
@@ -436,15 +482,42 @@ function initMemorySlots() {
   const container = document.getElementById('memory-slots');
   if (!container) return;
   container.innerHTML = '';
-  for (let i = 0; i < 13; i++) {
+  for (let i = 0; i < 16; i++) {
     const btn = document.createElement('button');
     btn.className = 'slot-btn';
     btn.dataset.slot = i;
-    btn.style.cssText = 'font-size:0.7rem;padding:4px 6px;background:var(--surface);color:var(--text-muted);border:1px solid var(--border);border-radius:4px;cursor:pointer;transition:all 0.15s;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
-    btn.textContent = (i + 1) + ': Empty';
+    btn.textContent = String(i + 1);
+    btn.draggable = true;
+    btn.addEventListener('dragstart', (ev) => {
+      if (!PlainState.memory[i]) { ev.preventDefault(); return; }
+      ev.dataTransfer.setData('text/plain', String(i));
+      ev.dataTransfer.effectAllowed = 'copyMove';
+    });
+    // D&D: accept drops from other slots (swap/move)
+    btn.addEventListener('dragover', (ev) => {
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = 'move';
+      btn.classList.add('drag-over');
+    });
+    btn.addEventListener('dragleave', () => {
+      btn.classList.remove('drag-over');
+    });
+    btn.addEventListener('drop', (ev) => {
+      ev.preventDefault();
+      btn.classList.remove('drag-over');
+      const srcIdx = parseInt(ev.dataTransfer.getData('text/plain'));
+      if (isNaN(srcIdx) || srcIdx === i) return;
+      // Swap or move
+      pushUndoState();
+      const temp = PlainState.memory[i];
+      PlainState.memory[i] = PlainState.memory[srcIdx];
+      PlainState.memory[srcIdx] = temp;
+      updateMemorySlotUI();
+    });
     btn.onclick = (ev) => {
       if (ev.shiftKey && PlainState.memory[i]) {
         // Shift+click: delete slot
+        pushUndoState();
         PlainState.memory[i] = null;
         if (PlainState.currentSlot === i) PlainState.currentSlot = null;
         updateMemorySlotUI();
@@ -467,22 +540,25 @@ function updateMemorySlotUI() {
   const container = document.getElementById('memory-slots');
   if (!container) return;
   const btns = container.querySelectorAll('.slot-btn');
+  const isPerformView = memoryViewMode === 'perform';
   btns.forEach((btn, i) => {
     const slot = PlainState.memory[i];
     const label = String(i + 1);
     const isCaptureTarget = PlainState.subMode === 'capture' && i === PlainState.captureIndex;
     const isCurrent = PlainState.currentSlot === i;
+    const isPlaying = isPerformView && PerformState.activePad === i;
+    // Reset classes
+    btn.classList.remove('filled', 'selected', 'capture-target', 'playing');
     if (slot) {
-      btn.textContent = label + ': ' + slot.chordName;
-      btn.style.color = 'var(--text)';
-      btn.style.borderColor = isCurrent ? 'var(--accent)' : 'var(--border)';
-      btn.style.background = isCurrent ? 'rgba(74,158,255,0.15)' : 'var(--surface)';
+      btn.textContent = slot.chordName;
+      btn.title = label + ': ' + slot.chordName;
+      btn.classList.add('filled');
+      if (isPlaying) btn.classList.add('playing');
+      else if (isCurrent && !isPerformView) btn.classList.add('selected');
     } else {
-      btn.textContent = label + ': Empty';
-      const isSelected = isCurrent || isCaptureTarget;
-      btn.style.color = isSelected ? '#4a4' : 'var(--text-muted)';
-      btn.style.borderColor = isSelected ? '#4a4' : 'var(--border)';
-      btn.style.background = isSelected ? 'rgba(74,170,74,0.1)' : 'var(--surface)';
+      btn.textContent = label;
+      btn.title = 'Slot ' + label + ': Empty';
+      if (!isPerformView && (isCurrent || isCaptureTarget)) btn.classList.add('capture-target');
     }
   });
   // Save button visibility

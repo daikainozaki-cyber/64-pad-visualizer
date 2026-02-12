@@ -106,7 +106,7 @@ const TENSION_ROWS = [
     {label:'6', mods:{add:[9]}},
     {label:'9', mods:{add:[2]}},
     {label:'11', mods:{add:[2,5]}},
-    {label:'13', mods:{add:[2,9]}},
+    {label:'(9,13)', mods:{add:[2,9]}},
   ],
   // Row 1
   [
@@ -234,10 +234,14 @@ const VoicingState = {
 
 const PlainState = {
   activeNotes: new Set(),        // MIDIノート（クリックでon/off）
-  memory: Array(13).fill(null),  // [{midiNotes: number[], chordName: string}] × 13
-  currentSlot: null,             // 現在選択中スロット (0-12)
+  memory: Array(16).fill(null),  // [{midiNotes: number[], chordName: string}] × 16
+  currentSlot: null,             // 現在選択中スロット (0-15)
   subMode: 'idle',               // 'idle' | 'capture' | 'edit'
   captureIndex: 0,               // 次にキャプチャするスロット番号
+};
+
+const PerformState = {
+  activePad: null,              // 現在再生中のパッドインデックス
 };
 
 function resetVoicingSelection() {

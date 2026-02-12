@@ -24,12 +24,21 @@ document.addEventListener('keydown', (e) => {
   if (e.shiftKey && e.code && e.code.startsWith('Digit')) {
     const num = parseInt(e.code.charAt(5)); // Digit0→0, Digit1→1, ...
     const idx = num === 0 ? 9 : num - 1;    // 1→slot0, ..., 9→slot8, 0→slot9
-    if (idx < 13) {
+    if (idx < 16) {
       if (saveToPlainSlot(idx)) {
         e.preventDefault();
       }
     }
     return;
+  }
+
+  // Perform view: keyboard pad triggering (highest priority for letter/number keys)
+  if (memoryViewMode === 'perform') {
+    if (handlePerformKey(lk)) {
+      e.preventDefault();
+      ensureAudioResumed();
+      return;
+    }
   }
 
   // c: Save to selected slot (全モード共通) or Plain capture
@@ -63,10 +72,23 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
+  // Cmd+Z / Ctrl+Z: Undo memory slots
+  if (lk === 'z' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    undoMemory();
+    return;
+  }
+
   // ?: Toggle help modal
   if (key === '?') {
     const helpOverlay = document.getElementById('help-overlay');
     helpOverlay.classList.toggle('active');
+    return;
+  }
+
+  // p: Toggle Perform view
+  if (lk === 'p') {
+    toggleMemoryView(memoryViewMode === 'perform' ? 'memory' : 'perform');
     return;
   }
 
@@ -123,7 +145,7 @@ document.addEventListener('keydown', (e) => {
     // Number keys 1-9, 0: recall/edit slot (1-9→slot 0-8, 0→slot 9)
     if (key >= '0' && key <= '9') {
       const idx = key === '0' ? 9 : parseInt(key) - 1;
-      if (idx < 13) recallPlainSlot(idx);
+      if (idx < 16) recallPlainSlot(idx);
       return;
     }
     return;

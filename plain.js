@@ -18,7 +18,7 @@ function undoMemory() {
   updateMemorySlotUI();
   const toast = document.getElementById('slot-save-toast');
   if (toast) {
-    toast.textContent = 'Undo';
+    toast.textContent = t('notify.undo');
     toast.style.opacity = '1';
     clearTimeout(toast._timer);
     toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
@@ -192,7 +192,7 @@ function saveToPlainSlot(idx) {
   // Toast notification (especially useful in non-Plain modes)
   const toast = document.getElementById('slot-save-toast');
   if (toast) {
-    toast.textContent = `Slot ${idx + 1} ← ${chordName}`;
+    toast.textContent = t('notify.slot_saved', {slot: idx + 1, chord: chordName});
     toast.style.opacity = '1';
     clearTimeout(toast._timer);
     toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
@@ -302,21 +302,21 @@ function updatePlainUI() {
   const endBtn = document.getElementById('btn-plain-end');
   if (!statusEl) return;
   if (PlainState.subMode === 'idle') {
-    statusEl.textContent = 'Press Capture to start building chords';
+    statusEl.textContent = t('plain.status_idle');
     statusEl.style.color = 'var(--text-muted)';
     captureBtn.textContent = 'Capture';
     captureBtn.style.background = '#2a6e2a';
     endBtn.style.display = 'none';
   } else if (PlainState.subMode === 'capture') {
     const slotNum = Math.min(PlainState.captureIndex + 1, 16);
-    statusEl.textContent = 'Capturing: Slot ' + slotNum + '/16 — Click pads, then Capture to save';
+    statusEl.textContent = t('plain.status_capturing', {slot: slotNum});
     statusEl.style.color = '#4a4';
     captureBtn.textContent = 'Capture (' + slotNum + ')';
     captureBtn.style.background = '#2a6e2a';
     endBtn.style.display = '';
   } else if (PlainState.subMode === 'edit') {
     const slotNum = PlainState.currentSlot !== null ? PlainState.currentSlot + 1 : '?';
-    statusEl.textContent = 'Editing: Slot ' + slotNum + ' — Click pads to modify';
+    statusEl.textContent = t('plain.status_editing', {slot: slotNum});
     statusEl.style.color = 'var(--accent)';
     captureBtn.textContent = 'Capture';
     captureBtn.style.background = '#2a6e2a';
@@ -359,7 +359,7 @@ function playMemorySlots() {
     PlainState.memory.forEach(function(s, i) { if (s) slots.push({ index: i, notes: s.midiNotes }); });
   }
   if (slots.length === 0) return;
-  btn.textContent = 'Stop ■';
+  btn.textContent = t('memory.stop');
   btn.style.background = '#6e2a2a';
   btn.style.color = '#fff';
   var pos = 0;
@@ -388,7 +388,7 @@ function stopSlotPlayback() {
   if (_slotPlayTimer) { clearTimeout(_slotPlayTimer); _slotPlayTimer = null; }
   noteOffAll();
   var btn = document.getElementById('btn-play-slots');
-  if (btn) { btn.textContent = 'Play ▶'; btn.style.background = ''; btn.style.color = ''; }
+  if (btn) { btn.textContent = t('memory.play_all'); btn.style.background = ''; btn.style.color = ''; }
   PlainState.currentSlot = null;
   updateMemorySlotUI();
 }
@@ -420,7 +420,7 @@ function updatePlainDisplay() {
     nameEl.textContent = noteNames.join(' ');
     altsEl.innerHTML = '';
   }
-  notesEl.textContent = 'Notes: ' + noteNames.join(' ');
+  notesEl.textContent = t('plain.notes_label') + noteNames.join(' ');
   updateMemorySlotUI();
 }
 
@@ -451,7 +451,7 @@ function recallPlainSlot(idx) {
     updateMemorySlotUI();
     const toast = document.getElementById('slot-save-toast');
     if (toast) {
-      toast.textContent = `Slot ${idx + 1} selected`;
+      toast.textContent = t('notify.slot_selected', {slot: idx + 1});
       toast.style.opacity = '1';
       clearTimeout(toast._timer);
       toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
@@ -464,7 +464,7 @@ function recallPlainSlot(idx) {
     updateMemorySlotUI();
     const toast = document.getElementById('slot-save-toast');
     if (toast) {
-      toast.textContent = `Slot ${idx + 1} selected`;
+      toast.textContent = t('notify.slot_selected', {slot: idx + 1});
       toast.style.opacity = '1';
       clearTimeout(toast._timer);
       toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
@@ -523,7 +523,7 @@ function initMemorySlots() {
         updateMemorySlotUI();
         const toast = document.getElementById('slot-save-toast');
         if (toast) {
-          toast.textContent = `Slot ${i + 1} cleared`;
+          toast.textContent = t('notify.slot_cleared', {slot: i + 1});
           toast.style.opacity = '1';
           clearTimeout(toast._timer);
           toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
@@ -557,7 +557,7 @@ function updateMemorySlotUI() {
       else if (isCurrent && !isPerformView) btn.classList.add('selected');
     } else {
       btn.textContent = label;
-      btn.title = 'Slot ' + label + ': Empty';
+      btn.title = t('memory.slot_empty', {slot: label});
       if (!isPerformView && (isCurrent || isCaptureTarget)) btn.classList.add('capture-target');
     }
   });
@@ -569,14 +569,14 @@ function updateMemorySlotUI() {
   // Export button labels: show what will be exported
   const slotCount = PlainState.memory.filter(s => s !== null).length;
   const sel = PlainState.currentSlot !== null && PlainState.memory[PlainState.currentSlot];
-  const midiLabel = sel ? 'MIDI: ' + sel.chordName : 'MIDI Export All' + (slotCount ? ' (' + slotCount + ')' : '');
-  const chsLabel = sel ? 'CHS: ' + sel.chordName : 'CHS Export All' + (slotCount ? ' (' + slotCount + ')' : '');
+  const midiLabel = sel ? t('memory.midi_selected', {chord: sel.chordName}) : t('memory.midi_all') + (slotCount ? ' (' + slotCount + ')' : '');
+  const chsLabel = sel ? t('memory.chs_selected', {chord: sel.chordName}) : t('memory.chs_all') + (slotCount ? ' (' + slotCount + ')' : '');
   ['btn-midi-export-plain', 'btn-midi-export-mem'].forEach(function(id) { var b = document.getElementById(id); if (b) b.textContent = midiLabel; });
   ['btn-chs-export-plain', 'btn-chs-export-mem'].forEach(function(id) { var b = document.getElementById(id); if (b) b.textContent = chsLabel; });
   // Play button label (only update if not currently playing)
   if (!_slotPlayTimer) {
     var playBtn = document.getElementById('btn-play-slots');
-    if (playBtn) playBtn.textContent = sel ? 'Play: ' + sel.chordName : 'Play All ▶' + (slotCount ? ' (' + slotCount + ')' : '');
+    if (playBtn) playBtn.textContent = sel ? t('memory.play_selected', {chord: sel.chordName}) : t('memory.play_all') + (slotCount ? ' (' + slotCount + ')' : '');
   }
 }
 
@@ -588,7 +588,7 @@ function exportPlainMidi() {
   } else {
     slots = PlainState.memory.filter(s => s !== null);
   }
-  if (slots.length === 0) { const t = document.getElementById('slot-save-toast'); t.textContent = 'No chords in memory slots'; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 2000); return; }
+  if (slots.length === 0) { const toast = document.getElementById('slot-save-toast'); toast.textContent = t('notify.no_chords'); toast.style.opacity = '1'; setTimeout(() => toast.style.opacity = '0', 2000); return; }
   const ticksPerBeat = 480;
   const track = [];
 
@@ -710,7 +710,7 @@ function toVLQ(value) {
 // Chordcat .chs export (4096 bytes binary)
 function exportPlainChs() {
   const filledSlots = PlainState.memory.filter(s => s !== null);
-  if (filledSlots.length === 0) { const t = document.getElementById('slot-save-toast'); t.textContent = 'No chords in memory slots'; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 2000); return; }
+  if (filledSlots.length === 0) { const toast = document.getElementById('slot-save-toast'); toast.textContent = t('notify.no_chords'); toast.style.opacity = '1'; setTimeout(() => toast.style.opacity = '0', 2000); return; }
   const buf = new Uint8Array(4096); // 全体ゼロ初期化
   // マジックバイト
   buf[0] = 0x83; buf[1] = 0x49;

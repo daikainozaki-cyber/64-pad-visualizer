@@ -90,7 +90,7 @@ function computeRenderState() {
       }
     } else {
       activePCS = new Set();
-      activeLabel = BuilderState.root !== null ? pcName(BuilderState.root) + '...' : 'Select root';
+      activeLabel = BuilderState.root !== null ? pcName(BuilderState.root) + '...' : t('builder.select_root');
     }
   }
 
@@ -311,7 +311,7 @@ function renderInfoText(state) {
   if (AppState.mode === 'scale') {
     const scale = SCALES[AppState.scaleIdx];
     const notes = scale.pcs.map(pc => pcName((pc + AppState.key) % 12));
-    infoEl.textContent = activeLabel + ' (' + scale.pcs.length + '音) : ' + notes.join(' - ');
+    infoEl.textContent = activeLabel + ' (' + t('info.note_count', {n: scale.pcs.length}) + ') : ' + notes.join(' - ');
   } else {
     const pcs = getBuilderPCS();
     if (pcs) {
@@ -325,7 +325,7 @@ function renderInfoText(state) {
         }
         return pcName(absPC);
       });
-      let txt = activeLabel + ' (' + pcs.length + '音) : ' + notes.join(' - ');
+      let txt = activeLabel + ' (' + t('info.note_count', {n: pcs.length}) + ') : ' + notes.join(' - ');
       if (BuilderState.bass !== null) txt += ' / ' + pcName(BuilderState.bass);
       const mods = [];
       if (VoicingState.shell) {
@@ -362,14 +362,14 @@ function renderLegend(state) {
   const legendAvoid = document.getElementById('legend-avoid');
   const legendOmit = document.getElementById('legend-omit');
   if (AppState.mode === 'scale') {
-    swatch.style.background = 'var(--pad-scale)'; ltxt.textContent = 'Scale Note';
+    swatch.style.background = 'var(--pad-scale)'; ltxt.textContent = t('legend.scale_note');
     legendChar.style.display = charPCS.size > 0 ? '' : 'none';
     legendGuide3.style.display = 'none'; legendGuide7.style.display = 'none';
     legendTension.style.display = 'none';
     legendAvoid.style.display = 'none';
     legendOmit.style.display = 'none';
   } else {
-    swatch.style.background = 'var(--pad-chord)'; ltxt.textContent = 'Chord Tone';
+    swatch.style.background = 'var(--pad-chord)'; ltxt.textContent = t('legend.chord_tone');
     legendChar.style.display = 'none';
     legendGuide3.style.display = guide3PCS.size > 0 ? '' : 'none';
     legendGuide7.style.display = guide7PCS.size > 0 ? '' : 'none';
@@ -715,7 +715,7 @@ function toggleInstrument(which) {
 
 function toggleGuitarLabelMode() {
   guitarLabelMode = guitarLabelMode === 'name' ? 'degree' : 'name';
-  document.getElementById('guitar-label-btn').textContent = guitarLabelMode === 'name' ? '音名' : '度数';
+  document.getElementById('guitar-label-btn').textContent = guitarLabelMode === 'name' ? t('label.note_name') : t('label.degree');
   render();
 }
 
@@ -1315,7 +1315,7 @@ function updateInstrumentInput() {
       });
       html += '</div>';
     }
-    html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">Notes: ' + noteNames.join(' ') + '</div>';
+    html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">' + t('plain.notes_label') + noteNames.join(' ') + '</div>';
     detectEl.innerHTML = html;
     renderGuitarDiagram(best.rootPC, inputPCS);
     renderBassDiagram(best.rootPC, inputPCS);

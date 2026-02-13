@@ -75,7 +75,7 @@ function setBuilderStep(step) {
   document.getElementById('step1').style.display = step === 1 ? '' : 'none';
   document.getElementById('step2').style.display = step === 2 ? '' : 'none';
   if (!BuilderState.bassInputMode) {
-    const label = step === 2 ? 'Tension' : (BuilderState.root !== null ? 'Quality' : 'Root');
+    const label = step === 2 ? t('builder.step_tension') : (BuilderState.root !== null ? t('builder.step_quality') : t('builder.step_root'));
     document.getElementById('step-label').textContent = label;
     document.getElementById('step-label').style.background = '';
   }
@@ -226,7 +226,7 @@ function startOnChord() {
   BuilderState.bassInputMode = !BuilderState.bassInputMode;
   if (BuilderState.bassInputMode) {
     if (BuilderState.step !== 1) setBuilderStep(1);
-    document.getElementById('step-label').textContent = 'Bass Note';
+    document.getElementById('step-label').textContent = t('builder.step_bass');
     document.getElementById('step-label').style.background = '#009E73';
   } else {
     if (BuilderState.quality) setBuilderStep(2);
@@ -781,7 +781,7 @@ function updateMidiDisplay() {
       });
       html += '</div>';
     }
-    html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">Notes: ' + noteNames.join(' ') + '</div>';
+    html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">' + t('plain.notes_label') + noteNames.join(' ') + '</div>';
     detectEl.innerHTML = html;
   } else {
     detectEl.textContent = noteNames.join(' ');
@@ -833,7 +833,7 @@ function initWebMIDI() {
 
     function refreshDeviceList() {
       const prev = select.value;
-      select.innerHTML = '<option value="all">All Devices</option>';
+      select.innerHTML = '<option value="all">' + t('midi.all_devices') + '</option>';
       for (const input of access.inputs.values()) {
         const opt = document.createElement('option');
         opt.value = input.id;

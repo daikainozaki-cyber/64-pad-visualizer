@@ -9,6 +9,7 @@ initTensionGrid();
 updateOctaveLabel();
 initMemorySlots();
 initWebMIDI();
+I18N.init();
 
 // ========================================
 // KEYBOARD SHORTCUTS

@@ -1,8 +1,8 @@
 # 64 Pad Explorer - CLAUDE.md
 
-**最終更新**: 2026-02-09
+**最終更新**: 2026-02-13
 **担当人格**: 蔵人（実装）、継次（設計）、フロ男（テンション・ボイシング設計）
-**バージョン**: V1.7.3（2026-02-09）
+**バージョン**: V1.9（2026-02-13）
 
 ---
 
@@ -62,22 +62,33 @@
 
 ```
 64パッドアプリ/
-├── index.html      (366行)  HTML構造 + script tags
-├── style.css       (359行)  CSS全量
-├── data.js         (247行)  定数・スケール・コード・状態オブジェクト・onReady()
-├── audio.js        (307行)  オーディオエンジン・エフェクト・noteOn/Off
-├── theory.js       (687行)  ボイシング計算・コード理論・ダイアトニック
-├── render.js      (1136行)  描画(パッド・五線譜・楽器)・render()統合
-├── plain.js        (666行)  Plainモード・メモリースロット・MIDI/CHS書き出し
-├── builder.js      (885行)  モード管理・ビルダーUI・コード検出・Web MIDI
-├── main.js         (204行)  初期化・キーボードショートカット
+├── index.html      HTML構造 + script tags + data-i18n属性
+├── style.css       CSS全量
+├── i18n.js         i18nエンジン（t()関数、言語検出、DOM更新）
+├── lang-en.js      English（フォールバック）
+├── lang-ja.js      日本語
+├── lang-zh.js      中文（簡体）
+├── lang-es.js      Español
+├── lang-fr.js      Français
+├── lang-pt.js      Português
+├── lang-de.js      Deutsch
+├── lang-ko.js      한국어
+├── lang-it.js      Italiano
+├── data.js         定数・スケール・コード・状態オブジェクト・onReady()
+├── audio.js        オーディオエンジン・エフェクト・noteOn/Off
+├── theory.js       ボイシング計算・コード理論・ダイアトニック
+├── render.js       描画(パッド・五線譜・楽器)・render()統合
+├── plain.js        Plainモード・メモリースロット・MIDI/CHS書き出し
+├── builder.js      モード管理・ビルダーUI・コード検出・Web MIDI
+├── perform.js      Performモード（16パッドでメモリースロット演奏）
+├── main.js         初期化・キーボードショートカット
 └── .github/workflows/
     ├── deploy.yml            mainへのpush → 自動デプロイ
     └── deploy-dev.yml        手動トリガー → dev環境デプロイ
 ```
 
-**読み込み順序**: data.js → audio.js → theory.js → render.js → plain.js → builder.js → main.js
-（body末尾の`<script src>`方式。DOMContentLoaded対策に`onReady()`ユーティリティをdata.jsに配置）
+**読み込み順序**: i18n.js → lang-*.js(9言語) → data.js → audio.js → theory.js → render.js → plain.js → builder.js → perform.js → main.js
+（body末尾の`<script src>`方式。DOMContentLoaded対策に`onReady()`ユーティリティをdata.jsに配置。i18nは他JSより先に読み込み、`t()`関数を全ファイルから利用可能にする）
 
 **五度圏アプリとは別アプリ**（でかくなるため）。データ層は将来的に共有。
 
@@ -293,8 +304,10 @@ fingerings.json に追加
 | Phase 4.8 | **コードリファクタリング** | **完了** | セクションバナー統一、重複排除(getShellIntervals/computeAndDrawVoicingBoxes)、render()5分割、名前空間オブジェクト化(AppState/BuilderState/VoicingState/AudioState/GRID)、セクション整理 |
 | Phase 4.9 | **ボイシングポジション切替** | **完了** | バッジタップで代替配置を循環（calcAllVoicingPositions）、候補数表示(1/3等)、脈動インジケーター |
 | Phase 4.95 | **テンション理論フィルタ + ボイシングUI改善** | **完了** | 6カテゴリ(A〜F)のテンション非表示ルール、ボイシングボックス選択時改善 |
-| Phase 4.96 | **プレーン判定モード** | **完了** | Capture/Edit/Endワークフロー、13メモリースロット、MIDI/CHS書き出し、全モード共通スロット保存 |
+| Phase 4.96 | **プレーン判定モード** | **完了** | Capture/Edit/Endワークフロー、16メモリースロット、MIDI/CHS書き出し、全モード共通スロット保存 |
 | Phase 4.97 | **ファイル分割** | **完了** | 単一HTML(4,846行/202KB)→9ファイル(HTML+CSS+JS×7)。`<script src>`方式、ビルドツール不要 |
+| Phase 4.975 | **Performモード + 16スロット + Undo** | **完了** | 16パッドリアルタイム演奏、キーボード4×4グリッド、MIDIパッド対応、D&D並び替え、Undo(30回) |
+| Phase 4.98 | **多言語対応（i18n）** | **完了** | 9言語(en/zh/es/fr/pt/de/ja/ko/it)、`t()`関数+`data-i18n`属性方式、ビルドツール不要 |
 | Phase 5 | **指番号判定ロジック** | 未着手 | 4分割×最低音判定。うりなみさんと壁打ち |
 | Phase 6 | **モジュール化** | 未着手 | ロジックを共有モジュールとして切り出し。ファイル分割は4.97で完了済み |
 | Phase 7 | **五度圏アプリに手形表示を統合** | 未着手 | モジュールを五度圏アプリにインポート |
@@ -362,7 +375,7 @@ fingerings.json に追加
 | **Plainモード追加** | `AppState.mode` に `'plain'` を追加。Scale/Chord/Plainの3モード切替 |
 | **subModeワークフロー** | idle → `c`キーでCapture → パッドクリックでon/off → `e`キーでEnd → idle。idle時は`e`キーでEdit(直近スロット再編集) |
 | **リアルタイムコード判定** | 既存 `detectChord()` でコード名をリアルタイム表示。一音変えると即更新 |
-| **13メモリースロット** | Chordcat互換（13コード対応）。`1-0`でスロット1-10呼出（Plain時） |
+| **16メモリースロット** | Chordcat互換（13コード対応）。`1-0`でスロット1-10呼出（Plain時） |
 | **全モード共通スロット保存** | `Shift+1-0`で現在のコードをスロットに保存（Scale/Chord/Plain全モード） |
 | **MIDI書き出し** | メモリースロットをSMF Type 0で書き出し。各スロット=四分音符1拍。ライブラリ不要 |
 | **CHS書き出し** | Chordcat .chs形式（4096バイト）のバイナリ書き出し。13スロット対応 |
@@ -373,9 +386,10 @@ fingerings.json に追加
 ```js
 const PlainState = {
   activeNotes: new Set(),       // クリックでon/offされたMIDIノート
-  memory: Array(13).fill(null), // [{midiNotes: [...], chordName: string}] × 13
-  currentSlot: null,            // 現在のスロット (0-12)
+  memory: Array(16).fill(null), // [{midiNotes: [...], chordName: string}] × 16
+  currentSlot: null,            // 現在のスロット (0-15)
   subMode: 'idle',              // 'idle' | 'capture' | 'edit'
+  captureIndex: 0,              // 次にキャプチャするスロット番号
 };
 ```
 
@@ -387,7 +401,13 @@ const PlainState = {
 - `↑↓`: 転回形（↑=最低音を1oct上へ、↓=最高音を1oct下へ）
 - `x`: 全クリア
 
+**ショートカット（Performモード時）**:
+- `1234`/`qwer`/`asdf`/`zxcv`: 4×4グリッドでスロット1〜16を発音
+- MIDIパッド（ノート36〜54）でも発音可能
+
 **ショートカット（全モード共通）**:
+- `p`: Perform表示の切り替え
+- `Cmd/Ctrl+Z`: メモリースロットのUndo（最大30回）
 - `Shift+1-0`: 現在のコードをメモリースロットに保存（`e.code`で判定、キーボードレイアウト非依存）
 
 **クロスモードデータ取得**: `getCurrentChordMidiNotes()` — Plainモード:activeNotes、Chord/Scaleモード:ボイシングボックス優先→ビルダーコード
@@ -457,7 +477,7 @@ const PlainState = {
 |------|------|
 | **Plainモード** | Scale/Chord/Plainの3モード切替。理論フィルタなしでパッドを自由にon/off → リアルタイムコード判定 |
 | **subModeワークフロー** | idle→Capture(c)→End(e)→idle。idle→Edit(e)→idle。idleではパッド操作不可（誤操作防止） |
-| **13メモリースロット** | Chordcat互換。スロット保存・呼出・UI表示。全モードから保存可能 |
+| **16メモリースロット** | Chordcat互換。スロット保存・呼出・UI表示。全モードから保存可能 |
 | **全モード共通Shift+数字保存** | Scale/Chord/PlainどのモードでもShift+1-0でスロット保存。`e.code`で判定（キーボードレイアウト非依存） |
 | **クロスモードデータ取得** | `getCurrentChordMidiNotes()` — ボイシングボックス→ビルダー→activeNotesの優先順位でMIDIノート取得 |
 | **Memory Slotsパネル** | 右パネルに常時表示。全モードでスロット状態・MIDI/CHS Exportボタンが見える |
@@ -535,13 +555,88 @@ const PlainState = {
 
 **バグ修正**: `setValueAtTime(val, 0)` はAudioContext停止中（Chrome autoplay policy）に無視される → `.value = val` に変更
 
+### V1.8（Performモード + 16スロット + Undo + D&D）
+
+| 機能 | 内容 |
+|------|------|
+| **Performモード** | Memory/Perform切替ボタンで表示を切り替え。Perform表示ではメモリースロットのコードをリアルタイム演奏 |
+| **16スロット化** | メモリースロットを13→16に拡張。4×4パッドグリッドに対応 |
+| **キーボード4×4グリッド** | `1234`/`qwer`/`asdf`/`zxcv` でスロット1〜16を発音（Performモード時のみ） |
+| **MIDIパッド対応** | MIDIノート36〜54（4×4パッド標準配列）でスロットをトリガー |
+| **Undo（Cmd/Ctrl+Z）** | メモリースロットの変更を最大30回まで巻き戻し。`pushUndoState()` で変更前の状態をスタックに保存 |
+| **ドラッグ&ドロップ** | メモリースロットをD&Dで並び替え（スワップ方式） |
+| **`p` キー** | Performビューの切り替え（全モード共通） |
+
+**Performモード設計**:
+- `perform.js` — `PERFORM_KEY_MAP`（キーボード→スロットIdx）、`PERFORM_MIDI_MAP`（MIDIノート→スロットIdx）、`performPadTap()`（スロット再生）
+- `PerformState.activePad` — 現在再生中のパッドインデックス
+- Performモード中はキーボードの文字/数字キーがパッドトリガーに優先される（`handlePerformKey()` が最高優先度）
+- Memory表示に戻ると `PerformState.activePad` がリセットされる
+
+**キーボード4×4グリッド配置**:
+```
+1 2 3 4   → slot 1-4
+q w e r   → slot 5-8
+a s d f   → slot 9-12
+z x c v   → slot 13-16
+```
+
+**MIDI 4×4パッド配置**:
+```
+51 52 53 54  → slot 13-16
+46 47 48 49  → slot 9-12
+41 42 43 44  → slot 5-8
+36 37 38 39  → slot 1-4
+```
+
+**Undoスタック**: `undoStack[]`（最大30件）。`pushUndoState()` はスロット保存・削除・D&Dスワップの直前に呼ばれる。`undoMemory()` でpop→復元→トースト通知。
+
+### V1.9（2026-02-13 多言語対応 i18n）
+
+| 機能 | 内容 |
+|------|------|
+| **9言語対応** | en, zh, es, fr, pt, de, ja, ko, it（世界人口90%+カバー） |
+| **i18nエンジン** | `i18n.js` — `t(key, vars)` 関数、`data-i18n` DOM更新、言語検出、localStorage永続化 |
+| **言語自動検出** | `navigator.language` → 対応言語マッチング → フォールバック英語 |
+| **言語セレクタ** | ヘッダーバーの `?` ボタン横に `<select>` 配置。2文字コード表示（EN/JA/ZH等） |
+| **音楽用語は英語固定** | Scale, Chord, Root, Quality, Tension, Shell, Drop, Inversion等は全言語で英語のまま |
+| **日本語固有表現** | 「特性音」「音名」「度数」等は日本語のみ日本語表記 |
+
+**アーキテクチャ**:
+- `I18N.addLang(code, data)` — 各 `lang-xx.js` が自己登録
+- `t(key, vars)` — ドット記法キー解決 + `{var}` 変数展開。フォールバック: 現在言語 → en → キー名
+- `data-i18n` 属性 — 静的HTML要素。`I18N.updateDOM()` で一括更新（innerHTML対応）
+- `I18N.setLang(code)` — DOM更新 + Plain/Memory/Info/Legend等の動的UI全更新 + localStorage保存
+
+**翻訳対象（説明文・ガイダンス）**:
+
+| カテゴリ | 内容 |
+|---------|------|
+| `help.*` | ヘルプモーダル全文 |
+| `plain.*` | Plainモードのステータス（idle/capturing/editing） |
+| `notify.*` | トースト通知（slot saved/selected/cleared/undo） |
+| `legend.*` | 凡例（特性音、スケール音等） |
+| `label.*` | 音名/度数切替 |
+| `info.*` | 音数表示（「7 notes」等） |
+| `builder.*` | ステップラベル（Select root等） |
+| `midi.*` | MIDIデバイス関連 |
+| `memory.*` | スロット操作（Play/Stop/Empty等） |
+| `ui.*` | 閉じる、ヒント等 |
+
+**翻訳しないもの（英語固定）**: Scale, Chord, Plain, Perform, Memory, Root, Quality, Tension, Shell, Drop, Inversion, Omit, Rootless, Voicing, Staff, Guitar, Bass, Piano, Sound, MIDI, CHS, Export, Capture, Edit, Clear, Play, Save, ORGAN, E.PIANO, VOL, REV, PHASE, FLANG, TREM, SPEED, LO CUT, HI CUT, Panic, Omit 5/3, Drop 2/3, Root/1st/2nd/3rd
+
+**修正ファイル**: index.html（`data-i18n`属性80+箇所）、render.js（7箇所）、plain.js（16箇所、`const t`→`const toast`リネーム含む）、builder.js（4箇所）、main.js（`I18N.init()`追加）
+
+**注意**: plain.jsの`exportPlainMidi()`/`exportPlainChs()`内にあった`const t = document.getElementById('slot-save-toast')`はグローバル`t()`関数とのシャドウイングを避けるため`const toast`にリネーム済み
+
 ### 次の実装目標
 
 | 順番 | 機能 | 内容 | 方針 |
 |------|------|------|------|
 | ~~1~~ | ~~**ファイル分割**~~ | ~~単一HTMLから複数JSファイルへ分割~~ | **Phase 4.97で完了**（2026-02-07） |
 | 2 | **ピボットコード / スケール可能性表示** | コード選択時に「このコードが属しうる全キー + 度数 + 使えるスケール」を逆引き表示 | 3スケールシステム(Major/Harmonic Minor/Melodic Minor)×7度=21パターン。壁打ち必要。**ここまででコード・スケール編完成** |
-| 3 | **16パッド演奏モード + シーケンサー** | メモリースロットのコードを16パッドにアサインし、タップでリアルタイム演奏。叩いた順序・タイミングを記録→MIDI書き出し | ネイバーコード（C6+Ddim7等）の各転回形をパッドに並べ、メロディに合わせてハモる等のユースケース。学習→演奏の橋渡し。内部シーケンサー。マスターリズム譜と統合。HPSポータルシーケンサー・将来DAW開発の土台にもなる |
+| ~~3~~ | ~~**16パッド演奏モード**~~ | ~~メモリースロットのコードを16パッドにアサインし、タップでリアルタイム演奏~~ | **Phase 4.975で完了**（Performモード）。シーケンサーは別途 |
+| 3 | **シーケンサー** | Performモードで叩いた順序・タイミングを記録→MIDI書き出し | ネイバーコード（C6+Ddim7等）の各転回形をパッドに並べ、メロディに合わせてハモる等のユースケース。内部シーケンサー。マスターリズム譜と統合 |
 | 4 | **モジュール化** | 音源エンジン・コード判定・シーケンサー等を再利用可能な単位に切り出し | シーケンサー完成後に境界が確定してから。五度圏アプリ統合・HPSポータル転用のため |
 | 5 | **PWA化** | manifest.json + Service Worker。ホーム画面追加でフルスクリーン+オフライン対応 | 携帯UIデザインが必要なため、機能が揃ってから着手 |
 | 6 | **iOSネイティブアプリ** | Capacitor + CoreMIDIブリッジ。iPad+パッドのUSB-C接続でMIDI入力対応 | Apple Developer年99ドル。**買い切りアプリとして販売**（Web版は無償のまま）。USB-C接続で即音が出る体験が差別化 |

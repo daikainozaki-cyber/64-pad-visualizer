@@ -814,6 +814,33 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC) {
     svg.appendChild(t);
   }
 
+  // Pad range highlight (show which frets fall within 64-pad MIDI range)
+  const padLo = baseMidi();
+  const padHi = padLo + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
+  for (let s = 0; s < 6; s++) {
+    const sy = topM + s * strH;
+    let minF = null, maxF = null;
+    for (let f = 0; f <= numFrets; f++) {
+      const midi = strings[s] + f;
+      if (midi >= padLo && midi <= padHi) {
+        if (minF === null) minF = f;
+        maxF = f;
+      }
+    }
+    if (minF !== null) {
+      const x1 = minF === 0 ? 0 : nutX + (minF - 1) * fretW;
+      const x2 = nutX + maxF * fretW;
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x1);
+      rect.setAttribute('y', sy - strH / 2);
+      rect.setAttribute('width', x2 - x1);
+      rect.setAttribute('height', strH);
+      rect.setAttribute('fill', '#56B4E9');
+      rect.setAttribute('opacity', '0.1');
+      svg.appendChild(rect);
+    }
+  }
+
   // Note dots (scale/chord tones) with labels
   for (let s = 0; s < 6; s++) {
     const openPC = strings[s] % 12;
@@ -992,6 +1019,33 @@ function renderBassDiagram(rootPC, pcsSet, bassPC) {
     t.setAttribute('font-size', '8px'); t.setAttribute('fill', '#888');
     t.textContent = f;
     svg.appendChild(t);
+  }
+
+  // Pad range highlight (show which frets fall within 64-pad MIDI range)
+  const bPadLo = baseMidi();
+  const bPadHi = bPadLo + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
+  for (let s = 0; s < 4; s++) {
+    const sy = topM + s * strH;
+    let minF = null, maxF = null;
+    for (let f = 0; f <= numFrets; f++) {
+      const midi = strings[s] + f;
+      if (midi >= bPadLo && midi <= bPadHi) {
+        if (minF === null) minF = f;
+        maxF = f;
+      }
+    }
+    if (minF !== null) {
+      const x1 = minF === 0 ? 0 : nutX + (minF - 1) * fretW;
+      const x2 = nutX + maxF * fretW;
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x1);
+      rect.setAttribute('y', sy - strH / 2);
+      rect.setAttribute('width', x2 - x1);
+      rect.setAttribute('height', strH);
+      rect.setAttribute('fill', '#56B4E9');
+      rect.setAttribute('opacity', '0.1');
+      svg.appendChild(rect);
+    }
   }
 
   // Note dots

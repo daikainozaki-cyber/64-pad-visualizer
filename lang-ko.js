@@ -50,6 +50,7 @@ I18N.addLang('ko', {
     plain_memory: '<strong>Memory</strong> \u2014 16개 Slot에 코드를 저장 및 불러오기',
     plain_export: '<strong>MIDI Export</strong> \u2014 메모리의 코드를 MIDI 파일로 내보내기',
     perform_title: 'Perform Mode',
+    perform_switch: '<strong>Memory / Perform</strong> 버튼 또는 <kbd>p</kbd> 키로 전환',
     perform_desc1: '16패드 레이아웃으로 Memory Slot 코드를 실시간 연주',
     perform_desc2: '키보드(4\u00D74 그리드) 또는 MIDI 패드로 트리거',
     perform_desc3: 'Slot을 드래그 앤 드롭하여 순서 변경',

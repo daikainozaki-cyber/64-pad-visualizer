@@ -50,6 +50,7 @@ I18N.addLang('fr', {
     plain_memory: '<strong>Memory</strong> \u2014 Sauvegarder et rappeler des accords dans 16 emplacements',
     plain_export: '<strong>MIDI Export</strong> \u2014 Exporter les accords en m\u00E9moire en fichier MIDI',
     perform_title: 'Perform Mode',
+    perform_switch: '<strong>Memory / Perform</strong> bouton ou touche <kbd>p</kbd> pour basculer',
     perform_desc1: 'Jouez les accords des Memory Slots en temps r\u00E9el avec un layout de 16 pads',
     perform_desc2: 'D\u00E9clenchez via le clavier (grille 4\u00D74) ou des pads MIDI',
     perform_desc3: 'Glissez-d\u00E9posez les Slots pour r\u00E9ordonner',

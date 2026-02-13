@@ -50,6 +50,7 @@ I18N.addLang('de', {
     plain_memory: '<strong>Memory</strong> \u2014 Akkorde in 16 Slots speichern und abrufen',
     plain_export: '<strong>MIDI Export</strong> \u2014 Gespeicherte Akkorde als MIDI-Datei exportieren',
     perform_title: 'Perform Mode',
+    perform_switch: '<strong>Memory / Perform</strong> Button oder <kbd>p</kbd> Taste zum Umschalten',
     perform_desc1: 'Memory Slot-Akkorde in Echtzeit mit einem 16-Pad-Layout spielen',
     perform_desc2: '\u00DCber Tastatur (4\u00D74-Raster) oder MIDI-Pads ausl\u00F6sen',
     perform_desc3: 'Slots per Drag & Drop neu anordnen',

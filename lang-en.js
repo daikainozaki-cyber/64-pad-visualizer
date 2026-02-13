@@ -50,6 +50,7 @@ I18N.addLang('en', {
     plain_memory: '<strong>Memory</strong> \u2014 Save and recall chords in 16 slots',
     plain_export: '<strong>MIDI Export</strong> \u2014 Export memory chords as a MIDI file',
     perform_title: 'Perform Mode',
+    perform_switch: '<strong>Memory / Perform</strong> button or <kbd>p</kbd> key to switch',
     perform_desc1: 'Play memory slot chords in real-time with a 16-pad layout',
     perform_desc2: 'Trigger via keyboard (4\u00D74 grid) or MIDI pads',
     perform_desc3: 'Drag & drop slots to reorder',

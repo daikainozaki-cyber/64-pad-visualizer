@@ -50,6 +50,7 @@ I18N.addLang('ja', {
     plain_memory: '<strong>Memory</strong> \u2014 16スロットにコードを保存・呼び出し',
     plain_export: '<strong>MIDI Export</strong> \u2014 メモリーのコードをMIDIファイルとして書き出し',
     perform_title: 'Perform Mode',
+    perform_switch: '<strong>Memory / Perform</strong> ボタンまたは <kbd>p</kbd> キーで切替',
     perform_desc1: 'メモリースロットのコードを16パッド配置でリアルタイム演奏',
     perform_desc2: 'キーボード（4\u00D74グリッド）またはMIDIパッドで発音',
     perform_desc3: 'スロットのドラッグ&ドロップで並び替え可能',

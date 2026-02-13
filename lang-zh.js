@@ -50,6 +50,7 @@ I18N.addLang('zh', {
     plain_memory: '<strong>Memory</strong> \u2014 在16个插槽中保存和调用和弦',
     plain_export: '<strong>MIDI Export</strong> \u2014 将记忆中的和弦导出为MIDI文件',
     perform_title: 'Perform Mode',
+    perform_switch: '<strong>Memory / Perform</strong> 按钮或 <kbd>p</kbd> 键切换',
     perform_desc1: '使用16键打击垫布局实时演奏Memory Slot和弦',
     perform_desc2: '通过键盘（4\u00D74网格）或MIDI打击垫触发',
     perform_desc3: '拖放Slot以重新排序',

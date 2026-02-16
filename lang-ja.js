@@ -137,4 +137,9 @@ I18N.addLang('ja', {
     play_all: 'Play All \u25B6',
     stop: 'Stop \u25A0',
   },
+  parent: {
+    toggle: 'Parent Scale',
+    header: 'Parent Scales ({n})',
+    expand: '\u3059\u3079\u3066\u8868\u793A',
+  },
 });

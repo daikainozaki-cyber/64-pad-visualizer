@@ -659,6 +659,126 @@ function renderDiatonicBar() {
   });
 }
 
+// ========================================
+// PARENT SCALE REVERSE LOOKUP
+// ========================================
+
+function fifthsDistance(key1, key2) {
+  const d = ((key2 - key1) * 7 + 144) % 12;
+  return Math.min(d, 12 - d);
+}
+
+function psKeyName(entry) {
+  const relMajor = entry.system === '○' ? entry.parentKey : (entry.parentKey + 3) % 12;
+  return FLAT_MAJOR_KEYS.has(relMajor) ? NOTE_NAMES_FLAT[entry.parentKey] : NOTE_NAMES_SHARP[entry.parentKey];
+}
+
+function getParentScaleAbsPCS(entry) {
+  let scalePCS;
+  if (entry.system === '○') scalePCS = SCALES[0].pcs;
+  else if (entry.system === 'NM') scalePCS = SCALES[5].pcs;
+  else if (entry.system === '■') scalePCS = SCALES[7].pcs;
+  else scalePCS = SCALES[14].pcs;
+  return new Set(scalePCS.map(pc => (pc + entry.parentKey) % 12));
+}
+
+function psDegreeLabel(degreeNum, quality) {
+  const ROMAN = ['I','II','III','IV','V','VI','VII'];
+  let roman = ROMAN[degreeNum - 1];
+  const name = quality.name;
+  if (name.startsWith('m') || name === 'dim' || name === 'dim7') {
+    roman = roman.toLowerCase();
+  }
+  let suffix = '';
+  switch (name) {
+    case '\u25B37': suffix = '\u25B37'; break;
+    case '7': suffix = '7'; break;
+    case 'm7': suffix = '7'; break;
+    case 'm\u25B37': suffix = '\u25B37'; break;
+    case 'm7(b5)': suffix = '\u00F87'; break;
+    case 'dim7': suffix = '\u00B07'; break;
+    case 'aug\u25B37': suffix = '+\u25B37'; break;
+    default: break;
+  }
+  return roman + suffix;
+}
+
+const DIATONIC_CHORD_DB = (function() {
+  const db = {};
+  const SYSTEMS = [
+    { cat: '○', label: 'Major', baseIdx: 0, scalePCS: SCALES[0].pcs },
+    { cat: '■', label: 'Harm.Min', baseIdx: 7, scalePCS: SCALES[7].pcs },
+    { cat: '◆', label: 'Mel.Min', baseIdx: 14, scalePCS: SCALES[14].pcs },
+  ];
+  for (const sys of SYSTEMS) {
+    for (let key = 0; key < 12; key++) {
+      const tetrads = getDiatonicTetrads(sys.scalePCS, key);
+      for (let i = 0; i < tetrads.length; i++) {
+        const t = tetrads[i];
+        const degreeNum = i + 1;
+        if (!db[t.rootPC]) db[t.rootPC] = [];
+        db[t.rootPC].push({
+          parentKey: key, system: sys.cat, systemLabel: sys.label,
+          degreeNum, scaleName: SCALES[sys.baseIdx + i].name,
+          scaleIdx: sys.baseIdx + i, rootPC: t.rootPC,
+          quality: t.quality, tetradPCS: t.quality.pcs,
+        });
+        // Generate Natural Minor entry from Major system
+        if (sys.cat === '○') {
+          db[t.rootPC].push({
+            parentKey: (key + 9) % 12, system: 'NM', systemLabel: 'Nat.Min',
+            degreeNum: ((degreeNum + 1) % 7) + 1,
+            scaleName: SCALES[i].name, scaleIdx: i, rootPC: t.rootPC,
+            quality: t.quality, tetradPCS: t.quality.pcs,
+          });
+        }
+      }
+    }
+  }
+  return db;
+})();
+
+function findParentScales(rootPC, qualityPCS, tensionAbsPCS, currentKey) {
+  const entries = DIATONIC_CHORD_DB[rootPC];
+  if (!entries) return [];
+  const isTriad = qualityPCS && qualityPCS.length === 3;
+  const results = [];
+  for (const entry of entries) {
+    if (qualityPCS) {
+      if (isTriad) {
+        if (entry.tetradPCS[1] !== qualityPCS[1] || entry.tetradPCS[2] !== qualityPCS[2]) continue;
+      } else {
+        if (entry.tetradPCS.length !== qualityPCS.length) continue;
+        let match = true;
+        for (let j = 1; j < qualityPCS.length; j++) {
+          if (entry.tetradPCS[j] !== qualityPCS[j]) { match = false; break; }
+        }
+        if (!match) continue;
+      }
+    }
+    if (tensionAbsPCS && tensionAbsPCS.size > 0) {
+      const scaleAbsPCS = getParentScaleAbsPCS(entry);
+      let allIn = true;
+      for (const tpc of tensionAbsPCS) {
+        if (!scaleAbsPCS.has(tpc)) { allIn = false; break; }
+      }
+      if (!allIn) continue;
+    }
+    results.push({
+      parentKey: entry.parentKey, parentKeyName: psKeyName(entry),
+      system: entry.system, systemLabel: entry.systemLabel,
+      degree: psDegreeLabel(entry.degreeNum, entry.quality),
+      degreeNum: entry.degreeNum, scaleName: entry.scaleName,
+      scaleIdx: entry.scaleIdx, distance: fifthsDistance(currentKey, entry.parentKey),
+    });
+  }
+  const SYS_ORDER = { '○': 0, 'NM': 1, '■': 2, '◆': 3 };
+  results.sort((a, b) =>
+    (a.distance - b.distance) || (SYS_ORDER[a.system] - SYS_ORDER[b.system]) || (a.degreeNum - b.degreeNum)
+  );
+  return results;
+}
+
 function onDiatonicClick(tetrad) {
   // Switch to Chord mode (direct manipulation to preserve builder state)
   AppState.mode = 'chord';

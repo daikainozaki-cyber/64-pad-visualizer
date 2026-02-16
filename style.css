@@ -468,3 +468,46 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   color: #000;
   border-color: var(--accent);
 }
+
+/* Parent Scale Panel */
+#parent-scale-toggle { margin-top: 4px; text-align: center; }
+#parent-scale-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px;
+  margin-top: 4px;
+  font-size: 0.7rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.ps-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2px 6px;
+  font-weight: 700;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.ps-expand {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.65rem;
+  padding: 0 4px;
+}
+.ps-row {
+  display: flex;
+  gap: 8px;
+  padding: 3px 6px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.ps-row:hover { background: rgba(74,158,255,0.1); }
+.ps-cat { width: 20px; font-weight: 700; }
+.ps-key { width: 80px; }
+.ps-degree { width: 36px; color: var(--accent); font-weight: 600; }
+.ps-scale { flex: 1; color: var(--text-muted); }
+.ps-divider { border-top: 1px dashed var(--border); margin: 2px 0; }

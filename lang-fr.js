@@ -137,4 +137,9 @@ I18N.addLang('fr', {
     play_all: 'Play All \u25B6',
     stop: 'Stop \u25A0',
   },
+  parent: {
+    toggle: 'Parent Scale',
+    header: 'Parent Scales ({n})',
+    expand: 'Tout afficher',
+  },
 });

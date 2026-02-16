@@ -208,6 +208,7 @@ const AppState = {
   mode: 'scale',
   scaleIdx: 0,
   octaveShift: 0, // -1, 0, +1, +2 — shifts entire grid like Push's octave up/down
+  showParentScales: false, // Parent Scale panel toggle
 };
 
 const BuilderState = {

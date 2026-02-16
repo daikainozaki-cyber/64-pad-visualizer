@@ -413,8 +413,9 @@ function render() {
   renderBassDiagram(state.rootPC, state.activePCS, state.bassPC);
   renderPianoDisplay(state.rootPC, state.activePCS, state.bassPC);
 
-  // Diatonic chord bar
+  // Diatonic chord bar + Parent Scale panel
   renderDiatonicBar();
+  renderParentScales();
 
   // Auto-save to selected slot (Chord/Scale mode)
   if (PlainState.currentSlot !== null && (AppState.mode === 'chord' || AppState.mode === 'scale')) {
@@ -1344,6 +1345,10 @@ function togglePianoNote(midi) {
 function updateInstrumentInput() {
   const notes = getAllInputMidiNotes();
   instrumentInputActive = notes.length > 0;
+  const ctrlEl = document.getElementById('instrument-controls');
+  if (ctrlEl) ctrlEl.style.display = instrumentInputActive ? 'flex' : 'none';
+  // Pre-warm audio on first note selection so Play button works instantly
+  if (instrumentInputActive) ensureAudioResumed();
   if (notes.length === 0) {
     document.querySelectorAll('.instrument-highlight').forEach(el => el.remove());
     const detectEl = document.getElementById('midi-detect');
@@ -1413,10 +1418,11 @@ function clearInstrumentInput() {
   bassSelectedFrets = [null, null, null, null];
   pianoSelectedNotes.clear();
   instrumentInputActive = false;
+  const ctrlEl = document.getElementById('instrument-controls');
+  if (ctrlEl) ctrlEl.style.display = 'none';
   document.querySelectorAll('.instrument-highlight').forEach(el => el.remove());
   const detectEl = document.getElementById('midi-detect');
   detectEl.innerHTML = '';
-  // detectEl always visible (no layout shift)
   renderGuitarDiagram(lastRenderRootPC, lastRenderActivePCS);
   renderBassDiagram(lastRenderRootPC, lastRenderActivePCS);
   renderPianoDisplay(lastRenderRootPC, lastRenderActivePCS);
@@ -1432,4 +1438,97 @@ function playInstrumentInput() {
 // State for restoring diagrams when MIDI notes are released
 let lastRenderRootPC = 0;
 let lastRenderActivePCS = new Set();
+
+// ========================================
+// PARENT SCALE PANEL
+// ========================================
+let _psResults = [];
+let _psExpanded = false;
+
+function toggleParentScales() {
+  AppState.showParentScales = !AppState.showParentScales;
+  const btn = document.getElementById('ps-toggle');
+  if (btn) btn.classList.toggle('active', AppState.showParentScales);
+  renderParentScales();
+}
+
+function togglePSExpand() {
+  _psExpanded = !_psExpanded;
+  renderParentScales();
+}
+
+function renderParentScales() {
+  const toggleWrap = document.getElementById('parent-scale-toggle');
+  const panel = document.getElementById('parent-scale-panel');
+  if (!toggleWrap || !panel) return;
+
+  const show = AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality !== null;
+  toggleWrap.style.display = show ? '' : 'none';
+
+  if (!show || !AppState.showParentScales) {
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    _psResults = [];
+    return;
+  }
+
+  // Compute tension absolute PCS
+  const tensionAbsPCS = new Set();
+  const pcs = getBuilderPCS();
+  if (pcs) {
+    const rootPC = BuilderState.root;
+    pcs.filter(pc => pc >= 12).forEach(pc => tensionAbsPCS.add((pc + rootPC) % 12));
+  }
+
+  _psResults = findParentScales(BuilderState.root, BuilderState.quality.pcs, tensionAbsPCS, AppState.key);
+
+  if (_psResults.length === 0) {
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+
+  panel.style.display = '';
+  const closeResults = _psResults.filter(r => r.distance <= 1);
+  const farResults = _psResults.filter(r => r.distance > 1);
+  const showAll = _psExpanded || farResults.length === 0;
+  const displayResults = showAll ? _psResults : closeResults;
+
+  let html = '<div class="ps-header">' +
+    t('parent.header', { n: _psResults.length });
+  if (farResults.length > 0) {
+    html += ' <button class="ps-expand" onclick="togglePSExpand()">' +
+      (_psExpanded ? '\u25B2' : '\u25BC ' + t('parent.expand')) + '</button>';
+  }
+  html += '</div>';
+
+  let dividerAdded = false;
+  displayResults.forEach((r, i) => {
+    if (showAll && !dividerAdded && closeResults.length > 0 && r.distance > 1) {
+      html += '<div class="ps-divider"></div>';
+      dividerAdded = true;
+    }
+    const globalIdx = _psResults.indexOf(r);
+    html += '<div class="ps-row" onclick="onParentScaleClick(' + globalIdx + ')">' +
+      '<span class="ps-cat">' + r.system + '</span>' +
+      '<span class="ps-key">' + r.parentKeyName + ' ' + r.systemLabel + '</span>' +
+      '<span class="ps-degree">' + r.degree + '</span>' +
+      '<span class="ps-scale">' + r.scaleName + '</span>' +
+      '</div>';
+  });
+
+  panel.innerHTML = html;
+}
+
+function onParentScaleClick(idx) {
+  const r = _psResults[idx];
+  if (!r) return;
+  AppState.key = r.parentKey;
+  AppState.scaleIdx = r.scaleIdx;
+  updateKeyButtons();
+  const sel = document.getElementById('scale-select');
+  if (sel) sel.value = r.scaleIdx;
+  resetVoicingSelection();
+  setMode('scale');
+}
 

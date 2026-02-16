@@ -12,6 +12,8 @@
   --pad-tension: #0072B2;
   --pad-avoid: #D55E00;
   --pad-omitted: #555;
+  --pad-overlay: rgba(86, 180, 233, 0.2);
+  --pad-overlay-char: rgba(240, 228, 66, 0.3);
   --text: #e0e0e0;
   --text-muted: #888;
   --accent: #4a9eff;

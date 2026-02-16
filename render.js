@@ -112,11 +112,21 @@ function computeRenderState() {
     ? new Set([...activePCS].map(pc => ((pc - rootPC) % 12 + 12) % 12))
     : null;
 
-  return { activePCS, activeIvPCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS };
+  // Scale overlay: when a Parent Scale is selected in chord mode, show its non-chord tones
+  let overlayPCS = null, overlayCharPCS = new Set();
+  if (AppState.mode === 'chord' && _selectedPS) {
+    const scale = SCALES[_selectedPS.scaleIdx];
+    overlayPCS = new Set(scale.pcs.map(iv => (iv + rootPC) % 12));
+    if (scale.cn && scale.cn.length > 0) {
+      overlayCharPCS = new Set(scale.cn.map(iv => (iv + rootPC) % 12));
+    }
+  }
+
+  return { activePCS, activeIvPCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS };
 }
 
 function renderPads(svg, state) {
-  const { activePCS, activeIvPCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS } = state;
+  const { activePCS, activeIvPCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS } = state;
   // Build MIDI set for selected voicing box (for dimming non-selected pads)
   const selBox = VoicingState.selectedBoxIdx !== null ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx] : null;
   const selMidi = selBox ? new Set(selBox.midiNotes) : null;
@@ -137,6 +147,7 @@ function renderPads(svg, state) {
       const isGuide = isGuide3 || isGuide7;
       const isTension = AppState.mode === 'chord' && tensionPCS.has(pc) && !isRoot && !isGuide;
       const isAvoid = AppState.mode === 'chord' && avoidPCS.has(pc) && !isRoot;
+      const isOverlay = !isOmitted && overlayPCS && overlayPCS.has(pc) && !activePCS.has(pc);
 
       // Plain mode: highlight selected notes only
       const isPlainActive = AppState.mode === 'plain' && PlainState.activeNotes.has(midi);
@@ -158,6 +169,15 @@ function renderPads(svg, state) {
       else if (isActive) {
         fill = AppState.mode === 'scale' ? 'var(--pad-scale)' : 'var(--pad-chord)';
         textColor = '#000';
+      }
+      else if (overlayPCS && overlayPCS.has(pc)) {
+        // Scale overlay: note is in the selected scale but not in the chord
+        if (overlayCharPCS.has(pc)) {
+          fill = 'var(--pad-overlay-char)';
+        } else {
+          fill = 'var(--pad-overlay)';
+        }
+        textColor = 'var(--text-muted)';
       }
 
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -183,15 +203,16 @@ function renderPads(svg, state) {
         rect.setAttribute('stroke', 'rgba(255,255,255,0.2)');
         rect.setAttribute('stroke-width', 1); rect.setAttribute('stroke-dasharray', '4 2');
       } else {
-        rect.setAttribute('stroke', isActive || isBass || isChar || isGuide ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.05)');
-        rect.setAttribute('stroke-width', isActive || isBass || isChar || isGuide ? 1.5 : 0.5);
+        const hasStroke = isActive || isBass || isChar || isGuide || isOverlay;
+        rect.setAttribute('stroke', hasStroke ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.05)');
+        rect.setAttribute('stroke-width', hasStroke ? 1.5 : 0.5);
       }
       // Dim non-selected pads when a voicing box is selected
       const isDimmed = selMidi && !selMidi.has(midi) && fill !== 'var(--pad-off)';
       if (isDimmed) rect.setAttribute('opacity', '0.3');
       svg.appendChild(rect);
 
-      const showDegree = isActive || isRoot || isBass || isOmitted || isChar || isGuide || isAvoid;
+      const showDegree = isActive || isRoot || isBass || isOmitted || isChar || isGuide || isAvoid || isOverlay;
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('class', 'pad-label');
       text.setAttribute('x', x + PAD_SIZE / 2);
@@ -205,9 +226,15 @@ function renderPads(svg, state) {
       svg.appendChild(text);
 
       if (showDegree) {
-        let degName = AppState.mode === 'scale'
-          ? SCALE_DEGREE_NAMES[interval]
-          : chordDegreeName(interval, qualityPCS, activeIvPCS);
+        let degName;
+        if (isOverlay) {
+          // Overlay notes use scale degree names (not chord degree names)
+          degName = SCALE_DEGREE_NAMES[interval];
+        } else if (AppState.mode === 'scale') {
+          degName = SCALE_DEGREE_NAMES[interval];
+        } else {
+          degName = chordDegreeName(interval, qualityPCS, activeIvPCS);
+        }
         if ((isTension || isAvoid) && AppState.mode === 'chord') {
           degName = '(' + degName + ')';
         }
@@ -352,7 +379,7 @@ function renderInfoText(state) {
 }
 
 function renderLegend(state) {
-  const { charPCS, guide3PCS, guide7PCS, omittedPCS, tensionPCS, avoidPCS } = state;
+  const { charPCS, guide3PCS, guide7PCS, omittedPCS, tensionPCS, avoidPCS, overlayPCS } = state;
   const swatch = document.getElementById('legend-swatch');
   const ltxt = document.getElementById('legend-text');
   const legendChar = document.getElementById('legend-char');
@@ -360,6 +387,7 @@ function renderLegend(state) {
   const legendGuide7 = document.getElementById('legend-guide7');
   const legendTension = document.getElementById('legend-tension');
   const legendAvoid = document.getElementById('legend-avoid');
+  const legendOverlay = document.getElementById('legend-overlay');
   const legendOmit = document.getElementById('legend-omit');
   if (AppState.mode === 'scale') {
     swatch.style.background = 'var(--pad-scale)'; ltxt.textContent = t('legend.scale_note');
@@ -367,6 +395,7 @@ function renderLegend(state) {
     legendGuide3.style.display = 'none'; legendGuide7.style.display = 'none';
     legendTension.style.display = 'none';
     legendAvoid.style.display = 'none';
+    if (legendOverlay) legendOverlay.style.display = 'none';
     legendOmit.style.display = 'none';
   } else {
     swatch.style.background = 'var(--pad-chord)'; ltxt.textContent = t('legend.chord_tone');
@@ -375,6 +404,7 @@ function renderLegend(state) {
     legendGuide7.style.display = guide7PCS.size > 0 ? '' : 'none';
     legendTension.style.display = tensionPCS.size > 0 ? '' : 'none';
     legendAvoid.style.display = avoidPCS.size > 0 ? '' : 'none';
+    if (legendOverlay) legendOverlay.style.display = overlayPCS ? '' : 'none';
     legendOmit.style.display = omittedPCS.size > 0 ? '' : 'none';
   }
 }
@@ -1679,7 +1709,7 @@ function onPSSelect(idx) {
     _psAutoSelect = false;
     applyParentScaleFilter(r.scaleIdx);
   }
-  renderParentScales();
+  render();
 }
 
 // ↗ button → switch to that scale in Scale mode

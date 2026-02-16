@@ -1465,7 +1465,38 @@ function renderParentScales() {
   const panel = document.getElementById('parent-scale-panel');
   if (!toggleWrap || !panel) return;
 
-  const show = AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality !== null;
+  // Determine chord context from current mode
+  let psRoot = null;
+  let qualityIntervals = null;
+  let fullAbsSet = new Set();
+  let hasTension = false;
+  let newFPSource = '';
+
+  if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality !== null) {
+    // Chord mode: use BuilderState
+    psRoot = BuilderState.root;
+    qualityIntervals = new Set(BuilderState.quality.pcs.map(pc => pc % 12));
+    const fullPCS = getBuilderPCS();
+    if (fullPCS) fullPCS.forEach(iv => fullAbsSet.add((iv + psRoot) % 12));
+    hasTension = BuilderState.tension !== null;
+    newFPSource = psRoot + ':' +
+      (BuilderState.quality ? BuilderState.quality.name : '') + ':' +
+      (BuilderState.tension ? BuilderState.tension.label : '');
+  } else if (AppState.mode === 'plain' && PlainState.activeNotes.size >= 3) {
+    // Plain mode: detect chord from active notes
+    const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
+    const candidates = detectChord(notes);
+    if (candidates.length > 0) {
+      psRoot = candidates[0].rootPC;
+      const pcs = [...new Set(notes.map(n => n % 12))];
+      qualityIntervals = new Set(pcs.map(pc => ((pc - psRoot) + 12) % 12));
+      fullAbsSet = new Set(pcs);
+      hasTension = false; // Plain: all notes as one unit, all exact
+      newFPSource = 'plain:' + pcs.sort((a, b) => a - b).join(',');
+    }
+  }
+
+  const show = psRoot !== null && qualityIntervals !== null;
   toggleWrap.style.display = show ? '' : 'none';
 
   if (!show) {
@@ -1480,23 +1511,14 @@ function renderParentScales() {
   }
 
   // Always compute parent scales (even when panel is closed)
-  // Use quality-only PCS for broad matching (finds partial matches too)
-  const qualityIntervals = new Set(BuilderState.quality.pcs.map(pc => pc % 12));
-
-  // Full PCS (with tension) for exact match annotation
-  const fullPCS = getBuilderPCS();
-  const fullAbsSet = new Set();
-  if (fullPCS) fullPCS.forEach(iv => fullAbsSet.add((iv + BuilderState.root) % 12));
-
-  _psResults = findParentScales(BuilderState.root, qualityIntervals, AppState.key);
+  _psResults = findParentScales(psRoot, qualityIntervals, AppState.key);
 
   // Annotate each result: does the FULL chord (with tensions) fit in this scale?
-  const hasTension = BuilderState.tension !== null;
   _psResults.forEach(r => {
     if (!hasTension) {
       r.exactMatch = true;
     } else {
-      const scaleAbsPCS = new Set(SCALES[r.scaleIdx].pcs.map(iv => (iv + BuilderState.root) % 12));
+      const scaleAbsPCS = new Set(SCALES[r.scaleIdx].pcs.map(iv => (iv + psRoot) % 12));
       r.exactMatch = [...fullAbsSet].every(pc => scaleAbsPCS.has(pc));
     }
   });
@@ -1524,11 +1546,8 @@ function renderParentScales() {
   }
 
   // Detect chord context change → reset auto-select
-  const newFP = BuilderState.root + ':' +
-    (BuilderState.quality ? BuilderState.quality.name : '') + ':' +
-    (BuilderState.tension ? BuilderState.tension.label : '');
-  if (newFP !== _psChordFP) {
-    _psChordFP = newFP;
+  if (newFPSource !== _psChordFP) {
+    _psChordFP = newFPSource;
     _selectedPS = null;
     // Only auto-select when chord came from diatonic bar click
     if (BuilderState._fromDiatonic) {
@@ -1567,9 +1586,9 @@ function renderParentScales() {
   const showAll = _psExpanded || farResults.length === 0;
   const displayResults = showAll ? _psResults : closeResults;
 
-  // Current chord's tension PCs (for avoid-conflict marking)
+  // Current chord's tension PCs (for avoid-conflict marking, Chord mode only)
   const chordTensionPCs = new Set();
-  if (BuilderState.tension) {
+  if (AppState.mode === 'chord' && BuilderState.tension) {
     const m = BuilderState.tension.mods;
     if (m.add) m.add.forEach(pc => chordTensionPCs.add(pc));
     if (m.sharp5) chordTensionPCs.add(8);

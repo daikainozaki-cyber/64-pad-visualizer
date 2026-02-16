@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>64 Pad Explorer — ガイド</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="description" content="64パッド上のスケール・コード・ボイシングを探索するブラウザツール。音源不要、Chromeだけで音が出ます。">
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZWTBLDWP7P"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-ZWTBLDWP7P');
+</script>
+<link rel="stylesheet" href="style.css?v=2.0.2">
+<style>
+/* Guide-specific styles */
+.guide-container {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 16px 24px 48px;
+}
+
+/* Hero */
+.hero {
+  text-align: center;
+  padding: 32px 0 24px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 32px;
+}
+.hero h1 {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+.hero .tagline {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+.hero .cta-btn {
+  display: inline-block;
+  padding: 10px 28px;
+  background: var(--accent);
+  color: #000;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+.hero .cta-btn:hover { opacity: 0.85; }
+
+/* Sections */
+.guide-section {
+  margin-bottom: 36px;
+}
+.guide-section h2 {
+  color: var(--accent);
+  font-size: 1.3rem;
+  margin-bottom: 16px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.guide-section h3 {
+  color: var(--pad-root);
+  font-size: 1rem;
+  margin: 16px 0 8px;
+}
+
+/* Feature list */
+.feature-list {
+  list-style: none;
+  padding: 0;
+}
+.feature-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(51,51,51,0.5);
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+.feature-list li:last-child { border-bottom: none; }
+.feature-list strong {
+  color: var(--accent);
+}
+
+/* Use case cards */
+.usecase-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.usecase-list li {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+.usecase-list .usecase-q {
+  color: var(--pad-root);
+  font-weight: 700;
+  display: block;
+  margin-bottom: 4px;
+}
+.usecase-list .usecase-a {
+  color: var(--text-muted);
+}
+
+/* Screenshots */
+.screenshot-wrap {
+  margin: 16px 0;
+  text-align: center;
+}
+.screenshot-wrap img {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.screenshot-wrap .caption {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+/* Quick start steps */
+.steps-list {
+  list-style: none;
+  padding: 0;
+  counter-reset: step;
+}
+.steps-list li {
+  counter-increment: step;
+  padding: 8px 0 8px 36px;
+  position: relative;
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+.steps-list li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  background: var(--accent);
+  color: #000;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+/* Mode badges */
+.mode-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.mode-badge.scale { background: var(--accent); color: #000; }
+.mode-badge.chord { background: var(--step-green); color: #000; }
+.mode-badge.plain { background: var(--pad-root); color: #000; }
+
+/* Footer */
+.guide-footer {
+  text-align: center;
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.guide-footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.guide-footer a:hover { text-decoration: underline; }
+.guide-footer .footer-links {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+/* Kbd styling */
+.guide-container kbd {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 0.8rem;
+  font-family: monospace;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .guide-container { padding: 12px 16px 32px; }
+  .hero h1 { font-size: 1.5rem; }
+  .hero .tagline { font-size: 0.9rem; }
+}
+</style>
+</head>
+<body>
+<div class="guide-container">
+
+<!-- Hero -->
+<section class="hero">
+  <h1>64 Pad Explorer</h1>
+  <p class="tagline">64パッド上のスケール・コード・ボイシングを探索するブラウザツール。<br>音源不要 — Chromeだけで音が出ます。</p>
+  <a href="./" class="cta-btn">アプリを開く</a>
+</section>
+
+<!-- Features -->
+<section class="guide-section">
+  <h2>特徴</h2>
+  <ul class="feature-list">
+    <li><strong>音源不要</strong> — Chromeだけで音が出ます。オルガン4種 + エレピ7種の音源を内蔵。エフェクト（リバーブ、フェイザー、フランジャー、トレモロ、フィルター）も搭載</li>
+    <li><strong>パッドを弾けなくても使えます</strong> — コードを3ステップで入力。テンションまで表示できます。パッドをクリックでも入力可能</li>
+    <li><strong>コード判定</strong> — パッド上でクリックした音からコード名をリアルタイム判定。omitやオンコード、複数候補表示に対応</li>
+    <li><strong>ギター・ベース・鍵盤表示</strong> — ギターフレットボード、ベース、ピアノ鍵盤にコード構成音を表示。ギターの手形入力でパッドにも自動反映されます</li>
+    <li><strong>スケール表示</strong> — 31スケール × 12キー。ダイアトニック、ハーモニックマイナー、メロディックマイナー、ペンタトニック、ビバップ等</li>
+    <li><strong>ダイアトニックコード表示</strong> — スケールに合わせたダイアトニックコードをバーに表示。クリックまたはショートカットキーで即座にコードを鳴らせます</li>
+    <li><strong>ボイシング操作</strong> — 転回形、Drop 2/3、Shell Voicing、Omit、Rootless。カーソル上下で転回形切替、ボタンで複数フィンガリング表示</li>
+    <li><strong>コードメモリー機能</strong> — 気に入ったコードを16スロットに保存。MIDIファイルとして書き出してDAWに送れます</li>
+    <li><strong>Performモード</strong> — メモリーに記録されたコードを、16パッドまたはPCキーボードでリアルタイム演奏できます</li>
+    <li><strong>Parent Scale逆引き</strong> — 入力したコードが属しうるスケールを逆引き表示。テンション候補も一目でわかります</li>
+    <li><strong>多言語対応</strong> — 9言語（EN / JA / ZH / ES / FR / PT / DE / KO / IT）</li>
+  </ul>
+</section>
+
+<!-- Screenshot: Scale Mode -->
+<section class="guide-section">
+  <h2>画面紹介</h2>
+
+  <h3><span class="mode-badge scale">Scale</span> Scaleモード</h3>
+  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;">キーとスケールを選択すると、64パッド上にスケール音が色分けで表示されます。ダイアトニックバーからコードを選択できます。</p>
+  <div class="screenshot-wrap">
+    <img src="img/screenshot-scale.png" alt="Scaleモード — C Major (Ionian) のスケール表示" loading="lazy">
+    <p class="caption">C Major (Ionian) — ルート音(オレンジ)、スケール音(ブルー)、特性音(黄)で色分け</p>
+  </div>
+
+  <h3><span class="mode-badge chord">Chord</span> Chordモード</h3>
+  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;">Root → Quality → Tension の3ステップでコードを構築。ボイシングの転回・Drop・Shell・Omitも操作できます。Parent Scaleパネルでそのコードが属しうるスケールを逆引きできます。</p>
+  <div class="screenshot-wrap">
+    <img src="img/screenshot-chord.png" alt="Chordモード — Dm7 のコード表示とテンショングリッド" loading="lazy">
+    <p class="caption">Dm7 — コードトーン、3rd(ピンク)、7th(グリーン)を表示。ボイシングボックスで配置候補を確認</p>
+  </div>
+
+  <h3><span class="mode-badge plain">Plain</span> Plainモード</h3>
+  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;">パッドを自由にクリックしてコード名をリアルタイム判定。理論フィルタなしで探索 → 発見 → 理論を後から知るモードです。</p>
+  <div class="screenshot-wrap">
+    <img src="img/screenshot-plain.png" alt="Plainモード — C7 のリアルタイムコード判定" loading="lazy">
+    <p class="caption">C7 — パッドをクリックするだけでコード名を自動判定。複数候補も表示</p>
+  </div>
+
+  <h3>Performモード</h3>
+  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;">メモリーに保存したコードを16パッドに配置し、キーボードやMIDIパッドでリアルタイム演奏できます。</p>
+  <div class="screenshot-wrap">
+    <img src="img/screenshot-perform.png" alt="Performモード — 16スロットにコードを配置" loading="lazy">
+    <p class="caption">Performモード — C7, Fm7, G7, Am7をスロットに保存。キーボード4×4グリッドで演奏</p>
+  </div>
+
+  <h3>Parent Scale + ギター表示</h3>
+  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;">コードが属しうるスケールを逆引き表示。ギターフレットボードにもコードトーンが表示されます。</p>
+  <div class="screenshot-wrap">
+    <img src="img/screenshot-parent-scale.png" alt="Parent Scaleパネルとギターフレットボード表示" loading="lazy">
+    <p class="caption">Dm7 → C Major (Dorian), C Mel.Min (Dorian b2), F Major (Aeolian) 等。Available Tensionsも表示</p>
+  </div>
+</section>
+
+<!-- Use Cases -->
+<section class="guide-section">
+  <h2>こんな時に使えます</h2>
+  <ul class="usecase-list">
+    <li>
+      <span class="usecase-q">「このコードの押さえ方を調べたい」</span>
+      <span class="usecase-a">→ <span class="mode-badge chord">Chord</span> モードでRoot・Quality・Tensionを選択 → ボイシングボックスで配置を確認</span>
+    </li>
+    <li>
+      <span class="usecase-q">「レッスンで出てきたスケールをパッド上で確認したい」</span>
+      <span class="usecase-a">→ <span class="mode-badge scale">Scale</span> モードでキーとスケールを選択。31スケール対応</span>
+    </li>
+    <li>
+      <span class="usecase-q">「コード進行を作ってDAWに送りたい」</span>
+      <span class="usecase-a">→ コードをメモリースロットに保存 → MIDI Export でDAWにインポート</span>
+    </li>
+    <li>
+      <span class="usecase-q">「このボイシング、どのキーのダイアトニック？」</span>
+      <span class="usecase-a">→ Parent Scaleパネルで逆引き。Available Tensionsも一目でわかります</span>
+    </li>
+    <li>
+      <span class="usecase-q">「パッドで即興演奏の練習がしたい」</span>
+      <span class="usecase-a">→ Performモードでメモリースロットのコードを16パッド配置。キーボードまたはMIDIパッドで演奏</span>
+    </li>
+    <li>
+      <span class="usecase-q">「ギターで押さえたコードをパッドに転写したい」</span>
+      <span class="usecase-a">→ ギターフレットボードをクリックして入力 → パッドに自動表示 → コード名も判定</span>
+    </li>
+  </ul>
+</section>
+
+<!-- Quick Start -->
+<section class="guide-section">
+  <h2>クイックスタート</h2>
+
+  <h3>3つのモード</h3>
+  <p style="font-size:0.9rem;line-height:1.6;margin-bottom:12px;">
+    <span class="mode-badge scale">Scale</span> スケールとダイアトニックコードを表示<br>
+    <span class="mode-badge chord">Chord</span> 3ステップでコードを構築。ボイシング操作が可能<br>
+    <span class="mode-badge plain">Plain</span> パッドを自由にクリック → コード名を自動判定
+  </p>
+
+  <h3>最初にやること</h3>
+  <ol class="steps-list">
+    <li>キーを選ぶ（例: C）</li>
+    <li>スケールを選ぶ（例: Major）→ パッド上にスケール音が表示される</li>
+    <li>ダイアトニックバーでコードをクリック（例: Dm7）→ コードトーンが表示される</li>
+    <li>パッドをクリックして音を鳴らす。ボイシングボックスで配置を変更できます</li>
+    <li>気に入ったコードは <kbd>Shift</kbd>+<kbd>1</kbd>〜<kbd>0</kbd> でメモリーに保存</li>
+  </ol>
+
+  <h3>キーボードショートカット</h3>
+  <p style="font-size:0.9rem;color:var(--text-muted);line-height:1.6;">
+    <kbd>?</kbd> キーで全ショートカット一覧が見られます。<br>
+    <kbd>1</kbd>〜<kbd>7</kbd> でダイアトニックコード選択、
+    <kbd>↑</kbd><kbd>↓</kbd> で転回形切替、
+    <kbd>←</kbd><kbd>→</kbd> で半音移動。<br>
+    Performモードでは <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> の4×4グリッドで演奏できます。
+  </p>
+</section>
+
+<!-- Footer -->
+<footer class="guide-footer">
+  <div class="footer-links">
+    <a href="./">64 Pad Explorer を開く</a>
+    <a href="https://murinaikurashi.com/apps/hps-glossary/">HPSポータル</a>
+    <a href="https://note.com/urinami/membership">HPS</a>
+    <a href="https://murinaikurashi.com/">無理ない暮らし</a>
+  </div>
+  <p>64 Pad Explorer V2.2 — HPS (Hardcore Pad Style)</p>
+</footer>
+
+</div>
+</body>
+</html>

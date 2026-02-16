@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>64 Pad Explorer V2.1</title>
+<title>64 Pad Explorer V2.2</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZWTBLDWP7P"></script>
@@ -13,7 +13,7 @@
   gtag('js', new Date());
   gtag('config', 'G-ZWTBLDWP7P');
 </script>
-<link rel="stylesheet" href="style.css?v=2.0.2">
+<link rel="stylesheet" href="style.css?v=2.2.0">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -33,7 +33,7 @@
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V2.1</span>
+  <span class="version-tag">V2.2</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -61,7 +61,7 @@
 <!-- Help Modal -->
 <div class="help-overlay" id="help-overlay" onclick="if(event.target===this)this.classList.remove('active')">
   <div class="help-modal">
-    <h2 data-i18n="help.title">64 Pad Explorer V2.1</h2>
+    <h2 data-i18n="help.title">64 Pad Explorer V2.2</h2>
     <p data-i18n="help.description">64パッド上のスケール・コード・ボイシングを探索するツール。</p>
     <p style="text-align:center;margin:8px 0;"><a href="guide.html" style="color:var(--accent);font-size:0.85rem;">Guide / ガイド →</a></p>
 
@@ -183,8 +183,24 @@
       <li data-i18n="help.sc_help"><kbd>?</kbd> — ヘルプ表示切替</li>
     </ul>
 
+    <h2>Version History</h2>
+    <ul style="font-size:0.75rem;color:var(--text-muted);">
+      <li><b>V2.2</b> (2026-02-16) — Parent Scale: Available Tensions表示、テンションフィルタ、オートセレクト、Exact/Partial match区別</li>
+      <li><b>V2.1</b> (2026-02-13) — 楽器入力UI修正、Audio事前ウォーミング</li>
+      <li><b>V1.9</b> (2026-02-13) — 9言語対応（i18n）</li>
+      <li><b>V1.8</b> (2026-02-09) — Performモード、16スロット、Undo、D&D</li>
+      <li><b>V1.7</b> (2026-02-06) — MIDI改善、スロット再生、Lo/Hi Cut</li>
+      <li><b>V1.6</b> (2026-02-06) — HTTPSダウンロード対応、テスト環境構築</li>
+      <li><b>V1.5</b> (2026-02-06) — Plainモード、メモリースロット、MIDI/CHS書き出し</li>
+      <li><b>V1.4</b> (2026-02-04) — オンコードベース音完全対応</li>
+      <li><b>V1.3</b> (2026-02-04) — Avoidノート色表示</li>
+      <li><b>V1.2</b> (2026-02-04) — キーボードショートカット</li>
+      <li><b>V1.1</b> (2026-02-04) — 度数ラベル・異名同音修正</li>
+      <li><b>V1.0</b> (2026-02-04) — 初回リリース（Scale/Chord/Voicing/Sound/MIDI）</li>
+    </ul>
+
     <p style="font-size:0.7rem;color:var(--text-muted);margin-top:12px;text-align:center;" data-i18n="help.footer">
-      64 Pad Explorer V2.1 — HPS（Hardcore Pad Style）
+      64 Pad Explorer V2.2 — HPS（Hardcore Pad Style）
     </p>
     <p style="font-size:0.7rem;color:var(--text-muted);text-align:center;">
       <a href="https://murinaikurashi.com/apps/hps-glossary/" style="color:var(--accent);" data-i18n="header.portal">HPSポータル</a> |
@@ -407,24 +423,24 @@
 
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=2.0.2"></script>
-<script src="lang-en.js?v=2.0.2"></script>
-<script src="lang-ja.js?v=2.0.2"></script>
-<script src="lang-zh.js?v=2.0.2"></script>
-<script src="lang-es.js?v=2.0.2"></script>
-<script src="lang-fr.js?v=2.0.2"></script>
-<script src="lang-pt.js?v=2.0.2"></script>
-<script src="lang-de.js?v=2.0.2"></script>
-<script src="lang-ko.js?v=2.0.2"></script>
-<script src="lang-it.js?v=2.0.2"></script>
+<script src="i18n.js?v=2.2.0"></script>
+<script src="lang-en.js?v=2.2.0"></script>
+<script src="lang-ja.js?v=2.2.0"></script>
+<script src="lang-zh.js?v=2.2.0"></script>
+<script src="lang-es.js?v=2.2.0"></script>
+<script src="lang-fr.js?v=2.2.0"></script>
+<script src="lang-pt.js?v=2.2.0"></script>
+<script src="lang-de.js?v=2.2.0"></script>
+<script src="lang-ko.js?v=2.2.0"></script>
+<script src="lang-it.js?v=2.2.0"></script>
 <!-- App JS -->
-<script src="data.js?v=2.0.2"></script>
-<script src="audio.js?v=2.0.2"></script>
-<script src="theory.js?v=2.0.2"></script>
-<script src="render.js?v=2.0.2"></script>
-<script src="plain.js?v=2.0.2"></script>
-<script src="perform.js?v=2.0.2"></script>
-<script src="builder.js?v=2.0.2"></script>
-<script src="main.js?v=2.0.2"></script>
+<script src="data.js?v=2.2.0"></script>
+<script src="audio.js?v=2.2.0"></script>
+<script src="theory.js?v=2.2.0"></script>
+<script src="render.js?v=2.2.0"></script>
+<script src="plain.js?v=2.2.0"></script>
+<script src="perform.js?v=2.2.0"></script>
+<script src="builder.js?v=2.2.0"></script>
+<script src="main.js?v=2.2.0"></script>
 </body>
 </html>

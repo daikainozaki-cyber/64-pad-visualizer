@@ -106,6 +106,7 @@ const TENSION_ROWS = [
     {label:'6', mods:{add:[9]}},
     {label:'9', mods:{add:[2]}},
     {label:'11', mods:{add:[2,5]}},
+    {label:'13', mods:{add:[9]}},
     {label:'(9,13)', mods:{add:[2,9]}},
   ],
   // Row 1

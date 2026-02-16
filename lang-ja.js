@@ -142,6 +142,8 @@ I18N.addLang('ja', {
     toggle: 'Available Scale',
     header: 'Available Scales ({n})',
     expand: '\u3059\u3079\u3066\u8868\u793A',
+    sortPractical: 'Practical',
+    sortDiatonic: 'Diatonic',
   },
   guide: {
     page_title: '64 Pad Explorer \u2014 \u30AC\u30A4\u30C9',

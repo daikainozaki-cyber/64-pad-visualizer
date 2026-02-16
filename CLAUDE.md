@@ -1,8 +1,8 @@
 # 64 Pad Explorer - CLAUDE.md
 
-**最終更新**: 2026-02-16
+**最終更新**: 2026-02-17
 **担当人格**: 蔵人（実装）、継次（設計）、フロ男（テンション・ボイシング設計）
-**バージョン**: V2.2（2026-02-16）
+**バージョン**: V2.4（2026-02-17）
 
 ---
 
@@ -684,6 +684,64 @@ z x c v   → slot 13-16
 | Am7 (vi7) | Aeolian | — |
 | Bm7(b5) (viiø7) | Locrian | 17/59 |
 
+### V2.3（2026-02-16 Scale Overlay on Chord Mode）
+
+| 機能/修正 | 内容 |
+|-----------|------|
+| **Scale Overlay** | Chord modeでAvailable Scaleの行を選択すると、スケール音をパッドグリッドにオーバーレイ表示。コードトーンと同時にスケール音が見え「このコードの上でどの音が使えるか」が一目瞭然 |
+| **オーバーレイ色** | 通常スケール音: dim sky blue（`--pad-overlay: rgba(86,180,233,0.2)`）、特性音: dim yellow（`--pad-overlay-char: rgba(240,228,66,0.3)`） |
+| **度数ラベル** | オーバーレイ音にスケール度数ラベル（R, b2, 2, b3, 3, 4...）を表示。`SCALE_DEGREE_NAMES[interval]`を使用 |
+| **凡例更新** | オーバーレイアクティブ時に「Scale」項目を凡例に追加（`#legend-overlay`） |
+| **色優先チェーン** | plain → omitted → root → bass → guide3 → guide7 → char → avoid → tension → active → **overlay**（最低優先） |
+| **onPSSelect→render()** | `onPSSelect()`が`renderParentScales()`のみ呼び出していた → `render()`に変更。パッドオーバーレイが即時反映 |
+
+**修正ファイル**: render.js（computeRenderState + renderPads + renderLegend + onPSSelect）、style.css（CSS変数2件）、index.html（バージョン+キャッシュバスト+凡例HTML+Version History）
+
+**バグ修正**:
+- **TDZ ReferenceError**: `const isOverlay`がstroke計算より後に宣言されていた → フラグ定義群（line ~150）に移動
+- **onPSSelect未反映**: `renderParentScales()`→`render()`に変更
+
+**computeRenderState()追加フィールド**:
+- `overlayPCS` — 選択中スケールの絶対PCS（Set）。null when no overlay
+- `overlayCharPCS` — 特性音の絶対PCS（Set）
+
+### 実践的スケール選択リファレンス（2026-02-16）
+
+**詳細: `practical_scale_guide.md`**（うりなみさんの実践知を重み付きで記録）
+
+要点:
+- **大原則**: アボイド=0優先 + 解決先の2択（メジャー/マイナー）
+- ダイアトニック: I△7→Lydian, iii7/vi7→Dorian, viiø7→Locrian #2
+- Dom7系: →メジャー解決=Mixolydian, →マイナー解決=Altered/HMP5↓
+- 裏コード=Lydian b7, dim7=コンディミ, 7sus4=Mixolydian sus4
+- MMモード★4つが実戦主力、HMモードはHMP5↓とFunc.Dimだけ実戦的
+
+### V2.4（2026-02-17 Available Scale ソート改善 + 実践的自動選択）
+
+| 機能/修正 | 内容 |
+|-----------|------|
+| **SCALE_AVAIL_TENSIONS データ修正** | Phrygian: avoid `['b9']` → `['b9','b13']`（avoidCount 1→2）。Aeolian: avoidなし → `['b13']`（avoidCount 0→1）。b13(pc=8)は5th(pc=7)の半音上でavoid |
+| **avoidCountフィールド追加** | `findParentScales()`の結果オブジェクトに`avoidCount`を追加。SCALE_AVAIL_TENSIONSから取得 |
+| **Practical / Diatonic トグル** | Parent Scaleパネルヘッダーにトグルボタン追加。Practical: avoidCount優先ソート。Diatonic: distance優先ソート（V2.3以前の動作）。localStorage永続化 |
+| **DIATONIC_AUTO_PREF** | ダイアトニック度数ごとの推奨scaleIdx。I△7→Lydian, iii7→Dorian, vi7→Dorian, viiø7→Locrian ♮2 等 |
+| **findBestAutoSelect()** | Practicalモードではダイアトニック度数から推奨スケールを自動選択。Diatonicモードでは従来通りresults[0] |
+| **closeResults選択結果包含** | 自動選択されたスケールがdistance>1でも常にcloseResultsに含まれ表示される |
+| **omit5Matchソート追加** | Practical/Diatonic両方のソートにomit5Match（非omit5優先）を追加 |
+
+**修正ファイル**: data.js（SCALE_AVAIL_TENSIONS修正, AppState.psSortMode追加）、theory.js（avoidCount 2箇所）、render.js（ソート分岐, トグルUI, findBestAutoSelect, DIATONIC_AUTO_PREF, closeResults修正）、style.css（.ps-sort-toggle）、lang-*.js×9（parent.sortPractical/sortDiatonic）、practical_scale_guide.md
+
+**Practicalモードの自動選択結果（Key=C）**:
+
+| コード | Practical | Diatonic（V2.3） |
+|--------|-----------|------------------|
+| C△7 (I) | **Lydian** | Ionian |
+| Dm7 (ii) | Dorian | Dorian |
+| Em7 (iii) | **Dorian** | Phrygian |
+| F△7 (IV) | **Lydian** | Lydian |
+| G7 (V) | Mixolydian | Mixolydian |
+| Am7 (vi) | **Dorian** | Aeolian |
+| Bm7b5 (vii) | **Locrian ♮2** | Locrian |
+
 ### 次の実装目標
 
 | 順番 | 機能 | 内容 | 方針 |
@@ -695,7 +753,7 @@ z x c v   → slot 13-16
 | 4 | **ダイアグラム描画モジュール化** | ギター/ベース/ピアノ描画を再利用可能な単位に切り出し | 五度圏アプリ統合のため。縮小表示対応（サイズパラメータ化）が必要 |
 | 5 | **五度圏アプリにダイアグラム統合** | モジュールを五度圏アプリにインポート | 縮小ダイアグラムとして配置 |
 | 6 | **PWA化** | manifest.json + Service Worker。ホーム画面追加でフルスクリーン+オフライン対応 | 携帯UIデザインが必要なため、機能が揃ってから着手 |
-| 7 | **iOSネイティブアプリ** | Capacitor + CoreMIDIブリッジ。iPad+パッドのUSB-C接続でMIDI入力対応 | Apple Developer年99ドル。**買い切りアプリとして販売**（Web版は無償のまま）。USB-C接続で即音が出る体験が差別化 |
+| ~~7~~ | ~~**iOSネイティブアプリ**~~ | ~~Capacitor + CoreMIDIブリッジ~~ | **見送り**（2026-02-16決定）。メンテナンスコスト vs 手の状態を考慮。売れる可能性はあるが、腱鞘炎悪化中にApple審査対応・バグ修正を維持する余力がない |
 
 **実装済み（記録漏れ）**: シェル+テンション — シェルボイシング状態でテンションを選択すると、シェル音にテンション音が加わる。実際の演奏に近い操作感。
 

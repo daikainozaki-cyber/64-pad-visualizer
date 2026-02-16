@@ -1478,6 +1478,12 @@ let _selectedPS = null; // {parentKey, scaleIdx} — selected Parent Scale for t
 let _psAutoSelect = true; // auto-select first result when true
 let _psChordFP = ''; // chord fingerprint — detect chord context change
 
+// Restore psSortMode from localStorage
+(function() {
+  const saved = localStorage.getItem('psSortMode');
+  if (saved === 'practical' || saved === 'diatonic') AppState.psSortMode = saved;
+})();
+
 function toggleParentScales() {
   AppState.showParentScales = !AppState.showParentScales;
   const btn = document.getElementById('ps-toggle');
@@ -1488,6 +1494,43 @@ function toggleParentScales() {
 function togglePSExpand() {
   _psExpanded = !_psExpanded;
   renderParentScales();
+}
+
+function togglePsSortMode() {
+  AppState.psSortMode = AppState.psSortMode === 'practical' ? 'diatonic' : 'practical';
+  localStorage.setItem('psSortMode', AppState.psSortMode);
+  _selectedPS = null;
+  _psAutoSelect = true;
+  renderParentScales();
+  render();
+}
+
+// Practical mode auto-selection: prefer scales with fewer avoid notes
+const DIATONIC_AUTO_PREF = {
+  1: [3, 0],    // I△7 → Lydian, Ionian
+  2: [1],       // ii7 → Dorian
+  3: [1],       // iii7 → Dorian
+  4: [3, 0],    // IV△7 → Lydian, Ionian
+  5: [4, 17],   // V7 → Mixolydian, Lydian b7
+  6: [1, 5],    // vi7 → Dorian, Aeolian
+  7: [19, 6],   // viiø7 → Locrian ♮2, Locrian
+};
+
+function findBestAutoSelect(results) {
+  if (AppState.psSortMode === 'practical') {
+    const diaMatch = results.find(r =>
+      r.system === '○' && r.distance === 0 && !r.omit5Match);
+    if (diaMatch) {
+      const prefs = DIATONIC_AUTO_PREF[diaMatch.degreeNum];
+      if (prefs) {
+        for (const idx of prefs) {
+          const match = results.find(r => r.scaleIdx === idx && !r.omit5Match);
+          if (match) return match;
+        }
+      }
+    }
+  }
+  return results[0]; // Diatonic mode or fallback
 }
 
 function renderParentScales() {
@@ -1555,14 +1598,28 @@ function renderParentScales() {
     }
   });
 
-  // Re-sort: exact matches first, then by distance/system/degree
+  // Re-sort: exact matches first, then by mode-specific criteria
   const SYS = { '\u25CB': 0, 'NM': 1, '\u25A0': 2, '\u25C6': 3 };
-  _psResults.sort((a, b) =>
-    (b.exactMatch - a.exactMatch) ||
-    (a.distance - b.distance) ||
-    ((SYS[a.system] || 0) - (SYS[b.system] || 0)) ||
-    (a.degreeNum - b.degreeNum)
-  );
+  if (AppState.psSortMode === 'practical') {
+    // Practical: exactMatch → omit5 → avoidCount → distance → system → degreeNum
+    _psResults.sort((a, b) =>
+      (b.exactMatch - a.exactMatch) ||
+      (a.omit5Match - b.omit5Match) ||
+      (a.avoidCount - b.avoidCount) ||
+      (a.distance - b.distance) ||
+      ((SYS[a.system] || 0) - (SYS[b.system] || 0)) ||
+      (a.degreeNum - b.degreeNum)
+    );
+  } else {
+    // Diatonic: exactMatch → omit5 → distance → system → degreeNum (original behavior)
+    _psResults.sort((a, b) =>
+      (b.exactMatch - a.exactMatch) ||
+      (a.omit5Match - b.omit5Match) ||
+      (a.distance - b.distance) ||
+      ((SYS[a.system] || 0) - (SYS[b.system] || 0)) ||
+      (a.degreeNum - b.degreeNum)
+    );
+  }
 
   if (_psResults.length === 0) {
     _selectedPS = null;
@@ -1582,12 +1639,7 @@ function renderParentScales() {
     _psChordFP = newFPSource;
     _selectedPS = null;
     // Only auto-select when chord came from diatonic bar click
-    if (BuilderState._fromDiatonic) {
-      _psAutoSelect = true;
-      BuilderState._fromDiatonic = false;
-    } else {
-      _psAutoSelect = false;
-    }
+    _psAutoSelect = !!BuilderState._fromDiatonic;
   }
 
   // Validate current selection still in results
@@ -1597,9 +1649,10 @@ function renderParentScales() {
     if (!still) { _selectedPS = null; _psAutoSelect = true; }
   }
 
-  // Auto-select first result (closest by fifth circle)
+  // Auto-select best result based on sort mode
   if (!_selectedPS && _psAutoSelect && _psResults.length > 0) {
-    _selectedPS = { parentKey: _psResults[0].parentKey, scaleIdx: _psResults[0].scaleIdx };
+    const best = findBestAutoSelect(_psResults);
+    _selectedPS = { parentKey: best.parentKey, scaleIdx: best.scaleIdx };
   }
 
   // Always apply tension filter
@@ -1614,8 +1667,12 @@ function renderParentScales() {
 
   panel.style.display = '';
   // When tension is present, exact matches always shown (even from distant keys)
-  const closeResults = _psResults.filter(r => r.distance <= 1 || (hasTension && r.exactMatch));
-  const farResults = _psResults.filter(r => r.distance > 1 && !(hasTension && r.exactMatch));
+  // Diatonic (○) system results always shown (pivot chord visibility)
+  // Also include the auto-selected result so it's always visible
+  const isSelected = (r) => _selectedPS && r.parentKey === _selectedPS.parentKey && r.scaleIdx === _selectedPS.scaleIdx;
+  const isClose = (r) => r.distance <= 1 || r.system === '○' || (hasTension && r.exactMatch) || isSelected(r);
+  const closeResults = _psResults.filter(isClose);
+  const farResults = _psResults.filter(r => !isClose(r));
   const showAll = _psExpanded || farResults.length === 0;
   const displayResults = showAll ? _psResults : closeResults;
 
@@ -1628,8 +1685,12 @@ function renderParentScales() {
     if (m.flat5) chordTensionPCs.add(6);
   }
 
+  const sortLabel = AppState.psSortMode === 'practical' ? t('parent.sortPractical') : t('parent.sortDiatonic');
   let html = '<div class="ps-header">' +
     t('parent.header', { n: _psResults.length });
+  html += ' <button class="ps-sort-toggle" onclick="togglePsSortMode()" title="' +
+    (AppState.psSortMode === 'practical' ? 'Switch to Diatonic sort' : 'Switch to Practical sort') + '">' +
+    sortLabel + '</button>';
   if (farResults.length > 0) {
     html += ' <button class="ps-expand" onclick="togglePSExpand()">' +
       (_psExpanded ? '\u25B2' : '\u25BC ' + t('parent.expand')) + '</button>';

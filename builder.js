@@ -133,6 +133,7 @@ function updateChordDisplay() {
 function builderClear() {
   BuilderState.root = null; BuilderState.quality = null; BuilderState.tension = null; BuilderState.bass = null;
   BuilderState.bassInputMode = false;
+  BuilderState._fromDiatonic = false;
   document.getElementById('step-label').style.background = '';
   setBuilderStep(1);
   clearPianoSelection('piano-keyboard');
@@ -186,6 +187,7 @@ function selectRoot(pc) {
   }
   BuilderState.root = pc;
   BuilderState.quality = null; BuilderState.tension = null; BuilderState.bass = null;
+  BuilderState._fromDiatonic = false; // Manual root selection → hide diatonic bar
   resetVoicingSelection();
   highlightPianoKey('piano-keyboard', pc);
   clearQualitySelection();
@@ -354,8 +356,8 @@ function updateControlsForQuality(quality) {
   const has7th = quality.pcs.includes(10) || quality.pcs.includes(11) ||
                  (quality.pcs.includes(9) && quality.pcs.includes(6));
 
-  // Reset all quality-hidden first
-  btns.forEach(btn => btn.classList.remove('quality-hidden'));
+  // Reset all quality-hidden and tension-uncommon first
+  btns.forEach(btn => { btn.classList.remove('quality-hidden'); btn.classList.remove('tension-uncommon'); });
 
   // D: Without 7th, no altered tensions (except sus4 which is chord modification)
   if (!has7th) {
@@ -430,6 +432,26 @@ function updateControlsForQuality(quality) {
       e.btn.classList.add('quality-hidden');
     }
   });
+
+  // === Category G: Dim uncommon tensions for non-dominant 7th chords ===
+  // Dominant 7 = altered tensions are standard (no dimming)
+  // Other 7th chords = b9, #9, b13, aug, b5 are rarely used → dim (visible but faded)
+  if (has7th) {
+    const isDom7 = quality.pcs.includes(4) && quality.pcs.includes(10) && !quality.pcs.includes(11);
+    if (!isDom7) {
+      btns.forEach(btn => {
+        if (!btn._tension || btn.classList.contains('quality-hidden')) return;
+        const m = btn._tension.mods;
+        if (m.replace3 !== undefined) return; // sus4 already handled by Cat F
+        if (m.sharp5 || m.flat5) { btn.classList.add('tension-uncommon'); return; }
+        if (m.add) {
+          for (const pc of m.add) {
+            if (pc === 1 || pc === 3 || pc === 8) { btn.classList.add('tension-uncommon'); return; }
+          }
+        }
+      });
+    }
+  }
 }
 
 // ======== TENSION GRID ========

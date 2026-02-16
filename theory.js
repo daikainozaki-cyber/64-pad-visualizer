@@ -653,6 +653,13 @@ function renderDiatonicBar() {
     bar.innerHTML = '';
     return;
   }
+  // Hide diatonic bar when chord was built manually (not from diatonic bar click)
+  // Only hide after quality is selected (root-only = still browsing, bar useful)
+  if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality !== null && !BuilderState._fromDiatonic) {
+    bar.style.display = 'none';
+    bar.innerHTML = '';
+    return;
+  }
   const scale = SCALES[AppState.scaleIdx];
   if (scale.pcs.length !== 7) {
     bar.style.display = 'none';
@@ -772,13 +779,15 @@ function findParentScales(rootPC, chordIntervals, currentKey) {
     if (!allIn) continue;
     const key = entry.parentKey + ':' + entry.scaleIdx;
     strictKeys.add(key);
+    const sat = SCALE_AVAIL_TENSIONS[entry.scaleIdx];
+    const avoidCount = (sat && sat.avoid) ? sat.avoid.length : 0;
     results.push({
       parentKey: entry.parentKey, parentKeyName: psKeyName(entry),
       system: entry.system, systemLabel: entry.systemLabel,
       degree: psDegreeLabel(entry.degreeNum, entry.quality),
       degreeNum: entry.degreeNum, scaleName: entry.scaleName,
       scaleIdx: entry.scaleIdx, distance: fifthsDistance(currentKey, entry.parentKey),
-      omit5Match: false,
+      omit5Match: false, avoidCount,
     });
   }
 
@@ -796,13 +805,15 @@ function findParentScales(rootPC, chordIntervals, currentKey) {
         if (!scaleAbsPCS.has(absPC)) { allIn = false; break; }
       }
       if (!allIn) continue;
+      const sat2 = SCALE_AVAIL_TENSIONS[entry.scaleIdx];
+      const avoidCount2 = (sat2 && sat2.avoid) ? sat2.avoid.length : 0;
       results.push({
         parentKey: entry.parentKey, parentKeyName: psKeyName(entry),
         system: entry.system, systemLabel: entry.systemLabel,
         degree: psDegreeLabel(entry.degreeNum, entry.quality),
         degreeNum: entry.degreeNum, scaleName: entry.scaleName,
         scaleIdx: entry.scaleIdx, distance: fifthsDistance(currentKey, entry.parentKey),
-        omit5Match: true,
+        omit5Match: true, avoidCount: avoidCount2,
       });
     }
   }

@@ -297,6 +297,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .tension-btn.selected { background: var(--pad-chord); color: #000; border-color: var(--pad-chord); }
 .tension-btn.empty { visibility: hidden; }
 .tension-btn.quality-hidden { visibility: hidden; pointer-events: none; }
+.tension-btn.tension-uncommon { opacity: 0.35; }
 .voicing-bar.hidden { display: none; }
 .voicing-btn.hidden { display: none; }
 
@@ -477,51 +478,66 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 4px;
+  padding: 6px;
   margin-top: 4px;
-  font-size: 0.7rem;
-  max-height: 200px;
+  font-size: 0.8rem;
+  max-height: 240px;
   overflow-y: auto;
 }
 .ps-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2px 6px;
+  padding: 3px 6px;
   font-weight: 700;
-  font-size: 0.7rem;
-  color: var(--text-muted);
+  font-size: 0.8rem;
+  color: var(--text);
 }
 .ps-expand {
   background: none;
   border: none;
   color: var(--accent);
   cursor: pointer;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   padding: 0 4px;
+}
+.ps-sort-toggle {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  margin-left: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+.ps-sort-toggle:hover {
+  background: rgba(255,255,255,0.15);
+  color: var(--text);
 }
 .ps-row {
   display: flex;
   gap: 8px;
-  padding: 3px 6px;
+  padding: 5px 6px;
   cursor: pointer;
   border-radius: 3px;
 }
 .ps-row:hover { background: rgba(74,158,255,0.1); }
 .ps-row.ps-selected { background: rgba(74,158,255,0.3); border-left: 3px solid var(--accent); padding-left: 3px; }
-.ps-row.ps-selected .ps-scale { color: var(--accent); font-weight: 600; }
-.ps-row.ps-selected .ps-avail { opacity: 1; font-weight: 600; }
-.ps-row.ps-partial { opacity: 0.45; font-style: italic; }
-.ps-row.ps-partial .ps-scale::after { content: ' ~'; font-size: 0.6rem; color: var(--text-muted); font-style: normal; }
-.ps-row.ps-omit5 { opacity: 0.55; font-style: italic; }
-.ps-row.ps-avoid { opacity: 0.45; }
-.ps-row.ps-avoid .ps-scale::after { content: ' avoid'; color: #ff5722; font-size: 0.6rem; font-weight: 700; margin-left: 4px; }
-.ps-cat { width: 20px; font-weight: 700; }
-.ps-scale { flex: 1; font-weight: 600; }
-.ps-degree { font-size: 0.6rem; color: var(--text-muted); opacity: 0.7; white-space: nowrap; font-weight: 600; }
-.ps-parent-info { font-size: 0.55rem; color: var(--text-muted); opacity: 0.4; white-space: nowrap; }
-.ps-avail { font-size: 0.6rem; color: var(--accent); opacity: 0.8; white-space: nowrap; letter-spacing: 1px; }
-.ps-goto { font-size: 0.75rem; opacity: 0.4; padding: 0 2px; cursor: pointer; }
+.ps-row.ps-selected .ps-scale { color: var(--accent); font-weight: 700; }
+.ps-row.ps-selected .ps-avail { opacity: 1; font-weight: 700; }
+.ps-row.ps-partial { opacity: 0.5; font-style: italic; }
+.ps-row.ps-partial .ps-scale::after { content: ' ~'; font-size: 0.7rem; color: var(--text-muted); font-style: normal; }
+.ps-row.ps-omit5 { opacity: 0.6; font-style: italic; }
+.ps-row.ps-avoid { opacity: 0.5; }
+.ps-row.ps-avoid .ps-scale::after { content: ' avoid'; color: #ff5722; font-size: 0.7rem; font-weight: 700; margin-left: 4px; }
+.ps-cat { width: 22px; font-weight: 700; font-size: 0.85rem; }
+.ps-scale { flex: 1; font-weight: 600; font-size: 0.8rem; }
+.ps-degree { font-size: 0.7rem; color: var(--text-muted); opacity: 0.8; white-space: nowrap; font-weight: 600; }
+.ps-parent-info { font-size: 0.65rem; color: var(--text-muted); opacity: 0.55; white-space: nowrap; }
+.ps-avail { font-size: 0.7rem; color: var(--accent); opacity: 0.9; white-space: nowrap; letter-spacing: 1px; }
+.ps-goto { font-size: 0.85rem; opacity: 0.5; padding: 0 2px; cursor: pointer; }
 .ps-goto:hover { opacity: 1; color: var(--accent); }
-.ps-divider { border-top: 1px dashed var(--border); margin: 2px 0; }
+.ps-divider { border-top: 1px dashed var(--border); margin: 3px 0; }
 .tension-btn.scale-unavailable { opacity: 0.2; border-style: dashed; border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.35); }

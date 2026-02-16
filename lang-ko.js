@@ -142,6 +142,8 @@ I18N.addLang('ko', {
     toggle: 'Available Scale',
     header: 'Available Scales ({n})',
     expand: '\uBAA8\uB450 \uD45C\uC2DC',
+    sortPractical: 'Practical',
+    sortDiatonic: 'Diatonic',
   },
   guide: {
     page_title: '64 Pad Explorer \u2014 \uAC00\uC774\uB4DC',

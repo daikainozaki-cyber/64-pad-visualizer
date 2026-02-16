@@ -202,10 +202,10 @@ const SCALE_AVAIL_TENSIONS = {
   // === Diatonic (○) ===
   0:  { avail:['9','13'], avoid:['11'] },           // Ionian (Major)
   1:  { avail:['9','11','13'] },                     // Dorian
-  2:  { avail:['11','b13'], avoid:['b9'] },          // Phrygian
+  2:  { avail:['11'], avoid:['b9','b13'] },            // Phrygian
   3:  { avail:['9','#11','13'] },                    // Lydian
   4:  { avail:['9','13'], avoid:['11'] },            // Mixolydian
-  5:  { avail:['9','11','b13'] },                    // Aeolian (Natural Minor)
+  5:  { avail:['9','11'], avoid:['b13'] },            // Aeolian (Natural Minor)
   6:  { avail:['11','b13'], avoid:['b9'] },          // Locrian
   // === Harmonic Minor (■) ===
   7:  { avail:['9','11','b13'] },                    // Harmonic Minor (I)
@@ -249,6 +249,7 @@ const AppState = {
   scaleIdx: 0,
   octaveShift: 0, // -1, 0, +1, +2 — shifts entire grid like Push's octave up/down
   showParentScales: false, // Parent Scale panel toggle
+  psSortMode: 'practical', // 'practical' | 'diatonic'
 };
 
 const BuilderState = {

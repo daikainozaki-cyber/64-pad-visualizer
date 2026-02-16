@@ -142,6 +142,8 @@ I18N.addLang('zh', {
     toggle: 'Available Scale',
     header: 'Available Scales ({n})',
     expand: '\u663E\u793A\u5168\u90E8',
+    sortPractical: 'Practical',
+    sortDiatonic: 'Diatonic',
   },
   guide: {
     page_title: '64 Pad Explorer \u2014 指南',

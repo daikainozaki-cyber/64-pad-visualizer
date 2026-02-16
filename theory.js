@@ -470,7 +470,24 @@ function getBuilderChordName() {
   let name = pcName(BuilderState.root);
   if (BuilderState.quality) name += BuilderState.quality.name;
   if (BuilderState.tension) {
-    const tl = BuilderState.tension.label.replaceAll(')\n(', ',').replace(/\n/g, '');
+    let tl = BuilderState.tension.label.replaceAll(')\n(', ',').replace(/\n/g, '');
+    // In 7th chord context, b5 → #11 (tension notation, not quality alteration)
+    const has7th = BuilderState.quality && (
+      BuilderState.quality.pcs.includes(10) || BuilderState.quality.pcs.includes(11) ||
+      (BuilderState.quality.pcs.includes(9) && BuilderState.quality.pcs.includes(6))
+    );
+    if (has7th) {
+      if (tl === 'b5') {
+        tl = '#11';
+      } else if (tl.startsWith('b5(') || tl.startsWith('b5,')) {
+        const inner = tl.slice(2).replace(/[()]/g, '');
+        const parts = inner.split(',').map(s => s.trim()).filter(Boolean);
+        parts.push('#11');
+        const ORDER = {'b9':1,'#9':2,'9':3,'11':4,'#11':5,'b13':6,'13':7};
+        parts.sort((a, b) => (ORDER[a] || 99) - (ORDER[b] || 99));
+        tl = parts.join(',');
+      }
+    }
     const noWrap = tl.startsWith('(') || tl.startsWith('sus') || tl.startsWith('aug') ||
                    tl.startsWith('add') || tl.startsWith('b5') || tl.startsWith('6');
     if (noWrap) {
@@ -738,32 +755,19 @@ const DIATONIC_CHORD_DB = (function() {
   return db;
 })();
 
-function findParentScales(rootPC, qualityPCS, tensionAbsPCS, currentKey) {
+function findParentScales(rootPC, chordIntervals, currentKey) {
   const entries = DIATONIC_CHORD_DB[rootPC];
   if (!entries) return [];
-  const isTriad = qualityPCS && qualityPCS.length === 3;
   const results = [];
   for (const entry of entries) {
-    if (qualityPCS) {
-      if (isTriad) {
-        if (entry.tetradPCS[1] !== qualityPCS[1] || entry.tetradPCS[2] !== qualityPCS[2]) continue;
-      } else {
-        if (entry.tetradPCS.length !== qualityPCS.length) continue;
-        let match = true;
-        for (let j = 1; j < qualityPCS.length; j++) {
-          if (entry.tetradPCS[j] !== qualityPCS[j]) { match = false; break; }
-        }
-        if (!match) continue;
-      }
+    // Check all chord tones (mod 12) are contained in the parent scale
+    const scaleAbsPCS = getParentScaleAbsPCS(entry);
+    let allIn = true;
+    for (const iv of chordIntervals) {
+      const absPC = (iv + rootPC) % 12;
+      if (!scaleAbsPCS.has(absPC)) { allIn = false; break; }
     }
-    if (tensionAbsPCS && tensionAbsPCS.size > 0) {
-      const scaleAbsPCS = getParentScaleAbsPCS(entry);
-      let allIn = true;
-      for (const tpc of tensionAbsPCS) {
-        if (!scaleAbsPCS.has(tpc)) { allIn = false; break; }
-      }
-      if (!allIn) continue;
-    }
+    if (!allIn) continue;
     results.push({
       parentKey: entry.parentKey, parentKeyName: psKeyName(entry),
       system: entry.system, systemLabel: entry.systemLabel,

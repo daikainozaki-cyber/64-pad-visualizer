@@ -1444,6 +1444,9 @@ let lastRenderActivePCS = new Set();
 // ========================================
 let _psResults = [];
 let _psExpanded = false;
+let _selectedPS = null; // {parentKey, scaleIdx} — selected Parent Scale for tension filtering
+let _psAutoSelect = true; // auto-select first result when true
+let _psChordFP = ''; // chord fingerprint — detect chord context change
 
 function toggleParentScales() {
   AppState.showParentScales = !AppState.showParentScales;
@@ -1465,24 +1468,88 @@ function renderParentScales() {
   const show = AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality !== null;
   toggleWrap.style.display = show ? '' : 'none';
 
-  if (!show || !AppState.showParentScales) {
+  if (!show) {
     panel.style.display = 'none';
     panel.innerHTML = '';
     _psResults = [];
+    _selectedPS = null;
+    _psAutoSelect = true;
+    _psChordFP = '';
+    applyParentScaleFilter(null);
     return;
   }
 
-  // Compute tension absolute PCS
-  const tensionAbsPCS = new Set();
-  const pcs = getBuilderPCS();
-  if (pcs) {
-    const rootPC = BuilderState.root;
-    pcs.filter(pc => pc >= 12).forEach(pc => tensionAbsPCS.add((pc + rootPC) % 12));
-  }
+  // Always compute parent scales (even when panel is closed)
+  // Use quality-only PCS for broad matching (finds partial matches too)
+  const qualityIntervals = new Set(BuilderState.quality.pcs.map(pc => pc % 12));
 
-  _psResults = findParentScales(BuilderState.root, BuilderState.quality.pcs, tensionAbsPCS, AppState.key);
+  // Full PCS (with tension) for exact match annotation
+  const fullPCS = getBuilderPCS();
+  const fullAbsSet = new Set();
+  if (fullPCS) fullPCS.forEach(iv => fullAbsSet.add((iv + BuilderState.root) % 12));
+
+  _psResults = findParentScales(BuilderState.root, qualityIntervals, AppState.key);
+
+  // Annotate each result: does the FULL chord (with tensions) fit in this scale?
+  const hasTension = BuilderState.tension !== null;
+  _psResults.forEach(r => {
+    if (!hasTension) {
+      r.exactMatch = true;
+    } else {
+      const scaleAbsPCS = new Set(SCALES[r.scaleIdx].pcs.map(iv => (iv + BuilderState.root) % 12));
+      r.exactMatch = [...fullAbsSet].every(pc => scaleAbsPCS.has(pc));
+    }
+  });
+
+  // Re-sort: exact matches first, then by distance/system/degree
+  const SYS = { '\u25CB': 0, 'NM': 1, '\u25A0': 2, '\u25C6': 3 };
+  _psResults.sort((a, b) =>
+    (b.exactMatch - a.exactMatch) ||
+    (a.distance - b.distance) ||
+    ((SYS[a.system] || 0) - (SYS[b.system] || 0)) ||
+    (a.degreeNum - b.degreeNum)
+  );
 
   if (_psResults.length === 0) {
+    _selectedPS = null;
+    applyParentScaleFilter(null);
+    if (AppState.showParentScales) {
+      panel.style.display = '';
+      panel.innerHTML = '<div class="ps-header">' + t('parent.header', { n: 0 }) + '</div>';
+    } else {
+      panel.style.display = 'none';
+      panel.innerHTML = '';
+    }
+    return;
+  }
+
+  // Detect chord context change → reset auto-select
+  const newFP = BuilderState.root + ':' +
+    (BuilderState.quality ? BuilderState.quality.name : '') + ':' +
+    (BuilderState.tension ? BuilderState.tension.label : '');
+  if (newFP !== _psChordFP) {
+    _psChordFP = newFP;
+    _selectedPS = null;
+    _psAutoSelect = true;
+  }
+
+  // Validate current selection still in results
+  if (_selectedPS) {
+    const still = _psResults.some(r =>
+      r.parentKey === _selectedPS.parentKey && r.scaleIdx === _selectedPS.scaleIdx);
+    if (!still) { _selectedPS = null; _psAutoSelect = true; }
+  }
+
+  // Auto-select first result (closest by fifth circle)
+  if (!_selectedPS && _psAutoSelect && _psResults.length > 0) {
+    _selectedPS = { parentKey: _psResults[0].parentKey, scaleIdx: _psResults[0].scaleIdx };
+  }
+
+  // Always apply tension filter
+  applyParentScaleFilter(_selectedPS ? _selectedPS.scaleIdx : null);
+
+  // Only render panel UI if open
+  if (!AppState.showParentScales) {
     panel.style.display = 'none';
     panel.innerHTML = '';
     return;
@@ -1494,6 +1561,15 @@ function renderParentScales() {
   const showAll = _psExpanded || farResults.length === 0;
   const displayResults = showAll ? _psResults : closeResults;
 
+  // Current chord's tension PCs (for avoid-conflict marking)
+  const chordTensionPCs = new Set();
+  if (BuilderState.tension) {
+    const m = BuilderState.tension.mods;
+    if (m.add) m.add.forEach(pc => chordTensionPCs.add(pc));
+    if (m.sharp5) chordTensionPCs.add(8);
+    if (m.flat5) chordTensionPCs.add(6);
+  }
+
   let html = '<div class="ps-header">' +
     t('parent.header', { n: _psResults.length });
   if (farResults.length > 0) {
@@ -1503,26 +1579,80 @@ function renderParentScales() {
   html += '</div>';
 
   let dividerAdded = false;
+  let partialDividerAdded = false;
   displayResults.forEach((r, i) => {
-    if (showAll && !dividerAdded && closeResults.length > 0 && r.distance > 1) {
+    // Divider between exact and partial matches
+    if (!partialDividerAdded && !r.exactMatch && i > 0 && displayResults[i - 1].exactMatch) {
+      html += '<div class="ps-divider"></div>';
+      partialDividerAdded = true;
+    }
+    if (showAll && !dividerAdded && closeResults.length > 0 && r.distance > 1 && r.exactMatch) {
       html += '<div class="ps-divider"></div>';
       dividerAdded = true;
     }
     const globalIdx = _psResults.indexOf(r);
-    html += '<div class="ps-row" onclick="onParentScaleClick(' + globalIdx + ')">' +
+    const isSelected = _selectedPS &&
+      _selectedPS.parentKey === r.parentKey && _selectedPS.scaleIdx === r.scaleIdx;
+    const sat = SCALE_AVAIL_TENSIONS[r.scaleIdx];
+
+    // Check if chord's tensions conflict with avoid notes of this scale
+    let hasAvoidConflict = false;
+    if (sat && sat.avoid && chordTensionPCs.size > 0) {
+      const avoidPCs = new Set(sat.avoid.map(n => TENSION_NAME_TO_PC[n]));
+      for (const pc of chordTensionPCs) {
+        if (avoidPCs.has(pc)) { hasAvoidConflict = true; break; }
+      }
+    }
+
+    html += '<div class="ps-row' + (isSelected ? ' ps-selected' : '') +
+      (!r.exactMatch ? ' ps-partial' : '') +
+      (hasAvoidConflict ? ' ps-avoid' : '') +
+      '" onclick="onPSSelect(' + globalIdx + ')">' +
       '<span class="ps-cat">' + r.system + '</span>' +
       '<span class="ps-key">' + r.parentKeyName + ' ' + r.systemLabel + '</span>' +
       '<span class="ps-degree">' + r.degree + '</span>' +
-      '<span class="ps-scale">' + r.scaleName + '</span>' +
-      '</div>';
+      '<span class="ps-scale">' + r.scaleName + '</span>';
+
+    // Available tensions
+    if (sat) {
+      html += '<span class="ps-avail">' + sat.avail.join(' ') + '</span>';
+    }
+
+    // Go-to-scale button (stops propagation to prevent toggle)
+    html += '<span class="ps-goto" onclick="event.stopPropagation();onParentScaleGo(' +
+      globalIdx + ')" title="Scale mode">↗</span>';
+
+    html += '</div>';
   });
 
   panel.innerHTML = html;
 }
 
-function onParentScaleClick(idx) {
+// Click row → toggle scale selection for tension filtering
+function onPSSelect(idx) {
   const r = _psResults[idx];
   if (!r) return;
+  if (_selectedPS &&
+      _selectedPS.parentKey === r.parentKey && _selectedPS.scaleIdx === r.scaleIdx) {
+    // Toggle off — disable auto-select until chord changes
+    _selectedPS = null;
+    _psAutoSelect = false;
+    applyParentScaleFilter(null);
+  } else {
+    // Manual selection
+    _selectedPS = { parentKey: r.parentKey, scaleIdx: r.scaleIdx };
+    _psAutoSelect = false;
+    applyParentScaleFilter(r.scaleIdx);
+  }
+  renderParentScales();
+}
+
+// ↗ button → switch to that scale in Scale mode
+function onParentScaleGo(idx) {
+  const r = _psResults[idx];
+  if (!r) return;
+  _selectedPS = null;
+  applyParentScaleFilter(null);
   AppState.key = r.parentKey;
   AppState.scaleIdx = r.scaleIdx;
   updateKeyButtons();
@@ -1530,5 +1660,35 @@ function onParentScaleClick(idx) {
   if (sel) sel.value = r.scaleIdx;
   resetVoicingSelection();
   setMode('scale');
+}
+
+// Apply available-tension filter from selected Parent Scale to tension grid
+function applyParentScaleFilter(scaleIdx) {
+  const btns = document.querySelectorAll('#tension-grid .tension-btn');
+  btns.forEach(btn => btn.classList.remove('scale-unavailable'));
+
+  if (scaleIdx === null) return;
+  const sat = SCALE_AVAIL_TENSIONS[scaleIdx];
+  if (!sat) return;
+
+  const availSet = new Set(sat.avail);
+  btns.forEach(btn => {
+    if (!btn._tension) return;
+    if (btn.classList.contains('quality-hidden')) return;
+    const mods = btn._tension.mods;
+    const pcs = [];
+    if (mods.add) pcs.push(...mods.add);
+    if (mods.sharp5) pcs.push(8);
+    if (mods.flat5) pcs.push(6);
+    // replace3 (sus4) is quality modification, not filtered by scale
+
+    for (const pc of pcs) {
+      const name = PC_TO_TENSION_NAME[pc];
+      if (name && !availSet.has(name)) {
+        btn.classList.add('scale-unavailable');
+        return;
+      }
+    }
+  });
 }
 

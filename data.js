@@ -132,7 +132,7 @@ const TENSION_ROWS = [
     null,
     null,
     {label:'(b11)\n(b13)', mods:{add:[8,4]}},
-    {label:'(b13)', mods:{add:[8]}},
+    null,
     null,
     null,
   ],
@@ -149,8 +149,8 @@ const TENSION_ROWS = [
   ],
   // Row 5
   [
-    {label:'aug\n(b9)', mods:{add:[1], sharp5:true}},
-    {label:'b5\n(b9)', mods:{add:[1], flat5:true}},
+    {label:'(#9)\n(#11)', mods:{add:[3,6]}},
+    null,
     {label:'(9)\n(#11)\n(13)', mods:{add:[9,2,6]}},
     null,
     null,
@@ -164,7 +164,7 @@ const TENSION_ROWS = [
     {label:'aug\n(#9)', mods:{add:[3], sharp5:true}},
     {label:'b5\n(#9)', mods:{add:[3], flat5:true}},
     {label:'(9)\n(b13)', mods:{add:[8,2]}},
-    null,
+    {label:'(b9)\n(13)', mods:{add:[1,9]}},
     null,
     null,
     null,
@@ -173,9 +173,9 @@ const TENSION_ROWS = [
   [
     null,
     null,
-    {label:'b5\n(#9)', mods:{add:[3], flat5:true}},
-    {label:'(b9)\n(b13)', mods:{add:[8,1]}},
     null,
+    {label:'(b9)\n(b13)', mods:{add:[8,1]}},
+    {label:'(#9)\n(b13)', mods:{add:[3,8]}},
     null,
     null,
     null,
@@ -192,6 +192,46 @@ const TENSION_ROWS = [
     null,
   ],
 ];
+
+// ======== AVAILABLE TENSIONS PER SCALE (HOW TO IMPROVISE) ========
+// Maps scaleIdx → available tension names. Used for Parent Scale display + tension filtering.
+const PC_TO_TENSION_NAME = { 1:'b9', 2:'9', 3:'#9', 5:'11', 6:'#11', 8:'b13', 9:'13' };
+const TENSION_NAME_TO_PC = { 'b9':1, '9':2, '#9':3, '11':5, '#11':6, 'b13':8, '13':9 };
+
+const SCALE_AVAIL_TENSIONS = {
+  // === Diatonic (○) ===
+  0:  { avail:['9','13'], avoid:['11'] },           // Ionian (Major)
+  1:  { avail:['9','11','13'] },                     // Dorian
+  2:  { avail:['11','b13'], avoid:['b9'] },          // Phrygian
+  3:  { avail:['9','#11','13'] },                    // Lydian
+  4:  { avail:['9','13'], avoid:['11'] },            // Mixolydian
+  5:  { avail:['9','11','b13'] },                    // Aeolian (Natural Minor)
+  6:  { avail:['11','b13'], avoid:['b9'] },          // Locrian
+  // === Harmonic Minor (■) ===
+  7:  { avail:['9','11','b13'] },                    // Harmonic Minor (I)
+  8:  { avail:['11','13'], avoid:['b9'] },           // Locrian ♮6 (II)
+  9:  { avail:['9','13'], avoid:['11'] },            // Ionian #5 (III)
+  10: { avail:['9','#11','13'] },                    // Dorian #4 (IV)
+  11: { avail:['b9','b13'], avoid:['11'] },          // Phrygian Dominant (V)
+  12: { avail:['#11','13'] },                        // Lydian #2 (VI)
+  13: { avail:['11','b13'] },                        // Functional Diminish (VII)
+  // === Melodic Minor (◆) ===
+  14: { avail:['9','11','13'] },                     // Melodic Minor (I)
+  15: { avail:['11','b13'], avoid:['b9'] },          // Dorian b2 (II)
+  16: { avail:['9','#11','13'] },                    // Lydian #5 (III) = Lydian Augmented
+  17: { avail:['9','#11','13'] },                    // Lydian b7 (IV)
+  18: { avail:['9','b13'], avoid:['11'] },           // Mixolydian b6 (V)
+  19: { avail:['9','11'] },                          // Locrian ♮2 (VI)
+  20: { avail:['b9','#9','#11','b13'] },             // Super Locrian / Altered (VII)
+  // === Symmetric / Special ===
+  25: { avail:['9','#11','b13'] },                   // Whole Tone
+  26: { avail:['b9','#9','#11','13'] },              // Half-Whole Diminish (CombiDim)
+  27: { avail:['9','11','b13'] },                    // Whole-Half Diminish
+  // === Bebop (inherit from parent) ===
+  28: { avail:['9','13'], avoid:['11'] },            // Bebop Major (≈ Ionian)
+  29: { avail:['9','13'], avoid:['11'] },            // Bebop Dominant (≈ Mixolydian)
+  30: { avail:['9','11','13'] },                     // Bebop Dorian (≈ Dorian)
+};
 
 // ======== PAD GRID ========
 const GRID = {

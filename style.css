@@ -511,12 +511,13 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .ps-row.ps-selected .ps-avail { opacity: 1; font-weight: 600; }
 .ps-row.ps-partial { opacity: 0.45; font-style: italic; }
 .ps-row.ps-partial .ps-scale::after { content: ' ~'; font-size: 0.6rem; color: var(--text-muted); font-style: normal; }
+.ps-row.ps-omit5 { opacity: 0.55; font-style: italic; }
 .ps-row.ps-avoid { opacity: 0.45; }
 .ps-row.ps-avoid .ps-scale::after { content: ' avoid'; color: #ff5722; font-size: 0.6rem; font-weight: 700; margin-left: 4px; }
 .ps-cat { width: 20px; font-weight: 700; }
-.ps-key { width: 80px; }
-.ps-degree { width: 36px; color: var(--accent); font-weight: 600; }
-.ps-scale { flex: 1; color: var(--text-muted); }
+.ps-scale { flex: 1; font-weight: 600; }
+.ps-degree { font-size: 0.6rem; color: var(--text-muted); opacity: 0.7; white-space: nowrap; font-weight: 600; }
+.ps-parent-info { font-size: 0.55rem; color: var(--text-muted); opacity: 0.4; white-space: nowrap; }
 .ps-avail { font-size: 0.6rem; color: var(--accent); opacity: 0.8; white-space: nowrap; letter-spacing: 1px; }
 .ps-goto { font-size: 0.75rem; opacity: 0.4; padding: 0 2px; cursor: pointer; }
 .ps-goto:hover { opacity: 1; color: var(--accent); }

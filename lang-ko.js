@@ -139,8 +139,8 @@ I18N.addLang('ko', {
     stop: 'Stop \u25A0',
   },
   parent: {
-    toggle: 'Parent Scale',
-    header: 'Parent Scales ({n})',
+    toggle: 'Available Scale',
+    header: 'Available Scales ({n})',
     expand: '\uBAA8\uB450 \uD45C\uC2DC',
   },
   guide: {

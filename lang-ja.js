@@ -139,8 +139,8 @@ I18N.addLang('ja', {
     stop: 'Stop \u25A0',
   },
   parent: {
-    toggle: 'Parent Scale',
-    header: 'Parent Scales ({n})',
+    toggle: 'Available Scale',
+    header: 'Available Scales ({n})',
     expand: '\u3059\u3079\u3066\u8868\u793A',
   },
   guide: {

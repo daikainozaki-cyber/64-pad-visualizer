@@ -139,8 +139,8 @@ I18N.addLang('zh', {
     stop: 'Stop \u25A0',
   },
   parent: {
-    toggle: 'Parent Scale',
-    header: 'Parent Scales ({n})',
+    toggle: 'Available Scale',
+    header: 'Available Scales ({n})',
     expand: '\u663E\u793A\u5168\u90E8',
   },
   guide: {

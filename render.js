@@ -1605,13 +1605,19 @@ function renderParentScales() {
 
   let dividerAdded = false;
   let partialDividerAdded = false;
+  let omit5DividerAdded = false;
   displayResults.forEach((r, i) => {
     // Divider between exact and partial matches
-    if (!partialDividerAdded && !r.exactMatch && i > 0 && displayResults[i - 1].exactMatch) {
+    if (!partialDividerAdded && !r.exactMatch && !r.omit5Match && i > 0 && displayResults[i - 1].exactMatch) {
       html += '<div class="ps-divider"></div>';
       partialDividerAdded = true;
     }
-    if (showAll && !dividerAdded && closeResults.length > 0 && r.distance > 1 && r.exactMatch) {
+    // Divider before omit5 matches
+    if (!omit5DividerAdded && r.omit5Match && i > 0 && !displayResults[i - 1].omit5Match) {
+      html += '<div class="ps-divider"><span style="font-size:0.55rem;color:var(--text-muted);">omit 5</span></div>';
+      omit5DividerAdded = true;
+    }
+    if (showAll && !dividerAdded && closeResults.length > 0 && r.distance > 1 && !r.omit5Match && r.exactMatch) {
       html += '<div class="ps-divider"></div>';
       dividerAdded = true;
     }
@@ -1631,12 +1637,13 @@ function renderParentScales() {
 
     html += '<div class="ps-row' + (isSelected ? ' ps-selected' : '') +
       (!r.exactMatch ? ' ps-partial' : '') +
+      (r.omit5Match ? ' ps-omit5' : '') +
       (hasAvoidConflict ? ' ps-avoid' : '') +
       '" onclick="onPSSelect(' + globalIdx + ')">' +
       '<span class="ps-cat">' + r.system + '</span>' +
-      '<span class="ps-key">' + r.parentKeyName + ' ' + r.systemLabel + '</span>' +
+      '<span class="ps-scale">' + NOTE_NAMES_SHARP[psRoot] + ' ' + r.scaleName + '</span>' +
       '<span class="ps-degree">' + r.degree + '</span>' +
-      '<span class="ps-scale">' + r.scaleName + '</span>';
+      '<span class="ps-parent-info">← ' + r.parentKeyName + ' ' + r.systemLabel + '</span>';
 
     // Available tensions
     if (sat) {

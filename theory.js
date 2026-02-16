@@ -759,6 +759,8 @@ function findParentScales(rootPC, chordIntervals, currentKey) {
   const entries = DIATONIC_CHORD_DB[rootPC];
   if (!entries) return [];
   const results = [];
+  const strictKeys = new Set(); // track strict matches to avoid duplicates in omit5
+
   for (const entry of entries) {
     // Check all chord tones (mod 12) are contained in the parent scale
     const scaleAbsPCS = getParentScaleAbsPCS(entry);
@@ -768,16 +770,46 @@ function findParentScales(rootPC, chordIntervals, currentKey) {
       if (!scaleAbsPCS.has(absPC)) { allIn = false; break; }
     }
     if (!allIn) continue;
+    const key = entry.parentKey + ':' + entry.scaleIdx;
+    strictKeys.add(key);
     results.push({
       parentKey: entry.parentKey, parentKeyName: psKeyName(entry),
       system: entry.system, systemLabel: entry.systemLabel,
       degree: psDegreeLabel(entry.degreeNum, entry.quality),
       degreeNum: entry.degreeNum, scaleName: entry.scaleName,
       scaleIdx: entry.scaleIdx, distance: fifthsDistance(currentKey, entry.parentKey),
+      omit5Match: false,
     });
   }
+
+  // Omit-5 matching: if chord has perfect 5th (interval 7), also search without it
+  if (chordIntervals.has(7)) {
+    const omit5Intervals = new Set(chordIntervals);
+    omit5Intervals.delete(7);
+    for (const entry of entries) {
+      const key = entry.parentKey + ':' + entry.scaleIdx;
+      if (strictKeys.has(key)) continue; // already a strict match
+      const scaleAbsPCS = getParentScaleAbsPCS(entry);
+      let allIn = true;
+      for (const iv of omit5Intervals) {
+        const absPC = (iv + rootPC) % 12;
+        if (!scaleAbsPCS.has(absPC)) { allIn = false; break; }
+      }
+      if (!allIn) continue;
+      results.push({
+        parentKey: entry.parentKey, parentKeyName: psKeyName(entry),
+        system: entry.system, systemLabel: entry.systemLabel,
+        degree: psDegreeLabel(entry.degreeNum, entry.quality),
+        degreeNum: entry.degreeNum, scaleName: entry.scaleName,
+        scaleIdx: entry.scaleIdx, distance: fifthsDistance(currentKey, entry.parentKey),
+        omit5Match: true,
+      });
+    }
+  }
+
   const SYS_ORDER = { '○': 0, 'NM': 1, '■': 2, '◆': 3 };
   results.sort((a, b) =>
+    (a.omit5Match - b.omit5Match) ||
     (a.distance - b.distance) || (SYS_ORDER[a.system] - SYS_ORDER[b.system]) || (a.degreeNum - b.degreeNum)
   );
   return results;

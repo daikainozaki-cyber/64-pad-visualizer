@@ -794,6 +794,7 @@ function onDiatonicClick(tetrad) {
   document.getElementById('plain-panel').style.display = 'none';
 
   // Set builder state
+  BuilderState._fromDiatonic = true;
   BuilderState.root = tetrad.rootPC;
   BuilderState.quality = tetrad.quality;
   BuilderState.tension = null;

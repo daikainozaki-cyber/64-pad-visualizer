@@ -1530,7 +1530,13 @@ function renderParentScales() {
   if (newFP !== _psChordFP) {
     _psChordFP = newFP;
     _selectedPS = null;
-    _psAutoSelect = true;
+    // Only auto-select when chord came from diatonic bar click
+    if (BuilderState._fromDiatonic) {
+      _psAutoSelect = true;
+      BuilderState._fromDiatonic = false;
+    } else {
+      _psAutoSelect = false;
+    }
   }
 
   // Validate current selection still in results

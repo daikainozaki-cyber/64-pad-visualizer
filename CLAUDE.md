@@ -716,7 +716,7 @@ z x c v   → slot 13-16
 - 裏コード=Lydian b7, dim7=コンディミ, 7sus4=Mixolydian sus4
 - MMモード★4つが実戦主力、HMモードはHMP5↓とFunc.Dimだけ実戦的
 
-### V2.4（2026-02-17 Available Scale ソート改善 + 実践的自動選択）
+### V2.4（2026-02-17 Practical Sort + ピボットコード思考 + テンションdimming）
 
 | 機能/修正 | 内容 |
 |-----------|------|
@@ -727,8 +727,12 @@ z x c v   → slot 13-16
 | **findBestAutoSelect()** | Practicalモードではダイアトニック度数から推奨スケールを自動選択。Diatonicモードでは従来通りresults[0] |
 | **closeResults選択結果包含** | 自動選択されたスケールがdistance>1でも常にcloseResultsに含まれ表示される |
 | **omit5Matchソート追加** | Practical/Diatonic両方のソートにomit5Match（非omit5優先）を追加 |
+| **ダイアトニックバー非表示（手動コード構築時）** | Chordモードで手動Root→Quality選択時にダイアトニックバーを非表示。`BuilderState._fromDiatonic`フラグで管理。ダイアトニック経由なら表示維持。**ピボットコード思考**: キーから切り離されたコードが「どのキーに属しうるか」をAvailable Scaleで可視化 |
+| **○スケール常時表示（近親調）** | closeResultsフィルタに`r.system === '○'`を追加。ダイアトニック（○）のParent Scaleは五度圏距離に関わらず常に表示。近親調の可視化 |
+| **Parent Scaleパネル視覚強化** | フォントサイズ+0.1rem全体、opacity増加、padding増加、max-height 200→240px |
+| **Category G: テンションdimming** | 非ドミナント7thコード（△7, m7, m△7, dim7等）でb9/#9/b13/aug/b5を含むテンションをopacity 0.35で薄表示。ドミナント7はdimmingなし（オルタードが標準）。`.tension-uncommon`クラス。クリック可能（学習用） |
 
-**修正ファイル**: data.js（SCALE_AVAIL_TENSIONS修正, AppState.psSortMode追加）、theory.js（avoidCount 2箇所）、render.js（ソート分岐, トグルUI, findBestAutoSelect, DIATONIC_AUTO_PREF, closeResults修正）、style.css（.ps-sort-toggle）、lang-*.js×9（parent.sortPractical/sortDiatonic）、practical_scale_guide.md
+**修正ファイル**: data.js, theory.js, render.js, builder.js, style.css, index.html, lang-*.js×9, practical_scale_guide.md
 
 **Practicalモードの自動選択結果（Key=C）**:
 
@@ -741,6 +745,17 @@ z x c v   → slot 13-16
 | G7 (V) | Mixolydian | Mixolydian |
 | Am7 (vi) | **Dorian** | Aeolian |
 | Bm7b5 (vii) | **Locrian ♮2** | Locrian |
+
+**テンションdimming設計**:
+- **ドミナント7**: dimming なし（b9/#9/b13/aug/b5はオルタードとして標準）
+- **その他の7thコード**: b9(pc=1), #9(pc=3), b13(pc=8), aug(mods.sharp5), b5(mods.flat5)を含むテンションを薄表示
+- **7thなしコード**: Category Dで既にオルタード非表示（変更なし）
+- **理由**: 近親調から考えてもb9/#9/b13がメジャー7thやマイナー7thに乗ることは稀。存在は示すが目立たせない
+
+**ピボットコード設計思想**:
+- **Key→Chord方向**（ダイアトニックバー）: キーの中でコードを見る。伝統的な音楽理論アプローチ
+- **Chord→Key方向**（Available Scale）: コード単体からどのキーに属しうるかを見る。ピボットコード思考
+- 手動コード入力時にダイアトニックバーを消すことで、キーの呪縛から解放。**両方の視点を持てるのが64 Pad Explorerの独自性**
 
 ### 次の実装目標
 

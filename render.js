@@ -1514,12 +1514,14 @@ function renderParentScales() {
   _psResults = findParentScales(psRoot, qualityIntervals, AppState.key);
 
   // Annotate each result: does the FULL chord (with tensions) fit in this scale?
+  // When tension is present, omit perfect 5th from check (standard voicing practice)
+  const p5abs = hasTension ? (psRoot + 7) % 12 : -1;
   _psResults.forEach(r => {
     if (!hasTension) {
       r.exactMatch = true;
     } else {
       const scaleAbsPCS = new Set(SCALES[r.scaleIdx].pcs.map(iv => (iv + psRoot) % 12));
-      r.exactMatch = [...fullAbsSet].every(pc => scaleAbsPCS.has(pc));
+      r.exactMatch = [...fullAbsSet].every(pc => pc === p5abs || scaleAbsPCS.has(pc));
     }
   });
 
@@ -1581,8 +1583,9 @@ function renderParentScales() {
   }
 
   panel.style.display = '';
-  const closeResults = _psResults.filter(r => r.distance <= 1);
-  const farResults = _psResults.filter(r => r.distance > 1);
+  // When tension is present, exact matches always shown (even from distant keys)
+  const closeResults = _psResults.filter(r => r.distance <= 1 || (hasTension && r.exactMatch));
+  const farResults = _psResults.filter(r => r.distance > 1 && !(hasTension && r.exactMatch));
   const showAll = _psExpanded || farResults.length === 0;
   const displayResults = showAll ? _psResults : closeResults;
 
@@ -1612,8 +1615,8 @@ function renderParentScales() {
       html += '<div class="ps-divider"></div>';
       partialDividerAdded = true;
     }
-    // Divider before omit5 matches
-    if (!omit5DividerAdded && r.omit5Match && i > 0 && !displayResults[i - 1].omit5Match) {
+    // Divider before omit5 matches (only when no tension — with tension, omit5 is standard practice)
+    if (!hasTension && !omit5DividerAdded && r.omit5Match && i > 0 && !displayResults[i - 1].omit5Match) {
       html += '<div class="ps-divider"><span style="font-size:0.55rem;color:var(--text-muted);">omit 5</span></div>';
       omit5DividerAdded = true;
     }
@@ -1637,7 +1640,7 @@ function renderParentScales() {
 
     html += '<div class="ps-row' + (isSelected ? ' ps-selected' : '') +
       (!r.exactMatch ? ' ps-partial' : '') +
-      (r.omit5Match ? ' ps-omit5' : '') +
+      (!hasTension && r.omit5Match ? ' ps-omit5' : '') +
       (hasAvoidConflict ? ' ps-avoid' : '') +
       '" onclick="onPSSelect(' + globalIdx + ')">' +
       '<span class="ps-cat">' + r.system + '</span>' +

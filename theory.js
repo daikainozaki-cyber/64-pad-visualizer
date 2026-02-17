@@ -415,6 +415,7 @@ function chordDegreeName(interval, qualityPCS, finalPCS) {
     case 7: return '5';
     case 8:
       if (qualityPCS && qualityPCS.includes(8)) return '#5';
+      if (BuilderState.tension && BuilderState.tension.mods && BuilderState.tension.mods.sharp5) return '#5';
       return 'b13';
     case 9:
       if (qualityPCS && qualityPCS.includes(9) && !qualityPCS.includes(10) && !qualityPCS.includes(11)) return '6';
@@ -486,6 +487,19 @@ function getBuilderChordName() {
         const ORDER = {'b9':1,'#9':2,'9':3,'11':4,'#11':5,'b13':6,'13':7};
         parts.sort((a, b) => (ORDER[a] || 99) - (ORDER[b] || 99));
         tl = parts.join(',');
+      }
+    }
+    // aug → (#5): "aug" is triad name only. On non-Maj qualities, use (#5) notation
+    if (BuilderState.quality && BuilderState.quality.name !== '') {
+      if (tl === 'aug') {
+        tl = '(#5)';
+      } else if (tl.startsWith('aug(')) {
+        const inner = tl.slice(4, -1);
+        const parts = inner.split(',').map(s => s.trim()).filter(Boolean);
+        parts.push('#5');
+        const ORDER = {'#5':0,'b9':1,'#9':2,'9':3,'11':4,'#11':5,'b13':6,'13':7};
+        parts.sort((a, b) => (ORDER[a] || 99) - (ORDER[b] || 99));
+        tl = '(' + parts.join(',') + ')';
       }
     }
     const noWrap = tl.startsWith('(') || tl.startsWith('sus') || tl.startsWith('aug') ||

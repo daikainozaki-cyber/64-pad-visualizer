@@ -355,16 +355,22 @@ function updateControlsForQuality(quality) {
   const btns = document.querySelectorAll('#tension-grid .tension-btn');
   const has7th = quality.pcs.includes(10) || quality.pcs.includes(11) ||
                  (quality.pcs.includes(9) && quality.pcs.includes(6));
+  // 6th chord = has 6th (pc=9) as chord tone, but not as dim7th
+  const has6th = quality.pcs.includes(9) && !has7th;
 
   // Reset all quality-hidden and tension-uncommon first
   btns.forEach(btn => { btn.classList.remove('quality-hidden'); btn.classList.remove('tension-uncommon'); });
 
   // D: Without 7th, no altered tensions (except sus4 which is chord modification)
+  // 6th chords: sus4 is also hidden (3rd is essential to 6th chord identity)
   if (!has7th) {
     btns.forEach(btn => {
       if (!btn._tension) return;
       const m = btn._tension.mods;
-      if (m.replace3 !== undefined) return; // sus4 variants always OK
+      if (m.replace3 !== undefined) {
+        if (has6th) { btn.classList.add('quality-hidden'); return; }
+        return;
+      }
       if (m.sharp5 || m.flat5) { btn.classList.add('quality-hidden'); return; }
       if (m.add) {
         for (const pc of m.add) {
@@ -407,7 +413,15 @@ function updateControlsForQuality(quality) {
     if (!btn._tension || btn.classList.contains('quality-hidden')) { entries.push(null); return; }
     const result = applyTension([...quality.pcs], btn._tension.mods);
     const resultKey = result.join(',');
-    const complexity = Object.keys(btn._tension.mods).length;
+    const m = btn._tension.mods;
+    let complexity = 0;
+    if (m.add) complexity += m.add.length;
+    if (m.sharp5) complexity++;
+    if (m.flat5) complexity++;
+    if (m.replace3 !== undefined) complexity++;
+    if (m.omit5) complexity++;
+    if (m.omit3) complexity++;
+    if (m.rootless) complexity++;
     entries.push({ btn, resultKey, complexity, isNoOp: resultKey === baseKey });
   });
 
@@ -436,9 +450,22 @@ function updateControlsForQuality(quality) {
   // === Category G: Dim uncommon tensions for non-dominant 7th chords ===
   // Dominant 7 = altered tensions are standard (no dimming)
   // Other 7th chords = b9, #9, b13, aug, b5 are rarely used → dim (visible but faded)
+  // Minor quality (m7, m△7) additionally dims #11 (only Dorian #4/HM uses it — extremely rare)
+  // Maj7 keeps #11 fully visible (Lydian = jazz standard)
   if (has7th) {
     const isDom7 = quality.pcs.includes(4) && quality.pcs.includes(10) && !quality.pcs.includes(11);
-    if (!isDom7) {
+    if (isDom7) {
+      // Dominant 7: natural 11th (pc=5) is the ONLY avoid — clashes with 3rd (half step)
+      // sus4 (replace3) is OK — it replaces 3rd, not adds alongside it
+      // All other tensions (9, b9, #9, 13, b13, #11, aug, b5) are standard on dom7
+      btns.forEach(btn => {
+        if (!btn._tension || btn.classList.contains('quality-hidden')) return;
+        const m = btn._tension.mods;
+        if (m.replace3 !== undefined) return; // sus4 replaces 3rd, OK
+        if (m.add && m.add.includes(5)) btn.classList.add('quality-hidden');
+      });
+    } else {
+      const isMinor = quality.pcs.includes(3);
       btns.forEach(btn => {
         if (!btn._tension || btn.classList.contains('quality-hidden')) return;
         const m = btn._tension.mods;
@@ -447,10 +474,35 @@ function updateControlsForQuality(quality) {
         if (m.add) {
           for (const pc of m.add) {
             if (pc === 1 || pc === 3 || pc === 8) { btn.classList.add('tension-uncommon'); return; }
+            if (pc === 6 && isMinor) { btn.classList.add('tension-uncommon'); return; }
           }
         }
       });
     }
+  }
+
+  // === Category G2: Major 6th chord — 11th is avoid (same reason as dom7/maj7) ===
+  // 11th (pc=5) clashes with major 3rd (pc=4) — half step apart
+  // Minor 6th (m6) is OK — m3 (pc=3) and 11 (pc=5) are a whole step apart
+  if (has6th && quality.pcs.includes(4)) {
+    btns.forEach(btn => {
+      if (!btn._tension || btn.classList.contains('quality-hidden')) return;
+      const m = btn._tension.mods;
+      if (m.add && m.add.includes(5)) btn.classList.add('quality-hidden');
+    });
+  }
+
+  // === Category H: add9 vs 9 — context-dependent label ===
+  // With 7th or 6th: "add9" is wrong. Use "9" (e.g. Cmaj9, C6/9). Hide add9.
+  // Without 7th/6th: "9" implies 7th present. Use "add9" (e.g. Cadd9). Hide 9.
+  if (has7th || has6th) {
+    btns.forEach(btn => {
+      if (btn._tension && btn._tension.label === 'add9') btn.classList.add('quality-hidden');
+    });
+  } else {
+    btns.forEach(btn => {
+      if (btn._tension && btn._tension.label === '9') btn.classList.add('quality-hidden');
+    });
   }
 }
 

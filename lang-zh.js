@@ -184,6 +184,7 @@ I18N.addLang('zh', {
     ss_parent_desc: '反向查找包含你的和弦的音阶。可在Practical（实用性排序）和Diatonic（理论排序）之间切换。手动输入和弦时自然和弦条消失，可作为枢纽和弦进行分析。',
     ss_parent_alt: 'Parent Scale面板和吉他指板显示',
     ss_parent_caption: 'Dm7 \u2192 C Major (Dorian)、C Mel.Min (Dorian b2)、F Major (Aeolian)等。显示Available Tensions',
+    ss_parent_note: '\u203B 五声音阶/布鲁斯音阶属于调式（横向方法），与和弦-音阶理论（纵向对应）是不同的体系，因此不在Available Scale中涉及。在实际演奏中，五声音阶往往是首选。',
     usecases: '使用场景',
     uc1_q: '"我想找到这个和弦在打击垫上的声位"',
     uc1_a: '\u2192 在<span class="mode-badge chord">Chord</span>模式中选择Root、Quality和Tension \u2192 在Voicing Box中查看布局',

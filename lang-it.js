@@ -184,6 +184,7 @@ I18N.addLang('it', {
     ss_parent_desc: 'Ricerca inversa delle scale che contengono il tuo accordo. Alterna tra ordinamento Practical (per usabilit\u00E0) e Diatonic (per teoria). L\'inserimento manuale di accordi nasconde la barra diatonica per l\'analisi degli accordi pivot.',
     ss_parent_alt: 'Pannello Parent Scale e visualizzazione tastiera chitarra',
     ss_parent_caption: 'Dm7 \u2192 C Major (Dorian), C Mel.Min (Dorian b2), F Major (Aeolian), ecc. Available Tensions visualizzate',
+    ss_parent_note: '\u203B Le scale pentatoniche/blues sono modali (approccio orizzontale) e appartengono a un sistema diverso dalla teoria delle scale per accordo (mappatura verticale), quindi non sono incluse in Available Scale. Nella pratica, la pentatonica \u00E8 spesso la prima scelta.',
     usecases: 'Casi d\'uso',
     uc1_q: '"Voglio trovare come disporre questo accordo sui pad"',
     uc1_a: '\u2192 Seleziona Root, Quality e Tension in modalit\u00E0 <span class="mode-badge chord">Chord</span> \u2192 Controlla le disposizioni nei voicing box',

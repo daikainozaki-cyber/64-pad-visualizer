@@ -184,6 +184,7 @@ I18N.addLang('de', {
     ss_parent_desc: 'Skalen r\u00FCckw\u00E4rts suchen, die den Akkord enthalten. Zwischen Practical (nach Nutzbarkeit) und Diatonic (nach Theorie) Sortierung umschalten. Bei manueller Akkordeingabe verschwindet die diatonische Leiste f\u00FCr Pivot-Akkord-Analyse.',
     ss_parent_alt: 'Parent Scale-Panel und Gitarrengriffbrett-Anzeige',
     ss_parent_caption: 'Dm7 \u2192 C-Dur (Dorisch), C Mel.Min (Dorisch b2), F-Dur (\u00C4olisch) usw. Available Tensions angezeigt',
+    ss_parent_note: '\u203B Pentatonische/Blues-Skalen sind modal (horizontaler Ansatz) und geh\u00F6ren zu einem anderen System als die Akkord-Skalen-Theorie (vertikale Zuordnung), daher sind sie nicht in Available Scale enthalten. In der Praxis ist die Pentatonik oft die erste Wahl.',
     usecases: 'Anwendungsf\u00E4lle',
     uc1_q: '\u201EIch m\u00F6chte herausfinden, wie ich diesen Akkord auf den Pads greifen kann\u201C',
     uc1_a: '\u2192 Root, Quality und Tension im <span class="mode-badge chord">Chord</span>-Modus w\u00E4hlen \u2192 Layouts in den Voicing Boxes pr\u00FCfen',

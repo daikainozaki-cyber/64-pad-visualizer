@@ -184,6 +184,7 @@ I18N.addLang('fr', {
     ss_parent_desc: 'Recherche invers\u00E9e des gammes contenant votre accord. Basculez entre tri Practical (par utilit\u00E9) et Diatonic (par th\u00E9orie). La saisie manuelle d\u0027accord masque la barre diatonique pour l\u0027analyse d\u0027accords pivot.',
     ss_parent_alt: 'Panneau Parent Scale et affichage du manche de guitare',
     ss_parent_caption: 'Dm7 \u2192 C Major (Dorian), C Mel.Min (Dorian b2), F Major (Aeolian), etc. Available Tensions affich\u00E9es',
+    ss_parent_note: '\u203B Les gammes pentatoniques/blues sont modales (approche horizontale) et appartiennent \u00E0 un syst\u00E8me diff\u00E9rent de la th\u00E9orie des gammes par accord (correspondance verticale), elles ne sont donc pas incluses dans Available Scale. En pratique, la pentatonique est souvent le premier choix.',
     usecases: 'Cas d\u0027utilisation',
     uc1_q: '\u00AB Je veux trouver comment voicer cet accord sur les pads \u00BB',
     uc1_a: '\u2192 S\u00E9lectionnez Root, Quality et Tension en mode <span class="mode-badge chord">Chord</span> \u2192 V\u00E9rifiez les dispositions dans les voicing boxes',

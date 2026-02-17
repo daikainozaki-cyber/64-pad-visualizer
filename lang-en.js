@@ -184,6 +184,7 @@ I18N.addLang('en', {
     ss_parent_desc: 'Reverse-lookup scales that contain your chord. Toggle between Practical (by usability) and Diatonic (by theory) sorting. Manual chord input hides the diatonic bar for pivot chord analysis.',
     ss_parent_alt: 'Parent Scale panel and guitar fretboard display',
     ss_parent_caption: 'Dm7 \u2192 C Major (Dorian), C Mel.Min (Dorian b2), F Major (Aeolian), etc. Available Tensions displayed',
+    ss_parent_note: '\u203B Pentatonic/Blues scales are modal (horizontal approach) and belong to a different system from chord-scale theory (vertical mapping), so they are not included in Available Scale. In practice, pentatonic is often the first choice.',
     usecases: 'Use Cases',
     uc1_q: '"I want to find how to voice this chord on pads"',
     uc1_a: '\u2192 Select Root, Quality, and Tension in <span class="mode-badge chord">Chord</span> mode \u2192 Check layouts in voicing boxes',

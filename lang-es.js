@@ -184,6 +184,7 @@ I18N.addLang('es', {
     ss_parent_desc: 'B\u00FAsqueda inversa de escalas que contengan tu acorde. Alterna entre ordenamiento Practical (por usabilidad) y Diatonic (por teor\u00EDa). La entrada manual de acordes oculta la barra diat\u00F3nica para an\u00E1lisis de acordes pivote.',
     ss_parent_alt: 'Panel Parent Scale y visualizaci\u00F3n del diapas\u00F3n de guitarra',
     ss_parent_caption: 'Dm7 \u2192 C Major (Dorian), C Mel.Min (Dorian b2), F Major (Aeolian), etc. Se muestran los Available Tensions',
+    ss_parent_note: '\u203B Las escalas pentat\u00F3nicas/blues son modales (enfoque horizontal) y pertenecen a un sistema diferente de la teor\u00EDa de escalas por acorde (mapeo vertical), por lo que no se incluyen en Available Scale. En la pr\u00E1ctica, la pentat\u00F3nica suele ser la primera opci\u00F3n.',
     usecases: 'Casos de uso',
     uc1_q: '"Quiero encontrar c\u00F3mo hacer el voicing de este acorde en los pads"',
     uc1_a: '\u2192 Selecciona Root, Quality y Tension en el modo <span class="mode-badge chord">Chord</span> \u2192 Consulta las disposiciones en los Voicing Boxes',

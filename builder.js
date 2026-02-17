@@ -361,16 +361,13 @@ function updateControlsForQuality(quality) {
   // Reset all quality-hidden and tension-uncommon first
   btns.forEach(btn => { btn.classList.remove('quality-hidden'); btn.classList.remove('tension-uncommon'); });
 
-  // D: Without 7th, no altered tensions (except sus4 which is chord modification)
-  // 6th chords: sus4 is also hidden (3rd is essential to 6th chord identity)
+  // D: Without 7th, no altered tensions
+  // sus4 hidden on all non-7th chords (quality change, not tension; only dom7sus4 is standard via Cat F)
   if (!has7th) {
     btns.forEach(btn => {
       if (!btn._tension) return;
       const m = btn._tension.mods;
-      if (m.replace3 !== undefined) {
-        if (has6th) { btn.classList.add('quality-hidden'); return; }
-        return;
-      }
+      if (m.replace3 !== undefined) { btn.classList.add('quality-hidden'); return; }
       if (m.sharp5 || m.flat5) { btn.classList.add('quality-hidden'); return; }
       if (m.add) {
         for (const pc of m.add) {
@@ -481,14 +478,37 @@ function updateControlsForQuality(quality) {
     }
   }
 
-  // === Category G2: Major 6th chord — 11th is avoid (same reason as dom7/maj7) ===
+  // === Category G2: 11th avoid on all chords with major 3rd ===
   // 11th (pc=5) clashes with major 3rd (pc=4) — half step apart
-  // Minor 6th (m6) is OK — m3 (pc=3) and 11 (pc=5) are a whole step apart
-  if (has6th && quality.pcs.includes(4)) {
+  // Applies to: triads (Cmaj), 6th (C6), maj7 (C△7), dom7 (redundant w/ Cat G)
+  // Minor chords are OK — m3 (pc=3) and 11 (pc=5) are a whole step apart
+  if (quality.pcs.includes(4)) {
     btns.forEach(btn => {
       if (!btn._tension || btn.classList.contains('quality-hidden')) return;
       const m = btn._tension.mods;
+      if (m.replace3 !== undefined) return; // sus4 replaces 3rd, no clash
       if (m.add && m.add.includes(5)) btn.classList.add('quality-hidden');
+    });
+  }
+
+  // === Category G3: Minor non-7th + #11 restrictions ===
+  // #11 on minor is very rare (only Dorian #4 / 4th mode of HM)
+  // When combined with 6th (pc=9 in add), implies melodic minor → #11 doesn't exist → hide
+  // Standalone #11 on minor triad → dim (tension-uncommon)
+  if (quality.pcs.includes(3) && !has7th) {
+    btns.forEach(btn => {
+      if (!btn._tension || btn.classList.contains('quality-hidden')) return;
+      const m = btn._tension.mods;
+      if (m.add && m.add.includes(6)) { // has #11
+        if (m.add.includes(9) || has6th) {
+          // Combined with 6th (in tension mods or in base quality) → hide
+          // m6 implies melodic minor → #11 doesn't exist
+          btn.classList.add('quality-hidden');
+        } else {
+          // Standalone #11 on minor triad (no 6th) → very rare (Dorian #4), dim it
+          btn.classList.add('tension-uncommon');
+        }
+      }
     });
   }
 

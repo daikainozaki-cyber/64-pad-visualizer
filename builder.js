@@ -468,12 +468,16 @@ function updateControlsForQuality(quality) {
       const isMinor = quality.pcs.includes(3);
       // dim7: b13 is standard (Whole-Half Dim scale). m7(b5): b13 is avoid (keep dimmed)
       const isDim7 = isMinor && quality.pcs.includes(6) && quality.pcs.includes(9) && !quality.pcs.includes(10);
+      // mM7: #11 doesn't exist (melodic/harmonic minor both have natural 4th only)
+      const isMM7 = isMinor && quality.pcs.includes(11);
       btns.forEach(btn => {
         if (!btn._tension || btn.classList.contains('quality-hidden')) return;
         const m = btn._tension.mods;
         if (m.replace3 !== undefined) return; // sus4 already handled by Cat F
         if (m.sharp5 || m.flat5) { btn.classList.add('tension-uncommon'); return; }
         if (m.add) {
+          // Priority 1: mM7 + #11 → hide (must check before dim to avoid order-dependent bugs)
+          if (isMM7 && m.add.includes(6)) { btn.classList.add('quality-hidden'); return; }
           for (const pc of m.add) {
             if (pc === 1 || pc === 3) { btn.classList.add('tension-uncommon'); return; }
             if (pc === 8 && !isDim7) { btn.classList.add('tension-uncommon'); return; }

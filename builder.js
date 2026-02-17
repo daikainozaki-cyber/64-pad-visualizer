@@ -522,6 +522,16 @@ function updateControlsForQuality(quality) {
     });
   }
 
+  // === Category G4: b13 on 6th chords → hide ===
+  // 6 (pc=9, A) and b13 (pc=8, Ab) are a semitone apart — contradictory
+  if (has6th) {
+    btns.forEach(btn => {
+      if (!btn._tension || btn.classList.contains('quality-hidden')) return;
+      const m = btn._tension.mods;
+      if (m.add && m.add.includes(8)) btn.classList.add('quality-hidden');
+    });
+  }
+
   // === Category H: add9 vs 9 — context-dependent label ===
   // With 7th or 6th: "add9" is wrong. Use "9" (e.g. Cmaj9, C6/9). Hide add9.
   // Without 7th/6th: "9" implies 7th present. Use "add9" (e.g. Cadd9). Hide 9.

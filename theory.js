@@ -782,6 +782,11 @@ function findParentScales(rootPC, chordIntervals, currentKey) {
   const results = [];
   const strictKeys = new Set(); // track strict matches to avoid duplicates in omit5
 
+  // Maj6 filter: M3(4) + 6th(9) + no 7th → exclude scales containing b7
+  const isMaj6 = chordIntervals.has(4) && chordIntervals.has(9) &&
+    !chordIntervals.has(10) && !chordIntervals.has(11);
+  const flat7AbsPC = (rootPC + 10) % 12; // b7 absolute pitch class
+
   for (const entry of entries) {
     // Check all chord tones (mod 12) are contained in the parent scale
     const scaleAbsPCS = getParentScaleAbsPCS(entry);
@@ -791,6 +796,8 @@ function findParentScales(rootPC, chordIntervals, currentKey) {
       if (!scaleAbsPCS.has(absPC)) { allIn = false; break; }
     }
     if (!allIn) continue;
+    // Maj6: skip scales that contain b7 (e.g. Mixolydian, Dorian for C6)
+    if (isMaj6 && scaleAbsPCS.has(flat7AbsPC)) continue;
     const key = entry.parentKey + ':' + entry.scaleIdx;
     strictKeys.add(key);
     const sat = SCALE_AVAIL_TENSIONS[entry.scaleIdx];
@@ -819,6 +826,7 @@ function findParentScales(rootPC, chordIntervals, currentKey) {
         if (!scaleAbsPCS.has(absPC)) { allIn = false; break; }
       }
       if (!allIn) continue;
+      if (isMaj6 && scaleAbsPCS.has(flat7AbsPC)) continue;
       const sat2 = SCALE_AVAIL_TENSIONS[entry.scaleIdx];
       const avoidCount2 = (sat2 && sat2.avoid) ? sat2.avoid.length : 0;
       results.push({
@@ -832,10 +840,64 @@ function findParentScales(rootPC, chordIntervals, currentKey) {
     }
   }
 
+  // Non-diatonic scales (symmetric): check containment + chord-type constraint
+  const NON_DIATONIC_SCALES = [
+    { scaleIdx: 25, needsAll: [10] },       // Whole Tone: needs b7 (dominant)
+    { scaleIdx: 26, needsAll: [4, 10] },    // H-W Dim (CombiDim): needs M3+b7 (dom7)
+    { scaleIdx: 27, needsAll: [3, 6] },     // W-H Dim: needs b3+b5 (diminished)
+  ];
+  const ndMatched = new Set();
+  for (const nd of NON_DIATONIC_SCALES) {
+    // Chord-type gate: skip if chord lacks required intervals
+    if (nd.needsAll && !nd.needsAll.every(iv => chordIntervals.has(iv))) continue;
+    const scalePCSSet = new Set(SCALES[nd.scaleIdx].pcs);
+    let allIn = true;
+    for (const iv of chordIntervals) {
+      if (!scalePCSSet.has(iv % 12)) { allIn = false; break; }
+    }
+    if (!allIn) continue;
+    ndMatched.add(nd.scaleIdx);
+    const sat = SCALE_AVAIL_TENSIONS[nd.scaleIdx];
+    const avoidCount = (sat && sat.avoid) ? sat.avoid.length : 0;
+    results.push({
+      parentKey: rootPC, parentKeyName: '',
+      system: '', systemLabel: '',
+      degree: '', degreeNum: 0,
+      scaleName: SCALES[nd.scaleIdx].name,
+      scaleIdx: nd.scaleIdx, distance: 0,
+      omit5Match: false, avoidCount,
+    });
+  }
+  // Omit-5 matching for non-diatonic (e.g. Whole Tone for 7(#5) where #5 replaces 5)
+  if (chordIntervals.has(7)) {
+    const omit5Ivs = new Set(chordIntervals);
+    omit5Ivs.delete(7);
+    for (const nd of NON_DIATONIC_SCALES) {
+      if (ndMatched.has(nd.scaleIdx)) continue;
+      if (nd.needsAll && !nd.needsAll.every(iv => omit5Ivs.has(iv))) continue;
+      const scalePCSSet = new Set(SCALES[nd.scaleIdx].pcs);
+      let allIn = true;
+      for (const iv of omit5Ivs) {
+        if (!scalePCSSet.has(iv % 12)) { allIn = false; break; }
+      }
+      if (!allIn) continue;
+      const sat = SCALE_AVAIL_TENSIONS[nd.scaleIdx];
+      const avoidCount = (sat && sat.avoid) ? sat.avoid.length : 0;
+      results.push({
+        parentKey: rootPC, parentKeyName: '',
+        system: '', systemLabel: '',
+        degree: '', degreeNum: 0,
+        scaleName: SCALES[nd.scaleIdx].name,
+        scaleIdx: nd.scaleIdx, distance: 0,
+        omit5Match: true, avoidCount,
+      });
+    }
+  }
+
   const SYS_ORDER = { '○': 0, 'NM': 1, '■': 2, '◆': 3 };
   results.sort((a, b) =>
     (a.omit5Match - b.omit5Match) ||
-    (a.distance - b.distance) || (SYS_ORDER[a.system] - SYS_ORDER[b.system]) || (a.degreeNum - b.degreeNum)
+    (a.distance - b.distance) || (SYS_ORDER[a.system] || 99) - (SYS_ORDER[b.system] || 99) || (a.degreeNum - b.degreeNum)
   );
   return results;
 }

@@ -1598,16 +1598,24 @@ function renderParentScales() {
     }
   });
 
+  // Non-diatonic dominant scales (H-W Dim, Whole Tone) only relevant with tensions
+  // W-H Dim stays for diminished chords (no tension needed)
+  if (!hasTension) {
+    const DOM_ND = new Set([25, 26]); // Whole Tone, H-W Dim
+    _psResults = _psResults.filter(r => r.system !== '' || !DOM_ND.has(r.scaleIdx));
+  }
+
   // Re-sort: exact matches first, then by mode-specific criteria
   const SYS = { '\u25CB': 0, 'NM': 1, '\u25A0': 2, '\u25C6': 3 };
   if (AppState.psSortMode === 'practical') {
-    // Practical: exactMatch → omit5 → avoidCount → distance → system → degreeNum
+    // Practical: exactMatch → omit5 → distance → system → avoidCount → degreeNum
+    // distance first: in-key scales before distant alternatives (Mixolydian > Lydian b7)
     _psResults.sort((a, b) =>
       (b.exactMatch - a.exactMatch) ||
       (a.omit5Match - b.omit5Match) ||
-      (a.avoidCount - b.avoidCount) ||
       (a.distance - b.distance) ||
       ((SYS[a.system] || 0) - (SYS[b.system] || 0)) ||
+      (a.avoidCount - b.avoidCount) ||
       (a.degreeNum - b.degreeNum)
     );
   } else {
@@ -1670,7 +1678,7 @@ function renderParentScales() {
   // Diatonic (○) system results always shown (pivot chord visibility)
   // Also include the auto-selected result so it's always visible
   const isSelected = (r) => _selectedPS && r.parentKey === _selectedPS.parentKey && r.scaleIdx === _selectedPS.scaleIdx;
-  const isClose = (r) => r.distance <= 1 || r.system === '○' || (hasTension && r.exactMatch) || isSelected(r);
+  const isClose = (r) => r.distance <= 1 || r.system === '○' || r.avoidCount === 0 || (hasTension && r.exactMatch) || isSelected(r);
   const closeResults = _psResults.filter(isClose);
   const farResults = _psResults.filter(r => !isClose(r));
   const showAll = _psExpanded || farResults.length === 0;
@@ -1737,7 +1745,7 @@ function renderParentScales() {
       '<span class="ps-cat">' + r.system + '</span>' +
       '<span class="ps-scale">' + NOTE_NAMES_SHARP[psRoot] + ' ' + r.scaleName + '</span>' +
       '<span class="ps-degree">' + r.degree + '</span>' +
-      '<span class="ps-parent-info">← ' + r.parentKeyName + ' ' + r.systemLabel + '</span>';
+      (r.parentKeyName ? '<span class="ps-parent-info">← ' + r.parentKeyName + ' ' + r.systemLabel + '</span>' : '');
 
     // Available tensions
     if (sat) {

@@ -173,7 +173,7 @@ I18N.addLang('de', {
     ss_chord_alt: 'Chord Mode \u2014 Dm7-Akkord mit Tension-Raster',
     ss_chord_caption: 'Dm7 \u2014 Akkordt\u00F6ne, 3rd (rosa), 7th (gr\u00FCn). Layout-Optionen in den Voicing Boxes pr\u00FCfen',
     ss_plain: '<span class="mode-badge plain">Plain</span> Plain Mode',
-    ss_plain_desc: 'Pads frei anklicken f\u00FCr Echtzeit-Akkorderkennung. Kein Theoriefilter \u2014 erkunden, entdecken, dann die Theorie lernen.',
+    ss_plain_desc: 'Pads frei anklicken f\u00FCr Echtzeit-Akkorderkennung. Verstehe Akkorde auch ohne Theoriekenntnisse.',
     ss_plain_alt: 'Plain Mode \u2014 C7 Echtzeit-Akkorderkennung',
     ss_plain_caption: 'C7 \u2014 Pads anklicken f\u00FCr automatische Akkorderkennung. Mehrere Vorschl\u00E4ge werden angezeigt',
     ss_perform: 'Perform Mode',

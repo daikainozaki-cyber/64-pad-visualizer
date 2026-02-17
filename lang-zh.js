@@ -173,7 +173,7 @@ I18N.addLang('zh', {
     ss_chord_alt: 'Chord Mode \u2014 Dm7和弦显示及延伸音网格',
     ss_chord_caption: 'Dm7 \u2014 和弦音、3rd（粉色）、7th（绿色）。在Voicing Box中查看布局选项',
     ss_plain: '<span class="mode-badge plain">Plain</span> Plain Mode',
-    ss_plain_desc: '自由点击打击垫进行实时和弦检测。无理论过滤 \u2014 探索、发现，然后学习理论。',
+    ss_plain_desc: '自由点击打击垫进行实时和弦检测。即使不了解理论也能理解和弦。',
     ss_plain_alt: 'Plain Mode \u2014 C7实时和弦检测',
     ss_plain_caption: 'C7 \u2014 点击打击垫自动检测和弦名称。显示多个候选',
     ss_perform: 'Perform Mode',

@@ -173,7 +173,7 @@ I18N.addLang('it', {
     ss_chord_alt: 'Chord Mode \u2014 Visualizzazione dell\'accordo Dm7 con griglia delle tensioni',
     ss_chord_caption: 'Dm7 \u2014 Note dell\'accordo, 3rd (rosa), 7th (verde). Controlla le opzioni di disposizione nei voicing box',
     ss_plain: '<span class="mode-badge plain">Plain</span> Plain Mode',
-    ss_plain_desc: 'Clicca liberamente sui pad per il rilevamento degli accordi in tempo reale. Nessun filtro teorico \u2014 esplora, scopri, poi impara la teoria.',
+    ss_plain_desc: 'Clicca liberamente sui pad per il rilevamento degli accordi in tempo reale. Comprendi gli accordi anche senza conoscere la teoria.',
     ss_plain_alt: 'Plain Mode \u2014 Rilevamento in tempo reale di C7',
     ss_plain_caption: 'C7 \u2014 Clicca sui pad per rilevare automaticamente i nomi degli accordi. Candidati multipli mostrati',
     ss_perform: 'Perform Mode',

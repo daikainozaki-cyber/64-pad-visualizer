@@ -173,7 +173,7 @@ I18N.addLang('en', {
     ss_chord_alt: 'Chord Mode \u2014 Dm7 chord display with tension grid',
     ss_chord_caption: 'Dm7 \u2014 Chord tones, 3rd (pink), 7th (green). Check layout options in voicing boxes',
     ss_plain: '<span class="mode-badge plain">Plain</span> Plain Mode',
-    ss_plain_desc: 'Click pads freely for real-time chord detection. No theory filter \u2014 explore, discover, then learn the theory.',
+    ss_plain_desc: 'Click pads freely for real-time chord detection. Understand chords even without knowing theory.',
     ss_plain_alt: 'Plain Mode \u2014 C7 real-time chord detection',
     ss_plain_caption: 'C7 \u2014 Click pads to auto-detect chord names. Multiple candidates shown',
     ss_perform: 'Perform Mode',

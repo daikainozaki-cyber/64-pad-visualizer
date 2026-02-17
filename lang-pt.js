@@ -173,7 +173,7 @@ I18N.addLang('pt', {
     ss_chord_alt: 'Chord Mode \u2014 Exibi\u00E7\u00E3o do acorde Dm7 com grelha de tens\u00F5es',
     ss_chord_caption: 'Dm7 \u2014 Notas do acorde, 3rd (rosa), 7th (verde). Verifique as disposi\u00E7\u00F5es nas voicing boxes',
     ss_plain: '<span class="mode-badge plain">Plain</span> Plain Mode',
-    ss_plain_desc: 'Clique livremente nos pads para dete\u00E7\u00E3o de acordes em tempo real. Sem filtro te\u00F3rico \u2014 explore, descubra e depois aprenda a teoria.',
+    ss_plain_desc: 'Clique livremente nos pads para dete\u00E7\u00E3o de acordes em tempo real. Entenda os acordes mesmo sem conhecer a teoria.',
     ss_plain_alt: 'Plain Mode \u2014 Dete\u00E7\u00E3o em tempo real de C7',
     ss_plain_caption: 'C7 \u2014 Clique nos pads para detetar automaticamente nomes de acordes. M\u00FAltiplos candidatos mostrados',
     ss_perform: 'Perform Mode',

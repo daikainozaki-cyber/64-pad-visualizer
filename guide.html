@@ -220,6 +220,19 @@
   font-family: monospace;
 }
 
+/* Video embed */
+.video-wrap {
+  margin: 20px auto;
+  text-align: center;
+}
+.video-wrap iframe {
+  width: 100%;
+  max-width: 640px;
+  aspect-ratio: 16 / 9;
+  border: none;
+  border-radius: 8px;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
   .guide-container { padding: 12px 16px 32px; }
@@ -251,6 +264,9 @@
   <h1>64 Pad Explorer</h1>
   <p class="tagline" data-i18n="guide.tagline">64パッド上のスケール・コード・ボイシングを探索するブラウザツール。<br>音源不要 — Chromeだけで音が出ます。</p>
   <a href="./" class="cta-btn" data-i18n="guide.cta">アプリを開く</a>
+  <div class="video-wrap" style="margin-top:24px;">
+    <iframe src="https://www.youtube.com/embed/vuvZCZj0ZYg" title="64 Pad Explorer Overview" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+  </div>
 </section>
 
 <!-- Features -->
@@ -292,7 +308,7 @@
   </div>
 
   <h3 data-i18n="guide.ss_plain"><span class="mode-badge plain">Plain</span> Plainモード</h3>
-  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_plain_desc">パッドを自由にクリックしてコード名をリアルタイム判定。理論フィルタなしで探索 → 発見 → 理論を後から知るモードです。</p>
+  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_plain_desc">パッドを自由にクリックしてコード名をリアルタイム判定。理論を知らなくてもコードがわかります。</p>
   <div class="screenshot-wrap">
     <img src="img/screenshot-plain.png" alt="Plain Mode" data-i18n="guide.ss_plain_alt" data-i18n-attr="alt" loading="lazy">
     <p class="caption" data-i18n="guide.ss_plain_caption">C7 — パッドをクリックするだけでコード名を自動判定。複数候補も表示</p>
@@ -304,6 +320,9 @@
     <img src="img/screenshot-perform.png" alt="Perform Mode" data-i18n="guide.ss_perform_alt" data-i18n-attr="alt" loading="lazy">
     <p class="caption" data-i18n="guide.ss_perform_caption">Performモード — C7, Fm7, G7, Am7をスロットに保存。キーボード4×4グリッドで演奏</p>
   </div>
+  <div class="video-wrap">
+    <iframe src="https://www.youtube.com/embed/h1O2x-99YLM" title="64 Pad Explorer — Memory & MIDI Export" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+  </div>
 
   <h3 data-i18n="guide.ss_parent">Available Scale + ピボットコード</h3>
   <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_parent_desc">コードが属しうるスケールを逆引き表示。Practical（実用性順）/Diatonic（理論順）の切替が可能。手動コード入力時はダイアトニックバーが消え、ピボットコードとして分析できます。</p>
@@ -312,6 +331,9 @@
     <p class="caption" data-i18n="guide.ss_parent_caption">Dm7 → C Major (Dorian), C Mel.Min (Dorian b2), F Major (Aeolian) 等。Available Tensionsも表示</p>
   </div>
   <p style="font-size:0.8rem;color:var(--text-muted);margin-top:12px;line-height:1.6;" data-i18n="guide.ss_parent_note">※ ペンタトニック/ブルーススケールはモード（横のアプローチ）であり、コード・スケール理論（縦の対応）とは別体系のため、Available Scaleでは扱いません。実戦ではペンタトニックが最初の選択肢になることが多いです。</p>
+  <div class="video-wrap">
+    <iframe src="https://www.youtube.com/embed/LhqJPyNVeBE" title="64 Pad Explorer — Available Scale & Tension Filter" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+  </div>
 </section>
 
 <!-- Use Cases -->

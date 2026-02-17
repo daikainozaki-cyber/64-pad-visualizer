@@ -173,7 +173,7 @@ I18N.addLang('fr', {
     ss_chord_alt: 'Chord Mode \u2014 Affichage de l\u0027accord Dm7 avec grille de tensions',
     ss_chord_caption: 'Dm7 \u2014 Notes d\u0027accord, 3rd (rose), 7th (vert). V\u00E9rifiez les dispositions dans les voicing boxes',
     ss_plain: '<span class="mode-badge plain">Plain</span> Plain Mode',
-    ss_plain_desc: 'Cliquez librement sur les pads pour une d\u00E9tection d\u0027accords en temps r\u00E9el. Sans filtre th\u00E9orique \u2014 explorez, d\u00E9couvrez, puis apprenez la th\u00E9orie.',
+    ss_plain_desc: 'Cliquez librement sur les pads pour une d\u00E9tection d\u0027accords en temps r\u00E9el. Comprenez les accords m\u00EAme sans conna\u00EEtre la th\u00E9orie.',
     ss_plain_alt: 'Plain Mode \u2014 D\u00E9tection en temps r\u00E9el de C7',
     ss_plain_caption: 'C7 \u2014 Cliquez sur les pads pour d\u00E9tecter automatiquement les noms d\u0027accords. Candidats multiples affich\u00E9s',
     ss_perform: 'Perform Mode',

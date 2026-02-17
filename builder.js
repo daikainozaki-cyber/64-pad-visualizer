@@ -363,6 +363,8 @@ function updateControlsForQuality(quality) {
 
   // D: Without 7th, no altered tensions
   // sus4 hidden on all non-7th chords (quality change, not tension; only dom7sus4 is standard via Cat F)
+  // b13/b6 (pc=8) allowed: valid on triads (Cm(b6), Cmaj(add b6), Cdim(b13))
+  // Natural 13 (pc=9) uses '6' label for non-7th → hide '13' labels but allow 'b13' labels
   if (!has7th) {
     btns.forEach(btn => {
       if (!btn._tension) return;
@@ -371,10 +373,11 @@ function updateControlsForQuality(quality) {
       if (m.sharp5 || m.flat5) { btn.classList.add('quality-hidden'); return; }
       if (m.add) {
         for (const pc of m.add) {
-          if (pc === 1 || pc === 3 || pc === 8) { btn.classList.add('quality-hidden'); return; } // b9, #9, b13
+          if (pc === 1 || pc === 3) { btn.classList.add('quality-hidden'); return; } // b9, #9
         }
       }
-      if (btn._tension.label.includes('13')) { btn.classList.add('quality-hidden'); return; }
+      const label = btn._tension.label;
+      if (label.includes('13') && !label.includes('b13')) { btn.classList.add('quality-hidden'); return; }
     });
   }
 
@@ -463,6 +466,8 @@ function updateControlsForQuality(quality) {
       });
     } else {
       const isMinor = quality.pcs.includes(3);
+      // dim7: b13 is standard (Whole-Half Dim scale). m7(b5): b13 is avoid (keep dimmed)
+      const isDim7 = isMinor && quality.pcs.includes(6) && quality.pcs.includes(9) && !quality.pcs.includes(10);
       btns.forEach(btn => {
         if (!btn._tension || btn.classList.contains('quality-hidden')) return;
         const m = btn._tension.mods;
@@ -470,7 +475,8 @@ function updateControlsForQuality(quality) {
         if (m.sharp5 || m.flat5) { btn.classList.add('tension-uncommon'); return; }
         if (m.add) {
           for (const pc of m.add) {
-            if (pc === 1 || pc === 3 || pc === 8) { btn.classList.add('tension-uncommon'); return; }
+            if (pc === 1 || pc === 3) { btn.classList.add('tension-uncommon'); return; }
+            if (pc === 8 && !isDim7) { btn.classList.add('tension-uncommon'); return; }
             if (pc === 6 && isMinor) { btn.classList.add('tension-uncommon'); return; }
           }
         }

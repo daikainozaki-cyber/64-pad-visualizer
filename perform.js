@@ -2,11 +2,13 @@
 // PERFORM MODE (Memory Slots → real-time playback)
 // ========================================
 
+// PERFORM MIDI MAP: starts at D#2 (MIDI 51 = Row 3 of 64-pad grid), 5-semitone row interval
+// Aligns physical controller with the visual 64-pad grid (Rows 3-6, playable chord range)
 const PERFORM_MIDI_MAP = {
-  36:0, 37:1, 38:2, 39:3,
-  41:4, 42:5, 43:6, 44:7,
-  46:8, 47:9, 48:10, 49:11,
-  51:12, 52:13, 53:14, 54:15
+  51:0, 52:1, 53:2, 54:3,
+  56:4, 57:5, 58:6, 59:7,
+  61:8, 62:9, 63:10, 64:11,
+  66:12, 67:13, 68:14, 69:15
 };
 
 const PERFORM_KEY_MAP = {

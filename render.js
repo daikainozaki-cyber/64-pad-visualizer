@@ -194,7 +194,9 @@ function renderPads(svg, state) {
           else {
             _heldMidi = m; noteOn(m);
             if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
-              padExtNotes.add(m); renderParentScales();
+              const pc = m % 12;
+              if (padExtNotes.has(pc)) { padExtNotes.delete(pc); } else { padExtNotes.add(pc); }
+              renderParentScales();
             }
           }
         });
@@ -204,7 +206,9 @@ function renderPads(svg, state) {
           else {
             _heldTouchMidi = m; noteOn(m);
             if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
-              padExtNotes.add(m); renderParentScales();
+              const pc = m % 12;
+              if (padExtNotes.has(pc)) { padExtNotes.delete(pc); } else { padExtNotes.add(pc); }
+              renderParentScales();
             }
           }
         });
@@ -1344,18 +1348,7 @@ const GUITAR_OPEN_MIDI = [64, 59, 55, 50, 45, 40]; // E4, B3, G3, D3, A2, E2
 let guitarSelectedFrets = [null, null, null, null, null, null];
 let pianoSelectedNotes = new Set(); // MIDI note numbers
 let instrumentInputActive = false;
-let padExtNotes = new Set(); // Chord mode: 64-pad notes held for PS extension
-
-// Release padExtNotes on mouse/touch up so PS reverts when pad is released
-document.addEventListener('mouseup', () => {
-  if (padExtNotes.size > 0) { padExtNotes.clear(); if (AppState.mode === 'chord') renderParentScales(); }
-});
-document.addEventListener('touchend', () => {
-  if (padExtNotes.size > 0) { padExtNotes.clear(); if (AppState.mode === 'chord') renderParentScales(); }
-});
-document.addEventListener('touchcancel', () => {
-  if (padExtNotes.size > 0) { padExtNotes.clear(); if (AppState.mode === 'chord') renderParentScales(); }
-});
+let padExtNotes = new Set(); // Chord mode: pitch classes toggled on 64-pad for PS extension
 
 function getAllInputMidiNotes() {
   const notes = [];
@@ -1613,10 +1606,10 @@ function renderParentScales() {
     newFPSource = psRoot + ':' +
       (BuilderState.quality ? BuilderState.quality.name : '') + ':' +
       (BuilderState.tension ? BuilderState.tension.label : '');
-    // Tension addition mode: instrument notes + held pads expand chord for PS filtering
-    const extNotes = [...getAllInputMidiNotes(), ...padExtNotes];
-    if (extNotes.length > 0) {
-      extNotes.forEach(n => fullAbsSet.add(n % 12));
+    // Tension addition mode: instrument notes + toggled pads expand chord for PS filtering
+    const extPCs = [...getAllInputMidiNotes().map(n => n % 12), ...padExtNotes];
+    if (extPCs.length > 0) {
+      extPCs.forEach(pc => fullAbsSet.add(pc));
       hasTension = true; // force exactMatch computation even without explicit builder tension
     }
   } else if (AppState.mode === 'plain' && PlainState.activeNotes.size >= 3) {
@@ -1706,12 +1699,13 @@ function renderParentScales() {
     return;
   }
 
-  // Detect chord context change → reset auto-select
+  // Detect chord context change → reset auto-select and clear pad extension notes
   if (newFPSource !== _psChordFP) {
     _psChordFP = newFPSource;
     _selectedPS = null;
     // Only auto-select when chord came from diatonic bar click
     _psAutoSelect = !!BuilderState._fromDiatonic;
+    padExtNotes.clear(); // extension notes are meaningless for a different chord
   }
 
   // Validate current selection still in results

@@ -49,7 +49,7 @@ document.addEventListener('keydown', (e) => {
       return;
     }
     if (AppState.mode === 'plain') { plainCapture(); return; }
-    return;
+    // Chord/Scale mode: fall through to voicing box A-I handler below
   }
 
   // Escape: Close help modal → exit Plain edit → deselect slot → deselect voicing box

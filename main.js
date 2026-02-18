@@ -80,6 +80,15 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
+  // Space: Play current chord
+  if (key === ' ') {
+    e.preventDefault();
+    ensureAudioResumed();
+    const notes = getCurrentChordMidiNotes();
+    if (notes && notes.length > 0) playMidiNotes(notes, 1.0);
+    return;
+  }
+
   // ?: Toggle help modal
   if (key === '?') {
     const helpOverlay = document.getElementById('help-overlay');

@@ -214,15 +214,18 @@ function renderPads(svg, state) {
             _heldMidi = m; noteOn(m);
             if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
               if (padExtNotes.size === 0) {
-                // First press: seed from builder chord so existing tones are also toggleable
+                // First press: seed from builder chord so existing tones are toggleable
                 const builderNotes = getCurrentChordMidiNotes() || [];
                 builderNotes.forEach(n => padExtNotes.add(n));
               }
               const pc = m % 12;
               const existing = [...padExtNotes].find(n => n % 12 === pc);
               if (existing !== undefined) { padExtNotes.delete(existing); } else { padExtNotes.add(m); }
-              const ctrlEl = document.getElementById('instrument-controls');
-              if (ctrlEl) ctrlEl.style.display = padExtNotes.size > 0 ? 'flex' : 'none';
+              // Try to apply back to builder panel directly
+              const extMidi = [...padExtNotes].sort((a, b) => a - b);
+              if (extMidi.length > 0 && applyNotesToBuilder(extMidi)) {
+                padExtNotes.clear(); // builder now holds the state, no overlay needed
+              }
               render();
             }
           }
@@ -240,8 +243,10 @@ function renderPads(svg, state) {
               const pc = m % 12;
               const existing = [...padExtNotes].find(n => n % 12 === pc);
               if (existing !== undefined) { padExtNotes.delete(existing); } else { padExtNotes.add(m); }
-              const ctrlEl = document.getElementById('instrument-controls');
-              if (ctrlEl) ctrlEl.style.display = padExtNotes.size > 0 ? 'flex' : 'none';
+              const extMidi = [...padExtNotes].sort((a, b) => a - b);
+              if (extMidi.length > 0 && applyNotesToBuilder(extMidi)) {
+                padExtNotes.clear();
+              }
               render();
             }
           }

@@ -84,6 +84,70 @@ function getCurrentChordName() {
   return name || '?';
 }
 
+// Apply arbitrary MIDI notes to BuilderState (stays in Chord mode)
+// Used by pad toggle: pressing a pad updates the chord builder panel directly
+function applyNotesToBuilder(midiNotes) {
+  if (!midiNotes || midiNotes.length < 1) return false;
+  const notes = [...midiNotes].sort((a, b) => a - b);
+  const candidates = detectChord(notes);
+  if (candidates.length === 0) return false;
+
+  const best = candidates[0];
+  const rootPC = best.rootPC;
+
+  const intervals = [...new Set(notes.map(n => ((n % 12) - rootPC + 12) % 12))].sort((a, b) => a - b);
+  const intervalSet = new Set(intervals);
+
+  // Find best matching quality
+  let bestQuality = null;
+  let bestQLen = 0;
+  for (const row of BUILDER_QUALITIES) {
+    for (const q of row) {
+      if (!q) continue;
+      if (q.pcs.every(iv => intervalSet.has(iv)) && q.pcs.length > bestQLen) {
+        bestQLen = q.pcs.length;
+        bestQuality = q;
+      }
+    }
+  }
+  if (!bestQuality) return false;
+
+  // Find matching tension from remaining intervals
+  const qualitySet = new Set(bestQuality.pcs);
+  const extras = intervals.filter(iv => !qualitySet.has(iv) && iv !== 0);
+  let matchedTension = null;
+  let matchedEl = null;
+  if (extras.length > 0) {
+    const extraSet = new Set(extras);
+    document.querySelectorAll('#tension-grid .tension-btn').forEach(btn => {
+      if (matchedTension) return;
+      const t = btn._tension;
+      if (!t) return;
+      const adds = t.mods.add || [];
+      if (adds.length === extras.length && adds.every(iv => extraSet.has(iv)) &&
+          !t.mods.replace3 && !t.mods.sharp5 && !t.mods.flat5) {
+        matchedTension = t;
+        matchedEl = btn;
+      }
+    });
+  }
+
+  BuilderState.root = rootPC;
+  BuilderState.quality = bestQuality;
+  BuilderState.tension = matchedTension;
+  BuilderState.bass = null; // no auto-bass from pad input
+  resetVoicingSelection();
+
+  // Update builder UI
+  highlightPianoKey('piano-keyboard', rootPC);
+  highlightQuality(bestQuality);
+  clearTensionSelection();
+  if (matchedTension && matchedEl) matchedEl.classList.add('selected');
+  updateControlsForQuality(bestQuality);
+  setBuilderStep(matchedTension ? 3 : 2);
+  return true;
+}
+
 // Save current chord to Plain memory slot (works from any mode)
 // Transfer detected chord from Plain mode to Chord mode builder
 function transferToChordMode() {

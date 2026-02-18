@@ -191,12 +191,22 @@ function renderPads(svg, state) {
         r.addEventListener('mousedown', (e) => {
           e.preventDefault();
           if (AppState.mode === 'plain') { togglePlainNote(m); }
-          else { _heldMidi = m; noteOn(m); }
+          else {
+            _heldMidi = m; noteOn(m);
+            if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
+              padExtNotes.add(m); renderParentScales();
+            }
+          }
         });
         r.addEventListener('touchstart', (e) => {
           e.preventDefault();
           if (AppState.mode === 'plain') { togglePlainNote(m); }
-          else { _heldTouchMidi = m; noteOn(m); }
+          else {
+            _heldTouchMidi = m; noteOn(m);
+            if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
+              padExtNotes.add(m); renderParentScales();
+            }
+          }
         });
       })(midi, rect);
       if (isOmitted) {
@@ -1334,6 +1344,18 @@ const GUITAR_OPEN_MIDI = [64, 59, 55, 50, 45, 40]; // E4, B3, G3, D3, A2, E2
 let guitarSelectedFrets = [null, null, null, null, null, null];
 let pianoSelectedNotes = new Set(); // MIDI note numbers
 let instrumentInputActive = false;
+let padExtNotes = new Set(); // Chord mode: 64-pad notes held for PS extension
+
+// Release padExtNotes on mouse/touch up so PS reverts when pad is released
+document.addEventListener('mouseup', () => {
+  if (padExtNotes.size > 0) { padExtNotes.clear(); if (AppState.mode === 'chord') renderParentScales(); }
+});
+document.addEventListener('touchend', () => {
+  if (padExtNotes.size > 0) { padExtNotes.clear(); if (AppState.mode === 'chord') renderParentScales(); }
+});
+document.addEventListener('touchcancel', () => {
+  if (padExtNotes.size > 0) { padExtNotes.clear(); if (AppState.mode === 'chord') renderParentScales(); }
+});
 
 function getAllInputMidiNotes() {
   const notes = [];
@@ -1418,14 +1440,31 @@ function updateInstrumentInput() {
     }
     html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">' + t('plain.notes_label') + noteNames.join(' ') + '</div>';
     detectEl.innerHTML = html;
-    renderGuitarDiagram(best.rootPC, inputPCS);
-    renderBassDiagram(best.rootPC, inputPCS);
-    renderPianoDisplay(best.rootPC, inputPCS);
+    if (AppState.mode === 'chord') {
+      // Keep builder chord on diagram, just add instrument notes to the display
+      const mergedPCS = new Set(lastRenderActivePCS);
+      instrNotes.forEach(n => mergedPCS.add(n % 12));
+      renderGuitarDiagram(lastRenderRootPC, mergedPCS);
+      renderBassDiagram(lastRenderRootPC, mergedPCS);
+      renderPianoDisplay(lastRenderRootPC, mergedPCS);
+    } else {
+      renderGuitarDiagram(best.rootPC, inputPCS);
+      renderBassDiagram(best.rootPC, inputPCS);
+      renderPianoDisplay(best.rootPC, inputPCS);
+    }
   } else {
     detectEl.textContent = noteNames.join(' ');
-    renderGuitarDiagram(null, inputPCS);
-    renderBassDiagram(null, inputPCS);
-    renderPianoDisplay(null, inputPCS);
+    if (AppState.mode === 'chord') {
+      const mergedPCS = new Set(lastRenderActivePCS);
+      instrNotes.forEach(n => mergedPCS.add(n % 12));
+      renderGuitarDiagram(lastRenderRootPC, mergedPCS);
+      renderBassDiagram(lastRenderRootPC, mergedPCS);
+      renderPianoDisplay(lastRenderRootPC, mergedPCS);
+    } else {
+      renderGuitarDiagram(null, inputPCS);
+      renderBassDiagram(null, inputPCS);
+      renderPianoDisplay(null, inputPCS);
+    }
   }
   highlightInstrumentPads(instrNotes);
   renderParentScales();
@@ -1460,6 +1499,7 @@ function clearInstrumentInput() {
   guitarSelectedFrets = [null, null, null, null, null, null];
   bassSelectedFrets = [null, null, null, null];
   pianoSelectedNotes.clear();
+  padExtNotes.clear();
   instrumentInputActive = false;
   const ctrlEl = document.getElementById('instrument-controls');
   if (ctrlEl) ctrlEl.style.display = 'none';
@@ -1573,9 +1613,11 @@ function renderParentScales() {
     newFPSource = psRoot + ':' +
       (BuilderState.quality ? BuilderState.quality.name : '') + ':' +
       (BuilderState.tension ? BuilderState.tension.label : '');
-    // Tension addition mode: instrument notes expand the chord (e.g. C7 + D → C9)
-    if (instrumentInputActive) {
-      getAllInputMidiNotes().forEach(n => fullAbsSet.add(n % 12));
+    // Tension addition mode: instrument notes + held pads expand chord for PS filtering
+    const extNotes = [...getAllInputMidiNotes(), ...padExtNotes];
+    if (extNotes.length > 0) {
+      extNotes.forEach(n => fullAbsSet.add(n % 12));
+      hasTension = true; // force exactMatch computation even without explicit builder tension
     }
   } else if (AppState.mode === 'plain' && PlainState.activeNotes.size >= 3) {
     // Plain mode: detect chord from active notes

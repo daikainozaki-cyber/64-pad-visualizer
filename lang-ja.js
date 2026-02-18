@@ -1,7 +1,7 @@
 // 日本語
 I18N.addLang('ja', {
   help: {
-    title: '64 Pad Explorer V1.9',
+    title: '64 Pad Explorer V2.10',
     description: '64パッド上のスケール・コード・ボイシングを探索するツール。',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 12キーから選択',
@@ -65,6 +65,7 @@ I18N.addLang('ja', {
     sc_shell: '<kbd>s</kbd> \u2014 Shell循環（off \u2192 1-3-7 \u2192 1-7-3 \u2192 off）',
     sc_drop: '<kbd>d</kbd> \u2014 Drop循環（off \u2192 Drop 2 \u2192 Drop 3 \u2192 off）',
     sc_clear: '<kbd>x</kbd> \u2014 コードクリア（Chordモード）',
+    sc_pad_explore: '<b>パッド（Chordモード）</b> \u2014 クリックで音をトグル \u2014 ビルダーが自動更新',
     shortcut_plain: 'Plain モード',
     sp_capture: '<kbd>c</kbd> \u2014 Capture 開始/次のスロットへ保存',
     sp_end: '<kbd>e</kbd> \u2014 Capture 終了',
@@ -80,9 +81,10 @@ I18N.addLang('ja', {
     sc_perform: '<kbd>p</kbd> \u2014 Perform表示の切り替え',
     sc_undo: '<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>z</kbd> \u2014 メモリースロットのUndo（最大30回）',
     sc_shift_save: '<kbd>Shift</kbd>+<kbd>1</kbd>〜<kbd>0</kbd> \u2014 Plainメモリースロットに保存（どのモードからでも）',
+    sc_space: '<kbd>Space</kbd> \u2014 現在のコードを再生',
     sc_esc: '<kbd>Esc</kbd> \u2014 ボイシングボックス選択解除 / ヘルプを閉じる',
     sc_help: '<kbd>?</kbd> \u2014 ヘルプ表示切替',
-    footer: '64 Pad Explorer V1.9 \u2014 HPS（Hardcore Pad Style）',
+    footer: '64 Pad Explorer V2.10 \u2014 HPS（Hardcore Pad Style）',
   },
   legend: {
     characteristic: '特性音',
@@ -210,9 +212,9 @@ I18N.addLang('ja', {
     qs_step4: '\u30D1\u30C3\u30C9\u3092\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u97F3\u3092\u9CF4\u3089\u3059\u3002\u30DC\u30A4\u30B7\u30F3\u30B0\u30DC\u30C3\u30AF\u30B9\u3067\u914D\u7F6E\u3092\u5909\u66F4\u3067\u304D\u307E\u3059',
     qs_step5: '\u6C17\u306B\u5165\u3063\u305F\u30B3\u30FC\u30C9\u306F <kbd>Shift</kbd>+<kbd>1</kbd>\u301C<kbd>0</kbd> \u3067\u30E1\u30E2\u30EA\u30FC\u306B\u4FDD\u5B58',
     qs_shortcuts: '\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8',
-    qs_shortcuts_desc: '<kbd>?</kbd> \u30AD\u30FC\u3067\u5168\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u4E00\u89A7\u304C\u898B\u3089\u308C\u307E\u3059\u3002<br><kbd>1</kbd>\u301C<kbd>7</kbd> \u3067\u30C0\u30A4\u30A2\u30C8\u30CB\u30C3\u30AF\u30B3\u30FC\u30C9\u9078\u629E\u3001<kbd>\u2191</kbd><kbd>\u2193</kbd> \u3067\u8EE2\u56DE\u5F62\u5207\u66FF\u3001<kbd>\u2190</kbd><kbd>\u2192</kbd> \u3067\u534A\u97F3\u79FB\u52D5\u3002<br>Perform\u30E2\u30FC\u30C9\u3067\u306F <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> \u306E4\u00D74\u30B0\u30EA\u30C3\u30C9\u3067\u6F14\u594F\u3067\u304D\u307E\u3059\u3002',
+    qs_shortcuts_desc: '<kbd>?</kbd> \u30AD\u30FC\u3067\u5168\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u4E00\u89A7\u304C\u898B\u3089\u308C\u307E\u3059\u3002<br><kbd>Space</kbd> でコードを再生。<kbd>1</kbd>\u301C<kbd>7</kbd> \u3067\u30C0\u30A4\u30A2\u30C8\u30CB\u30C3\u30AF\u30B3\u30FC\u30C9\u9078\u629E\u3001<kbd>\u2191</kbd><kbd>\u2193</kbd> \u3067\u8EE2\u56DE\u5F62\u5207\u66FF\u3001<kbd>\u2190</kbd><kbd>\u2192</kbd> \u3067\u534A\u97F3\u79FB\u52D5\u3002<br>Perform\u30E2\u30FC\u30C9\u3067\u306F <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> \u306E4\u00D74\u30B0\u30EA\u30C3\u30C9\u3067\u6F14\u594F\u3067\u304D\u307E\u3059\u3002',
     footer_open: '64 Pad Explorer \u3092\u958B\u304F',
-    footer_version: '64 Pad Explorer V2.6 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
     blog_more: '\u30D6\u30ED\u30B0\u3067\u3082\u3063\u3068\u8A73\u3057\u304F \u2192',
   },
 });

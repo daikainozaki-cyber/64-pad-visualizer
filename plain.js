@@ -86,13 +86,15 @@ function getCurrentChordName() {
 
 // Apply arbitrary MIDI notes to BuilderState (stays in Chord mode)
 // Used by pad toggle: pressing a pad updates the chord builder panel directly
-function applyNotesToBuilder(midiNotes) {
+function applyNotesToBuilder(midiNotes, forcedRootPC = null) {
   if (!midiNotes || midiNotes.length < 1) return false;
   const notes = [...midiNotes].sort((a, b) => a - b);
   const candidates = detectChord(notes);
   if (candidates.length === 0) return false;
 
-  const best = candidates[0];
+  const best = forcedRootPC !== null
+    ? (candidates.find(c => c.rootPC === forcedRootPC) || candidates[0])
+    : candidates[0];
   const rootPC = best.rootPC;
 
   const intervals = [...new Set(notes.map(n => ((n % 12) - rootPC + 12) % 12))].sort((a, b) => a - b);
@@ -146,6 +148,35 @@ function applyNotesToBuilder(midiNotes) {
   updateControlsForQuality(bestQuality);
   setBuilderStep(matchedTension ? 3 : 2);
   return true;
+}
+
+// Transfer a detected chord candidate to Chord Builder (V2.10)
+// Click on a chord name in #midi-detect to invoke this
+function transferDetectedCandidate(idx, el) {
+  if (!lastDetectedCandidates || !lastDetectedCandidates[idx] || !lastDetectedNotes || !lastDetectedNotes.length) return;
+  const candidate = lastDetectedCandidates[idx];
+  const notesToApply = [...lastDetectedNotes]; // capture before clearInstrumentInput overwrites lastDetectedNotes
+  if (el) el.classList.add('detect-flashing');
+  setTimeout(() => {
+    if (AppState.mode !== 'chord') {
+      AppState.mode = 'chord';
+      document.getElementById('mode-scale').classList.toggle('active', false);
+      document.getElementById('mode-chord').classList.toggle('active', true);
+      document.getElementById('mode-plain').classList.toggle('active', false);
+      document.getElementById('scale-panel').style.display = 'none';
+      document.getElementById('chord-panel').style.display = '';
+      document.getElementById('plain-panel').style.display = 'none';
+    }
+    clearInstrumentInput();
+    applyNotesToBuilder(notesToApply, candidate.rootPC);
+    requestAnimationFrame(() => {
+      const selectedQ = document.querySelector('.quality-btn.selected');
+      if (selectedQ) {
+        selectedQ.classList.add('transfer-flash');
+        selectedQ.addEventListener('animationend', () => selectedQ.classList.remove('transfer-flash'), { once: true });
+      }
+    });
+  }, 160);
 }
 
 // Save current chord to Plain memory slot (works from any mode)

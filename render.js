@@ -1388,6 +1388,8 @@ let guitarSelectedFrets = [null, null, null, null, null, null];
 let pianoSelectedNotes = new Set(); // MIDI note numbers
 let instrumentInputActive = false;
 let padExtNotes = new Set(); // Chord mode: MIDI notes toggled on 64-pad for PS extension
+let lastDetectedNotes = []; // Last detection input notes (for click-to-transfer, V2.10)
+let lastDetectedCandidates = []; // Last detection candidates (for click-to-transfer, V2.10)
 
 function getAllInputMidiNotes() {
   const notes = [];
@@ -1465,14 +1467,16 @@ function updateInstrumentInput() {
   // detectEl always visible (no layout shift)
   const noteNames = notesForDetect.map(n => NOTE_NAMES_SHARP[n % 12]);
   const candidates = detectChord(notesForDetect);
+  lastDetectedNotes = notesForDetect;
+  lastDetectedCandidates = candidates;
   const inputPCS = new Set(instrNotes.map(n => n % 12));
   if (candidates.length > 0) {
     const best = candidates[0];
-    let html = '<div style="color:var(--accent);font-weight:700;font-size:1.1rem;">' + best.name + '</div>';
+    let html = '<span class="detect-candidate-best" onclick="transferDetectedCandidate(0,this)">' + best.name + '</span>';
     if (candidates.length > 1) {
       html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:2px;">';
-      candidates.slice(1).forEach(c => {
-        html += '<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.08);color:var(--text-muted);">' + c.name + '</span>';
+      candidates.slice(1).forEach((c, i) => {
+        html += '<span class="detect-candidate" onclick="transferDetectedCandidate(' + (i + 1) + ',this)">' + c.name + '</span>';
       });
       html += '</div>';
     }

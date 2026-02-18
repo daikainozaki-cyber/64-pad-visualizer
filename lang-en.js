@@ -1,7 +1,7 @@
 // English (fallback)
 I18N.addLang('en', {
   help: {
-    title: '64 Pad Explorer V1.9',
+    title: '64 Pad Explorer V2.10',
     description: 'A tool for exploring scales, chords, and voicings on a 64-pad grid.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 Choose from 12 keys',
@@ -65,6 +65,7 @@ I18N.addLang('en', {
     sc_shell: '<kbd>s</kbd> \u2014 Cycle Shell (off \u2192 1-3-7 \u2192 1-7-3 \u2192 off)',
     sc_drop: '<kbd>d</kbd> \u2014 Cycle Drop (off \u2192 Drop 2 \u2192 Drop 3 \u2192 off)',
     sc_clear: '<kbd>x</kbd> \u2014 Clear chord (Chord mode)',
+    sc_pad_explore: '<b>Pad (Chord mode)</b> \u2014 Click pad to toggle note \u2014 builder updates automatically',
     shortcut_plain: 'Plain Mode',
     sp_capture: '<kbd>c</kbd> \u2014 Start Capture / save to next slot',
     sp_end: '<kbd>e</kbd> \u2014 End Capture',
@@ -80,9 +81,10 @@ I18N.addLang('en', {
     sc_perform: '<kbd>p</kbd> \u2014 Toggle Perform view',
     sc_undo: '<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>z</kbd> \u2014 Undo memory slots (up to 30)',
     sc_shift_save: '<kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd> \u2014 Save to Plain memory slot (from any mode)',
+    sc_space: '<kbd>Space</kbd> \u2014 Play current chord',
     sc_esc: '<kbd>Esc</kbd> \u2014 Deselect voicing box / close Help',
     sc_help: '<kbd>?</kbd> \u2014 Toggle Help',
-    footer: '64 Pad Explorer V1.9 \u2014 HPS (Hardcore Pad Style)',
+    footer: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
   },
   legend: {
     characteristic: 'Characteristic',
@@ -210,9 +212,9 @@ I18N.addLang('en', {
     qs_step4: 'Click pads to play sounds. Change layouts in voicing boxes',
     qs_step5: 'Save favorite chords with <kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd>',
     qs_shortcuts: 'Keyboard Shortcuts',
-    qs_shortcuts_desc: 'Press <kbd>?</kbd> for the full shortcut list.<br><kbd>1</kbd>\u2013<kbd>7</kbd> for diatonic chords, <kbd>\u2191</kbd><kbd>\u2193</kbd> for inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> for chromatic movement.<br>In Perform mode, use <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> as a 4\u00D74 grid.',
+    qs_shortcuts_desc: 'Press <kbd>?</kbd> for the full shortcut list.<br><kbd>Space</kbd> to play chord. <kbd>1</kbd>\u2013<kbd>7</kbd> for diatonic chords, <kbd>\u2191</kbd><kbd>\u2193</kbd> for inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> for chromatic movement.<br>In Perform mode, use <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> as a 4\u00D74 grid.',
     footer_open: 'Open 64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.6 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Learn more on the blog \u2192',
   },
 });

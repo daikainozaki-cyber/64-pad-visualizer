@@ -1,7 +1,7 @@
 // 中文
 I18N.addLang('zh', {
   help: {
-    title: '64 Pad Explorer V1.9',
+    title: '64 Pad Explorer V2.10',
     description: '在64键打击垫上探索音阶、和弦与声位的工具。',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 从12个调中选择',
@@ -65,6 +65,7 @@ I18N.addLang('zh', {
     sc_shell: '<kbd>s</kbd> \u2014 循环Shell（off \u2192 1-3-7 \u2192 1-7-3 \u2192 off）',
     sc_drop: '<kbd>d</kbd> \u2014 循环Drop（off \u2192 Drop 2 \u2192 Drop 3 \u2192 off）',
     sc_clear: '<kbd>x</kbd> \u2014 清除和弦（Chord模式）',
+    sc_pad_explore: '<b>拍垫（Chord模式）</b> \u2014 点击切换音符 \u2014 构建器自动更新',
     shortcut_plain: 'Plain 模式',
     sp_capture: '<kbd>c</kbd> \u2014 开始Capture / 保存到下一个插槽',
     sp_end: '<kbd>e</kbd> \u2014 结束Capture',
@@ -80,9 +81,10 @@ I18N.addLang('zh', {
     sc_perform: '<kbd>p</kbd> \u2014 切换Perform视图',
     sc_undo: '<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>z</kbd> \u2014 撤销Memory Slot操作（最多30步）',
     sc_shift_save: '<kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd> \u2014 保存到Plain记忆插槽（任何模式均可）',
+    sc_space: '<kbd>Space</kbd> \u2014 播放当前和弦',
     sc_esc: '<kbd>Esc</kbd> \u2014 取消Voicing Box选择 / 关闭帮助',
     sc_help: '<kbd>?</kbd> \u2014 切换帮助显示',
-    footer: '64 Pad Explorer V1.9 \u2014 HPS（Hardcore Pad Style）',
+    footer: '64 Pad Explorer V2.10 \u2014 HPS（Hardcore Pad Style）',
   },
   legend: {
     characteristic: '特征音',
@@ -210,9 +212,9 @@ I18N.addLang('zh', {
     qs_step4: '点击打击垫播放声音。在Voicing Box中更改布局',
     qs_step5: '使用<kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd>保存喜欢的和弦',
     qs_shortcuts: '键盘快捷键',
-    qs_shortcuts_desc: '按<kbd>?</kbd>查看完整快捷键列表。<br><kbd>1</kbd>\u2013<kbd>7</kbd>选择自然和弦，<kbd>\u2191</kbd><kbd>\u2193</kbd>切换转位，<kbd>\u2190</kbd><kbd>\u2192</kbd>半音移动。<br>在Perform模式中，使用<kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd>作为4\u00D74网格。',
+    qs_shortcuts_desc: '按<kbd>?</kbd>查看完整快捷键列表。<br><kbd>Space</kbd>播放和弦。<kbd>1</kbd>\u2013<kbd>7</kbd>选择自然和弦，<kbd>\u2191</kbd><kbd>\u2193</kbd>切换转位，<kbd>\u2190</kbd><kbd>\u2192</kbd>半音移动。<br>在Perform模式中，使用<kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd>作为4\u00D74网格。',
     footer_open: '打开64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.6 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
     blog_more: '在博客上了解更多 \u2192',
   },
 });

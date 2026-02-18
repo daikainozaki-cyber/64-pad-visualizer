@@ -1,7 +1,7 @@
 // Deutsch
 I18N.addLang('de', {
   help: {
-    title: '64 Pad Explorer V1.9',
+    title: '64 Pad Explorer V2.10',
     description: 'Ein Werkzeug zum Erkunden von Skalen, Akkorden und Voicings auf einem 64-Pad-Raster.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 Aus 12 Tonarten wählen',
@@ -65,6 +65,7 @@ I18N.addLang('de', {
     sc_shell: '<kbd>s</kbd> \u2014 Shell durchschalten (off \u2192 1-3-7 \u2192 1-7-3 \u2192 off)',
     sc_drop: '<kbd>d</kbd> \u2014 Drop durchschalten (off \u2192 Drop 2 \u2192 Drop 3 \u2192 off)',
     sc_clear: '<kbd>x</kbd> \u2014 Akkord löschen (Chord-Modus)',
+    sc_pad_explore: '<b>Pad (Chord-Modus)</b> \u2014 Klicken zum Ein-/Ausschalten \u2014 Builder wird automatisch aktualisiert',
     shortcut_plain: 'Plain Mode',
     sp_capture: '<kbd>c</kbd> \u2014 Capture starten / im nächsten Slot speichern',
     sp_end: '<kbd>e</kbd> \u2014 Capture beenden',
@@ -80,9 +81,10 @@ I18N.addLang('de', {
     sc_perform: '<kbd>p</kbd> \u2014 Perform-Ansicht umschalten',
     sc_undo: '<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>z</kbd> \u2014 Memory Slots r\u00FCckg\u00E4ngig machen (bis zu 30)',
     sc_shift_save: '<kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd> \u2014 In Plain-Speicherslot speichern (aus jedem Modus)',
+    sc_space: '<kbd>Space</kbd> \u2014 Aktuellen Akkord abspielen',
     sc_esc: '<kbd>Esc</kbd> \u2014 Voicing Box abwählen / Hilfe schließen',
     sc_help: '<kbd>?</kbd> \u2014 Hilfe ein-/ausblenden',
-    footer: '64 Pad Explorer V1.9 \u2014 HPS (Hardcore Pad Style)',
+    footer: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
   },
   legend: {
     characteristic: 'Charakteristisch',
@@ -210,9 +212,9 @@ I18N.addLang('de', {
     qs_step4: 'Pads anklicken, um T\u00F6ne zu h\u00F6ren. Layouts in den Voicing Boxes \u00E4ndern',
     qs_step5: 'Lieblingsakkorde mit <kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd> speichern',
     qs_shortcuts: 'Tastenk\u00FCrzel',
-    qs_shortcuts_desc: '<kbd>?</kbd> dr\u00FCcken f\u00FCr die vollst\u00E4ndige Tastenk\u00FCrzel-Liste.<br><kbd>1</kbd>\u2013<kbd>7</kbd> f\u00FCr diatonische Akkorde, <kbd>\u2191</kbd><kbd>\u2193</kbd> f\u00FCr Inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> f\u00FCr chromatische Bewegung.<br>Im Perform Mode <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> als 4\u00D74-Raster verwenden.',
+    qs_shortcuts_desc: '<kbd>?</kbd> dr\u00FCcken f\u00FCr die vollst\u00E4ndige Tastenk\u00FCrzel-Liste.<br><kbd>Space</kbd> zum Akkord abspielen. <kbd>1</kbd>\u2013<kbd>7</kbd> f\u00FCr diatonische Akkorde, <kbd>\u2191</kbd><kbd>\u2193</kbd> f\u00FCr Inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> f\u00FCr chromatische Bewegung.<br>Im Perform Mode <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> als 4\u00D74-Raster verwenden.',
     footer_open: '64 Pad Explorer \u00F6ffnen',
-    footer_version: '64 Pad Explorer V2.6 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Mehr erfahren im Blog \u2192',
   },
 });

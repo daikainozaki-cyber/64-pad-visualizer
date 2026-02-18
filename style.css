@@ -541,3 +541,32 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .ps-goto:hover { opacity: 1; color: var(--accent); }
 .ps-divider { border-top: 1px dashed var(--border); margin: 3px 0; }
 .tension-btn.scale-unavailable { opacity: 0.2; border-style: dashed; border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.35); }
+
+/* === Detect Candidate Clickable Styles (V2.10) === */
+.detect-candidate-best {
+  display: inline-block; cursor: pointer; padding: 2px 8px;
+  border-radius: 6px; border: 1px solid var(--accent);
+  color: var(--accent); font-weight: 700; font-size: 1.1rem;
+  transition: background 0.1s, transform 0.1s; user-select: none;
+}
+.detect-candidate-best:hover { background: rgba(74,158,255,0.15); transform: scale(1.05); }
+.detect-candidate {
+  display: inline-block; cursor: pointer;
+  font-size: 0.6rem; padding: 1px 5px; border-radius: 3px;
+  background: rgba(255,255,255,0.08); color: var(--text-muted);
+  border: 1px solid transparent;
+  transition: background 0.1s, border-color 0.1s, color 0.1s; user-select: none;
+}
+.detect-candidate:hover { background: rgba(74,158,255,0.15); border-color: var(--accent); color: var(--text); }
+@keyframes detect-flash {
+  0%   { filter: brightness(1); transform: scale(1); }
+  30%  { filter: brightness(2.5) saturate(1.5); transform: scale(1.15); }
+  100% { filter: brightness(1); transform: scale(1); }
+}
+.detect-flashing { animation: detect-flash 0.3s ease-out forwards; pointer-events: none; }
+@keyframes quality-pulse {
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(74,158,255,0.7); }
+  50%  { transform: scale(1.08); box-shadow: 0 0 8px 4px rgba(74,158,255,0.4); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74,158,255,0); }
+}
+.quality-btn.transfer-flash { animation: quality-pulse 0.4s ease-out; }

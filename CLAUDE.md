@@ -1,8 +1,8 @@
 # 64 Pad Explorer - CLAUDE.md
 
-**最終更新**: 2026-02-17
+**最終更新**: 2026-02-18
 **担当人格**: 蔵人（実装）、継次（設計）、フロ男（テンション・ボイシング設計）
-**バージョン**: V2.5（2026-02-17）
+**バージョン**: V2.9（2026-02-18）
 
 ---
 
@@ -757,6 +757,49 @@ z x c v   → slot 13-16
 - **Key→Chord方向**（ダイアトニックバー）: キーの中でコードを見る。伝統的な音楽理論アプローチ
 - **Chord→Key方向**（Available Scale）: コード単体からどのキーに属しうるかを見る。ピボットコード思考
 - 手動コード入力時にダイアトニックバーを消すことで、キーの呪縛から解放。**両方の視点を持てるのが64 Pad Explorerの独自性**
+
+### V2.6（2026-02-18 ガイドページ仕上げ + SEO）
+
+| 機能/修正 | 内容 |
+|-----------|------|
+| **Available Scaleチャート** | コード→スケール対応表をguide.htmlに追加（前セッション） |
+| **ペンタトニック注釈** | Available Scaleセクションにペンタトニック/ブルーススケールの補足説明。全9言語の`ss_parent_note`追加 |
+| **YouTube動画3本埋め込み** | guide.htmlにレスポンシブiframe。概要、メモリー/MIDI、Available Scaleの3本 |
+| **Plain Mode文言修正** | `ss_plain_desc`を「理論フィルタなし」→「理論を知らなくてもコードがわかります」に変更（全9言語） |
+| **メタディスクリプション追加** | index.html/guide.htmlに`<meta name="description">`追加。「コードがわからなくても大丈夫」「ギター・鍵盤からのコード判定」「音源内蔵、インストール不要」等のSEOキーワード |
+
+**修正ファイル**: guide.html, index.html, lang-*.js×9
+
+### V2.7（2026-02-18 楽器入力×Chordモード統合）
+
+| 機能/修正 | 内容 |
+|-----------|------|
+| **楽器入力とChordモード統合** | ギター/ベース/ピアノで入力した音をBuilderコードと合成してコード判定・Available Scale絞り込み |
+| **renderParentScales() dual path** | 楽器入力あり→楽器音のPCをfullAbsSetに追加、なし→既存処理 |
+| **builderClear()に楽器クリア統合** | builderClear()で楽器入力も一括クリア |
+
+**修正ファイル**: render.js, builder.js, index.html
+
+### V2.8（2026-02-18 テンション追加モード完成）
+
+| 機能/修正 | 内容 |
+|-----------|------|
+| **全4入力対応** | 64パッド・ギター・ベース・鍵盤で追加音トグル（クリックでON、同一音でOFF） |
+| **padExtNotes** | MIDI note保存、computeRenderStateでオーバーライド、ビルダーコードを初期シードに |
+| **applyNotesToBuilder()** | パッドトグル→detectChord→BuilderState逆マッピング（root/quality/tension自動設定） |
+| **clearInstrumentInput()** | クリア後にrender()呼び出し追加 |
+
+**修正ファイル**: render.js, plain.js, index.html
+
+### V2.9（2026-02-18 パッドビルダー更新 + スペースキー再生）
+
+| 機能/修正 | 内容 |
+|-----------|------|
+| **パッドでビルダー直接更新** | C△7設定中にパッドのD音を押す→テンションパネルの「9」が自動選択→C△7(9)に変化 |
+| **スペースキー = 現在コード再生** | Spaceキーショートカット追加（main.js） |
+| **i18n更新** | sc_space/sc_pad_explore 全9言語追加、footer V2.9更新 |
+
+**修正ファイル**: render.js, main.js, index.html, guide.html, lang-*.js×9
 
 ### 次の実装目標
 

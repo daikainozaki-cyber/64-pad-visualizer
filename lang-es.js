@@ -1,7 +1,7 @@
 // Español
 I18N.addLang('es', {
   help: {
-    title: '64 Pad Explorer V1.9',
+    title: '64 Pad Explorer V2.10',
     description: 'Herramienta para explorar escalas, acordes y voicings en una cuadrícula de 64 pads.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 Elige entre 12 tonalidades',
@@ -65,6 +65,7 @@ I18N.addLang('es', {
     sc_shell: '<kbd>s</kbd> \u2014 Ciclar Shell (off \u2192 1-3-7 \u2192 1-7-3 \u2192 off)',
     sc_drop: '<kbd>d</kbd> \u2014 Ciclar Drop (off \u2192 Drop 2 \u2192 Drop 3 \u2192 off)',
     sc_clear: '<kbd>x</kbd> \u2014 Borrar acorde (Chord Mode)',
+    sc_pad_explore: '<b>Pad (modo Chord)</b> \u2014 Clic para activar/desactivar nota \u2014 constructor actualizado automáticamente',
     shortcut_plain: 'Plain Mode',
     sp_capture: '<kbd>c</kbd> \u2014 Iniciar Capture / guardar en la siguiente ranura',
     sp_end: '<kbd>e</kbd> \u2014 Finalizar Capture',
@@ -80,9 +81,10 @@ I18N.addLang('es', {
     sc_perform: '<kbd>p</kbd> \u2014 Alternar vista Perform',
     sc_undo: '<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>z</kbd> \u2014 Deshacer Memory Slots (hasta 30)',
     sc_shift_save: '<kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd> \u2014 Guardar en ranura de memoria Plain (desde cualquier modo)',
+    sc_space: '<kbd>Space</kbd> \u2014 Reproducir acorde actual',
     sc_esc: '<kbd>Esc</kbd> \u2014 Deseleccionar Voicing Box / cerrar Ayuda',
     sc_help: '<kbd>?</kbd> \u2014 Mostrar/ocultar Ayuda',
-    footer: '64 Pad Explorer V1.9 \u2014 HPS (Hardcore Pad Style)',
+    footer: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
   },
   legend: {
     characteristic: 'Nota característica',
@@ -210,9 +212,9 @@ I18N.addLang('es', {
     qs_step4: 'Haz clic en los pads para reproducir sonidos. Cambia disposiciones en los Voicing Boxes',
     qs_step5: 'Guarda tus acordes favoritos con <kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd>',
     qs_shortcuts: 'Atajos de teclado',
-    qs_shortcuts_desc: 'Pulsa <kbd>?</kbd> para ver la lista completa de atajos.<br><kbd>1</kbd>\u2013<kbd>7</kbd> para acordes diat\u00F3nicos, <kbd>\u2191</kbd><kbd>\u2193</kbd> para inversiones, <kbd>\u2190</kbd><kbd>\u2192</kbd> para movimiento crom\u00E1tico.<br>En el modo Perform, usa <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> como cuadr\u00EDcula 4\u00D74.',
+    qs_shortcuts_desc: 'Pulsa <kbd>?</kbd> para ver la lista completa de atajos.<br><kbd>Space</kbd> para reproducir acorde. <kbd>1</kbd>\u2013<kbd>7</kbd> para acordes diat\u00F3nicos, <kbd>\u2191</kbd><kbd>\u2193</kbd> para inversiones, <kbd>\u2190</kbd><kbd>\u2192</kbd> para movimiento crom\u00E1tico.<br>En el modo Perform, usa <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> como cuadr\u00EDcula 4\u00D74.',
     footer_open: 'Abrir 64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.6 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'M\u00E1s informaci\u00F3n en el blog \u2192',
   },
 });

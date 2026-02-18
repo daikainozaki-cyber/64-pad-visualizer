@@ -1,7 +1,7 @@
 // Français
 I18N.addLang('fr', {
   help: {
-    title: '64 Pad Explorer V1.9',
+    title: '64 Pad Explorer V2.10',
     description: 'Un outil pour explorer les gammes, accords et voicings sur une grille de 64 pads.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 Choisir parmi 12 tonalités',
@@ -65,6 +65,7 @@ I18N.addLang('fr', {
     sc_shell: '<kbd>s</kbd> \u2014 Cycler Shell (off \u2192 1-3-7 \u2192 1-7-3 \u2192 off)',
     sc_drop: '<kbd>d</kbd> \u2014 Cycler Drop (off \u2192 Drop 2 \u2192 Drop 3 \u2192 off)',
     sc_clear: '<kbd>x</kbd> \u2014 Effacer l\'accord (mode Chord)',
+    sc_pad_explore: '<b>Pad (mode Chord)</b> \u2014 Clic pour activer/désactiver une note \u2014 constructeur mis à jour',
     shortcut_plain: 'Plain Mode',
     sp_capture: '<kbd>c</kbd> \u2014 Démarrer Capture / sauvegarder dans l\'emplacement suivant',
     sp_end: '<kbd>e</kbd> \u2014 Terminer Capture',
@@ -80,9 +81,10 @@ I18N.addLang('fr', {
     sc_perform: '<kbd>p</kbd> \u2014 Basculer la vue Perform',
     sc_undo: '<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>z</kbd> \u2014 Annuler les Memory Slots (jusqu\u0027\u00E0 30)',
     sc_shift_save: '<kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd> \u2014 Sauvegarder dans un emplacement Plain (depuis n\'importe quel mode)',
+    sc_space: '<kbd>Space</kbd> \u2014 Jouer un accord',
     sc_esc: '<kbd>Esc</kbd> \u2014 Désélectionner la voicing box / fermer l\'aide',
     sc_help: '<kbd>?</kbd> \u2014 Afficher/masquer l\'aide',
-    footer: '64 Pad Explorer V1.9 \u2014 HPS (Hardcore Pad Style)',
+    footer: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
   },
   legend: {
     characteristic: 'Caractéristique',
@@ -210,9 +212,9 @@ I18N.addLang('fr', {
     qs_step4: 'Cliquez sur les pads pour jouer les sons. Changez les dispositions dans les voicing boxes',
     qs_step5: 'Sauvegardez vos accords favoris avec <kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd>',
     qs_shortcuts: 'Raccourcis clavier',
-    qs_shortcuts_desc: 'Appuyez sur <kbd>?</kbd> pour la liste compl\u00E8te des raccourcis.<br><kbd>1</kbd>\u2013<kbd>7</kbd> pour les accords diatoniques, <kbd>\u2191</kbd><kbd>\u2193</kbd> pour les inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> pour le mouvement chromatique.<br>En Perform mode, utilisez <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> comme grille 4\u00D74.',
+    qs_shortcuts_desc: 'Appuyez sur <kbd>?</kbd> pour la liste compl\u00E8te des raccourcis.<br><kbd>Space</kbd> pour jouer un accord. <kbd>1</kbd>\u2013<kbd>7</kbd> pour les accords diatoniques, <kbd>\u2191</kbd><kbd>\u2193</kbd> pour les inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> pour le mouvement chromatique.<br>En Perform mode, utilisez <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> comme grille 4\u00D74.',
     footer_open: 'Ouvrir 64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.6 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'En savoir plus sur le blog \u2192',
   },
 });

@@ -1,7 +1,7 @@
 // Italiano
 I18N.addLang('it', {
   help: {
-    title: '64 Pad Explorer V1.9',
+    title: '64 Pad Explorer V2.10',
     description: 'Uno strumento per esplorare scale, accordi e voicings su una griglia di 64 pad.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 Scegliere tra 12 tonalità',
@@ -65,6 +65,7 @@ I18N.addLang('it', {
     sc_shell: '<kbd>s</kbd> \u2014 Ciclare Shell (off \u2192 1-3-7 \u2192 1-7-3 \u2192 off)',
     sc_drop: '<kbd>d</kbd> \u2014 Ciclare Drop (off \u2192 Drop 2 \u2192 Drop 3 \u2192 off)',
     sc_clear: '<kbd>x</kbd> \u2014 Cancella accordo (modalità Chord)',
+    sc_pad_explore: '<b>Pad (modo Chord)</b> \u2014 Clic per attivare/disattivare nota \u2014 il costruttore si aggiorna automaticamente',
     shortcut_plain: 'Plain Mode',
     sp_capture: '<kbd>c</kbd> \u2014 Avviare Capture / salvare nello slot successivo',
     sp_end: '<kbd>e</kbd> \u2014 Terminare Capture',
@@ -80,9 +81,10 @@ I18N.addLang('it', {
     sc_perform: '<kbd>p</kbd> \u2014 Attivare/disattivare la vista Perform',
     sc_undo: '<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>z</kbd> \u2014 Annulla Memory Slot (fino a 30)',
     sc_shift_save: '<kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd> \u2014 Salvare nello slot di memoria Plain (da qualsiasi modalità)',
+    sc_space: '<kbd>Space</kbd> \u2014 Riprodurre accordo attuale',
     sc_esc: '<kbd>Esc</kbd> \u2014 Deselezionare voicing box / chiudere la guida',
     sc_help: '<kbd>?</kbd> \u2014 Mostrare/nascondere la guida',
-    footer: '64 Pad Explorer V1.9 \u2014 HPS (Hardcore Pad Style)',
+    footer: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
   },
   legend: {
     characteristic: 'Caratteristica',
@@ -210,9 +212,9 @@ I18N.addLang('it', {
     qs_step4: 'Clicca sui pad per riprodurre i suoni. Cambia disposizione nei voicing box',
     qs_step5: 'Salva gli accordi preferiti con <kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd>',
     qs_shortcuts: 'Scorciatoie da tastiera',
-    qs_shortcuts_desc: 'Premi <kbd>?</kbd> per l\'elenco completo delle scorciatoie.<br><kbd>1</kbd>\u2013<kbd>7</kbd> per accordi diatonici, <kbd>\u2191</kbd><kbd>\u2193</kbd> per rivolti, <kbd>\u2190</kbd><kbd>\u2192</kbd> per movimento cromatico.<br>In Perform mode, usa <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> come griglia 4\u00D74.',
+    qs_shortcuts_desc: 'Premi <kbd>?</kbd> per l\'elenco completo delle scorciatoie.<br><kbd>Space</kbd> per riprodurre accordo. <kbd>1</kbd>\u2013<kbd>7</kbd> per accordi diatonici, <kbd>\u2191</kbd><kbd>\u2193</kbd> per rivolti, <kbd>\u2190</kbd><kbd>\u2192</kbd> per movimento cromatico.<br>In Perform mode, usa <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> come griglia 4\u00D74.',
     footer_open: 'Apri 64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.6 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Scopri di pi\u00F9 sul blog \u2192',
   },
 });

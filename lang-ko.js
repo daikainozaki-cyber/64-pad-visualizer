@@ -1,7 +1,7 @@
 // 한국어
 I18N.addLang('ko', {
   help: {
-    title: '64 Pad Explorer V1.9',
+    title: '64 Pad Explorer V2.10',
     description: '64패드 그리드에서 스케일, 코드, 보이싱을 탐색하는 도구입니다.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 12개의 키 중 선택',
@@ -65,6 +65,7 @@ I18N.addLang('ko', {
     sc_shell: '<kbd>s</kbd> \u2014 Shell 순환 (off \u2192 1-3-7 \u2192 1-7-3 \u2192 off)',
     sc_drop: '<kbd>d</kbd> \u2014 Drop 순환 (off \u2192 Drop 2 \u2192 Drop 3 \u2192 off)',
     sc_clear: '<kbd>x</kbd> \u2014 코드 초기화 (Chord 모드)',
+    sc_pad_explore: '<b>패드 (Chord 모드)</b> \u2014 클릭으로 음표 토글 \u2014 빌더 자동 업데이트',
     shortcut_plain: 'Plain Mode',
     sp_capture: '<kbd>c</kbd> \u2014 Capture 시작 / 다음 슬롯에 저장',
     sp_end: '<kbd>e</kbd> \u2014 Capture 종료',
@@ -80,9 +81,10 @@ I18N.addLang('ko', {
     sc_perform: '<kbd>p</kbd> \u2014 Perform 뷰 전환',
     sc_undo: '<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>z</kbd> \u2014 Memory Slot Undo (최대 30회)',
     sc_shift_save: '<kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd> \u2014 Plain 메모리 슬롯에 저장 (어떤 모드에서든)',
+    sc_space: '<kbd>Space</kbd> \u2014 현재 코드 재생',
     sc_esc: '<kbd>Esc</kbd> \u2014 보이싱 박스 선택 해제 / 도움말 닫기',
     sc_help: '<kbd>?</kbd> \u2014 도움말 표시/숨기기',
-    footer: '64 Pad Explorer V1.9 \u2014 HPS (Hardcore Pad Style)',
+    footer: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
   },
   legend: {
     characteristic: '특성음',
@@ -210,9 +212,9 @@ I18N.addLang('ko', {
     qs_step4: '\uD328\uB4DC\uB97C \uD074\uB9AD\uD558\uC5EC \uC18C\uB9AC\uB97C \uB4E4\uC5B4\uBCF4\uC138\uC694. Voicing Box\uC5D0\uC11C \uB808\uC774\uC544\uC6C3\uC744 \uBCC0\uACBD\uD558\uC138\uC694',
     qs_step5: '<kbd>Shift</kbd>+<kbd>1</kbd>\u2013<kbd>0</kbd>\uC73C\uB85C \uC88B\uC544\uD558\uB294 \uCF54\uB4DC\uB97C \uC800\uC7A5\uD558\uC138\uC694',
     qs_shortcuts: '\uD0A4\uBCF4\uB4DC \uB2E8\uCD95\uD0A4',
-    qs_shortcuts_desc: '<kbd>?</kbd>\uB97C \uB204\uB974\uBA74 \uC804\uCCB4 \uB2E8\uCD95\uD0A4 \uBAA9\uB85D\uC774 \uD45C\uC2DC\uB429\uB2C8\uB2E4.<br><kbd>1</kbd>\u2013<kbd>7</kbd> \uB2E4\uC774\uC544\uD1A0\uB2C9 \uCF54\uB4DC, <kbd>\u2191</kbd><kbd>\u2193</kbd> Inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> \uBC18\uC74C \uC774\uB3D9.<br>Perform Mode\uC5D0\uC11C\uB294 <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd>\uB97C 4\u00D74 \uADF8\uB9AC\uB4DC\uB85C \uC0AC\uC6A9.',
+    qs_shortcuts_desc: '<kbd>?</kbd>\uB97C \uB204\uB974\uBA74 \uC804\uCCB4 \uB2E8\uCD95\uD0A4 \uBAA9\uB85D\uC774 \uD45C\uC2DC\uB429\uB2C8\uB2E4.<br><kbd>Space</kbd> 코드 재생. <kbd>1</kbd>\u2013<kbd>7</kbd> \uB2E4\uC774\uC544\uD1A0\uB2C9 \uCF54\uB4DC, <kbd>\u2191</kbd><kbd>\u2193</kbd> Inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> \uBC18\uC74C \uC774\uB3D9.<br>Perform Mode\uC5D0\uC11C\uB294 <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd>\uB97C 4\u00D74 \uADF8\uB9AC\uB4DC\uB85C \uC0AC\uC6A9.',
     footer_open: '64 Pad Explorer \uC5F4\uAE30',
-    footer_version: '64 Pad Explorer V2.6 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
     blog_more: '\uBE14\uB85C\uADF8\uC5D0\uC11C \uB354 \uC54C\uC544\uBCF4\uAE30 \u2192',
   },
 });

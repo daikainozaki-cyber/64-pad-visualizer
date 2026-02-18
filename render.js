@@ -195,8 +195,9 @@ function renderPads(svg, state) {
             _heldMidi = m; noteOn(m);
             if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
               const pc = m % 12;
-              if (padExtNotes.has(pc)) { padExtNotes.delete(pc); } else { padExtNotes.add(pc); }
-              renderParentScales();
+              const existing = [...padExtNotes].find(n => n % 12 === pc);
+              if (existing !== undefined) { padExtNotes.delete(existing); } else { padExtNotes.add(m); }
+              updateInstrumentInput();
             }
           }
         });
@@ -207,8 +208,9 @@ function renderPads(svg, state) {
             _heldTouchMidi = m; noteOn(m);
             if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
               const pc = m % 12;
-              if (padExtNotes.has(pc)) { padExtNotes.delete(pc); } else { padExtNotes.add(pc); }
-              renderParentScales();
+              const existing = [...padExtNotes].find(n => n % 12 === pc);
+              if (existing !== undefined) { padExtNotes.delete(existing); } else { padExtNotes.add(m); }
+              updateInstrumentInput();
             }
           }
         });
@@ -1348,7 +1350,7 @@ const GUITAR_OPEN_MIDI = [64, 59, 55, 50, 45, 40]; // E4, B3, G3, D3, A2, E2
 let guitarSelectedFrets = [null, null, null, null, null, null];
 let pianoSelectedNotes = new Set(); // MIDI note numbers
 let instrumentInputActive = false;
-let padExtNotes = new Set(); // Chord mode: pitch classes toggled on 64-pad for PS extension
+let padExtNotes = new Set(); // Chord mode: MIDI notes toggled on 64-pad for PS extension
 
 function getAllInputMidiNotes() {
   const notes = [];
@@ -1364,6 +1366,9 @@ function getAllInputMidiNotes() {
     }
   }
   pianoSelectedNotes.forEach(n => {
+    if (!notes.includes(n)) notes.push(n);
+  });
+  padExtNotes.forEach(n => {
     if (!notes.includes(n)) notes.push(n);
   });
   return notes.sort((a, b) => a - b);
@@ -1607,7 +1612,7 @@ function renderParentScales() {
       (BuilderState.quality ? BuilderState.quality.name : '') + ':' +
       (BuilderState.tension ? BuilderState.tension.label : '');
     // Tension addition mode: instrument notes + toggled pads expand chord for PS filtering
-    const extPCs = [...getAllInputMidiNotes().map(n => n % 12), ...padExtNotes];
+    const extPCs = getAllInputMidiNotes().map(n => n % 12);
     if (extPCs.length > 0) {
       extPCs.forEach(pc => fullAbsSet.add(pc));
       hasTension = true; // force exactMatch computation even without explicit builder tension

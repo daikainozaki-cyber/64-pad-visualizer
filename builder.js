@@ -139,6 +139,7 @@ function builderClear() {
   clearPianoSelection('piano-keyboard');
   clearQualitySelection();
   clearTensionSelection();
+  clearInstrumentInput();
   render();
 }
 

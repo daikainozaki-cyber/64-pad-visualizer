@@ -1373,13 +1373,13 @@ function togglePianoNote(midi) {
 }
 
 function updateInstrumentInput() {
-  const notes = getAllInputMidiNotes();
-  instrumentInputActive = notes.length > 0;
+  const instrNotes = getAllInputMidiNotes();
+  instrumentInputActive = instrNotes.length > 0;
   const ctrlEl = document.getElementById('instrument-controls');
   if (ctrlEl) ctrlEl.style.display = instrumentInputActive ? 'flex' : 'none';
   // Pre-warm audio on first note selection so Play button works instantly
   if (instrumentInputActive) ensureAudioResumed();
-  if (notes.length === 0) {
+  if (instrNotes.length === 0) {
     document.querySelectorAll('.instrument-highlight').forEach(el => el.remove());
     const detectEl = document.getElementById('midi-detect');
     detectEl.innerHTML = '';
@@ -1387,13 +1387,25 @@ function updateInstrumentInput() {
     renderGuitarDiagram(lastRenderRootPC, lastRenderActivePCS);
     renderBassDiagram(lastRenderRootPC, lastRenderActivePCS);
     renderPianoDisplay(lastRenderRootPC, lastRenderActivePCS);
+    renderParentScales();
     return;
   }
+
+  // In Chord mode with a builder chord set, merge builder notes + instrument notes for detection
+  let notesForDetect = instrNotes;
+  if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
+    const builderNotes = getCurrentChordMidiNotes();
+    if (builderNotes && builderNotes.length > 0) {
+      const merged = new Set([...builderNotes, ...instrNotes]);
+      notesForDetect = [...merged].sort((a, b) => a - b);
+    }
+  }
+
   const detectEl = document.getElementById('midi-detect');
   // detectEl always visible (no layout shift)
-  const noteNames = notes.map(n => NOTE_NAMES_SHARP[n % 12]);
-  const candidates = detectChord(notes);
-  const inputPCS = new Set(notes.map(n => n % 12));
+  const noteNames = notesForDetect.map(n => NOTE_NAMES_SHARP[n % 12]);
+  const candidates = detectChord(notesForDetect);
+  const inputPCS = new Set(instrNotes.map(n => n % 12));
   if (candidates.length > 0) {
     const best = candidates[0];
     let html = '<div style="color:var(--accent);font-weight:700;font-size:1.1rem;">' + best.name + '</div>';
@@ -1415,7 +1427,8 @@ function updateInstrumentInput() {
     renderBassDiagram(null, inputPCS);
     renderPianoDisplay(null, inputPCS);
   }
-  highlightInstrumentPads(notes);
+  highlightInstrumentPads(instrNotes);
+  renderParentScales();
 }
 
 function highlightInstrumentPads(midiNotes) {
@@ -1459,9 +1472,14 @@ function clearInstrumentInput() {
 }
 
 function playInstrumentInput() {
-  const notes = getAllInputMidiNotes();
-  if (notes.length > 0) {
-    playMidiNotes(notes, 1.0);
+  if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
+    const builderNotes = getCurrentChordMidiNotes() || [];
+    const instrNotes = getAllInputMidiNotes();
+    const merged = [...new Set([...builderNotes, ...instrNotes])].sort((a, b) => a - b);
+    if (merged.length > 0) playMidiNotes(merged, 1.0);
+  } else {
+    const notes = getAllInputMidiNotes();
+    if (notes.length > 0) playMidiNotes(notes, 1.0);
   }
 }
 
@@ -1555,6 +1573,10 @@ function renderParentScales() {
     newFPSource = psRoot + ':' +
       (BuilderState.quality ? BuilderState.quality.name : '') + ':' +
       (BuilderState.tension ? BuilderState.tension.label : '');
+    // Tension addition mode: instrument notes expand the chord (e.g. C7 + D → C9)
+    if (instrumentInputActive) {
+      getAllInputMidiNotes().forEach(n => fullAbsSet.add(n % 12));
+    }
   } else if (AppState.mode === 'plain' && PlainState.activeNotes.size >= 3) {
     // Plain mode: detect chord from active notes
     const notes = [...PlainState.activeNotes].sort((a, b) => a - b);

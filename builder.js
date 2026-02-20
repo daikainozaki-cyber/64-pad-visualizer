@@ -877,10 +877,14 @@ function updateMidiDisplay() {
     detectEl.innerHTML = '';
     // detectEl always visible (no layout shift)
     document.querySelectorAll('.midi-highlight').forEach(el => el.remove());
-    // Restore instrument diagrams from builder state
-    renderGuitarDiagram(lastRenderRootPC, lastRenderActivePCS);
-    renderBassDiagram(lastRenderRootPC, lastRenderActivePCS);
-    renderPianoDisplay(lastRenderRootPC, lastRenderActivePCS);
+    // Restore diagrams: instrument input state takes priority over builder state
+    if (instrumentInputActive) {
+      updateInstrumentInput();
+    } else {
+      renderGuitarDiagram(lastRenderRootPC, lastRenderActivePCS);
+      renderBassDiagram(lastRenderRootPC, lastRenderActivePCS);
+      renderPianoDisplay(lastRenderRootPC, lastRenderActivePCS);
+    }
     return;
   }
   // detectEl always visible (no layout shift)

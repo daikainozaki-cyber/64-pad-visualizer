@@ -226,6 +226,7 @@ function renderPads(svg, state) {
               if (extMidi.length > 0 && applyNotesToBuilder(extMidi)) {
                 padExtNotes.clear(); // builder now holds the state, no overlay needed
               }
+              syncGuitarFromNotes(getCurrentChordMidiNotes() || extMidi);
               render();
             }
           }
@@ -247,6 +248,7 @@ function renderPads(svg, state) {
               if (extMidi.length > 0 && applyNotesToBuilder(extMidi)) {
                 padExtNotes.clear();
               }
+              syncGuitarFromNotes(getCurrentChordMidiNotes() || extMidi);
               render();
             }
           }
@@ -499,6 +501,11 @@ function render() {
   // Diatonic chord bar + Parent Scale panel
   renderDiatonicBar();
   renderParentScales();
+
+  // Re-apply instrument highlights after SVG rebuild
+  if (instrumentInputActive) {
+    highlightInstrumentPads(getAllInputMidiNotes());
+  }
 
   // Auto-save to selected slot (Chord/Scale mode)
   if (PlainState.currentSlot !== null && (AppState.mode === 'chord' || AppState.mode === 'scale')) {
@@ -1390,6 +1397,28 @@ let instrumentInputActive = false;
 let padExtNotes = new Set(); // Chord mode: MIDI notes toggled on 64-pad for PS extension
 let lastDetectedNotes = []; // Last detection input notes (for click-to-transfer, V2.10)
 let lastDetectedCandidates = []; // Last detection candidates (for click-to-transfer, V2.10)
+let _guitarSyncSource = null; // null | 'manual' | 'pad' — tracks who set guitarSelectedFrets
+
+// Map MIDI notes to guitar fret positions (greedy: low notes → low strings, prefer low frets)
+function syncGuitarFromNotes(midiNotes) {
+  if (!showGuitar || !midiNotes || midiNotes.length === 0) return;
+  if (_guitarSyncSource === 'manual') return; // don't overwrite manual guitar selection
+  const sorted = [...midiNotes].sort((a, b) => a - b);
+  const newFrets = [null, null, null, null, null, null];
+  const usedStrings = new Set();
+  for (const midi of sorted) {
+    let bestS = -1, bestF = Infinity;
+    for (let s = 5; s >= 0; s--) { // low E(5) → high E(0)
+      if (usedStrings.has(s)) continue;
+      const f = midi - GUITAR_OPEN_MIDI[s];
+      if (f >= 0 && f <= 21 && f < bestF) { bestS = s; bestF = f; }
+    }
+    if (bestS !== -1) { newFrets[bestS] = bestF; usedStrings.add(bestS); }
+  }
+  guitarSelectedFrets = newFrets;
+  instrumentInputActive = newFrets.some(f => f !== null);
+  _guitarSyncSource = 'pad';
+}
 
 function getAllInputMidiNotes() {
   const notes = [];
@@ -1416,6 +1445,7 @@ function toggleGuitarFret(stringIdx, fret) {
   } else {
     guitarSelectedFrets[stringIdx] = fret;
   }
+  _guitarSyncSource = 'manual';
   updateInstrumentInput();
 }
 
@@ -1543,6 +1573,7 @@ function clearInstrumentInput() {
   pianoSelectedNotes.clear();
   padExtNotes.clear();
   instrumentInputActive = false;
+  _guitarSyncSource = null;
   const ctrlEl = document.getElementById('instrument-controls');
   if (ctrlEl) ctrlEl.style.display = 'none';
   document.querySelectorAll('.instrument-highlight').forEach(el => el.remove());

@@ -167,7 +167,8 @@ function transferDetectedCandidate(idx, el) {
       document.getElementById('chord-panel').style.display = '';
       document.getElementById('plain-panel').style.display = 'none';
     }
-    clearInstrumentInput();
+    padExtNotes.clear();
+    document.getElementById('midi-detect').innerHTML = '';
     applyNotesToBuilder(notesToApply, candidate.rootPC);
     requestAnimationFrame(() => {
       const selectedQ = document.querySelector('.quality-btn.selected');

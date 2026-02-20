@@ -47,6 +47,7 @@ I18N.addLang('zh', {
     plain_title: 'Plain Mode',
     plain_desc1: '自由点击打击垫选择音符 \u2192 实时和弦识别',
     plain_desc2: '无理论过滤。探索 \u2192 发现 \u2192 之后再学习理论',
+    plain_desc3: '检测到和弦时，打击垫上显示音程标签（R, 3, 5, b7等）。吉他、贝斯、钢琴和五线谱自动联动',
     plain_memory: '<strong>Memory</strong> \u2014 在16个插槽中保存和调用和弦',
     plain_export: '<strong>MIDI Export</strong> \u2014 将记忆中的和弦导出为MIDI文件',
     perform_title: 'Perform Mode',
@@ -214,7 +215,7 @@ I18N.addLang('zh', {
     qs_shortcuts: '键盘快捷键',
     qs_shortcuts_desc: '按<kbd>?</kbd>查看完整快捷键列表。<br><kbd>Space</kbd>播放和弦。<kbd>1</kbd>\u2013<kbd>7</kbd>选择自然和弦，<kbd>\u2191</kbd><kbd>\u2193</kbd>切换转位，<kbd>\u2190</kbd><kbd>\u2192</kbd>半音移动。<br>在Perform模式中，使用<kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd>作为4\u00D74网格。',
     footer_open: '打开64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
     blog_more: '在博客上了解更多 \u2192',
   },
 });

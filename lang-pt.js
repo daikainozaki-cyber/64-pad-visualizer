@@ -46,7 +46,8 @@ I18N.addLang('pt', {
     input_desc3: '<strong>Clear</strong> \u2014 Limpar entrada, <strong>Play \u25B6</strong> \u2014 Reproduzir notas inseridas',
     plain_title: 'Plain Mode',
     plain_desc1: 'Clique livremente nos pads para selecionar notas \u2192 Identificação de acordes em tempo real',
-    plain_desc2: 'Sem filtro teórico. Explorar \u2192 descobrir \u2192 aprender teoria depois',
+    plain_desc2: 'Sem filtro te\u00F3rico. Explorar \u2192 descobrir \u2192 aprender teoria depois',
+    plain_desc3: 'Quando um acorde \u00E9 detetado, r\u00F3tulos de grau (R, 3, 5, b7, etc.) aparecem nos pads. Guitarra, baixo, piano e pauta atualizam-se automaticamente',
     plain_memory: '<strong>Memory</strong> \u2014 Guardar e recuperar acordes em 16 slots',
     plain_export: '<strong>MIDI Export</strong> \u2014 Exportar acordes da mem\u00F3ria como ficheiro MIDI',
     perform_title: 'Perform Mode',
@@ -214,7 +215,7 @@ I18N.addLang('pt', {
     qs_shortcuts: 'Atalhos de teclado',
     qs_shortcuts_desc: 'Prima <kbd>?</kbd> para a lista completa de atalhos.<br><kbd>Space</kbd> para tocar acorde. <kbd>1</kbd>\u2013<kbd>7</kbd> para acordes diat\u00F3nicos, <kbd>\u2191</kbd><kbd>\u2193</kbd> para invers\u00F5es, <kbd>\u2190</kbd><kbd>\u2192</kbd> para movimento crom\u00E1tico.<br>No Perform mode, use <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> como grelha 4\u00D74.',
     footer_open: 'Abrir 64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Saiba mais no blog \u2192',
   },
 });

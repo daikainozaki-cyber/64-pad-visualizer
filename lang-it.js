@@ -47,6 +47,7 @@ I18N.addLang('it', {
     plain_title: 'Plain Mode',
     plain_desc1: 'Clicca liberamente sui pad per selezionare le note \u2192 Identificazione accordi in tempo reale',
     plain_desc2: 'Senza filtro teorico. Esplora \u2192 scopri \u2192 impara la teoria dopo',
+    plain_desc3: 'Quando viene rilevato un accordo, etichette di grado (R, 3, 5, b7, ecc.) appaiono sui pad. Chitarra, basso, pianoforte e pentagramma si aggiornano automaticamente',
     plain_memory: '<strong>Memory</strong> \u2014 Salva e richiama accordi in 16 slot',
     plain_export: '<strong>MIDI Export</strong> \u2014 Esporta gli accordi in memoria come file MIDI',
     perform_title: 'Perform Mode',
@@ -214,7 +215,7 @@ I18N.addLang('it', {
     qs_shortcuts: 'Scorciatoie da tastiera',
     qs_shortcuts_desc: 'Premi <kbd>?</kbd> per l\'elenco completo delle scorciatoie.<br><kbd>Space</kbd> per riprodurre accordo. <kbd>1</kbd>\u2013<kbd>7</kbd> per accordi diatonici, <kbd>\u2191</kbd><kbd>\u2193</kbd> per rivolti, <kbd>\u2190</kbd><kbd>\u2192</kbd> per movimento cromatico.<br>In Perform mode, usa <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> come griglia 4\u00D74.',
     footer_open: 'Apri 64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Scopri di pi\u00F9 sul blog \u2192',
   },
 });

@@ -46,7 +46,8 @@ I18N.addLang('fr', {
     input_desc3: '<strong>Clear</strong> \u2014 Effacer la saisie, <strong>Play \u25B6</strong> \u2014 Jouer les notes saisies',
     plain_title: 'Plain Mode',
     plain_desc1: 'Cliquer librement sur les pads pour sélectionner des notes \u2192 Identification d\'accord en temps réel',
-    plain_desc2: 'Sans filtre théorique. Explorer \u2192 découvrir \u2192 apprendre la théorie ensuite',
+    plain_desc2: 'Sans filtre th\u00E9orique. Explorer \u2192 d\u00E9couvrir \u2192 apprendre la th\u00E9orie ensuite',
+    plain_desc3: 'Lorsqu\'un accord est d\u00E9tect\u00E9, des \u00E9tiquettes de degr\u00E9 (R, 3, 5, b7, etc.) s\'affichent sur les pads. Guitare, basse, piano et port\u00E9e se mettent \u00E0 jour automatiquement',
     plain_memory: '<strong>Memory</strong> \u2014 Sauvegarder et rappeler des accords dans 16 emplacements',
     plain_export: '<strong>MIDI Export</strong> \u2014 Exporter les accords en m\u00E9moire en fichier MIDI',
     perform_title: 'Perform Mode',
@@ -214,7 +215,7 @@ I18N.addLang('fr', {
     qs_shortcuts: 'Raccourcis clavier',
     qs_shortcuts_desc: 'Appuyez sur <kbd>?</kbd> pour la liste compl\u00E8te des raccourcis.<br><kbd>Space</kbd> pour jouer un accord. <kbd>1</kbd>\u2013<kbd>7</kbd> pour les accords diatoniques, <kbd>\u2191</kbd><kbd>\u2193</kbd> pour les inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> pour le mouvement chromatique.<br>En Perform mode, utilisez <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> comme grille 4\u00D74.',
     footer_open: 'Ouvrir 64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'En savoir plus sur le blog \u2192',
   },
 });

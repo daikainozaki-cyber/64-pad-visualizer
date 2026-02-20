@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>64 Pad Explorer V2.11</title>
+<title>64 Pad Explorer V2.12</title>
 <meta name="description" content="コードがわからなくても大丈夫。64パッドでスケール・コード・ボイシングを可視化。ギター・鍵盤からのコード判定、手形表示、Available Scale逆引き、MIDI書き出し対応。ブラウザだけで動く音源内蔵の音楽理論ツール。">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <!-- Google Analytics -->
@@ -34,7 +34,7 @@
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V2.11</span>
+  <span class="version-tag">V2.12</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -137,6 +137,7 @@
     <ul>
       <li data-i18n="help.plain_desc1">パッドをクリックして自由に音を選択 → コード名をリアルタイム判定</li>
       <li data-i18n="help.plain_desc2">理論フィルタなし。探索 → 発見 → 理論を後から知る</li>
+      <li data-i18n="help.plain_desc3">コード検出時にパッド上に度数ラベル（R, 3, 5, b7等）を表示。ギター・ベース・ピアノ・五線譜にも連動</li>
       <li data-i18n="help.plain_memory"><strong>Memory</strong> — 16スロットにコードを保存・呼び出し</li>
       <li data-i18n="help.plain_export"><strong>MIDI Export</strong> — メモリーのコードをMIDIファイルとして書き出し</li>
     </ul>
@@ -190,6 +191,7 @@
 
     <h2>Version History</h2>
     <ul style="font-size:0.75rem;color:var(--text-muted);">
+      <li><b>V2.12</b> (2026-02-20) — Plain Mode SSOT統合: コード検出時に度数ラベル（R, 3, 5, b7等）をパッドに表示、ギター・ベース・ピアノ・五線譜に自動連動。MIDI入力とPlain表示の競合を解消</li>
       <li><b>V2.9</b> (2026-02-18) — パッドでビルダー直接更新: パッドを押すとコード入力パネルのRoot/Quality/Tensionが自動切替（C△7にD追加→C△7(9)に変化）。スペースキー = 現在のコードを再生</li>
       <li><b>V2.8</b> (2026-02-18) — テンション追加モード完成: 64パッド・ギター・ベース・鍵盤で追加音トグル（クリックでON/OFF）→ ビルダーコードと合成してコード名判定・Available Scale絞り込み。全4入力対応</li>
       <li><b>V2.7</b> (2026-02-18) — 楽器入力とChordモードの統合（テンション追加モード）: ギター/ベース/ピアノで追加音入力 → ビルダーコードと合成してコード判定・Available Scale絞り込み</li>
@@ -431,23 +433,23 @@
 
 <!-- i18n (engine → language files) -->
 <script src="i18n.js?v=2.11.0"></script>
-<script src="lang-en.js?v=2.11.0"></script>
-<script src="lang-ja.js?v=2.11.0"></script>
-<script src="lang-zh.js?v=2.11.0"></script>
-<script src="lang-es.js?v=2.11.0"></script>
-<script src="lang-fr.js?v=2.11.0"></script>
-<script src="lang-pt.js?v=2.11.0"></script>
-<script src="lang-de.js?v=2.11.0"></script>
-<script src="lang-ko.js?v=2.11.0"></script>
-<script src="lang-it.js?v=2.11.0"></script>
+<script src="lang-en.js?v=2.12.0"></script>
+<script src="lang-ja.js?v=2.12.0"></script>
+<script src="lang-zh.js?v=2.12.0"></script>
+<script src="lang-es.js?v=2.12.0"></script>
+<script src="lang-fr.js?v=2.12.0"></script>
+<script src="lang-pt.js?v=2.12.0"></script>
+<script src="lang-de.js?v=2.12.0"></script>
+<script src="lang-ko.js?v=2.12.0"></script>
+<script src="lang-it.js?v=2.12.0"></script>
 <!-- App JS -->
 <script src="data.js?v=2.5.1"></script>
 <script src="audio.js?v=2.5.0"></script>
 <script src="theory.js?v=2.6.3"></script>
-<script src="render.js?v=2.11.4"></script>
+<script src="render.js?v=2.12.0"></script>
 <script src="plain.js?v=2.11.2"></script>
 <script src="perform.js?v=2.11.0"></script>
-<script src="builder.js?v=2.11.4"></script>
+<script src="builder.js?v=2.12.0"></script>
 <script src="main.js?v=2.11.0"></script>
 </body>
 </html>

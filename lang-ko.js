@@ -46,7 +46,8 @@ I18N.addLang('ko', {
     input_desc3: '<strong>Clear</strong> \u2014 입력 초기화, <strong>Play \u25B6</strong> \u2014 입력한 음 재생',
     plain_title: 'Plain Mode',
     plain_desc1: '패드를 자유롭게 클릭하여 음을 선택 \u2192 실시간 코드 판별',
-    plain_desc2: '이론 필터 없음. 탐색 \u2192 발견 \u2192 나중에 이론 학습',
+    plain_desc2: '\uC774\uB860 \uD544\uD130 \uC5C6\uC74C. \uD0D0\uC0C9 \u2192 \uBC1C\uACAC \u2192 \uB098\uC911\uC5D0 \uC774\uB860 \uD559\uC2B5',
+    plain_desc3: '\uCF54\uB4DC \uAC10\uC9C0 \uC2DC \uD328\uB4DC\uC5D0 \uC74C\uC815 \uB808\uC774\uBE14(R, 3, 5, b7 \uB4F1)\uC744 \uD45C\uC2DC. \uAE30\uD0C0, \uBCA0\uC774\uC2A4, \uD53C\uC544\uB178, \uC624\uC120\uBCF4\uB3C4 \uC790\uB3D9 \uC5F0\uB3D9',
     plain_memory: '<strong>Memory</strong> \u2014 16개 Slot에 코드를 저장 및 불러오기',
     plain_export: '<strong>MIDI Export</strong> \u2014 메모리의 코드를 MIDI 파일로 내보내기',
     perform_title: 'Perform Mode',
@@ -214,7 +215,7 @@ I18N.addLang('ko', {
     qs_shortcuts: '\uD0A4\uBCF4\uB4DC \uB2E8\uCD95\uD0A4',
     qs_shortcuts_desc: '<kbd>?</kbd>\uB97C \uB204\uB974\uBA74 \uC804\uCCB4 \uB2E8\uCD95\uD0A4 \uBAA9\uB85D\uC774 \uD45C\uC2DC\uB429\uB2C8\uB2E4.<br><kbd>Space</kbd> 코드 재생. <kbd>1</kbd>\u2013<kbd>7</kbd> \uB2E4\uC774\uC544\uD1A0\uB2C9 \uCF54\uB4DC, <kbd>\u2191</kbd><kbd>\u2193</kbd> Inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> \uBC18\uC74C \uC774\uB3D9.<br>Perform Mode\uC5D0\uC11C\uB294 <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd>\uB97C 4\u00D74 \uADF8\uB9AC\uB4DC\uB85C \uC0AC\uC6A9.',
     footer_open: '64 Pad Explorer \uC5F4\uAE30',
-    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
     blog_more: '\uBE14\uB85C\uADF8\uC5D0\uC11C \uB354 \uC54C\uC544\uBCF4\uAE30 \u2192',
   },
 });

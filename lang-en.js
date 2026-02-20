@@ -47,6 +47,7 @@ I18N.addLang('en', {
     plain_title: 'Plain Mode',
     plain_desc1: 'Click pads freely to select notes \u2192 Real-time chord identification',
     plain_desc2: 'No theory filter. Explore \u2192 discover \u2192 learn theory afterward',
+    plain_desc3: 'When a chord is detected, degree labels (R, 3, 5, b7, etc.) appear on pads. Guitar, bass, piano, and staff update automatically',
     plain_memory: '<strong>Memory</strong> \u2014 Save and recall chords in 16 slots',
     plain_export: '<strong>MIDI Export</strong> \u2014 Export memory chords as a MIDI file',
     perform_title: 'Perform Mode',
@@ -214,7 +215,7 @@ I18N.addLang('en', {
     qs_shortcuts: 'Keyboard Shortcuts',
     qs_shortcuts_desc: 'Press <kbd>?</kbd> for the full shortcut list.<br><kbd>Space</kbd> to play chord. <kbd>1</kbd>\u2013<kbd>7</kbd> for diatonic chords, <kbd>\u2191</kbd><kbd>\u2193</kbd> for inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> for chromatic movement.<br>In Perform mode, use <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> as a 4\u00D74 grid.',
     footer_open: 'Open 64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.10 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Learn more on the blog \u2192',
   },
 });

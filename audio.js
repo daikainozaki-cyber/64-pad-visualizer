@@ -192,6 +192,7 @@ function setEngine(key) {
     wafPlayer.loader.decodeAfterLoading(audioCtx, p.data);
   });
   renderSoundControls();
+  saveSoundSettings();
 }
 
 function setPreset(name) {
@@ -200,6 +201,53 @@ function setPreset(name) {
   AudioState.instrument = AudioState.engine.presets[name];
   const sel = document.getElementById('organ-preset');
   if (sel) sel.value = name;
+  saveSoundSettings();
+}
+
+function saveSoundSettings() {
+  try {
+    const s = {};
+    s.engine = AudioState.engineKey;
+    s.preset = AudioState.presetKey;
+    ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) s[id] = el.value;
+    });
+    const lc = document.getElementById('snd-locut-toggle');
+    const hc = document.getElementById('snd-hicut-toggle');
+    if (lc) s.loCutEnabled = lc.checked;
+    if (hc) s.hiCutEnabled = hc.checked;
+    localStorage.setItem('64pad-sound', JSON.stringify(s));
+  } catch(_) {}
+}
+
+function loadSoundSettings() {
+  try {
+    const raw = localStorage.getItem('64pad-sound');
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (s.engine && ENGINES[s.engine]) {
+      setEngine(s.engine);
+      if (s.preset && AudioState.engine.presets[s.preset]) setPreset(s.preset);
+    }
+    ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut'].forEach(id => {
+      if (s[id] === undefined) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = s[id];
+      el.dispatchEvent(new Event('input'));
+    });
+    const lc = document.getElementById('snd-locut-toggle');
+    if (lc && s.loCutEnabled !== undefined && lc.checked !== s.loCutEnabled) {
+      lc.checked = s.loCutEnabled;
+      lc.dispatchEvent(new Event('change'));
+    }
+    const hc = document.getElementById('snd-hicut-toggle');
+    if (hc && s.hiCutEnabled !== undefined && hc.checked !== s.hiCutEnabled) {
+      hc.checked = s.hiCutEnabled;
+      hc.dispatchEvent(new Event('change'));
+    }
+  } catch(_) {}
 }
 
 function renderSoundControls() {
@@ -297,6 +345,7 @@ onReady(() => {
     const v = document.getElementById(vid);
     if (s && v) s.addEventListener('input', () => {
       v.textContent = sid === 'snd-tremolo-spd' ? parseFloat(s.value).toFixed(1) : parseFloat(s.value).toFixed(2);
+      saveSoundSettings();
     });
   });
   // Real-time VOL → masterGain
@@ -349,11 +398,13 @@ onReady(() => {
     loCutEnabled = loCutToggle.checked;
     loCutToggle.closest('.ep-knob').classList.toggle('filter-active', loCutEnabled);
     rebuildFilterChain();
+    saveSoundSettings();
   });
   if (loCutSlider && loCutVal) {
     loCutSlider.addEventListener('input', () => {
       loCutVal.textContent = parseInt(loCutSlider.value);
       loCutFilter.frequency.setValueAtTime(parseFloat(loCutSlider.value), audioCtx.currentTime);
+      saveSoundSettings();
     });
   }
 
@@ -365,18 +416,21 @@ onReady(() => {
     hiCutEnabled = hiCutToggle.checked;
     hiCutToggle.closest('.ep-knob').classList.toggle('filter-active', hiCutEnabled);
     rebuildFilterChain();
+    saveSoundSettings();
   });
   if (hiCutSlider && hiCutVal) {
     hiCutSlider.addEventListener('input', () => {
       hiCutVal.textContent = parseInt(hiCutSlider.value);
       hiCutFilter.frequency.setValueAtTime(parseFloat(hiCutSlider.value), audioCtx.currentTime);
+      saveSoundSettings();
     });
   }
 
   // Preset selector (populated by renderSoundControls)
   const presetSel = document.getElementById('organ-preset');
   if (presetSel) {
-    presetSel.addEventListener('change', () => setPreset(presetSel.value));
+    presetSel.addEventListener('change', () => { setPreset(presetSel.value); saveSoundSettings(); });
   }
   renderSoundControls();
+  loadSoundSettings();
 });

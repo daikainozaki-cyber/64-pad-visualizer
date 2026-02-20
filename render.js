@@ -472,6 +472,10 @@ function render() {
   svg.setAttribute('height', totalH);
   svg.innerHTML = '';
 
+  // Compute parent scale selection BEFORE renderState (sets _selectedPS for overlay)
+  renderDiatonicBar();
+  renderParentScales();
+
   const state = computeRenderState();
   renderPads(svg, state);
   if (AppState.mode !== 'plain') {
@@ -494,13 +498,9 @@ function render() {
   // Instrument diagrams (guitar + bass + piano)
   lastRenderRootPC = state.rootPC;
   lastRenderActivePCS = new Set(state.activePCS);
-  renderGuitarDiagram(state.rootPC, state.activePCS, state.bassPC);
-  renderBassDiagram(state.rootPC, state.activePCS, state.bassPC);
-  renderPianoDisplay(state.rootPC, state.activePCS, state.bassPC);
-
-  // Diatonic chord bar + Parent Scale panel
-  renderDiatonicBar();
-  renderParentScales();
+  renderGuitarDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS);
+  renderBassDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS);
+  renderPianoDisplay(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS);
 
   // Re-apply instrument highlights after SVG rebuild
   if (instrumentInputActive) {
@@ -760,6 +760,9 @@ const INST_ROOT_TEXT = '#fff';
 const INST_ACTIVE_TEXT = '#fff';
 const INST_BASS_COLOR = '#ff9800';     // orange (matches pad bass color)
 const INST_BASS_TEXT = '#000';
+const INST_OVERLAY_COLOR = '#56B4E9';   // Okabe-Ito sky blue (scale overlay)
+const INST_OVERLAY_CHAR_COLOR = '#F0E442'; // Okabe-Ito yellow (char note overlay)
+const INST_OVERLAY_TEXT = '#aaa';
 const DIAGRAM_WIDTH = 564;              // shared width for pad, guitar & piano (matches pad grid)
 let showGuitar = false;
 let showPiano = false;
@@ -813,7 +816,7 @@ function toggleGuitarLabelMode() {
   render();
 }
 
-function renderGuitarDiagram(rootPC, pcsSet, bassPC) {
+function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) {
   const svg = document.getElementById('guitar-diagram');
   if (!pcsSet) pcsSet = new Set();
   // Interval-based PCS for chordDegreeName
@@ -935,33 +938,45 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC) {
     }
   }
 
-  // Note dots (scale/chord tones) with labels
+  // Note dots (scale/chord tones + overlay) with labels
   for (let s = 0; s < 6; s++) {
     const openPC = strings[s] % 12;
     const sy = topM + s * strH;
     for (let f = 0; f <= numFrets; f++) {
       const pc = (openPC + f) % 12;
       const isBass = bassPC !== undefined && bassPC !== null && pc === bassPC;
-      if (!pcsSet.has(pc) && !isBass) continue;
+      const isOvl = !pcsSet.has(pc) && !isBass && overlayPCS && overlayPCS.has(pc);
+      if (!pcsSet.has(pc) && !isBass && !isOvl) continue;
       const isRoot = pc === rootPC;
       const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
       const r = f === 0 ? (solo ? 7 : 5) : (solo ? 10 : 7);
       const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       dot.setAttribute('cx', fx); dot.setAttribute('cy', sy);
       dot.setAttribute('r', r);
-      dot.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBass ? INST_BASS_COLOR : INST_ACTIVE_COLOR));
-      dot.setAttribute('opacity', '0.9');
+      if (isOvl) {
+        const isChar = overlayCharPCS && overlayCharPCS.has(pc);
+        dot.setAttribute('fill', isChar ? INST_OVERLAY_CHAR_COLOR : INST_OVERLAY_COLOR);
+        dot.setAttribute('opacity', isChar ? '0.5' : '0.4');
+      } else {
+        dot.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBass ? INST_BASS_COLOR : INST_ACTIVE_COLOR));
+        dot.setAttribute('opacity', '0.9');
+      }
       svg.appendChild(dot);
       // Label inside dot
       if (f > 0) {
         const iv = ((pc - rootPC) + 12) % 12;
-        const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
+        let labelText;
+        if (isOvl) {
+          labelText = guitarLabelMode === 'degree' ? SCALE_DEGREE_NAMES[iv] : pcName(pc);
+        } else {
+          labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
+        }
         const lt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         lt.setAttribute('x', fx); lt.setAttribute('y', sy + (solo ? 4 : 3));
         lt.setAttribute('text-anchor', 'middle');
         const fs = solo ? (labelText.length > 2 ? '7px' : '9px') : (labelText.length > 2 ? '5px' : '6px');
         lt.setAttribute('font-size', fs);
-        lt.setAttribute('fill', isRoot ? INST_ROOT_TEXT : (isBass ? INST_BASS_TEXT : INST_ACTIVE_TEXT));
+        lt.setAttribute('fill', isOvl ? INST_OVERLAY_TEXT : (isRoot ? INST_ROOT_TEXT : (isBass ? INST_BASS_TEXT : INST_ACTIVE_TEXT)));
         lt.setAttribute('font-weight', '700');
         lt.textContent = labelText;
         svg.appendChild(lt);
@@ -1023,7 +1038,7 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC) {
 const BASS_OPEN_MIDI = [43, 38, 33, 28]; // G2, D2, A1, E1
 let bassSelectedFrets = [null, null, null, null];
 
-function renderBassDiagram(rootPC, pcsSet, bassPC) {
+function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) {
   const svg = document.getElementById('bass-diagram');
   if (!svg) return;
   if (!pcsSet) pcsSet = new Set();
@@ -1142,32 +1157,44 @@ function renderBassDiagram(rootPC, pcsSet, bassPC) {
     }
   }
 
-  // Note dots
+  // Note dots (chord tones + overlay)
   for (let s = 0; s < 4; s++) {
     const openPC = strings[s] % 12;
     const sy = topM + s * strH;
     for (let f = 0; f <= numFrets; f++) {
       const pc = (openPC + f) % 12;
       const isBassNote = bassPC !== undefined && bassPC !== null && pc === bassPC;
-      if (!pcsSet.has(pc) && !isBassNote) continue;
+      const isOvl = !pcsSet.has(pc) && !isBassNote && overlayPCS && overlayPCS.has(pc);
+      if (!pcsSet.has(pc) && !isBassNote && !isOvl) continue;
       const isRoot = pc === rootPC;
       const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
       const r = f === 0 ? (solo ? 7 : 5) : (solo ? 10 : 7);
       const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       dot.setAttribute('cx', fx); dot.setAttribute('cy', sy);
       dot.setAttribute('r', r);
-      dot.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBassNote ? INST_BASS_COLOR : INST_ACTIVE_COLOR));
-      dot.setAttribute('opacity', '0.9');
+      if (isOvl) {
+        const isChar = overlayCharPCS && overlayCharPCS.has(pc);
+        dot.setAttribute('fill', isChar ? INST_OVERLAY_CHAR_COLOR : INST_OVERLAY_COLOR);
+        dot.setAttribute('opacity', isChar ? '0.5' : '0.4');
+      } else {
+        dot.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBassNote ? INST_BASS_COLOR : INST_ACTIVE_COLOR));
+        dot.setAttribute('opacity', '0.9');
+      }
       svg.appendChild(dot);
       if (f > 0) {
         const iv = ((pc - rootPC) + 12) % 12;
-        const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
+        let labelText;
+        if (isOvl) {
+          labelText = guitarLabelMode === 'degree' ? SCALE_DEGREE_NAMES[iv] : pcName(pc);
+        } else {
+          labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
+        }
         const lt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         lt.setAttribute('x', fx); lt.setAttribute('y', sy + (solo ? 4 : 3));
         lt.setAttribute('text-anchor', 'middle');
         const fs = solo ? (labelText.length > 2 ? '7px' : '9px') : (labelText.length > 2 ? '5px' : '6px');
         lt.setAttribute('font-size', fs);
-        lt.setAttribute('fill', isRoot ? INST_ROOT_TEXT : (isBassNote ? INST_BASS_TEXT : INST_ACTIVE_TEXT));
+        lt.setAttribute('fill', isOvl ? INST_OVERLAY_TEXT : (isRoot ? INST_ROOT_TEXT : (isBassNote ? INST_BASS_TEXT : INST_ACTIVE_TEXT)));
         lt.setAttribute('font-weight', '700');
         lt.textContent = labelText;
         svg.appendChild(lt);
@@ -1234,7 +1261,7 @@ function toggleBassFret(stringIdx, fret) {
 // ========================================
 // PIANO DISPLAY
 // ========================================
-function renderPianoDisplay(rootPC, pcsSet, bassPC) {
+function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) {
   const svg = document.getElementById('piano-display');
   if (!pcsSet) pcsSet = new Set();
 
@@ -1264,19 +1291,21 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC) {
       const isActive = pcsSet.has(pc);
       const isRoot = pc === rootPC;
       const isBass = bassPC !== undefined && bassPC !== null && pc === bassPC && !isRoot;
+      const isOvl = !isActive && !isRoot && !isBass && overlayPCS && overlayPCS.has(pc);
+      const isChar = isOvl && overlayCharPCS && overlayCharPCS.has(pc);
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', wx); rect.setAttribute('y', startY);
       rect.setAttribute('width', whiteW - 1); rect.setAttribute('height', whiteH);
       rect.setAttribute('rx', 1);
-      rect.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBass ? INST_BASS_COLOR : (isActive ? '#999' : '#eee')));
+      rect.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBass ? INST_BASS_COLOR : (isActive ? '#999' : (isOvl ? (isChar ? '#e8dfa0' : '#b8d8ec') : '#eee'))));
       rect.setAttribute('stroke', '#bbb'); rect.setAttribute('stroke-width', 0.5);
       svg.appendChild(rect);
-      if (isActive || isRoot || isBass) {
+      if (isActive || isRoot || isBass || isOvl) {
         const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         label.setAttribute('x', wx + (whiteW - 1) / 2); label.setAttribute('y', startY + whiteH - 6);
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('font-size', '10px');
-        label.setAttribute('fill', isRoot ? '#fff' : (isBass ? '#000' : '#333'));
+        label.setAttribute('fill', isRoot ? '#fff' : (isBass ? '#000' : (isOvl ? '#666' : '#333')));
         label.setAttribute('font-weight', '700');
         label.textContent = pcName(pc);
         svg.appendChild(label);
@@ -1292,20 +1321,23 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC) {
       const isActive = pcsSet.has(pc);
       const isRoot = pc === rootPC;
       const isBass = bassPC !== undefined && bassPC !== null && pc === bassPC && !isRoot;
+      const isOvl = !isActive && !isRoot && !isBass && overlayPCS && overlayPCS.has(pc);
+      const isChar = isOvl && overlayCharPCS && overlayCharPCS.has(pc);
       const whiteIdx = blackPositions[i] + oct * 7;
       const bx = startX + (whiteIdx + 1) * whiteW - blackW / 2;
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', bx); rect.setAttribute('y', startY);
       rect.setAttribute('width', blackW); rect.setAttribute('height', blackH);
       rect.setAttribute('rx', 1);
-      rect.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBass ? INST_BASS_COLOR : (isActive ? '#555' : '#222')));
+      rect.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBass ? INST_BASS_COLOR : (isActive ? '#555' : (isOvl ? (isChar ? INST_OVERLAY_CHAR_COLOR : INST_OVERLAY_COLOR) : '#222'))));
       rect.setAttribute('stroke', '#000'); rect.setAttribute('stroke-width', 0.5);
+      if (isOvl) rect.setAttribute('opacity', isChar ? '0.6' : '0.5');
       svg.appendChild(rect);
-      if (isActive || isRoot || isBass) {
+      if (isActive || isRoot || isBass || isOvl) {
         const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         label.setAttribute('x', bx + blackW / 2); label.setAttribute('y', startY + blackH - 3);
         label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('font-size', '8px'); label.setAttribute('fill', isBass ? '#000' : '#ddd');
+        label.setAttribute('font-size', '8px'); label.setAttribute('fill', isBass ? '#000' : (isOvl ? '#fff' : '#ddd'));
         label.setAttribute('font-weight', '700');
         label.textContent = pcName(pc);
         svg.appendChild(label);

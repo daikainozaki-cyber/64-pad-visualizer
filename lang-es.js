@@ -1,7 +1,7 @@
 // Español
 I18N.addLang('es', {
   help: {
-    title: '64 Pad Explorer V2.10',
+    title: '64 Pad Explorer V2.12',
     description: 'Herramienta para explorar escalas, acordes y voicings en una cuadrícula de 64 pads.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 Elige entre 12 tonalidades',

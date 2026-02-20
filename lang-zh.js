@@ -1,7 +1,7 @@
 // 中文
 I18N.addLang('zh', {
   help: {
-    title: '64 Pad Explorer V2.10',
+    title: '64 Pad Explorer V2.12',
     description: '在64键打击垫上探索音阶、和弦与声位的工具。',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 从12个调中选择',

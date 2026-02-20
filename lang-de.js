@@ -1,7 +1,7 @@
 // Deutsch
 I18N.addLang('de', {
   help: {
-    title: '64 Pad Explorer V2.10',
+    title: '64 Pad Explorer V2.12',
     description: 'Ein Werkzeug zum Erkunden von Skalen, Akkorden und Voicings auf einem 64-Pad-Raster.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 Aus 12 Tonarten wählen',

@@ -1,7 +1,7 @@
 // 한국어
 I18N.addLang('ko', {
   help: {
-    title: '64 Pad Explorer V2.10',
+    title: '64 Pad Explorer V2.12',
     description: '64패드 그리드에서 스케일, 코드, 보이싱을 탐색하는 도구입니다.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 12개의 키 중 선택',

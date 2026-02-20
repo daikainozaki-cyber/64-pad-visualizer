@@ -1,7 +1,7 @@
 // 日本語
 I18N.addLang('ja', {
   help: {
-    title: '64 Pad Explorer V2.10',
+    title: '64 Pad Explorer V2.12',
     description: '64パッド上のスケール・コード・ボイシングを探索するツール。',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 12キーから選択',

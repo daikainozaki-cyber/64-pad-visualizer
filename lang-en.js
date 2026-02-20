@@ -1,7 +1,7 @@
 // English (fallback)
 I18N.addLang('en', {
   help: {
-    title: '64 Pad Explorer V2.10',
+    title: '64 Pad Explorer V2.12',
     description: 'A tool for exploring scales, chords, and voicings on a 64-pad grid.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 Choose from 12 keys',

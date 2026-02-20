@@ -267,7 +267,7 @@ function renderPads(svg, state) {
       if (isDimmed) rect.setAttribute('opacity', '0.3');
       svg.appendChild(rect);
 
-      const showDegree = AppState.mode !== 'plain' && (isActive || isRoot || isBass || isOmitted || isChar || isGuide || isAvoid || isOverlay);
+      const showDegree = rootPC !== null && (isActive || isRoot || isBass || isOmitted || isChar || isGuide || isAvoid || isOverlay);
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('class', 'pad-label');
       text.setAttribute('x', x + PAD_SIZE / 2);

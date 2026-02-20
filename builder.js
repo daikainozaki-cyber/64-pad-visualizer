@@ -878,9 +878,10 @@ function updateMidiDisplay() {
   const detectEl = document.getElementById('midi-detect');
   const notes = [...midiActiveNotes].sort((a, b) => a - b);
   if (notes.length === 0) {
-    detectEl.innerHTML = '';
-    // detectEl always visible (no layout shift)
     document.querySelectorAll('.midi-highlight').forEach(el => el.remove());
+    // Plain mode: #midi-detect is SSOT of updatePlainDisplay(), don't clear
+    if (AppState.mode === 'plain') return;
+    detectEl.innerHTML = '';
     // Restore diagrams: instrument input state takes priority over builder state
     if (instrumentInputActive) {
       updateInstrumentInput();
@@ -893,6 +894,11 @@ function updateMidiDisplay() {
   }
   // Guitar/Bass/Piano input active: preserve instrument chord name, only add MIDI highlights
   if (instrumentInputActive) {
+    highlightMidiPads(notes);
+    return;
+  }
+  // Plain mode: #midi-detect handled by updatePlainDisplay() (SSOT), only add highlights
+  if (AppState.mode === 'plain') {
     highlightMidiPads(notes);
     return;
   }

@@ -53,11 +53,11 @@ I18N.updateDOM = function() {
       if (attr) {
         el.setAttribute(attr, val);
       } else {
-        // Preserve child elements (e.g. <strong>) — only replace if text-only
-        if (el.children.length === 0) {
-          el.textContent = val;
-        } else {
+        // Use innerHTML when value contains HTML tags, textContent otherwise
+        if (/<[a-z][\s\S]*>/i.test(val)) {
           el.innerHTML = val;
+        } else {
+          el.textContent = val;
         }
       }
     }

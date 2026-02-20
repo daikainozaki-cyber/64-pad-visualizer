@@ -1021,9 +1021,19 @@ function initWebMIDI() {
         opt.textContent = input.name;
         select.appendChild(opt);
       }
-      // Restore previous selection if still available
+      // Restore previous selection if still available (by ID)
       if (prev && select.querySelector('option[value="' + prev + '"]')) {
         select.value = prev;
+      } else {
+        // Try to restore by saved device name (IDs may change between sessions)
+        try {
+          const savedName = localStorage.getItem('64pad-midi-device');
+          if (savedName && savedName !== 'all') {
+            for (const opt of select.options) {
+              if (opt.textContent === savedName) { select.value = opt.value; break; }
+            }
+          }
+        } catch(_) {}
       }
     }
 
@@ -1063,7 +1073,13 @@ function initWebMIDI() {
       indicator.style.background = connected ? '#4caf50' : '#ff9800';
     }
 
-    select.addEventListener('change', () => connectInputs());
+    select.addEventListener('change', () => {
+      connectInputs();
+      try {
+        const opt = select.options[select.selectedIndex];
+        localStorage.setItem('64pad-midi-device', opt ? opt.textContent : 'all');
+      } catch(_) {}
+    });
 
     refreshDeviceList();
     connectInputs();

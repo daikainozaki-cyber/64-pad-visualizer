@@ -466,6 +466,8 @@ function playMemorySlots() {
     // Highlight current slot
     PlainState.currentSlot = slot.index;
     updateMemorySlotUI();
+    // Highlight pads with degree labels
+    highlightPlaybackPads(slot.notes);
     // Play notes
     slot.notes.forEach(function(m) { noteOn(m, undefined, true); });
     // Schedule noteOff + next
@@ -484,6 +486,7 @@ function playMemorySlots() {
 function stopSlotPlayback() {
   if (_slotPlayTimer) { clearTimeout(_slotPlayTimer); _slotPlayTimer = null; }
   noteOffAll();
+  highlightPlaybackPads(null);
   var btn = document.getElementById('btn-play-slots');
   if (btn) { btn.textContent = t('memory.play_all'); btn.style.background = ''; btn.style.color = ''; }
   PlainState.currentSlot = null;

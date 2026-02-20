@@ -954,6 +954,53 @@ function highlightMidiPads(midiNotes) {
   }
 }
 
+function highlightPlaybackPads(midiNotes) {
+  document.querySelectorAll('.playback-highlight').forEach(el => el.remove());
+  if (!midiNotes || midiNotes.length === 0) return;
+  const svg = document.getElementById('pad-grid');
+  const bm = baseMidi();
+  const noteSet = new Set(midiNotes);
+  const candidates = detectChord(midiNotes);
+  const rootPC = candidates.length > 0 ? candidates[0].rootPC : null;
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const midi = bm + row * ROW_INTERVAL + col;
+      if (!noteSet.has(midi)) continue;
+      const x = MARGIN + col * (PAD_SIZE + PAD_GAP);
+      const y = MARGIN + (ROWS - 1 - row) * (PAD_SIZE + PAD_GAP);
+      const pc = midi % 12;
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x); rect.setAttribute('y', y);
+      rect.setAttribute('width', PAD_SIZE); rect.setAttribute('height', PAD_SIZE);
+      rect.setAttribute('rx', 8); rect.setAttribute('fill', 'rgba(42,110,42,0.7)');
+      rect.setAttribute('class', 'playback-highlight');
+      rect.setAttribute('pointer-events', 'none');
+      svg.appendChild(rect);
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', x + PAD_SIZE / 2);
+      text.setAttribute('y', rootPC !== null ? y + 15 : y + PAD_SIZE / 2);
+      text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'middle');
+      text.setAttribute('fill', '#fff'); text.setAttribute('font-size', '10px');
+      text.setAttribute('font-weight', '600');
+      text.setAttribute('class', 'playback-highlight');
+      text.textContent = pcName(pc);
+      svg.appendChild(text);
+      if (rootPC !== null) {
+        const interval = ((pc - rootPC) % 12 + 12) % 12;
+        const degText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        degText.setAttribute('x', x + PAD_SIZE / 2);
+        degText.setAttribute('y', y + 34);
+        degText.setAttribute('text-anchor', 'middle'); degText.setAttribute('dominant-baseline', 'middle');
+        degText.setAttribute('fill', '#fff'); degText.setAttribute('font-size', '13px');
+        degText.setAttribute('font-weight', '700');
+        degText.setAttribute('class', 'playback-highlight');
+        degText.textContent = SCALE_DEGREE_NAMES[interval];
+        svg.appendChild(degText);
+      }
+    }
+  }
+}
+
 let selectedMidiInputId = null; // null = all inputs
 
 function initWebMIDI() {

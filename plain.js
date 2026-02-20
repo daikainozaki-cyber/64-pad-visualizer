@@ -40,7 +40,7 @@ function getCurrentChordMidiNotes() {
         const hasBass = midiNotes.some(m => m % 12 === BuilderState.bass);
         if (!hasBass) {
           const lowest = Math.min(...midiNotes);
-          let bassMidi = 36 + BuilderState.bass;
+          let bassMidi = 36 + BuilderState.bass + AppState.octaveShift * 12;
           while (bassMidi >= lowest) bassMidi -= 12;
           midiNotes.unshift(bassMidi);
         }
@@ -63,9 +63,10 @@ function getCurrentChordMidiNotes() {
       if (pcs.length === 0) return null;
       intervals = calcVoicingOffsets(pcs, VoicingState.inversion, VoicingState.drop).voiced;
     }
-    const rootMidi = 48 + rootPC;
+    const octOff = AppState.octaveShift * 12;
+    const rootMidi = 48 + rootPC + octOff;
     const midiNotes = intervals.map(o => rootMidi + o);
-    if (BuilderState.bass !== null) midiNotes.unshift(36 + BuilderState.bass);
+    if (BuilderState.bass !== null) midiNotes.unshift(36 + BuilderState.bass + octOff);
     return midiNotes.sort((a, b) => a - b);
   }
   return null;

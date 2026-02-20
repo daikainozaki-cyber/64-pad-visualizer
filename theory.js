@@ -10,6 +10,7 @@ function shiftOctave(delta) {
   resetVoicingSelection();
   updateOctaveLabel();
   render();
+  playCurrentChord();
 }
 
 function updateOctaveLabel() {
@@ -105,7 +106,7 @@ function playVoicingBoxAudio(idx) {
     const hasBass = midiNotes.some(m => m % 12 === BuilderState.bass);
     if (!hasBass) {
       const lowest = Math.min(...midiNotes);
-      let bassMidi = 36 + BuilderState.bass;
+      let bassMidi = 36 + BuilderState.bass + AppState.octaveShift * 12;
       while (bassMidi >= lowest) bassMidi -= 12;
       midiNotes.unshift(bassMidi);
     }
@@ -159,12 +160,13 @@ function playCurrentChord() {
     intervals = calcVoicingOffsets(pcs, VoicingState.inversion, VoicingState.drop).voiced;
   }
 
-  // Convert to MIDI (root at C3 = MIDI 48)
-  const rootMidi = 48 + rootPC;
+  // Convert to MIDI (root at C3 = MIDI 48, shifted by octave)
+  const octOff = AppState.octaveShift * 12;
+  const rootMidi = 48 + rootPC + octOff;
   const midiNotes = intervals.map(o => rootMidi + o);
   // Add bass note for slash chords
   if (BuilderState.bass !== null) {
-    midiNotes.unshift(36 + BuilderState.bass);
+    midiNotes.unshift(36 + BuilderState.bass + octOff);
   }
   playMidiNotes(midiNotes, 2);
 }

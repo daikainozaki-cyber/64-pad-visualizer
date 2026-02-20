@@ -490,40 +490,54 @@ function stopSlotPlayback() {
 }
 
 function updatePlainDisplay() {
-  const nameEl = document.getElementById('plain-chord-name');
-  const altsEl = document.getElementById('plain-chord-alts');
-  const notesEl = document.getElementById('plain-notes-display');
-  if (!nameEl) return;
-  const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
+  const detectEl = document.getElementById('midi-detect');
+  if (!detectEl) return;
+  const plainNotes = [...PlainState.activeNotes].sort((a, b) => a - b);
+  // Merge instrument input (guitar/bass/piano) + plain active notes for detection
+  let notes = plainNotes;
+  if (instrumentInputActive) {
+    const instrNotes = getAllInputMidiNotes();
+    const merged = new Set([...instrNotes, ...plainNotes]);
+    notes = [...merged].sort((a, b) => a - b);
+  }
   if (notes.length === 0) {
-    nameEl.textContent = '';
-    altsEl.innerHTML = '';
-    notesEl.textContent = '';
+    detectEl.innerHTML = '';
+    lastDetectedNotes = [];
+    lastDetectedCandidates = [];
+    updateMemorySlotUI();
     return;
   }
   const noteNames = notes.map(n => NOTE_NAMES_SHARP[n % 12]);
   const candidates = detectChord(notes);
   if (candidates.length > 0) {
-    nameEl.textContent = candidates[0].name;
-    let altHtml = '';
+    let html = '<span class="detect-candidate-best" onclick="transferDetectedCandidate(0,this)">' + candidates[0].name + '</span>';
     if (candidates.length > 1) {
-      candidates.slice(1).forEach(c => {
-        altHtml += '<span style="font-size:0.6rem;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.08);color:var(--text-muted);">' + c.name + '</span>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:2px;">';
+      candidates.slice(1).forEach((c, i) => {
+        html += '<span class="detect-candidate" onclick="transferDetectedCandidate(' + (i + 1) + ',this)">' + c.name + '</span>';
       });
+      html += '</div>';
     }
-    altsEl.innerHTML = altHtml;
+    html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">' + t('plain.notes_label') + noteNames.join(' ') + '</div>';
+    detectEl.innerHTML = html;
   } else {
-    nameEl.textContent = noteNames.join(' ');
-    altsEl.innerHTML = '';
+    detectEl.textContent = noteNames.join(' ');
   }
-  notesEl.textContent = t('plain.notes_label') + noteNames.join(' ');
+  lastDetectedNotes = notes;
+  lastDetectedCandidates = candidates;
   updateMemorySlotUI();
 }
 
 function savePlainSlot(idx) {
   if (idx >= 16) return;
-  if (PlainState.activeNotes.size === 0) return;
-  const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
+  // Merge instrument input + plain active notes
+  let notes = [...PlainState.activeNotes].sort((a, b) => a - b);
+  if (instrumentInputActive) {
+    const instrNotes = getAllInputMidiNotes();
+    const merged = new Set([...instrNotes, ...notes]);
+    notes = [...merged].sort((a, b) => a - b);
+  }
+  if (notes.length === 0) return;
   const candidates = detectChord(notes);
   const chordName = candidates.length > 0 ? candidates[0].name : notes.map(n => NOTE_NAMES_SHARP[n % 12]).join(' ');
   pushUndoState();

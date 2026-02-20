@@ -840,7 +840,11 @@ function onMidiNoteOn(note, velocity) {
       PlainState.captureIndex = findNextEmptySlot(0);
       updatePlainUI();
     }
-    PlainState.activeNotes.add(mapped);
+    if (PlainState.activeNotes.has(mapped)) {
+      PlainState.activeNotes.delete(mapped);
+    } else {
+      PlainState.activeNotes.add(mapped);
+    }
     updatePlainDisplay();
     render();
   }
@@ -885,6 +889,11 @@ function updateMidiDisplay() {
       renderBassDiagram(lastRenderRootPC, lastRenderActivePCS);
       renderPianoDisplay(lastRenderRootPC, lastRenderActivePCS);
     }
+    return;
+  }
+  // Guitar/Bass/Piano input active: preserve instrument chord name, only add MIDI highlights
+  if (instrumentInputActive) {
+    highlightMidiPads(notes);
     return;
   }
   // detectEl always visible (no layout shift)

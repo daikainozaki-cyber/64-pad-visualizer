@@ -13,25 +13,25 @@ function computeRenderState() {
   let avoidPCS = new Set();
 
   if (AppState.mode === 'plain') {
-    const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
+    let notes = [...PlainState.activeNotes].sort((a, b) => a - b);
     activePCS = new Set(notes.map(n => n % 12));
+    // Merge instrument input notes for unified chord detection
+    if (instrumentInputActive) {
+      const instrNotes = getAllInputMidiNotes();
+      const merged = new Set([...instrNotes, ...notes]);
+      notes = [...merged].sort((a, b) => a - b);
+      instrNotes.forEach(n => activePCS.add(n % 12));
+    }
+    // Detect chord → rootPC for instrument diagrams, staff, and pad root highlight
+    // Pad degree labels remain hidden (guarded by AppState.mode !== 'plain')
+    rootPC = null;
     if (notes.length >= 2) {
       const candidates = detectChord(notes);
       if (candidates.length > 0) {
         rootPC = candidates[0].rootPC;
-        activeLabel = candidates[0].name;
-      } else {
-        rootPC = notes[0] % 12;
-        activeLabel = notes.map(n => NOTE_NAMES_SHARP[n % 12]).join(' ');
       }
-    } else if (notes.length === 1) {
-      rootPC = notes[0] % 12;
-      activeLabel = NOTE_NAMES_SHARP[rootPC];
-    } else {
-      rootPC = 0;
-      activePCS = new Set();
-      activeLabel = '';
     }
+    activeLabel = '';
     return { activePCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS };
   } else if (AppState.mode === 'scale') {
     const scale = SCALES[AppState.scaleIdx];
@@ -267,7 +267,7 @@ function renderPads(svg, state) {
       if (isDimmed) rect.setAttribute('opacity', '0.3');
       svg.appendChild(rect);
 
-      const showDegree = isActive || isRoot || isBass || isOmitted || isChar || isGuide || isAvoid || isOverlay;
+      const showDegree = AppState.mode !== 'plain' && (isActive || isRoot || isBass || isOmitted || isChar || isGuide || isAvoid || isOverlay);
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('class', 'pad-label');
       text.setAttribute('x', x + PAD_SIZE / 2);
@@ -484,7 +484,7 @@ function render() {
   if (AppState.mode === 'plain') {
     // Plain mode: show selected notes on staff
     const plainNotes = [...PlainState.activeNotes].sort((a, b) => a - b);
-    renderStaff('plain', state.rootPC, state.activePCS, state.omittedPCS, null, plainNotes.length > 0 ? plainNotes : null, null);
+    renderStaff('plain', state.rootPC, state.activePCS, state.omittedPCS, null, plainNotes.length > 0 ? plainNotes : [], null);
   } else {
     const boxMidi = (VoicingState.selectedBoxIdx !== null && VoicingState.lastBoxes[VoicingState.selectedBoxIdx])
       ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx].midiNotes : null;
@@ -537,6 +537,9 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
       seen.add(pc);
       return true;
     });
+  } else if (Array.isArray(overrideMidiNotes)) {
+    // Empty array (Plain mode with no notes selected): show empty staff lines
+    midiNotes = [];
   } else if (mode === 'scale') {
     if (activePCS.size === 0) {
       staffSvg.style.display = 'none'; staffSvg.setAttribute('height', 0); return;
@@ -1467,8 +1470,12 @@ function updateInstrumentInput() {
   if (instrumentInputActive) ensureAudioResumed();
   if (instrNotes.length === 0) {
     document.querySelectorAll('.instrument-highlight').forEach(el => el.remove());
-    const detectEl = document.getElementById('midi-detect');
-    detectEl.innerHTML = '';
+    if (AppState.mode === 'plain') {
+      updatePlainDisplay(); // Plain mode: unified display handles #midi-detect
+    } else {
+      const detectEl = document.getElementById('midi-detect');
+      detectEl.innerHTML = '';
+    }
     // detectEl always visible (no layout shift)
     renderGuitarDiagram(lastRenderRootPC, lastRenderActivePCS);
     renderBassDiagram(lastRenderRootPC, lastRenderActivePCS);
@@ -1477,11 +1484,29 @@ function updateInstrumentInput() {
     return;
   }
 
-  // In Chord mode: merge base notes + instrument notes for detection
+  // Plain mode: delegate #midi-detect to updatePlainDisplay() for unified display
+  if (AppState.mode === 'plain') {
+    const inputPCS = new Set(instrNotes.map(n => n % 12));
+    const candidates = detectChord(instrNotes);
+    if (candidates.length > 0) {
+      renderGuitarDiagram(candidates[0].rootPC, inputPCS);
+      renderBassDiagram(candidates[0].rootPC, inputPCS);
+      renderPianoDisplay(candidates[0].rootPC, inputPCS);
+    } else {
+      renderGuitarDiagram(null, inputPCS);
+      renderBassDiagram(null, inputPCS);
+      renderPianoDisplay(null, inputPCS);
+    }
+    highlightInstrumentPads(instrNotes);
+    updatePlainDisplay(); // single source of truth for #midi-detect + plain panel
+    renderParentScales();
+    return;
+  }
+
+  // Chord/Scale mode: existing logic
   let notesForDetect = instrNotes;
   if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
     if (padExtNotes.size > 0) {
-      // Pad override active: guitar/bass/piano adds on top of pad notes
       const merged = new Set([...padExtNotes, ...instrNotes]);
       notesForDetect = [...merged].sort((a, b) => a - b);
     } else {
@@ -1494,7 +1519,6 @@ function updateInstrumentInput() {
   }
 
   const detectEl = document.getElementById('midi-detect');
-  // detectEl always visible (no layout shift)
   const noteNames = notesForDetect.map(n => NOTE_NAMES_SHARP[n % 12]);
   const candidates = detectChord(notesForDetect);
   lastDetectedNotes = notesForDetect;
@@ -1513,7 +1537,6 @@ function updateInstrumentInput() {
     html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">' + t('plain.notes_label') + noteNames.join(' ') + '</div>';
     detectEl.innerHTML = html;
     if (AppState.mode === 'chord') {
-      // Keep builder chord on diagram, just add instrument notes to the display
       const mergedPCS = new Set(lastRenderActivePCS);
       instrNotes.forEach(n => mergedPCS.add(n % 12));
       renderGuitarDiagram(lastRenderRootPC, mergedPCS);

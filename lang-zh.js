@@ -95,6 +95,7 @@ I18N.addLang('zh', {
   ui: {
     close: '关闭',
     slot_hint: '点击选择 \u2192 Save(c) / Shift+点击清除',
+    save_settings: '保存设置',
   },
   label: {
     note_name: '音名',
@@ -116,6 +117,7 @@ I18N.addLang('zh', {
     slot_selected: '已选择插槽 {slot}',
     slot_cleared: '已清除插槽 {slot}',
     undo: '撤销',
+    settings_saved: '设置已保存',
     no_chords: '记忆插槽中没有和弦',
   },
   info: {

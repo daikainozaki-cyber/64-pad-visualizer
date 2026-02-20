@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>64 Pad Explorer V2.17</title>
+<title>64 Pad Explorer V2.18</title>
 <meta name="description" content="コードがわからなくても大丈夫。64パッドでスケール・コード・ボイシングを可視化。ギター・鍵盤からのコード判定、手形表示、Available Scale逆引き、MIDI書き出し対応。ブラウザだけで動く音源内蔵の音楽理論ツール。">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <!-- Google Analytics -->
@@ -34,7 +34,7 @@
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V2.17</span>
+  <span class="version-tag">V2.18</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -46,6 +46,7 @@
     <option value="ko">KO</option>
     <option value="it">IT</option>
   </select>
+  <button class="help-btn" onclick="saveAppSettings(); showSaveToast();" title="Save Settings" data-i18n-title="ui.save_settings">Save</button>
   <button class="help-btn" onclick="document.getElementById('help-overlay').classList.add('active')" title="Help">?</button>
 </div>
 <div class="header-links">
@@ -193,6 +194,7 @@
 
     <h2>Version History</h2>
     <ul style="font-size:0.75rem;color:var(--text-muted);">
+      <li><b>V2.18</b> (2026-02-20) — 全設定保存: キー/スケール/モード/オクターブ/表示トグル/音名度数切替/メモリースロット16個をlocalStorageに自動保存・復元。音色(V2.16)+MIDIデバイス(V2.17)と合わせて全設定が永続化</li>
       <li><b>V2.17</b> (2026-02-20) — MIDIデバイス設定保存: 選択したMIDI入力デバイスをlocalStorageに保存。ページリロード後も自動選択（デバイス名で照合、ID変更に対応）</li>
       <li><b>V2.16</b> (2026-02-20) — 音色デフォルト保存: エンジン/プリセット/エフェクト設定をlocalStorageに自動保存・復元。ページリロード後も前回の音色設定を維持</li>
       <li><b>V2.15</b> (2026-02-20) — メモリー再生パッド反映: Play▶やスロットクリック再生時にパッドがコード音をハイライト（度数ラベル付き）。再生停止で自動クリア</li>
@@ -439,24 +441,24 @@
 
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=2.12.0"></script>
-<script src="lang-en.js?v=2.12.0"></script>
-<script src="lang-ja.js?v=2.12.0"></script>
-<script src="lang-zh.js?v=2.12.0"></script>
-<script src="lang-es.js?v=2.12.0"></script>
-<script src="lang-fr.js?v=2.12.0"></script>
-<script src="lang-pt.js?v=2.12.0"></script>
-<script src="lang-de.js?v=2.12.0"></script>
-<script src="lang-ko.js?v=2.12.0"></script>
-<script src="lang-it.js?v=2.12.0"></script>
+<script src="i18n.js?v=2.18.0"></script>
+<script src="lang-en.js?v=2.18.0"></script>
+<script src="lang-ja.js?v=2.18.0"></script>
+<script src="lang-zh.js?v=2.18.0"></script>
+<script src="lang-es.js?v=2.18.0"></script>
+<script src="lang-fr.js?v=2.18.0"></script>
+<script src="lang-pt.js?v=2.18.0"></script>
+<script src="lang-de.js?v=2.18.0"></script>
+<script src="lang-ko.js?v=2.18.0"></script>
+<script src="lang-it.js?v=2.18.0"></script>
 <!-- App JS -->
-<script src="data.js?v=2.5.1"></script>
+<script src="data.js?v=2.18.0"></script>
 <script src="audio.js?v=2.16.0"></script>
-<script src="theory.js?v=2.14.0"></script>
-<script src="render.js?v=2.13.0"></script>
-<script src="plain.js?v=2.15.0"></script>
+<script src="theory.js?v=2.18.0"></script>
+<script src="render.js?v=2.18.0"></script>
+<script src="plain.js?v=2.18.0"></script>
 <script src="perform.js?v=2.11.0"></script>
-<script src="builder.js?v=2.17.0"></script>
-<script src="main.js?v=2.11.0"></script>
+<script src="builder.js?v=2.18.0"></script>
+<script src="main.js?v=2.18.0"></script>
 </body>
 </html>

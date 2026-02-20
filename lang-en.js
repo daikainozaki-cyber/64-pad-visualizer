@@ -95,6 +95,7 @@ I18N.addLang('en', {
   ui: {
     close: 'Close',
     slot_hint: 'Click to select \u2192 Save(c) / Shift+click to clear',
+    save_settings: 'Save Settings',
   },
   label: {
     note_name: 'Note',
@@ -116,6 +117,7 @@ I18N.addLang('en', {
     slot_selected: 'Slot {slot} selected',
     slot_cleared: 'Slot {slot} cleared',
     undo: 'Undo',
+    settings_saved: 'Settings saved',
     no_chords: 'No chords in memory slots',
   },
   info: {

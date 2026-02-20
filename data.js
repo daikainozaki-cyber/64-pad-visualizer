@@ -287,6 +287,55 @@ const PerformState = {
   activePad: null,              // 現在再生中のパッドインデックス
 };
 
+// ======== SETTINGS PERSISTENCE ========
+function saveAppSettings() {
+  try {
+    const s = {
+      key: AppState.key,
+      mode: AppState.mode,
+      scaleIdx: AppState.scaleIdx,
+      octaveShift: AppState.octaveShift,
+      showGuitar: typeof showGuitar !== 'undefined' ? showGuitar : false,
+      showBass: typeof showBass !== 'undefined' ? showBass : false,
+      showPiano: typeof showPiano !== 'undefined' ? showPiano : false,
+      showStaff: typeof showStaff !== 'undefined' ? showStaff : true,
+      showSound: typeof showSound !== 'undefined' ? showSound : true,
+      guitarLabelMode: typeof guitarLabelMode !== 'undefined' ? guitarLabelMode : 'name',
+      memory: PlainState.memory,
+    };
+    localStorage.setItem('64pad-settings', JSON.stringify(s));
+  } catch(_) {}
+}
+
+function loadAppSettings() {
+  try {
+    const raw = localStorage.getItem('64pad-settings');
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (s.key !== undefined && s.key >= 0 && s.key <= 11) AppState.key = s.key;
+    if (s.mode && ['scale','chord','plain'].includes(s.mode)) AppState.mode = s.mode;
+    if (s.scaleIdx !== undefined && s.scaleIdx >= 0 && s.scaleIdx < SCALES.length) AppState.scaleIdx = s.scaleIdx;
+    if (s.octaveShift !== undefined && s.octaveShift >= -1 && s.octaveShift <= 3) AppState.octaveShift = s.octaveShift;
+    if (s.showGuitar !== undefined) showGuitar = s.showGuitar;
+    if (s.showBass !== undefined) showBass = s.showBass;
+    if (s.showPiano !== undefined) showPiano = s.showPiano;
+    if (s.showStaff !== undefined) showStaff = s.showStaff;
+    if (s.showSound !== undefined) showSound = s.showSound;
+    if (s.guitarLabelMode) guitarLabelMode = s.guitarLabelMode;
+    if (Array.isArray(s.memory) && s.memory.length === 16) PlainState.memory = s.memory;
+  } catch(_) {}
+}
+
+function showSaveToast() {
+  const toast = document.getElementById('slot-save-toast');
+  if (toast) {
+    toast.textContent = typeof t === 'function' ? t('notify.settings_saved') : 'Settings saved';
+    toast.style.opacity = '1';
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
+  }
+}
+
 function resetVoicingSelection() {
   VoicingState.selectedBoxIdx = null;
   VoicingState.cycleIndices = {};

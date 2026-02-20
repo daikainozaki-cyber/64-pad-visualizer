@@ -23,6 +23,7 @@ function undoMemory() {
     clearTimeout(toast._timer);
     toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
   }
+  saveAppSettings();
 }
 
 // Get current chord MIDI notes from any mode (for cross-mode slot save)
@@ -294,6 +295,7 @@ function saveToPlainSlot(idx) {
     clearTimeout(toast._timer);
     toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
   }
+  saveAppSettings();
   return true;
 }
 
@@ -627,6 +629,7 @@ function initMemorySlots() {
       PlainState.memory[i] = PlainState.memory[srcIdx];
       PlainState.memory[srcIdx] = temp;
       updateMemorySlotUI();
+      saveAppSettings();
     });
     btn.onclick = (ev) => {
       if (ev.shiftKey && PlainState.memory[i]) {
@@ -642,6 +645,7 @@ function initMemorySlots() {
           clearTimeout(toast._timer);
           toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 1200);
         }
+        saveAppSettings();
         return;
       }
       recallPlainSlot(i);

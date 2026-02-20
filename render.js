@@ -808,12 +808,14 @@ function toggleInstrument(which) {
   document.getElementById('sound-controls').style.display = showSound ? '' : 'none';
   document.getElementById('guitar-label-btn').style.display = (showGuitar || showBass) ? '' : 'none';
   render();
+  saveAppSettings();
 }
 
 function toggleGuitarLabelMode() {
   guitarLabelMode = guitarLabelMode === 'name' ? 'degree' : 'name';
   document.getElementById('guitar-label-btn').textContent = guitarLabelMode === 'name' ? t('label.note_name') : t('label.degree');
   render();
+  saveAppSettings();
 }
 
 function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) {

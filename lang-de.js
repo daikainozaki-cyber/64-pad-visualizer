@@ -95,6 +95,7 @@ I18N.addLang('de', {
   ui: {
     close: 'Schließen',
     slot_hint: 'Klicken zum Auswählen \u2192 Save(c) / Shift+Klick zum Löschen',
+    save_settings: 'Einstellungen speichern',
   },
   label: {
     note_name: 'Note',
@@ -116,6 +117,7 @@ I18N.addLang('de', {
     slot_selected: 'Slot {slot} ausgewählt',
     slot_cleared: 'Slot {slot} gelöscht',
     undo: 'Rückgängig',
+    settings_saved: 'Einstellungen gespeichert',
     no_chords: 'Keine Akkorde in den Speicherslots',
   },
   info: {

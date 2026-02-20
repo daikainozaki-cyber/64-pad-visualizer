@@ -26,6 +26,7 @@ function setMode(mode) {
     updatePlainDisplay();
   }
   render();
+  saveAppSettings();
 }
 
 // ======== SCALE MODE INIT ========
@@ -36,7 +37,7 @@ function initKeyButtons() {
     const btn = document.createElement('button');
     btn.className = 'key-btn' + (i === AppState.key ? ' active' : '') + (blackKeys.includes(i) ? ' black-key' : '');
     btn.textContent = NOTE_NAMES_FLAT[i] !== name ? name + '/' + NOTE_NAMES_FLAT[i] : name;
-    btn.onclick = () => { AppState.key = i; updateKeyButtons(); render(); };
+    btn.onclick = () => { AppState.key = i; updateKeyButtons(); render(); saveAppSettings(); };
     container.appendChild(btn);
   });
 }
@@ -66,7 +67,7 @@ function initScaleSelect() {
     });
     sel.appendChild(og);
   }
-  sel.onchange = () => { AppState.scaleIdx = parseInt(sel.value); render(); };
+  sel.onchange = () => { AppState.scaleIdx = parseInt(sel.value); render(); saveAppSettings(); };
 }
 
 // ======== CHORD BUILDER ========

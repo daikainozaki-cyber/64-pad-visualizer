@@ -95,6 +95,7 @@ I18N.addLang('es', {
   ui: {
     close: 'Cerrar',
     slot_hint: 'Clic para seleccionar \u2192 Save(c) / Shift+clic para borrar',
+    save_settings: 'Guardar configuración',
   },
   label: {
     note_name: 'Nota',
@@ -116,6 +117,7 @@ I18N.addLang('es', {
     slot_selected: 'Ranura {slot} seleccionada',
     slot_cleared: 'Ranura {slot} borrada',
     undo: 'Deshacer',
+    settings_saved: 'Configuración guardada',
     no_chords: 'No hay acordes en las ranuras de memoria',
   },
   info: {

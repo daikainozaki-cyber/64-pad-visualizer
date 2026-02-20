@@ -1,8 +1,8 @@
 # 64 Pad Explorer - CLAUDE.md
 
-**最終更新**: 2026-02-18
+**最終更新**: 2026-02-20
 **担当人格**: 蔵人（実装）、継次（設計）、フロ男（テンション・ボイシング設計）
-**バージョン**: V2.9（2026-02-18）
+**バージョン**: V2.17（2026-02-20）
 
 ---
 
@@ -801,15 +801,55 @@ z x c v   → slot 13-16
 
 **修正ファイル**: render.js, main.js, index.html, guide.html, lang-*.js×9
 
+### V2.13（2026-02-20 ギター/ベースにスケールオーバーレイ）
+
+| 機能 | 内容 |
+|------|------|
+| **楽器スケールオーバーレイ** | Chordモードでスケール選択時、ギター/ベースフレットボードにもスケール音を半透明で表示 |
+| **描画順修正** | render.js内のrenderScaleOverlayの呼び出し順を修正し、楽器ダイアグラムにオーバーレイが反映されるよう対応 |
+
+**修正ファイル**: render.js, index.html
+
+### V2.14（2026-02-20 オクターブ変更で再生音連動 + Wishlistリンク）
+
+| 機能 | 内容 |
+|------|------|
+| **オクターブ連動再生** | `playCurrentChord()`, `getCurrentChordMidiNotes()`, `playVoicingBoxAudio()`にoctaveShiftオフセット追加。shiftOctave()でplayCurrentChord()を呼ぶよう変更 |
+| **Wishlistリンク** | ヘッダーナビにAmazon Wishlistリンク追加 |
+
+**修正ファイル**: theory.js, plain.js, index.html
+
+### V2.15（2026-02-20 メモリー再生時のパッド反映）
+
+| 機能 | 内容 |
+|------|------|
+| **highlightPlaybackPads()** | メモリー再生時にパッドを緑色でハイライト + 音名 + 度数ラベル表示。detectChord()でルート判定 |
+| **再生連動** | playMemorySlots()でhighlightPlaybackPads呼出、stopSlotPlayback()でクリア |
+
+**修正ファイル**: builder.js, plain.js, index.html
+
+### V2.16（2026-02-20 音色デフォルト保存）
+
+| 機能 | 内容 |
+|------|------|
+| **saveSoundSettings()** | エンジン/プリセット/全スライダー値/フィルタトグルをlocalStorage `64pad-sound`に保存 |
+| **loadSoundSettings()** | onReady時にlocalStorageから復元。dispatchEvent('input')で既存ハンドラをトリガー |
+
+**修正ファイル**: audio.js, index.html
+
+### V2.17（2026-02-20 MIDI入力デバイス設定保存）
+
+| 機能 | 内容 |
+|------|------|
+| **デバイス名保存** | MIDIデバイスIDは不安定なため、デバイス名をlocalStorage `64pad-midi-device`に保存 |
+| **自動選択** | refreshDeviceList()で保存済みデバイス名とoption.textContentを照合して自動選択 |
+
+**修正ファイル**: builder.js, index.html
+
 ### 次の実装目標（2026-02-20更新）
 
 | Ver | 機能 | 内容 | 重さ |
 |-----|------|------|------|
-| **V2.13** | **ギター/ベースにスケールオーバーレイ** | Chordモードでスケール選択時、ギター/ベースフレットボードにもスケール音を表示 | 軽 |
-| **V2.14** | **オクターブ変更で再生音連動** | パッドのオクターブ▲▼切替時に再生音のオクターブも連動 | 軽 |
-| **V2.15** | **メモリー再生時のパッド反映** | Play▶やスロットクリック時にパッドがそのコードをハイライト（度数ラベル付き） | 中 |
-| **V2.16** | **音色デフォルト保存** | エンジン/プリセット/エフェクト設定をlocalStorageに保存・復元 | 軽 |
-| **V2.17** | **MIDI入力デバイス設定保存** | 選択したMIDIデバイスをlocalStorageに保存・自動選択 | 軽 |
 | **V2.18** | **マイナーコンバージョン対応** | うりなみさんから理論説明を受けてから着手。Practical Sortとは別コンセプト | 中 |
 | **V2.19** | **音名/キー表記の見直し** | A#キー→Bb等、実用的な異名同音表記。壁打ちで方針決定してから | 中 |
 | **V3.0** | **Plainモード廃止（Single Mode Architecture）** | Scale/Chordをトグル化、モード概念をなくす。パッドは常にラッチ+判定 | 重 |

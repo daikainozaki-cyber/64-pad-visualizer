@@ -95,6 +95,7 @@ I18N.addLang('ja', {
   ui: {
     close: '閉じる',
     slot_hint: 'クリックで選択 \u2192 Save(c) / Shift+クリックで消去',
+    save_settings: '設定を保存',
   },
   label: {
     note_name: '音名',
@@ -116,6 +117,7 @@ I18N.addLang('ja', {
     slot_selected: 'Slot {slot} selected',
     slot_cleared: 'Slot {slot} cleared',
     undo: 'Undo',
+    settings_saved: '設定を保存しました',
     no_chords: 'メモリースロットにコードがありません',
   },
   info: {

@@ -95,6 +95,7 @@ I18N.addLang('ko', {
   ui: {
     close: '닫기',
     slot_hint: '클릭하여 선택 \u2192 Save(c) / Shift+클릭으로 삭제',
+    save_settings: '설정 저장',
   },
   label: {
     note_name: '음이름',
@@ -116,6 +117,7 @@ I18N.addLang('ko', {
     slot_selected: 'Slot {slot} 선택됨',
     slot_cleared: 'Slot {slot} 삭제됨',
     undo: '실행 취소',
+    settings_saved: '설정이 저장되었습니다',
     no_chords: '메모리 슬롯에 코드가 없습니다',
   },
   info: {

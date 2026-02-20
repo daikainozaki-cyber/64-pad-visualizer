@@ -11,6 +11,7 @@ function shiftOctave(delta) {
   updateOctaveLabel();
   render();
   playCurrentChord();
+  saveAppSettings();
 }
 
 function updateOctaveLabel() {

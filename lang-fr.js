@@ -1,7 +1,7 @@
 // Français
 I18N.addLang('fr', {
   help: {
-    title: '64 Pad Explorer V2.12',
+    title: '64 Pad Explorer',
     description: 'Un outil pour explorer les gammes, accords et voicings sur une grille de 64 pads.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 Choisir parmi 12 tonalités',
@@ -215,7 +215,7 @@ I18N.addLang('fr', {
     qs_shortcuts: 'Raccourcis clavier',
     qs_shortcuts_desc: 'Appuyez sur <kbd>?</kbd> pour la liste compl\u00E8te des raccourcis.<br><kbd>Space</kbd> pour jouer un accord. <kbd>1</kbd>\u2013<kbd>7</kbd> pour les accords diatoniques, <kbd>\u2191</kbd><kbd>\u2193</kbd> pour les inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> pour le mouvement chromatique.<br>En Perform mode, utilisez <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> comme grille 4\u00D74.',
     footer_open: 'Ouvrir 64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'En savoir plus sur le blog \u2192',
   },
 });

@@ -1,7 +1,7 @@
 // Português
 I18N.addLang('pt', {
   help: {
-    title: '64 Pad Explorer V2.12',
+    title: '64 Pad Explorer',
     description: 'Uma ferramenta para explorar escalas, acordes e voicings numa grelha de 64 pads.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 Escolher entre 12 tonalidades',
@@ -215,7 +215,7 @@ I18N.addLang('pt', {
     qs_shortcuts: 'Atalhos de teclado',
     qs_shortcuts_desc: 'Prima <kbd>?</kbd> para a lista completa de atalhos.<br><kbd>Space</kbd> para tocar acorde. <kbd>1</kbd>\u2013<kbd>7</kbd> para acordes diat\u00F3nicos, <kbd>\u2191</kbd><kbd>\u2193</kbd> para invers\u00F5es, <kbd>\u2190</kbd><kbd>\u2192</kbd> para movimento crom\u00E1tico.<br>No Perform mode, use <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> como grelha 4\u00D74.',
     footer_open: 'Abrir 64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Saiba mais no blog \u2192',
   },
 });

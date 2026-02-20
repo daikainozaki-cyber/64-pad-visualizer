@@ -1,7 +1,7 @@
 // English (fallback)
 I18N.addLang('en', {
   help: {
-    title: '64 Pad Explorer V2.12',
+    title: '64 Pad Explorer',
     description: 'A tool for exploring scales, chords, and voicings on a 64-pad grid.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 Choose from 12 keys',
@@ -215,7 +215,7 @@ I18N.addLang('en', {
     qs_shortcuts: 'Keyboard Shortcuts',
     qs_shortcuts_desc: 'Press <kbd>?</kbd> for the full shortcut list.<br><kbd>Space</kbd> to play chord. <kbd>1</kbd>\u2013<kbd>7</kbd> for diatonic chords, <kbd>\u2191</kbd><kbd>\u2193</kbd> for inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> for chromatic movement.<br>In Perform mode, use <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> as a 4\u00D74 grid.',
     footer_open: 'Open 64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Learn more on the blog \u2192',
   },
 });

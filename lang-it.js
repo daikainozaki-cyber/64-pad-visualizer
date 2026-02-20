@@ -1,7 +1,7 @@
 // Italiano
 I18N.addLang('it', {
   help: {
-    title: '64 Pad Explorer V2.12',
+    title: '64 Pad Explorer',
     description: 'Uno strumento per esplorare scale, accordi e voicings su una griglia di 64 pad.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 Scegliere tra 12 tonalità',
@@ -215,7 +215,7 @@ I18N.addLang('it', {
     qs_shortcuts: 'Scorciatoie da tastiera',
     qs_shortcuts_desc: 'Premi <kbd>?</kbd> per l\'elenco completo delle scorciatoie.<br><kbd>Space</kbd> per riprodurre accordo. <kbd>1</kbd>\u2013<kbd>7</kbd> per accordi diatonici, <kbd>\u2191</kbd><kbd>\u2193</kbd> per rivolti, <kbd>\u2190</kbd><kbd>\u2192</kbd> per movimento cromatico.<br>In Perform mode, usa <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> come griglia 4\u00D74.',
     footer_open: 'Apri 64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Scopri di pi\u00F9 sul blog \u2192',
   },
 });

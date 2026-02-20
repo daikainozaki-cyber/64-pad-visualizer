@@ -1,7 +1,7 @@
 // Deutsch
 I18N.addLang('de', {
   help: {
-    title: '64 Pad Explorer V2.12',
+    title: '64 Pad Explorer',
     description: 'Ein Werkzeug zum Erkunden von Skalen, Akkorden und Voicings auf einem 64-Pad-Raster.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 Aus 12 Tonarten wählen',
@@ -215,7 +215,7 @@ I18N.addLang('de', {
     qs_shortcuts: 'Tastenk\u00FCrzel',
     qs_shortcuts_desc: '<kbd>?</kbd> dr\u00FCcken f\u00FCr die vollst\u00E4ndige Tastenk\u00FCrzel-Liste.<br><kbd>Space</kbd> zum Akkord abspielen. <kbd>1</kbd>\u2013<kbd>7</kbd> f\u00FCr diatonische Akkorde, <kbd>\u2191</kbd><kbd>\u2193</kbd> f\u00FCr Inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> f\u00FCr chromatische Bewegung.<br>Im Perform Mode <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> als 4\u00D74-Raster verwenden.',
     footer_open: '64 Pad Explorer \u00F6ffnen',
-    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Mehr erfahren im Blog \u2192',
   },
 });

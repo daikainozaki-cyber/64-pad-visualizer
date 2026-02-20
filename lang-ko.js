@@ -1,7 +1,7 @@
 // 한국어
 I18N.addLang('ko', {
   help: {
-    title: '64 Pad Explorer V2.12',
+    title: '64 Pad Explorer',
     description: '64패드 그리드에서 스케일, 코드, 보이싱을 탐색하는 도구입니다.',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 12개의 키 중 선택',
@@ -215,7 +215,7 @@ I18N.addLang('ko', {
     qs_shortcuts: '\uD0A4\uBCF4\uB4DC \uB2E8\uCD95\uD0A4',
     qs_shortcuts_desc: '<kbd>?</kbd>\uB97C \uB204\uB974\uBA74 \uC804\uCCB4 \uB2E8\uCD95\uD0A4 \uBAA9\uB85D\uC774 \uD45C\uC2DC\uB429\uB2C8\uB2E4.<br><kbd>Space</kbd> 코드 재생. <kbd>1</kbd>\u2013<kbd>7</kbd> \uB2E4\uC774\uC544\uD1A0\uB2C9 \uCF54\uB4DC, <kbd>\u2191</kbd><kbd>\u2193</kbd> Inversions, <kbd>\u2190</kbd><kbd>\u2192</kbd> \uBC18\uC74C \uC774\uB3D9.<br>Perform Mode\uC5D0\uC11C\uB294 <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd>\uB97C 4\u00D74 \uADF8\uB9AC\uB4DC\uB85C \uC0AC\uC6A9.',
     footer_open: '64 Pad Explorer \uC5F4\uAE30',
-    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: '\uBE14\uB85C\uADF8\uC5D0\uC11C \uB354 \uC54C\uC544\uBCF4\uAE30 \u2192',
   },
 });

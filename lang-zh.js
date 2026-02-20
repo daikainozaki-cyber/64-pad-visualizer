@@ -1,7 +1,7 @@
 // 中文
 I18N.addLang('zh', {
   help: {
-    title: '64 Pad Explorer V2.12',
+    title: '64 Pad Explorer',
     description: '在64键打击垫上探索音阶、和弦与声位的工具。',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 从12个调中选择',
@@ -215,7 +215,7 @@ I18N.addLang('zh', {
     qs_shortcuts: '键盘快捷键',
     qs_shortcuts_desc: '按<kbd>?</kbd>查看完整快捷键列表。<br><kbd>Space</kbd>播放和弦。<kbd>1</kbd>\u2013<kbd>7</kbd>选择自然和弦，<kbd>\u2191</kbd><kbd>\u2193</kbd>切换转位，<kbd>\u2190</kbd><kbd>\u2192</kbd>半音移动。<br>在Perform模式中，使用<kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd>作为4\u00D74网格。',
     footer_open: '打开64 Pad Explorer',
-    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: '在博客上了解更多 \u2192',
   },
 });

@@ -1,7 +1,7 @@
 // 日本語
 I18N.addLang('ja', {
   help: {
-    title: '64 Pad Explorer V2.12',
+    title: '64 Pad Explorer',
     description: '64パッド上のスケール・コード・ボイシングを探索するツール。',
     scale_mode: 'Scale Mode',
     scale_key: '<strong>Key</strong> \u2014 12キーから選択',
@@ -215,7 +215,7 @@ I18N.addLang('ja', {
     qs_shortcuts: '\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8',
     qs_shortcuts_desc: '<kbd>?</kbd> \u30AD\u30FC\u3067\u5168\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u4E00\u89A7\u304C\u898B\u3089\u308C\u307E\u3059\u3002<br><kbd>Space</kbd> でコードを再生。<kbd>1</kbd>\u301C<kbd>7</kbd> \u3067\u30C0\u30A4\u30A2\u30C8\u30CB\u30C3\u30AF\u30B3\u30FC\u30C9\u9078\u629E\u3001<kbd>\u2191</kbd><kbd>\u2193</kbd> \u3067\u8EE2\u56DE\u5F62\u5207\u66FF\u3001<kbd>\u2190</kbd><kbd>\u2192</kbd> \u3067\u534A\u97F3\u79FB\u52D5\u3002<br>Perform\u30E2\u30FC\u30C9\u3067\u306F <kbd>1234</kbd>/<kbd>qwer</kbd>/<kbd>asdf</kbd>/<kbd>zxcv</kbd> \u306E4\u00D74\u30B0\u30EA\u30C3\u30C9\u3067\u6F14\u594F\u3067\u304D\u307E\u3059\u3002',
     footer_open: '64 Pad Explorer \u3092\u958B\u304F',
-    footer_version: '64 Pad Explorer V2.12 \u2014 HPS (Hardcore Pad Style)',
+    footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: '\u30D6\u30ED\u30B0\u3067\u3082\u3063\u3068\u8A73\u3057\u304F \u2192',
   },
 });

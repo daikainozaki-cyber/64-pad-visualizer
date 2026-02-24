@@ -829,21 +829,21 @@ function toVLQ(value) {
 function exportPlainChs() {
   const filledSlots = PlainState.memory.filter(s => s !== null);
   if (filledSlots.length === 0) { const toast = document.getElementById('slot-save-toast'); toast.textContent = t('notify.no_chords'); toast.style.opacity = '1'; setTimeout(() => toast.style.opacity = '0', 2000); return; }
-  const buf = new Uint8Array(4096); // 全体ゼロ初期化
+  const buf = new Uint8Array(4096);
   // マジックバイト
   buf[0] = 0x83; buf[1] = 0x49;
-  // ヘッダ
-  buf[0x08] = 0x10;
+  // ヘッダ（0x0Fに0x10 — Chordcat native format）
+  buf[0x0F] = 0x10;
   // 13スロット × 8バイト（オフセット0x10〜0x77）
   for (let i = 0; i < 13; i++) {
     const slot = PlainState.memory[i];
     if (!slot) continue;
     const offset = 0x10 + i * 8;
-    // 5音固定、高→低の降順で格納（バイト2〜6）
-    const notes = [...slot.midiNotes].sort((a, b) => b - a); // 降順
-    // 5音まで。足りなければ0パディング（バイト2～6に配置）
-    for (let j = 0; j < 5; j++) {
-      buf[offset + 2 + j] = j < notes.length ? (notes[j] & 0x7F) : 0;
+    // 6音まで、高→低の降順（バイト1〜6、右詰め）
+    const notes = [...slot.midiNotes].sort((a, b) => b - a).slice(0, 6);
+    const start = 1 + (6 - notes.length);
+    for (let j = 0; j < notes.length; j++) {
+      buf[offset + start + j] = notes[j] & 0x7F;
     }
   }
   // Chordset名（オフセット0x78〜0x87、NULL終端）
@@ -851,8 +851,12 @@ function exportPlainChs() {
   for (let i = 0; i < name.length && i < 15; i++) {
     buf[0x78 + i] = name.charCodeAt(i);
   }
-  // フラグ（オフセット0x88）
-  buf[0x88] = 0x01; buf[0x8C] = 0x01;
+  // メタデータ（オフセット0x88）
+  buf[0x88] = 0x01;
+  // Chordset名 複製（オフセット0xFB4〜）
+  for (let i = 0; i < name.length && i < 15; i++) {
+    buf[0xFB4 + i] = name.charCodeAt(i);
+  }
   // ダウンロード
   const ts = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
   downloadBinary(buf, 'PadExplorer_' + ts + '.chs', 'application/octet-stream');

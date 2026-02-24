@@ -932,3 +932,14 @@ function onDiatonicClick(tetrad) {
   render();
 }
 
+// Conditional exports for Node.js (Vitest) — ignored in browser
+if (typeof module !== 'undefined') module.exports = {
+  baseMidi, pitchClass, noteName, midiNote,
+  calcVoicingOffsets, getBassCase, applyOnChordBass,
+  calcAllVoicingPositions, calcVoicingPositions,
+  getShellIntervals, applyTension, getBuilderPCS,
+  chordDegreeName, getDiatonicTetrads, getBuilderChordName,
+  findParentScales, fifthsDistance,
+  DIATONIC_CHORD_DB, noteNameForKey,
+};
+

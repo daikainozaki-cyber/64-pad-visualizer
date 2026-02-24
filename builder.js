@@ -1090,3 +1090,8 @@ function initWebMIDI() {
     };
   }).catch(() => {});
 }
+
+// Conditional exports for Node.js (Vitest) — ignored in browser
+if (typeof module !== 'undefined') module.exports = {
+  buildChordDB, CHORD_DB, TRIAD_DB, TETRAD_DB, detectChord,
+};

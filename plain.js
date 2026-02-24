@@ -832,8 +832,7 @@ function exportPlainChs() {
   const buf = new Uint8Array(4096);
   // マジックバイト
   buf[0] = 0x83; buf[1] = 0x49;
-  // ヘッダ（0x0Fに0x10 — Chordcat native format）
-  buf[0x0F] = 0x10;
+  // ヘッダ（0x0Fはコードセットにより0x00/0x10が混在。0x00で安全側）
   // 13スロット × 8バイト（オフセット0x10〜0x77）
   for (let i = 0; i < 13; i++) {
     const slot = PlainState.memory[i];
@@ -851,8 +850,7 @@ function exportPlainChs() {
   for (let i = 0; i < name.length && i < 15; i++) {
     buf[0x78 + i] = name.charCodeAt(i);
   }
-  // メタデータ（オフセット0x88）
-  buf[0x88] = 0x01;
+  // メタデータ（0x88=スロットID、0x00=未割当。Managerが自動採番）
   // Chordset名 複製（オフセット0xFB4〜）
   for (let i = 0; i < name.length && i < 15; i++) {
     buf[0xFB4 + i] = name.charCodeAt(i);

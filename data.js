@@ -8,7 +8,7 @@ function onReady(fn) {
   else document.addEventListener("DOMContentLoaded", fn);
 }
 
-const IS_DEV = location.pathname.indexOf('64-pad-dev') !== -1;
+const IS_DEV = location.pathname.indexOf('64-pad-dev') !== -1 || location.pathname.indexOf('64-pad-chs') !== -1;
 const NOTE_NAMES_SHARP = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const NOTE_NAMES_FLAT  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
 const FLAT_MAJOR_KEYS = new Set([1, 3, 5, 6, 8, 10]); // Db, Eb, F, Gb, Ab, Bb (circle of fifths)

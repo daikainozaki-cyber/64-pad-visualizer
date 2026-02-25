@@ -6,6 +6,9 @@
 <title>64 Pad Explorer V2.50</title>
 <meta name="description" content="コードがわからなくても大丈夫。64パッドでスケール・コード・ボイシングを可視化。ギター・鍵盤からのコード判定、手形表示、Available Scale逆引き、MIDI書き出し対応。ブラウザだけで動く音源内蔵の音楽理論ツール。">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<meta name="theme-color" content="#1a1a2e">
 <!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZWTBLDWP7P"></script>
 <script>
@@ -477,5 +480,6 @@
 <script src="perform.js?v=2.50.0"></script>
 <script src="builder.js?v=2.50.0"></script>
 <script src="main.js?v=2.50.0"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </body>
 </html>

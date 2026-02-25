@@ -1,0 +1,14 @@
+{
+  "name": "64 Pad Explorer",
+  "short_name": "64Pad",
+  "description": "Visualize scales, chords & voicings on a 64-pad grid. Built-in sound engine, MIDI input, chord detection.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

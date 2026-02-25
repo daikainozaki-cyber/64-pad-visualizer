@@ -14,6 +14,20 @@ initMemorySlots();
 initWebMIDI();
 I18N.init();
 
+// Mobile responsive init
+_isMobile = _mobileMediaQuery.matches;
+_isLandscape = _landscapeMediaQuery.matches;
+if (_isMobile) {
+  moveMemorySection(true);
+  moveInstrumentRow(true);
+} else if (_isLandscape) {
+  moveInstrumentRow(true);
+  setLandscapeTab('control');
+}
+initScreenDots();
+_mobileMediaQuery.addEventListener('change', handleMobileChange);
+_landscapeMediaQuery.addEventListener('change', handleLandscapeChange);
+
 // Apply restored display toggles to UI
 (function applyRestoredSettings() {
   // Mode buttons & panels

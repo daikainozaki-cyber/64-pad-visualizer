@@ -1,4 +1,102 @@
 // ========================================
+// MOBILE RESPONSIVE HELPERS
+// ========================================
+var _isMobile = false;
+var _isLandscape = false;
+var _mobileMediaQuery = window.matchMedia('(max-width: 767px)');
+var _landscapeMediaQuery = window.matchMedia('(max-width: 812px) and (max-height: 500px) and (orientation: landscape)');
+
+function handleMobileChange(e) {
+  _isMobile = e.matches;
+  moveMemorySection(_isMobile);
+  moveInstrumentRow(_isMobile);
+  if (typeof render === 'function') render();
+}
+
+function handleLandscapeChange(e) {
+  _isLandscape = e.matches;
+  if (_isLandscape) {
+    // Default: show control, hide info
+    setLandscapeTab('control');
+    // Move instrument row to info panel for landscape too
+    moveInstrumentRow(true);
+  } else if (!_isMobile) {
+    // Restore desktop layout
+    moveInstrumentRow(false);
+    var cp = document.querySelector('.control-panel');
+    var sp = document.getElementById('staff-ep-panel');
+    if (cp) cp.classList.remove('landscape-hidden');
+    if (sp) sp.classList.remove('landscape-hidden');
+  }
+  if (typeof render === 'function') render();
+}
+
+function moveMemorySection(toMobile) {
+  // Memory stays in #staff-ep-panel (Screen 3) in all modes
+  // No DOM move needed
+}
+
+function moveInstrumentRow(toMobile) {
+  var instRow = document.getElementById('instrument-row');
+  if (!instRow) return;
+  var padArea = document.querySelector('.pad-area');
+  var staffPanel = document.getElementById('staff-ep-panel');
+  if (toMobile) {
+    // Move instrument row to top of staff panel (Screen 3)
+    if (instRow.parentElement !== staffPanel) {
+      staffPanel.insertBefore(instRow, staffPanel.firstChild);
+    }
+    instRow.style.display = '';
+  } else {
+    // Move back to pad area
+    if (instRow.parentElement !== padArea) {
+      padArea.appendChild(instRow);
+    }
+    instRow.style.display = '';
+  }
+}
+
+function initScreenDots() {
+  var appLayout = document.querySelector('.app-layout');
+  var dots = document.querySelectorAll('#screen-dots .dot');
+  if (!appLayout || !dots.length) return;
+  appLayout.addEventListener('scroll', function() {
+    if (!_isMobile) return;
+    var scrollLeft = appLayout.scrollLeft;
+    var screenWidth = appLayout.clientWidth;
+    var idx = Math.round(scrollLeft / screenWidth);
+    dots.forEach(function(d, i) {
+      d.classList.toggle('active', i === idx);
+    });
+  });
+}
+
+function goToScreen(index) {
+  var appLayout = document.querySelector('.app-layout');
+  if (!appLayout) return;
+  appLayout.scrollTo({
+    left: index * appLayout.clientWidth,
+    behavior: 'smooth'
+  });
+}
+
+function setLandscapeTab(tab) {
+  var cp = document.querySelector('.control-panel');
+  var sp = document.getElementById('staff-ep-panel');
+  var tabs = document.querySelectorAll('.landscape-tab');
+  if (tab === 'control') {
+    if (cp) cp.classList.remove('landscape-hidden');
+    if (sp) sp.classList.add('landscape-hidden');
+  } else {
+    if (cp) cp.classList.add('landscape-hidden');
+    if (sp) sp.classList.remove('landscape-hidden');
+  }
+  tabs.forEach(function(t) {
+    t.classList.toggle('active', (tab === 'control' && t.textContent === 'Control') || (tab === 'info' && t.textContent === 'Info'));
+  });
+}
+
+// ========================================
 // RENDER (MAIN)
 // ========================================
 
@@ -468,8 +566,14 @@ function render() {
   const svg = document.getElementById('pad-grid');
   const totalW = COLS * (PAD_SIZE + PAD_GAP) - PAD_GAP + MARGIN * 2;
   const totalH = ROWS * (PAD_SIZE + PAD_GAP) - PAD_GAP + MARGIN * 2;
-  svg.setAttribute('width', totalW);
-  svg.setAttribute('height', totalH);
+  svg.setAttribute('viewBox', '0 0 ' + totalW + ' ' + totalH);
+  if (_isMobile || _isLandscape) {
+    svg.removeAttribute('width');
+    svg.removeAttribute('height');
+  } else {
+    svg.setAttribute('width', totalW);
+    svg.setAttribute('height', totalH);
+  }
   svg.innerHTML = '';
 
   // Compute parent scale selection BEFORE renderState (sets _selectedPS for overlay)
@@ -588,8 +692,15 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
   const bassTop = trebleTop + 4 * staffLineGap + 30; // top line of bass staff (A3)
   const totalH = bassTop + 4 * staffLineGap + 30;
   staffSvg.style.display = '';
-  staffSvg.setAttribute('width', W);
-  staffSvg.setAttribute('height', totalH);
+  staffSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + totalH);
+  if (_isMobile || _isLandscape) {
+    staffSvg.removeAttribute('width'); staffSvg.removeAttribute('height');
+    staffSvg.style.width = '100%'; staffSvg.style.height = 'auto';
+  } else {
+    staffSvg.setAttribute('width', W);
+    staffSvg.setAttribute('height', totalH);
+    staffSvg.style.width = ''; staffSvg.style.height = '';
+  }
   staffSvg.innerHTML = '';
 
   // Draw staff lines
@@ -837,7 +948,14 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS)
   const nutX = leftM;
   const W = DIAGRAM_WIDTH;
   const H = topM + 5 * strH + (solo ? 30 : 22);
-  svg.setAttribute('width', W); svg.setAttribute('height', H);
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  if (_isMobile || _isLandscape) {
+    svg.removeAttribute('width'); svg.removeAttribute('height');
+    svg.style.width = '100%'; svg.style.height = 'auto';
+  } else {
+    svg.setAttribute('width', W); svg.setAttribute('height', H);
+    svg.style.width = ''; svg.style.height = '';
+  }
 
   const strings = [64, 59, 55, 50, 45, 40];
   const strNames = ['E', 'B', 'G', 'D', 'A', 'E'];
@@ -1057,7 +1175,14 @@ function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) {
   const nutX = leftM;
   const W = DIAGRAM_WIDTH;
   const H = topM + 3 * strH + (solo ? 30 : 22);
-  svg.setAttribute('width', W); svg.setAttribute('height', H);
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  if (_isMobile || _isLandscape) {
+    svg.removeAttribute('width'); svg.removeAttribute('height');
+    svg.style.width = '100%'; svg.style.height = 'auto';
+  } else {
+    svg.setAttribute('width', W); svg.setAttribute('height', H);
+    svg.style.width = ''; svg.style.height = '';
+  }
   const strings = BASS_OPEN_MIDI;
   const strNames = ['G', 'D', 'A', 'E'];
 
@@ -1279,7 +1404,14 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
   const whiteW = (W - startX - 15) / numWhites;
   const blackW = whiteW * 0.7;
   const H = whiteH + (solo ? 22 : 16);
-  svg.setAttribute('width', W); svg.setAttribute('height', H);
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  if (_isMobile || _isLandscape) {
+    svg.removeAttribute('width'); svg.removeAttribute('height');
+    svg.style.width = '100%'; svg.style.height = 'auto';
+  } else {
+    svg.setAttribute('width', W); svg.setAttribute('height', H);
+    svg.style.width = ''; svg.style.height = '';
+  }
 
   const whiteNotes = [0,2,4,5,7,9,11];
   const blackNotes = [1,3,6,8,10];

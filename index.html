@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>64 Pad Explorer V2.18</title>
+<title>64 Pad Explorer V2.50</title>
 <meta name="description" content="コードがわからなくても大丈夫。64パッドでスケール・コード・ボイシングを可視化。ギター・鍵盤からのコード判定、手形表示、Available Scale逆引き、MIDI書き出し対応。ブラウザだけで動く音源内蔵の音楽理論ツール。">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <!-- Google Analytics -->
@@ -14,7 +14,7 @@
   gtag('js', new Date());
   gtag('config', 'G-ZWTBLDWP7P');
 </script>
-<link rel="stylesheet" href="style.css?v=2.11.2">
+<link rel="stylesheet" href="style.css?v=2.50.0">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -34,7 +34,7 @@
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V2.18</span>
+  <span class="version-tag">V2.50</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -136,13 +136,13 @@
       <li data-i18n="help.input_desc3"><strong>Clear</strong> — 入力をクリア、<strong>Play ▶</strong> — 入力した音を再生</li>
     </ul>
 
-    <h2 data-i18n="help.plain_title">Plain Mode</h2>
+    <h2 data-i18n="help.input_title">Input Mode</h2>
     <ul>
-      <li data-i18n="help.plain_desc1">パッドをクリックして自由に音を選択 → コード名をリアルタイム判定</li>
-      <li data-i18n="help.plain_desc2">理論フィルタなし。探索 → 発見 → 理論を後から知る</li>
-      <li data-i18n="help.plain_desc3">コード検出時にパッド上に度数ラベル（R, 3, 5, b7等）を表示。ギター・ベース・ピアノ・五線譜にも連動</li>
-      <li data-i18n="help.plain_memory"><strong>Memory</strong> — 16スロットにコードを保存・呼び出し</li>
-      <li data-i18n="help.plain_export"><strong>MIDI Export</strong> — メモリーのコードをMIDIファイルとして書き出し</li>
+      <li data-i18n="help.input_desc1">パッドをクリックして自由に音を選択 → コード名をリアルタイム判定</li>
+      <li data-i18n="help.input_desc2">理論フィルタなし。探索 → 発見 → 理論を後から知る</li>
+      <li data-i18n="help.input_desc3">コード検出時にパッド上に度数ラベル（R, 3, 5, b7等）を表示。ギター・ベース・ピアノ・五線譜にも連動</li>
+      <li data-i18n="help.input_memory"><strong>Memory</strong> — 16スロットにコードを保存・呼び出し</li>
+      <li data-i18n="help.input_export"><strong>MIDI Export</strong> — メモリーのコードをMIDIファイルとして書き出し</li>
     </ul>
 
     <h2 data-i18n="help.perform_title">Perform Mode</h2>
@@ -167,7 +167,7 @@
       <li data-i18n="help.sc_clear"><kbd>x</kbd> — コードクリア（Chordモード）</li>
       <li data-i18n="help.sc_pad_explore"></li>
     </ul>
-    <h3 data-i18n="help.shortcut_plain">Plain モード</h3>
+    <h3 data-i18n="help.shortcut_input">Input モード</h3>
     <ul>
       <li data-i18n="help.sp_capture"><kbd>c</kbd> — Capture 開始/次のスロットへ保存</li>
       <li data-i18n="help.sp_end"><kbd>e</kbd> — Capture 終了</li>
@@ -186,7 +186,7 @@
     <ul>
       <li data-i18n="help.sc_perform"><kbd>p</kbd> — Perform表示の切り替え</li>
       <li data-i18n="help.sc_undo"><kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>z</kbd> — メモリースロットのUndo（最大30回）</li>
-      <li data-i18n="help.sc_shift_save"><kbd>Shift</kbd>+<kbd>1</kbd>〜<kbd>0</kbd> — Plainメモリースロットに保存（どのモードからでも）</li>
+      <li data-i18n="help.sc_shift_save"><kbd>Shift</kbd>+<kbd>1</kbd>〜<kbd>0</kbd> — Inputメモリースロットに保存（どのモードからでも）</li>
       <li data-i18n="help.sc_space"></li>
       <li data-i18n="help.sc_esc"><kbd>Esc</kbd> — ボイシングボックス選択解除 / ヘルプを閉じる</li>
       <li data-i18n="help.sc_help"><kbd>?</kbd> — ヘルプ表示切替</li>
@@ -194,6 +194,7 @@
 
     <h2>Version History</h2>
     <ul style="font-size:0.75rem;color:var(--text-muted);">
+      <li><b>V2.50</b> (2026-02-25) — 複数メモリーバンク: 曲ごとに16スロット×最大16バンク。バンク切替・追加・複製・削除・リネーム対応。既存データは自動マイグレーション。[/]キーでバンク切替</li>
       <li><b>V2.18</b> (2026-02-20) — 全設定保存: キー/スケール/モード/オクターブ/表示トグル/音名度数切替/メモリースロット16個をlocalStorageに自動保存・復元。音色(V2.16)+MIDIデバイス(V2.17)と合わせて全設定が永続化</li>
       <li><b>V2.17</b> (2026-02-20) — MIDIデバイス設定保存: 選択したMIDI入力デバイスをlocalStorageに保存。ページリロード後も自動選択（デバイス名で照合、ID変更に対応）</li>
       <li><b>V2.16</b> (2026-02-20) — 音色デフォルト保存: エンジン/プリセット/エフェクト設定をlocalStorageに自動保存・復元。ページリロード後も前回の音色設定を維持</li>
@@ -295,7 +296,7 @@
     <div class="mode-toggle">
       <button class="mode-btn active" onclick="setMode('scale')" id="mode-scale">Scale</button>
       <button class="mode-btn" onclick="setMode('chord')" id="mode-chord">Chord</button>
-      <button class="mode-btn" onclick="setMode('plain')" id="mode-plain">Plain</button>
+      <button class="mode-btn" onclick="setMode('input')" id="mode-input">Input</button>
     </div>
 
     <!-- Scale Mode -->
@@ -371,7 +372,7 @@
     </div>
 
     <!-- Plain Mode -->
-    <div id="plain-panel" style="display:none;">
+    <div id="input-panel" style="display:none;">
       <div id="plain-status" style="text-align:center;margin-bottom:4px;">
         <span id="plain-status-text" style="font-size:0.75rem;color:var(--text-muted);">Press Capture to start building chords</span>
       </div>
@@ -427,12 +428,28 @@
         <button id="mem-view-memory" class="mem-view-btn active" onclick="toggleMemoryView('memory')">Memory</button>
         <button id="mem-view-perform" class="mem-view-btn" onclick="toggleMemoryView('perform')">Perform</button>
       </div>
+      <div id="bank-bar" style="display:flex;gap:3px;align-items:center;justify-content:center;margin-bottom:3px;position:relative;">
+        <button id="bank-prev" class="bank-nav-btn" onclick="switchBank(-1)">&lt;</button>
+        <span id="bank-name" class="bank-label" onclick="renameBank()">Bank 1 (0/16)</span>
+        <button id="bank-next" class="bank-nav-btn" onclick="switchBank(1)">&gt;</button>
+        <button id="bank-add" class="bank-nav-btn" onclick="addBank()">+</button>
+        <button id="bank-menu-btn" class="bank-nav-btn" onclick="toggleBankMenu()">&#x22EF;</button>
+        <div id="bank-popup" style="display:none;position:absolute;top:100%;right:0;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px;z-index:100;min-width:120px;">
+          <button class="bank-popup-item" onclick="renameBank();toggleBankMenu()" data-i18n="bank.rename">Rename</button>
+          <button class="bank-popup-item" onclick="duplicateBank();toggleBankMenu()" data-i18n="bank.duplicate">Duplicate</button>
+          <button class="bank-popup-item bank-popup-danger" onclick="deleteBank();toggleBankMenu()" data-i18n="bank.delete">Delete</button>
+        </div>
+      </div>
       <div id="memory-slots" class="memory-grid"></div>
       <div style="display:flex;gap:3px;justify-content:center;margin-top:4px;flex-wrap:wrap;">
         <button id="btn-slot-save" onclick="saveToSelectedSlot()" style="font-size:0.6rem;padding:2px 10px;background:#2a6e2a;color:#fff;border:1px solid #4a4;border-radius:4px;cursor:pointer;font-weight:700;display:none;">Save</button>
         <button id="btn-play-slots" onclick="playMemorySlots()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">Play ▶</button>
         <button id="btn-midi-export-mem" onclick="exportPlainMidi()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">MIDI Export All</button>
         <button id="btn-chs-export-mem" onclick="exportPlainChs()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">CHS Export All</button>
+      </div>
+      <div style="display:flex;gap:3px;justify-content:center;margin-top:2px;flex-wrap:wrap;">
+        <button id="btn-midi-import" onclick="importMidi()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">MIDI Import</button>
+        <button id="btn-chs-import" onclick="importChs()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">CHS Import</button>
       </div>
       <div style="font-size:0.5rem;color:var(--text-muted);text-align:center;margin-top:2px;" data-i18n="ui.slot_hint">クリックで選択 → Save(c) / Shift+クリックで消去</div>
     </div>
@@ -441,24 +458,24 @@
 
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=2.18.0"></script>
-<script src="lang-en.js?v=2.18.0"></script>
-<script src="lang-ja.js?v=2.18.0"></script>
-<script src="lang-zh.js?v=2.18.0"></script>
-<script src="lang-es.js?v=2.18.0"></script>
-<script src="lang-fr.js?v=2.18.0"></script>
-<script src="lang-pt.js?v=2.18.0"></script>
-<script src="lang-de.js?v=2.18.0"></script>
-<script src="lang-ko.js?v=2.18.0"></script>
-<script src="lang-it.js?v=2.18.0"></script>
+<script src="i18n.js?v=2.50.0"></script>
+<script src="lang-en.js?v=2.50.0"></script>
+<script src="lang-ja.js?v=2.50.0"></script>
+<script src="lang-zh.js?v=2.50.0"></script>
+<script src="lang-es.js?v=2.50.0"></script>
+<script src="lang-fr.js?v=2.50.0"></script>
+<script src="lang-pt.js?v=2.50.0"></script>
+<script src="lang-de.js?v=2.50.0"></script>
+<script src="lang-ko.js?v=2.50.0"></script>
+<script src="lang-it.js?v=2.50.0"></script>
 <!-- App JS -->
-<script src="data.js?v=2.18.0"></script>
-<script src="audio.js?v=2.16.0"></script>
-<script src="theory.js?v=2.18.0"></script>
-<script src="render.js?v=2.18.0"></script>
-<script src="plain.js?v=2.18.0"></script>
-<script src="perform.js?v=2.11.0"></script>
-<script src="builder.js?v=2.18.0"></script>
-<script src="main.js?v=2.18.0"></script>
+<script src="data.js?v=2.50.0"></script>
+<script src="audio.js?v=2.50.0"></script>
+<script src="theory.js?v=2.50.0"></script>
+<script src="render.js?v=2.50.0"></script>
+<script src="plain.js?v=2.50.0"></script>
+<script src="perform.js?v=2.50.0"></script>
+<script src="builder.js?v=2.50.0"></script>
+<script src="main.js?v=2.50.0"></script>
 </body>
 </html>

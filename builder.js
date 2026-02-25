@@ -3,16 +3,16 @@
 // ========================================
 function setMode(mode) {
   // Plain → Chord: transfer detected chord to builder
-  if (mode === 'chord' && AppState.mode === 'plain' && PlainState.activeNotes.size >= 2) {
+  if (mode === 'chord' && AppState.mode === 'input' && PlainState.activeNotes.size >= 2) {
     if (transferToChordMode()) return; // transferToChordMode handles everything
   }
   AppState.mode = mode;
   document.getElementById('mode-scale').classList.toggle('active', mode === 'scale');
   document.getElementById('mode-chord').classList.toggle('active', mode === 'chord');
-  document.getElementById('mode-plain').classList.toggle('active', mode === 'plain');
+  document.getElementById('mode-input').classList.toggle('active', mode === 'input');
   document.getElementById('scale-panel').style.display = mode === 'scale' ? '' : 'none';
   document.getElementById('chord-panel').style.display = mode === 'chord' ? '' : 'none';
-  document.getElementById('plain-panel').style.display = mode === 'plain' ? '' : 'none';
+  document.getElementById('input-panel').style.display = mode === 'input' ? '' : 'none';
   if (mode === 'chord' && BuilderState.step === 0) {
     BuilderState.root = AppState.key; // carry over key
     setBuilderStep(1);
@@ -20,7 +20,7 @@ function setMode(mode) {
   // モード切替時にスロット選択を解除
   PlainState.currentSlot = null;
   updateMemorySlotUI();
-  if (mode === 'plain') {
+  if (mode === 'input') {
     PlainState.subMode = 'idle';
     updatePlainUI();
     updatePlainDisplay();
@@ -835,7 +835,7 @@ function onMidiNoteOn(note, velocity) {
   ensureAudioResumed();
   noteOn(mapped, (velocity || 100) / 127, true);
   // Plain mode: add to activeNotes (auto-start capture if idle)
-  if (AppState.mode === 'plain') {
+  if (AppState.mode === 'input') {
     if (PlainState.subMode === 'idle') {
       PlainState.subMode = 'capture';
       PlainState.captureIndex = findNextEmptySlot(0);
@@ -857,9 +857,9 @@ function onMidiNoteOff(note) {
   midiActiveNotes.delete(mapped);
   noteOff(mapped);
   // Plain capture/edit: latch (don't remove on noteOff)
-  if (AppState.mode === 'plain' && PlainState.subMode !== 'idle') {
+  if (AppState.mode === 'input' && PlainState.subMode !== 'idle') {
     // keep note in activeNotes — user clears with x or edits manually
-  } else if (AppState.mode === 'plain') {
+  } else if (AppState.mode === 'input') {
     PlainState.activeNotes.delete(mapped);
     updatePlainDisplay();
     render();
@@ -881,7 +881,7 @@ function updateMidiDisplay() {
   if (notes.length === 0) {
     document.querySelectorAll('.midi-highlight').forEach(el => el.remove());
     // Plain mode: #midi-detect is SSOT of updatePlainDisplay(), don't clear
-    if (AppState.mode === 'plain') return;
+    if (AppState.mode === 'input') return;
     detectEl.innerHTML = '';
     // Restore diagrams: instrument input state takes priority over builder state
     if (instrumentInputActive) {
@@ -899,7 +899,7 @@ function updateMidiDisplay() {
     return;
   }
   // Plain mode: #midi-detect handled by updatePlainDisplay() (SSOT), only add highlights
-  if (AppState.mode === 'plain') {
+  if (AppState.mode === 'input') {
     highlightMidiPads(notes);
     return;
   }
@@ -916,7 +916,7 @@ function updateMidiDisplay() {
       });
       html += '</div>';
     }
-    html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">' + t('plain.notes_label') + noteNames.join(' ') + '</div>';
+    html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">' + t('input.notes_label') + noteNames.join(' ') + '</div>';
     detectEl.innerHTML = html;
   } else {
     detectEl.textContent = noteNames.join(' ');

@@ -17,7 +17,7 @@ function _resolve(obj, key) {
   return key.split('.').reduce(function(o, k) { return o && o[k]; }, obj);
 }
 
-// Translate: t('plain.status_capturing', {slot: 3})
+// Translate: t('input.status_capturing', {slot: 3})
 function t(key, vars) {
   var str = _resolve(I18N.langs[I18N.current], key)
          || _resolve(I18N.langs[I18N.fallback], key)

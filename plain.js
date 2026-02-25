@@ -6,6 +6,107 @@
 const undoStack = [];
 const MAX_UNDO = 30;
 
+// ========================================
+// BANK MANAGEMENT (v2.50)
+// ========================================
+
+function switchBank(direction) {
+  if (BankState.banks.length <= 1) return;
+  syncMemoryToActiveBank();
+  const idx = BankState.banks.findIndex(b => b.id === BankState.activeBankId);
+  const next = (idx + direction + BankState.banks.length) % BankState.banks.length;
+  loadBank(BankState.banks[next].id);
+}
+
+function loadBank(bankId) {
+  stopSlotPlayback();
+  PlainState.activeNotes.forEach(m => noteOff(m));
+  PlainState.activeNotes.clear();
+  PlainState.subMode = 'idle';
+  PlainState.currentSlot = null;
+  PlainState.captureIndex = 0;
+  undoStack.length = 0;
+  BankState.activeBankId = bankId;
+  loadBankMemory();
+  updateMemorySlotUI();
+  if (typeof updatePlainUI === 'function') updatePlainUI();
+  if (typeof updatePlainDisplay === 'function') updatePlainDisplay();
+  if (typeof render === 'function') render();
+  saveAppSettings();
+}
+
+function addBank() {
+  if (BankState.banks.length >= 16) {
+    var toast = document.getElementById('slot-save-toast');
+    if (toast) { toast.textContent = t('bank.limit_reached'); toast.style.opacity = '1'; clearTimeout(toast._timer); toast._timer = setTimeout(function() { toast.style.opacity = '0'; }, 1500); }
+    return;
+  }
+  syncMemoryToActiveBank();
+  var newBank = { id: String(Date.now()), name: 'Bank ' + (BankState.banks.length + 1), memory: Array(16).fill(null) };
+  BankState.banks.push(newBank);
+  loadBank(newBank.id);
+}
+
+function duplicateBank() {
+  if (BankState.banks.length >= 16) {
+    var toast = document.getElementById('slot-save-toast');
+    if (toast) { toast.textContent = t('bank.limit_reached'); toast.style.opacity = '1'; clearTimeout(toast._timer); toast._timer = setTimeout(function() { toast.style.opacity = '0'; }, 1500); }
+    return;
+  }
+  syncMemoryToActiveBank();
+  var src = getActiveBank();
+  var newBank = {
+    id: String(Date.now()),
+    name: src.name + ' Copy',
+    memory: src.memory.map(function(s) { return s ? { midiNotes: [].concat(s.midiNotes), chordName: s.chordName } : null; }),
+  };
+  BankState.banks.push(newBank);
+  loadBank(newBank.id);
+}
+
+function deleteBank() {
+  if (BankState.banks.length <= 1) {
+    var toast = document.getElementById('slot-save-toast');
+    if (toast) { toast.textContent = t('bank.cannot_delete_last'); toast.style.opacity = '1'; clearTimeout(toast._timer); toast._timer = setTimeout(function() { toast.style.opacity = '0'; }, 1500); }
+    return;
+  }
+  var bank = getActiveBank();
+  var msg = t('bank.confirm_delete').replace('{name}', bank.name);
+  if (!confirm(msg)) return;
+  var idx = BankState.banks.findIndex(function(b) { return b.id === bank.id; });
+  BankState.banks.splice(idx, 1);
+  var nextIdx = Math.min(idx, BankState.banks.length - 1);
+  loadBank(BankState.banks[nextIdx].id);
+}
+
+function renameBank() {
+  var bank = getActiveBank();
+  var msg = t('bank.rename_prompt');
+  var newName = prompt(msg, bank.name);
+  if (newName === null) return;
+  newName = newName.trim().slice(0, 30);
+  if (newName.length === 0) return;
+  bank.name = newName;
+  updateBankUI();
+  saveAppSettings();
+}
+
+function toggleBankMenu() {
+  var popup = document.getElementById('bank-popup');
+  if (!popup) return;
+  popup.style.display = popup.style.display === 'none' ? '' : 'none';
+}
+
+function updateBankUI() {
+  var nameEl = document.getElementById('bank-name');
+  if (!nameEl) return;
+  var bank = getActiveBank();
+  if (!bank) return;
+  var count = PlainState.memory.filter(function(s) { return s !== null; }).length;
+  nameEl.textContent = bank.name + ' (' + count + '/16)';
+  nameEl.title = t('bank.click_rename');
+}
+
 function pushUndoState() {
   undoStack.push(PlainState.memory.map(s => s ? { midiNotes: [...s.midiNotes], chordName: s.chordName } : null));
   if (undoStack.length > MAX_UNDO) undoStack.shift();
@@ -28,7 +129,7 @@ function undoMemory() {
 
 // Get current chord MIDI notes from any mode (for cross-mode slot save)
 function getCurrentChordMidiNotes() {
-  if (AppState.mode === 'plain') {
+  if (AppState.mode === 'input') {
     if (PlainState.activeNotes.size === 0) return null;
     return [...PlainState.activeNotes].sort((a, b) => a - b);
   }
@@ -75,7 +176,7 @@ function getCurrentChordMidiNotes() {
 
 // Get chord name for current state (cross-mode)
 function getCurrentChordName() {
-  if (AppState.mode === 'plain') {
+  if (AppState.mode === 'input') {
     const notes = getCurrentChordMidiNotes();
     if (!notes || notes.length === 0) return '?';
     const candidates = detectChord(notes);
@@ -164,10 +265,10 @@ function transferDetectedCandidate(idx, el) {
       AppState.mode = 'chord';
       document.getElementById('mode-scale').classList.toggle('active', false);
       document.getElementById('mode-chord').classList.toggle('active', true);
-      document.getElementById('mode-plain').classList.toggle('active', false);
+      document.getElementById('mode-input').classList.toggle('active', false);
       document.getElementById('scale-panel').style.display = 'none';
       document.getElementById('chord-panel').style.display = '';
-      document.getElementById('plain-panel').style.display = 'none';
+      document.getElementById('input-panel').style.display = 'none';
     }
     padExtNotes.clear();
     document.getElementById('midi-detect').innerHTML = '';
@@ -249,10 +350,10 @@ function transferToChordMode() {
   AppState.mode = 'chord';
   document.getElementById('mode-scale').classList.toggle('active', false);
   document.getElementById('mode-chord').classList.toggle('active', true);
-  document.getElementById('mode-plain').classList.toggle('active', false);
+  document.getElementById('mode-input').classList.toggle('active', false);
   document.getElementById('scale-panel').style.display = 'none';
   document.getElementById('chord-panel').style.display = '';
-  document.getElementById('plain-panel').style.display = 'none';
+  document.getElementById('input-panel').style.display = 'none';
 
   // Update builder UI
   highlightPianoKey('piano-keyboard', rootPC);
@@ -401,21 +502,21 @@ function updatePlainUI() {
   const endBtn = document.getElementById('btn-plain-end');
   if (!statusEl) return;
   if (PlainState.subMode === 'idle') {
-    statusEl.textContent = t('plain.status_idle');
+    statusEl.textContent = t('input.status_idle');
     statusEl.style.color = 'var(--text-muted)';
     captureBtn.textContent = 'Capture';
     captureBtn.style.background = '#2a6e2a';
     endBtn.style.display = 'none';
   } else if (PlainState.subMode === 'capture') {
     const slotNum = Math.min(PlainState.captureIndex + 1, 16);
-    statusEl.textContent = t('plain.status_capturing', {slot: slotNum});
+    statusEl.textContent = t('input.status_capturing', {slot: slotNum});
     statusEl.style.color = '#4a4';
     captureBtn.textContent = 'Capture (' + slotNum + ')';
     captureBtn.style.background = '#2a6e2a';
     endBtn.style.display = '';
   } else if (PlainState.subMode === 'edit') {
     const slotNum = PlainState.currentSlot !== null ? PlainState.currentSlot + 1 : '?';
-    statusEl.textContent = t('plain.status_editing', {slot: slotNum});
+    statusEl.textContent = t('input.status_editing', {slot: slotNum});
     statusEl.style.color = 'var(--accent)';
     captureBtn.textContent = 'Capture';
     captureBtn.style.background = '#2a6e2a';
@@ -524,7 +625,7 @@ function updatePlainDisplay() {
       });
       html += '</div>';
     }
-    html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">' + t('plain.notes_label') + noteNames.join(' ') + '</div>';
+    html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">' + t('input.notes_label') + noteNames.join(' ') + '</div>';
     detectEl.innerHTML = html;
   } else {
     detectEl.textContent = noteNames.join(' ');
@@ -588,8 +689,8 @@ function recallPlainSlot(idx) {
     return;
   }
   // Filled slot in Plain: edit
-  if (AppState.mode !== 'plain') {
-    setMode('plain');
+  if (AppState.mode !== 'input') {
+    setMode('input');
   }
   plainEditSlot(idx);
 }
@@ -696,6 +797,7 @@ function updateMemorySlotUI() {
     var playBtn = document.getElementById('btn-play-slots');
     if (playBtn) playBtn.textContent = sel ? t('memory.play_selected', {chord: sel.chordName}) : t('memory.play_all') + (slotCount ? ' (' + slotCount + ')' : '');
   }
+  updateBankUI();
 }
 
 // SMF Type 0 MIDI export (selected slot → single, no selection → all)
@@ -823,6 +925,242 @@ function toVLQ(value) {
     value >>= 7;
   }
   return bytes.reverse();
+}
+
+// ========================================
+// IMPORT FUNCTIONS
+// ========================================
+
+// --- MIDI Import ---
+function importMidi() {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.mid,.midi';
+  input.onchange = function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var buf = new Uint8Array(ev.target.result);
+      var slots = parseMidiToSlots(buf);
+      if (slots.length === 0) {
+        var toast = document.getElementById('slot-save-toast');
+        toast.textContent = t('notify.no_chords');
+        toast.style.opacity = '1';
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(function() { toast.style.opacity = '0'; }, 2000);
+        return;
+      }
+      pushUndoState();
+      for (var i = 0; i < 16; i++) {
+        PlainState.memory[i] = i < slots.length ? slots[i] : null;
+      }
+      PlainState.currentSlot = null;
+      updateMemorySlotUI();
+      saveAppSettings();
+      var count = slots.filter(function(s) { return s !== null; }).length;
+      var toast = document.getElementById('slot-save-toast');
+      toast.textContent = 'Imported ' + count + ' chords from MIDI';
+      toast.style.opacity = '1';
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(function() { toast.style.opacity = '0'; }, 2000);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+  input.click();
+}
+
+function parseMidiToSlots(buf) {
+  if (buf.length < 14) return [];
+  // Validate MThd
+  if (buf[0] !== 0x4D || buf[1] !== 0x54 || buf[2] !== 0x68 || buf[3] !== 0x64) return [];
+  var ticksPerBeat = (buf[12] << 8) | buf[13];
+
+  // Find first MTrk
+  var pos = 14;
+  while (pos + 8 <= buf.length) {
+    if (buf[pos] === 0x4D && buf[pos+1] === 0x54 && buf[pos+2] === 0x72 && buf[pos+3] === 0x6B) break;
+    pos++;
+  }
+  if (pos + 8 > buf.length) return [];
+  var trackLen = (buf[pos+4] << 24) | (buf[pos+5] << 16) | (buf[pos+6] << 8) | buf[pos+7];
+  pos += 8;
+  var trackEnd = Math.min(pos + trackLen, buf.length);
+
+  // Parse events into timeline
+  var absTick = 0;
+  var runningStatus = 0;
+  var events = [];
+
+  while (pos < trackEnd) {
+    // VLQ delta
+    var delta = 0;
+    while (pos < trackEnd) {
+      var b = buf[pos++];
+      delta = (delta << 7) | (b & 0x7F);
+      if (!(b & 0x80)) break;
+    }
+    absTick += delta;
+    if (pos >= trackEnd) break;
+
+    var status = buf[pos];
+    if (status < 0x80) {
+      status = runningStatus;
+    } else {
+      pos++;
+      if (status >= 0x80 && status < 0xF0) runningStatus = status;
+    }
+
+    var cmd = status & 0xF0;
+    if (cmd === 0x90) {
+      var note = buf[pos++] & 0x7F;
+      var vel = buf[pos++] & 0x7F;
+      events.push({ tick: absTick, type: vel > 0 ? 'on' : 'off', note: note });
+    } else if (cmd === 0x80) {
+      pos += 2; // note + vel (off events tracked but not used for grouping)
+    } else if (status === 0xFF) {
+      var metaType = buf[pos++];
+      var len = 0;
+      while (pos < trackEnd) {
+        var b2 = buf[pos++];
+        len = (len << 7) | (b2 & 0x7F);
+        if (!(b2 & 0x80)) break;
+      }
+      if (metaType === 0x06 && len > 0) {
+        var text = new TextDecoder().decode(buf.slice(pos, pos + len));
+        events.push({ tick: absTick, type: 'marker', marker: text });
+      }
+      if (metaType === 0x2F) break; // End of track
+      pos += len;
+    } else if (status === 0xF0 || status === 0xF7) {
+      var sLen = 0;
+      while (pos < trackEnd) {
+        var b3 = buf[pos++];
+        sLen = (sLen << 7) | (b3 & 0x7F);
+        if (!(b3 & 0x80)) break;
+      }
+      pos += sLen;
+    } else if (cmd === 0xC0 || cmd === 0xD0) {
+      pos++;
+    } else {
+      pos += 2;
+    }
+  }
+
+  // Group Note On clusters at same tick into chords
+  var slots = [];
+  var currentNotes = [];
+  var currentTick = -1;
+  var pendingMarker = null;
+  var activeMarker = null;
+
+  for (var ei = 0; ei < events.length; ei++) {
+    var ev = events[ei];
+    if (ev.type === 'marker') {
+      pendingMarker = ev.marker;
+      continue;
+    }
+    if (ev.type === 'on') {
+      if (currentNotes.length > 0 && ev.tick > currentTick) {
+        // Save previous chord
+        var notes = currentNotes.slice().sort(function(a, b) { return a - b; });
+        var candidates = detectChord(notes);
+        var name = (candidates.length > 0) ? candidates[0].name : (activeMarker || '?');
+        slots.push({ midiNotes: notes, chordName: name });
+        currentNotes = [];
+        activeMarker = null;
+        if (slots.length >= 16) break;
+      }
+      if (currentNotes.length === 0) {
+        activeMarker = pendingMarker;
+        pendingMarker = null;
+      }
+      currentNotes.push(ev.note);
+      currentTick = ev.tick;
+    }
+  }
+  // Save remaining
+  if (currentNotes.length > 0 && slots.length < 16) {
+    var lastNotes = currentNotes.slice().sort(function(a, b) { return a - b; });
+    var lastCandidates = detectChord(lastNotes);
+    var lastName = (lastCandidates.length > 0) ? lastCandidates[0].name : (activeMarker || '?');
+    slots.push({ midiNotes: lastNotes, chordName: lastName });
+  }
+  return slots;
+}
+
+// --- CHS Import (dev only) ---
+function importChs() {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.chs';
+  input.onchange = function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var buf = new Uint8Array(ev.target.result);
+      var slots = parseChsToSlots(buf);
+      var count = slots.filter(function(s) { return s !== null; }).length;
+      if (count === 0) {
+        var toast = document.getElementById('slot-save-toast');
+        toast.textContent = t('notify.no_chords');
+        toast.style.opacity = '1';
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(function() { toast.style.opacity = '0'; }, 2000);
+        return;
+      }
+      pushUndoState();
+      for (var i = 0; i < 16; i++) {
+        PlainState.memory[i] = i < slots.length ? slots[i] : null;
+      }
+      PlainState.currentSlot = null;
+      updateMemorySlotUI();
+      saveAppSettings();
+      // Read chordset name from 0x78
+      var csName = '';
+      for (var ci = 0; ci < 16; ci++) {
+        var ch = buf[0x78 + ci];
+        if (ch === 0) break;
+        csName += String.fromCharCode(ch);
+      }
+      var toast = document.getElementById('slot-save-toast');
+      toast.textContent = 'Imported ' + count + ' chords' + (csName ? ' (' + csName + ')' : '') + ' from CHS';
+      toast.style.opacity = '1';
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(function() { toast.style.opacity = '0'; }, 2000);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+  input.click();
+}
+
+function parseChsToSlots(buf) {
+  if (buf.length < 0x78) return [];
+  // Validate magic bytes
+  if (buf[0] !== 0x83 || buf[1] !== 0x49) return [];
+
+  var slots = [];
+  var hasAny = false;
+  for (var i = 0; i < 13; i++) {
+    var offset = 0x10 + i * 8;
+    // Bytes 1-6: MIDI notes (descending, right-aligned, 0 = empty)
+    var notes = [];
+    for (var j = 1; j <= 6; j++) {
+      var note = buf[offset + j];
+      if (note > 0 && note <= 127) notes.push(note);
+    }
+    if (notes.length === 0) {
+      slots.push(null);
+      continue;
+    }
+    hasAny = true;
+    notes.sort(function(a, b) { return a - b; });
+    var candidates = detectChord(notes);
+    var chordName = candidates.length > 0 ? candidates[0].name : notes.map(function(n) { return NOTE_NAMES_SHARP[n % 12]; }).join(' ');
+    slots.push({ midiNotes: notes, chordName: chordName });
+  }
+  return hasAny ? slots : [];
 }
 
 // Chordcat .chs export (4096 bytes binary)

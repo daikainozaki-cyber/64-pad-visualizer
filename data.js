@@ -246,7 +246,7 @@ const SCALE_DEGREE_NAMES = ['R','b2','2','b3','3','4','b5','5','b6','6','b7','7'
 // ======== STATE ========
 const AppState = {
   key: 0,
-  mode: 'scale',
+  mode: 'scale',  // 'scale' | 'chord' | 'input'
   scaleIdx: 0,
   octaveShift: 0, // -1, 0, +1, +2 — shifts entire grid like Push's octave up/down
   showParentScales: false, // Parent Scale panel toggle
@@ -287,9 +287,30 @@ const PerformState = {
   activePad: null,              // 現在再生中のパッドインデックス
 };
 
+// ======== BANK STATE (v2.50) ========
+const BankState = {
+  banks: [],         // [{id, name, memory: Array(16)}]
+  activeBankId: null,
+};
+
+function getActiveBank() {
+  return BankState.banks.find(b => b.id === BankState.activeBankId) || BankState.banks[0];
+}
+
+function syncMemoryToActiveBank() {
+  const bank = getActiveBank();
+  if (bank) bank.memory = PlainState.memory.map(s => s ? { midiNotes: [...s.midiNotes], chordName: s.chordName } : null);
+}
+
+function loadBankMemory() {
+  const bank = getActiveBank();
+  if (bank) PlainState.memory = bank.memory.map(s => s ? { midiNotes: [...s.midiNotes], chordName: s.chordName } : null);
+}
+
 // ======== SETTINGS PERSISTENCE ========
 function saveAppSettings() {
   try {
+    syncMemoryToActiveBank();
     const s = {
       key: AppState.key,
       mode: AppState.mode,
@@ -301,7 +322,8 @@ function saveAppSettings() {
       showStaff: typeof showStaff !== 'undefined' ? showStaff : true,
       showSound: typeof showSound !== 'undefined' ? showSound : true,
       guitarLabelMode: typeof guitarLabelMode !== 'undefined' ? guitarLabelMode : 'name',
-      memory: PlainState.memory,
+      banks: BankState.banks,
+      activeBankId: BankState.activeBankId,
     };
     localStorage.setItem('64pad-settings', JSON.stringify(s));
   } catch(_) {}
@@ -313,7 +335,8 @@ function loadAppSettings() {
     if (!raw) return;
     const s = JSON.parse(raw);
     if (s.key !== undefined && s.key >= 0 && s.key <= 11) AppState.key = s.key;
-    if (s.mode && ['scale','chord','plain'].includes(s.mode)) AppState.mode = s.mode;
+    if (s.mode === 'plain') s.mode = 'input';
+    if (s.mode && ['scale','chord','input'].includes(s.mode)) AppState.mode = s.mode;
     if (s.scaleIdx !== undefined && s.scaleIdx >= 0 && s.scaleIdx < SCALES.length) AppState.scaleIdx = s.scaleIdx;
     if (s.octaveShift !== undefined && s.octaveShift >= -1 && s.octaveShift <= 3) AppState.octaveShift = s.octaveShift;
     if (s.showGuitar !== undefined) showGuitar = s.showGuitar;
@@ -322,7 +345,19 @@ function loadAppSettings() {
     if (s.showStaff !== undefined) showStaff = s.showStaff;
     if (s.showSound !== undefined) showSound = s.showSound;
     if (s.guitarLabelMode) guitarLabelMode = s.guitarLabelMode;
-    if (Array.isArray(s.memory) && s.memory.length === 16) PlainState.memory = s.memory;
+    // Migration: banks
+    if (Array.isArray(s.banks) && s.banks.length > 0) {
+      BankState.banks = s.banks;
+      BankState.activeBankId = s.activeBankId || s.banks[0].id;
+    } else if (Array.isArray(s.memory) && s.memory.length === 16) {
+      // Legacy: wrap existing memory as "Bank 1"
+      BankState.banks = [{ id: 'default', name: 'Bank 1', memory: s.memory }];
+      BankState.activeBankId = 'default';
+    } else {
+      BankState.banks = [{ id: 'default', name: 'Bank 1', memory: Array(16).fill(null) }];
+      BankState.activeBankId = 'default';
+    }
+    loadBankMemory();
   } catch(_) {}
 }
 
@@ -347,7 +382,8 @@ if (typeof module !== 'undefined') module.exports = {
   BUILDER_QUALITIES, TENSION_ROWS, SCALE_AVAIL_TENSIONS,
   GRID, ROWS, COLS, BASE_MIDI, ROW_INTERVAL, COL_INTERVAL, PAD_SIZE, PAD_GAP, MARGIN,
   SCALE_DEGREE_NAMES, PC_TO_TENSION_NAME, TENSION_NAME_TO_PC,
-  AppState, BuilderState, VoicingState, PlainState, PerformState,
+  AppState, BuilderState, VoicingState, PlainState, PerformState, BankState,
   resetVoicingSelection, getParentMajorKey, pcName, onReady, IS_DEV,
+  getActiveBank, syncMemoryToActiveBank, loadBankMemory,
 };
 

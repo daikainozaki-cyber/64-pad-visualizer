@@ -19,15 +19,15 @@ I18N.init();
   // Mode buttons & panels
   document.getElementById('mode-scale').classList.toggle('active', AppState.mode === 'scale');
   document.getElementById('mode-chord').classList.toggle('active', AppState.mode === 'chord');
-  document.getElementById('mode-plain').classList.toggle('active', AppState.mode === 'plain');
+  document.getElementById('mode-input').classList.toggle('active', AppState.mode === 'input');
   document.getElementById('scale-panel').style.display = AppState.mode === 'scale' ? '' : 'none';
   document.getElementById('chord-panel').style.display = AppState.mode === 'chord' ? '' : 'none';
-  document.getElementById('plain-panel').style.display = AppState.mode === 'plain' ? '' : 'none';
+  document.getElementById('input-panel').style.display = AppState.mode === 'input' ? '' : 'none';
   if (AppState.mode === 'chord' && BuilderState.step === 0) {
     BuilderState.root = AppState.key;
     setBuilderStep(1);
   }
-  if (AppState.mode === 'plain') {
+  if (AppState.mode === 'input') {
     PlainState.subMode = 'idle';
     updatePlainUI();
     updatePlainDisplay();
@@ -50,6 +50,12 @@ I18N.init();
   document.getElementById('guitar-label-btn').textContent = guitarLabelMode === 'name' ? t('label.note_name') : t('label.degree');
   // Memory slots UI
   updateMemorySlotUI();
+  // Bank UI (ensure banks initialized even without saved data)
+  if (BankState.banks.length === 0) {
+    BankState.banks = [{ id: 'default', name: 'Bank 1', memory: Array(16).fill(null) }];
+    BankState.activeBankId = 'default';
+  }
+  updateBankUI();
 })();
 
 // ========================================
@@ -61,6 +67,10 @@ document.addEventListener('keydown', (e) => {
 
   const key = e.key;
   const lk = key.toLowerCase(); // for letter key matching (case-insensitive)
+
+  // [ / ]: Bank switch (全モード共通)
+  if (key === '[') { switchBank(-1); return; }
+  if (key === ']') { switchBank(1); return; }
 
   // Shift+数字: Save current chord to Plain memory slot (全モード共通)
   if (e.shiftKey && e.code && e.code.startsWith('Digit')) {
@@ -89,7 +99,7 @@ document.addEventListener('keydown', (e) => {
       saveToPlainSlot(PlainState.currentSlot);
       return;
     }
-    if (AppState.mode === 'plain') { plainCapture(); return; }
+    if (AppState.mode === 'input') { plainCapture(); return; }
     // Chord/Scale mode: fall through to voicing box A-I handler below
   }
 
@@ -98,7 +108,7 @@ document.addEventListener('keydown', (e) => {
     const helpOverlay = document.getElementById('help-overlay');
     if (helpOverlay.classList.contains('active')) {
       helpOverlay.classList.remove('active');
-    } else if (AppState.mode === 'plain' && (PlainState.subMode === 'edit' || PlainState.subMode === 'capture')) {
+    } else if (AppState.mode === 'input' && (PlainState.subMode === 'edit' || PlainState.subMode === 'capture')) {
       PlainState.subMode = 'idle';
       PlainState.activeNotes.forEach(m => noteOff(m));
       PlainState.activeNotes.clear();
@@ -145,7 +155,7 @@ document.addEventListener('keydown', (e) => {
 
   // Arrow Up/Down: Inversion (Plain: move lowest/highest note ±1oct, Chord: cycle inversion)
   if (key === 'ArrowUp' || key === 'ArrowDown') {
-    if (AppState.mode === 'plain' && PlainState.activeNotes.size >= 2) {
+    if (AppState.mode === 'input' && PlainState.activeNotes.size >= 2) {
       e.preventDefault();
       const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
       PlainState.activeNotes.clear();
@@ -171,7 +181,7 @@ document.addEventListener('keydown', (e) => {
 
   // Arrow Left/Right: Chromatic transpose (Plain: all notes ±1, Chord: root ±1)
   if (key === 'ArrowLeft' || key === 'ArrowRight') {
-    if (AppState.mode === 'plain' && PlainState.activeNotes.size > 0) {
+    if (AppState.mode === 'input' && PlainState.activeNotes.size > 0) {
       e.preventDefault();
       const delta = key === 'ArrowRight' ? 1 : -1;
       const newNotes = new Set();
@@ -190,7 +200,7 @@ document.addEventListener('keydown', (e) => {
   }
 
   // Plain mode shortcuts
-  if (AppState.mode === 'plain') {
+  if (AppState.mode === 'input') {
     if (lk === 'e') { plainEnd(); return; }
     if (lk === 'x') { clearPlainNotes(); return; }
     // Number keys 1-9, 0: recall/edit slot (1-9→slot 0-8, 0→slot 9)
@@ -236,7 +246,7 @@ document.addEventListener('keydown', (e) => {
 
   // x: Clear (chord or plain)
   if (lk === 'x') {
-    if (AppState.mode === 'plain') {
+    if (AppState.mode === 'input') {
       clearPlainNotes();
     } else if (AppState.mode === 'chord') {
       builderClear();

@@ -472,6 +472,45 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   border-color: var(--accent);
 }
 
+/* === Bank Bar (v2.50) === */
+.bank-nav-btn {
+  width: 26px; height: 26px;
+  font-size: 0.75rem; font-weight: 700;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  transition: all 0.15s;
+}
+.bank-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+.bank-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bank-label:hover { background: rgba(74,158,255,0.1); }
+.bank-popup-item {
+  display: block; width: 100%;
+  font-size: 0.65rem; padding: 4px 10px;
+  background: none; color: var(--text);
+  border: none; border-radius: 3px;
+  cursor: pointer; text-align: left;
+}
+.bank-popup-item:hover { background: rgba(74,158,255,0.15); }
+.bank-popup-danger { color: #e57373; }
+.bank-popup-danger:hover { background: rgba(229,115,115,0.15); }
+
 /* Parent Scale Panel */
 #parent-scale-toggle { margin-top: 4px; text-align: center; }
 #parent-scale-panel {

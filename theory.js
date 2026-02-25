@@ -665,7 +665,7 @@ function getDiatonicTetrads(scalePCS, key) {
 function renderDiatonicBar() {
   const bar = document.getElementById('diatonic-bar');
   if (!bar) return;
-  if (AppState.mode === 'plain') {
+  if (AppState.mode === 'input') {
     bar.style.display = 'none';
     bar.innerHTML = '';
     return;
@@ -910,10 +910,10 @@ function onDiatonicClick(tetrad) {
   AppState.mode = 'chord';
   document.getElementById('mode-scale').classList.toggle('active', false);
   document.getElementById('mode-chord').classList.toggle('active', true);
-  document.getElementById('mode-plain').classList.toggle('active', false);
+  document.getElementById('mode-input').classList.toggle('active', false);
   document.getElementById('scale-panel').style.display = 'none';
   document.getElementById('chord-panel').style.display = '';
-  document.getElementById('plain-panel').style.display = 'none';
+  document.getElementById('input-panel').style.display = 'none';
 
   // Set builder state
   BuilderState._fromDiatonic = true;

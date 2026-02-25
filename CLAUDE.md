@@ -1,6 +1,6 @@
 # 64 Pad Explorer - CLAUDE.md
 
-**最終更新**: 2026-02-20
+**最終更新**: 2026-02-25
 **担当人格**: 蔵人（実装）、継次（設計）、フロ男（テンション・ボイシング設計）
 **バージョン**: V2.17（2026-02-20）
 
@@ -895,11 +895,35 @@ z x c v   → slot 13-16
 **状況**: CHS形式（`.chs`、4096バイト）はChordcatアプリのバイナリフォーマットをリバースエンジニアリングしたもの。Chordcatの会社との交渉前に本番公開するのはNG。
 
 **現在の対応**:
-- `IS_DEV = location.pathname.indexOf('64-pad-dev') !== -1` でURL判定
+- `IS_DEV` でURL判定（`64-pad-dev` または `64-pad-chs` パスで有効）
 - 本番（`/apps/64-pad/`）→ CHS Exportボタン非表示
-- テスト環境（`/apps/64-pad-dev/`）→ CHS Export表示（HPS内輪デバッグ用）
+- CHS専用（`/apps/64-pad-chs/`）→ CHS Export表示（deploy-chs.yml workflow_dispatch）
+- テスト環境（`/apps/64-pad-dev/`）→ CHS Export表示
 
 **解除条件**: Chordcatの会社と交渉し、許可を得たら `IS_DEV` チェックを外す
+
+#### CHS フォーマット解析（2026-02-25更新）
+
+**ファイル構造** (4096バイト、Chordcat native exportとの比較で確定):
+- `0x00-0x01`: マジック `83 49`
+- `0x02-0x0F`: ヘッダ（0x0Fは0x00/0x10混在、コードセットにより変動）
+- `0x10-0x77`: 13スロット × 8バイト（+0=00, +1〜+6=MIDIノート降順・右詰め, +7=00）
+- `0x78-0x87`: Chordset名（NULL終端）
+- `0x88`: Chordcat内部スロットID（Manager UI上のID番号に対応）
+- `0x8A`, `0x8C`: 不明メタデータ（BPM等の設定値？コードセットにより変動）
+- `0xFB4-0xFC0`: Chordset名の複製
+
+**PadExplorer export修正済み（2026-02-25）**:
+- ノート格納: バイト1-6、6音まで、右詰め（少ない音数は左側が0x00パディング）
+- 名前: 0x78 + 0xFB4 の両方に書き込み
+- ヘッダ/メタデータ: 固定値を書かない（0x00、Managerに任せる）
+
+**Chordcat Manager転送バグ（2026-02-25確定）**:
+- ManagerからCHSファイルを転送すると名前とIDは反映されるがコードデータが反映されない
+- Chordcat本体から書き出したCHSファイルを再読み込みしても同じ症状（コードデータ空）
+- つまりChordcat自身のexportすら再importできない = Manager側のバグ確定
+- AlphaThetaに動画付きでバグ報告済み（2026-02-25）
+- 2026-02-26に担当者と話す予定
 
 ---
 

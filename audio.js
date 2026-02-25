@@ -338,7 +338,7 @@ function playMidiNotes(midiNotes) {
 onReady(() => {
   // Hide CHS export on production (reverse-engineered Chordcat format — dev only)
   if (!IS_DEV) {
-    ['btn-chs-export-plain', 'btn-chs-export-mem'].forEach(function(id) { var b = document.getElementById(id); if (b) b.style.display = 'none'; });
+    ['btn-chs-export-plain', 'btn-chs-export-mem', 'btn-chs-import'].forEach(function(id) { var b = document.getElementById(id); if (b) b.style.display = 'none'; });
   }
   [['snd-reverb','snd-rev-val'],['snd-volume','snd-vol-val'],['snd-tremolo','snd-trm-val'],['snd-tremolo-spd','snd-trm-spd-val'],['snd-phaser','snd-phs-val'],['snd-flanger','snd-flg-val']].forEach(([sid, vid]) => {
     const s = document.getElementById(sid);

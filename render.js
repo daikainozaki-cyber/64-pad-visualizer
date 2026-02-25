@@ -12,7 +12,7 @@ function computeRenderState() {
   let qualityPCS = null;
   let avoidPCS = new Set();
 
-  if (AppState.mode === 'plain') {
+  if (AppState.mode === 'input') {
     let notes = [...PlainState.activeNotes].sort((a, b) => a - b);
     activePCS = new Set(notes.map(n => n % 12));
     // Merge instrument input notes for unified chord detection
@@ -23,7 +23,7 @@ function computeRenderState() {
       instrNotes.forEach(n => activePCS.add(n % 12));
     }
     // Detect chord → rootPC for instrument diagrams, staff, and pad root highlight
-    // Pad degree labels remain hidden (guarded by AppState.mode !== 'plain')
+    // Pad degree labels remain hidden (guarded by AppState.mode !== 'input')
     rootPC = null;
     if (notes.length >= 2) {
       const candidates = detectChord(notes);
@@ -169,10 +169,10 @@ function renderPads(svg, state) {
       const isOverlay = !isOmitted && overlayPCS && overlayPCS.has(pc) && !activePCS.has(pc);
 
       // Plain mode: highlight selected notes only
-      const isPlainActive = AppState.mode === 'plain' && PlainState.activeNotes.has(midi);
+      const isPlainActive = AppState.mode === 'input' && PlainState.activeNotes.has(midi);
 
       let fill = 'var(--pad-off)', textColor = 'var(--text-muted)';
-      if (AppState.mode === 'plain') {
+      if (AppState.mode === 'input') {
         if (isPlainActive) {
           if (isRoot) { fill = 'var(--pad-root)'; textColor = '#000'; }
           else { fill = 'var(--pad-chord)'; textColor = '#000'; }
@@ -209,7 +209,7 @@ function renderPads(svg, state) {
       (function(m, r) {
         r.addEventListener('mousedown', (e) => {
           e.preventDefault();
-          if (AppState.mode === 'plain') { togglePlainNote(m); }
+          if (AppState.mode === 'input') { togglePlainNote(m); }
           else {
             _heldMidi = m; noteOn(m);
             if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
@@ -233,7 +233,7 @@ function renderPads(svg, state) {
         });
         r.addEventListener('touchstart', (e) => {
           e.preventDefault();
-          if (AppState.mode === 'plain') { togglePlainNote(m); }
+          if (AppState.mode === 'input') { togglePlainNote(m); }
           else {
             _heldTouchMidi = m; noteOn(m);
             if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
@@ -478,17 +478,17 @@ function render() {
 
   const state = computeRenderState();
   renderPads(svg, state);
-  if (AppState.mode !== 'plain') {
+  if (AppState.mode !== 'input') {
     renderVoicingBoxes(svg, state);
   }
   renderInfoText(state);
   renderLegend(state);
 
   // Staff notation
-  if (AppState.mode === 'plain') {
+  if (AppState.mode === 'input') {
     // Plain mode: show selected notes on staff
     const plainNotes = [...PlainState.activeNotes].sort((a, b) => a - b);
-    renderStaff('plain', state.rootPC, state.activePCS, state.omittedPCS, null, plainNotes.length > 0 ? plainNotes : [], null);
+    renderStaff('input', state.rootPC, state.activePCS, state.omittedPCS, null, plainNotes.length > 0 ? plainNotes : [], null);
   } else {
     const boxMidi = (VoicingState.selectedBoxIdx !== null && VoicingState.lastBoxes[VoicingState.selectedBoxIdx])
       ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx].midiNotes : null;
@@ -1504,7 +1504,7 @@ function updateInstrumentInput() {
   if (instrumentInputActive) ensureAudioResumed();
   if (instrNotes.length === 0) {
     document.querySelectorAll('.instrument-highlight').forEach(el => el.remove());
-    if (AppState.mode === 'plain') {
+    if (AppState.mode === 'input') {
       updatePlainDisplay(); // Plain mode: unified display handles #midi-detect
     } else {
       const detectEl = document.getElementById('midi-detect');
@@ -1519,7 +1519,7 @@ function updateInstrumentInput() {
   }
 
   // Plain mode: delegate #midi-detect to updatePlainDisplay() for unified display
-  if (AppState.mode === 'plain') {
+  if (AppState.mode === 'input') {
     const inputPCS = new Set(instrNotes.map(n => n % 12));
     const candidates = detectChord(instrNotes);
     if (candidates.length > 0) {
@@ -1568,7 +1568,7 @@ function updateInstrumentInput() {
       });
       html += '</div>';
     }
-    html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">' + t('plain.notes_label') + noteNames.join(' ') + '</div>';
+    html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">' + t('input.notes_label') + noteNames.join(' ') + '</div>';
     detectEl.innerHTML = html;
     if (AppState.mode === 'chord') {
       const mergedPCS = new Set(lastRenderActivePCS);
@@ -1764,7 +1764,7 @@ function renderParentScales() {
         hasTension = true;
       }
     }
-  } else if (AppState.mode === 'plain' && PlainState.activeNotes.size >= 3) {
+  } else if (AppState.mode === 'input' && PlainState.activeNotes.size >= 3) {
     // Plain mode: detect chord from active notes
     const notes = [...PlainState.activeNotes].sort((a, b) => a - b);
     const candidates = detectChord(notes);
@@ -1774,7 +1774,7 @@ function renderParentScales() {
       qualityIntervals = new Set(pcs.map(pc => ((pc - psRoot) + 12) % 12));
       fullAbsSet = new Set(pcs);
       hasTension = false; // Plain: all notes as one unit, all exact
-      newFPSource = 'plain:' + pcs.sort((a, b) => a - b).join(',');
+      newFPSource = 'input:' + pcs.sort((a, b) => a - b).join(',');
     }
   }
 

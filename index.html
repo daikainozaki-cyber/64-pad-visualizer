@@ -470,7 +470,8 @@
   <span class="dot" onclick="goToScreen(2)"></span>
 </div>
 
-<!-- Affiliate Banners -->
+<!-- Affiliate Banners (hidden on dev/chs URLs) -->
+<div id="affiliate-section">
 <p style="text-align:center;font-size:0.65rem;color:var(--text-muted);margin:12px 0 2px;opacity:0.6;" data-i18n="ui.affiliate_label">徳を積みたい方はこちら…</p>
 <div style="display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;padding:0 8px 8px;opacity:0.7;">
   <a href="https://h.accesstrade.net/sp/cc?rk=01000gil00iidb" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" target="_blank"><img src="https://h.accesstrade.net/sp/rr?rk=01000gil00iidb" alt="サウンドハウス" border="0" style="vertical-align:middle;"></a>
@@ -480,6 +481,8 @@
   <a href="https://h.accesstrade.net/sp/cc?rk=0100pqbq00iidb" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" target="_blank"><img src="https://h.accesstrade.net/sp/rr?rk=0100pqbq00iidb" alt="メルカリ購入" border="0" style="vertical-align:middle;"></a>
   <a href="https://www.loopcloud.com/cloud/subscriptions/plans?a_aid=5dddfe6ee2cc6&amp;a_bid=1db32457" target="_blank" rel="nofollow"><img src="//loopmasters.postaffiliatepro.com/accounts/default1/hfwq3b89wu2/1db32457.jpg" alt="Loopcloud" width="300" height="50" style="border:none;vertical-align:middle;"></a>
 </div>
+</div>
+<script>if(/64-pad-dev|64-pad-chs/.test(location.pathname)){var el=document.getElementById('affiliate-section');if(el)el.style.display='none';}</script>
 
 <!-- i18n (engine → language files) -->
 <script src="i18n.js?v=3.0.0"></script>

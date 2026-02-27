@@ -1,6 +1,7 @@
 // ========================================
 // AUDIO ENGINE
 // ========================================
+const _isDesktop = typeof window.__JUCE__ !== 'undefined';
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // --- Master audio graph ---
@@ -272,6 +273,12 @@ function renderSoundControls() {
 const activeVoices = new Map(); // midi → { envelope }
 
 function noteOn(midi, velocity, poly, _retries) {
+  velocity = velocity || 0.8;
+  // Desktop: route to JUCE native audio engine
+  if (_isDesktop) {
+    window.__JUCE__._callNative("noteOn")(midi, velocity);
+    return;
+  }
   ensureAudioResumed();
   // Kill same note if re-triggered
   const existing = activeVoices.get(midi);
@@ -280,7 +287,6 @@ function noteOn(midi, velocity, poly, _retries) {
     activeVoices.delete(midi);
   }
 
-  velocity = velocity || 0.8;
   // queueWaveTable: sustain for very long duration, cancel on noteOff
   const envelope = wafPlayer.queueWaveTable(
     audioCtx, masterGain, AudioState.instrument.data,
@@ -298,6 +304,10 @@ function noteOn(midi, velocity, poly, _retries) {
 }
 
 function noteOff(midi) {
+  if (_isDesktop) {
+    window.__JUCE__._callNative("noteOff")(midi);
+    return;
+  }
   const v = activeVoices.get(midi);
   if (!v) return;
   try { v.envelope.cancel(); } catch(_){}
@@ -305,10 +315,76 @@ function noteOff(midi) {
 }
 
 function noteOffAll() {
+  if (_isDesktop) {
+    window.__JUCE__._callNative("allNotesOff")();
+    return;
+  }
   for (const [midi, v] of [...activeVoices.entries()]) {
     v.envelope.cancel();
   }
   activeVoices.clear();
+}
+
+// --- Velocity curve (Push 3-style 4-parameter) ---
+function applyVelocityCurve(velocity127) {
+  const { velThreshold, velDrive, velCompand, velRange } = AppState;
+  if (velocity127 <= velThreshold) return 0;
+  let x = (velocity127 - velThreshold) / (127 - velThreshold);
+  // Drive: power curve (+drive → concave/soft=loud, -drive → convex/need harder)
+  const exp = Math.pow(2, -velDrive / 32);
+  x = Math.pow(x, exp);
+  // Compand: compress(+)/expand(-) dynamic range
+  if (velCompand !== 0) {
+    const c = velCompand / 64;
+    if (c > 0) {
+      x = x + c * (0.7 - x) * x * 2;
+    } else {
+      const a = -c;
+      x = x < 0.5
+        ? 0.5 * Math.pow(2 * x, 1 + a * 2)
+        : 1 - 0.5 * Math.pow(2 * (1 - x), 1 + a * 2);
+    }
+  }
+  return Math.min(1, Math.max(0, x)) * (velRange / 127);
+}
+
+function drawVelocityCurve() {
+  const canvas = document.getElementById('vel-curve-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2);
+  ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h);
+  ctx.stroke();
+  // Diagonal reference (linear)
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.beginPath();
+  ctx.moveTo(0, h); ctx.lineTo(w, 0);
+  ctx.stroke();
+  // Velocity curve
+  ctx.strokeStyle = '#00d4ff';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i <= w; i++) {
+    const vel127 = (i / w) * 127;
+    const out = applyVelocityCurve(vel127);
+    const y = h - out * h;
+    i === 0 ? ctx.moveTo(i, y) : ctx.lineTo(i, y);
+  }
+  ctx.stroke();
+}
+
+function syncVelocityToDesktop() {
+  if (_isDesktop) {
+    window.__JUCE__._callNative("setVelocityParams")(
+      AppState.velThreshold, AppState.velDrive, AppState.velCompand, AppState.velRange
+    );
+  }
 }
 
 // Global held-note tracking (mouse / touch)
@@ -431,6 +507,33 @@ onReady(() => {
   if (presetSel) {
     presetSel.addEventListener('change', () => { setPreset(presetSel.value); saveSoundSettings(); });
   }
+
+  // Velocity sensitivity sliders
+  const velSliders = [
+    ['vel-threshold', 'vel-thr-val', 'velThreshold'],
+    ['vel-drive', 'vel-drv-val', 'velDrive'],
+    ['vel-compand', 'vel-cmp-val', 'velCompand'],
+    ['vel-range', 'vel-rng-val', 'velRange'],
+  ];
+  velSliders.forEach(([sid, vid, key]) => {
+    const s = document.getElementById(sid);
+    const v = document.getElementById(vid);
+    if (s && v) {
+      // Initialize from AppState
+      s.value = AppState[key];
+      v.textContent = AppState[key];
+      s.addEventListener('input', () => {
+        AppState[key] = parseInt(s.value);
+        v.textContent = s.value;
+        drawVelocityCurve();
+        syncVelocityToDesktop();
+        saveAppSettings();
+      });
+    }
+  });
+  drawVelocityCurve();
+  syncVelocityToDesktop();
+
   renderSoundControls();
   loadSoundSettings();
 });

@@ -251,6 +251,11 @@ const AppState = {
   octaveShift: 0, // -1, 0, +1, +2 — shifts entire grid like Push's octave up/down
   showParentScales: false, // Parent Scale panel toggle
   psSortMode: 'practical', // 'practical' | 'diatonic'
+  // Velocity sensitivity (Push 3-style parameters)
+  velThreshold: 0,   // 0-64: minimum input velocity, below = no sound
+  velDrive: 0,       // -64 to +64: curve rise (+soft=loud, -need harder touch)
+  velCompand: 0,     // -64 to +64: dynamic range compress(+)/expand(-)
+  velRange: 127,     // 1-127: max output velocity
 };
 
 const BuilderState = {
@@ -322,6 +327,10 @@ function saveAppSettings() {
       showStaff: typeof showStaff !== 'undefined' ? showStaff : true,
       showSound: typeof showSound !== 'undefined' ? showSound : true,
       guitarLabelMode: typeof guitarLabelMode !== 'undefined' ? guitarLabelMode : 'name',
+      velThreshold: AppState.velThreshold,
+      velDrive: AppState.velDrive,
+      velCompand: AppState.velCompand,
+      velRange: AppState.velRange,
       banks: BankState.banks,
       activeBankId: BankState.activeBankId,
     };
@@ -345,6 +354,10 @@ function loadAppSettings() {
     if (s.showStaff !== undefined) showStaff = s.showStaff;
     if (s.showSound !== undefined) showSound = s.showSound;
     if (s.guitarLabelMode) guitarLabelMode = s.guitarLabelMode;
+    if (s.velThreshold !== undefined) AppState.velThreshold = s.velThreshold;
+    if (s.velDrive !== undefined) AppState.velDrive = s.velDrive;
+    if (s.velCompand !== undefined) AppState.velCompand = s.velCompand;
+    if (s.velRange !== undefined) AppState.velRange = s.velRange;
     // Migration: banks
     if (Array.isArray(s.banks) && s.banks.length > 0) {
       BankState.banks = s.banks;

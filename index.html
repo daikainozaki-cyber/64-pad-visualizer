@@ -3,21 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>64 Pad Explorer V3.0</title>
+<title>64 Pad Explorer V3.1</title>
 <meta name="description" content="コードがわからなくても大丈夫。64パッドでスケール・コード・ボイシングを可視化。ギター・鍵盤からのコード判定、手形表示、Available Scale逆引き、MIDI書き出し対応。ブラウザだけで動く音源内蔵の音楽理論ツール。">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="img/icon-192.png">
 <meta name="theme-color" content="#1a1a2e">
-<!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZWTBLDWP7P"></script>
+<!-- Google Analytics (Web only, skip in Desktop JUCE wrapper) -->
 <script>
+if (typeof window.__JUCE__ === 'undefined') {
+  var s = document.createElement('script');
+  s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=G-ZWTBLDWP7P';
+  document.head.appendChild(s);
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
   gtag('config', 'G-ZWTBLDWP7P');
+}
 </script>
-<link rel="stylesheet" href="style.css?v=3.0.0">
+<link rel="stylesheet" href="style.css?v=3.1.0">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -37,7 +41,7 @@
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V3.0</span>
+  <span class="version-tag">V3.1</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -197,6 +201,7 @@
 
     <h2>Version History</h2>
     <ul style="font-size:0.75rem;color:var(--text-muted);">
+      <li><b>V3.1</b> (2026-02-27) — ベロシティ感度調整（Threshold / Drive / Compand / Range の4パラメータ、Push 3風UIとカーブ可視化）。Push 3オクターブボタン対応（CC#54/55でアプリ内オクターブ連動）。Desktop版互換コードSSOT化。<a href="https://youtu.be/4vCkISlMVxc" target="_blank" style="color:var(--accent);">紹介動画</a></li>
       <li><b>V2.50</b> (2026-02-25) — 複数メモリーバンク: 曲ごとに16スロット×最大16バンク。バンク切替・追加・複製・削除・リネーム対応。既存データは自動マイグレーション。[/]キーでバンク切替</li>
       <li><b>V2.18</b> (2026-02-20) — 全設定保存: キー/スケール/モード/オクターブ/表示トグル/音名度数切替/メモリースロット16個をlocalStorageに自動保存・復元。音色(V2.16)+MIDIデバイス(V2.17)と合わせて全設定が永続化</li>
       <li><b>V2.17</b> (2026-02-20) — MIDIデバイス設定保存: 選択したMIDI入力デバイスをlocalStorageに保存。ページリロード後も自動選択（デバイス名で照合、ID変更に対応）</li>
@@ -423,6 +428,16 @@
           <label class="ep-knob"><span>TREM</span><input type="range" id="snd-tremolo" min="0" max="0.4" step="0.01" value="0"><span id="snd-trm-val" class="ep-val">0.00</span></label>
           <label class="ep-knob"><span>SPEED</span><input type="range" id="snd-tremolo-spd" min="1" max="12" step="0.1" value="4.5"><span id="snd-trm-spd-val" class="ep-val">4.5</span></label>
         </div>
+        <div id="vel-section" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--border);">
+          <div style="font-size:0.55rem;color:var(--text-muted);text-align:center;margin-bottom:2px;">VELOCITY SENSITIVITY</div>
+          <div style="display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;">
+            <label class="ep-knob"><span>THRESH</span><input type="range" id="vel-threshold" min="0" max="64" step="1" value="0"><span id="vel-thr-val" class="ep-val">0</span></label>
+            <label class="ep-knob"><span>DRIVE</span><input type="range" id="vel-drive" min="-64" max="64" step="1" value="0"><span id="vel-drv-val" class="ep-val">0</span></label>
+            <label class="ep-knob"><span>COMP</span><input type="range" id="vel-compand" min="-64" max="64" step="1" value="0"><span id="vel-cmp-val" class="ep-val">0</span></label>
+            <label class="ep-knob"><span>RANGE</span><input type="range" id="vel-range" min="1" max="127" step="1" value="127"><span id="vel-rng-val" class="ep-val">127</span></label>
+          </div>
+          <canvas id="vel-curve-canvas" width="200" height="60" style="display:block;margin:4px auto 0;border-radius:4px;background:rgba(0,0,0,0.3);"></canvas>
+        </div>
       </div>
     </div>
     <!-- Memory Slots (always visible, all modes) -->
@@ -485,25 +500,25 @@
 <script>if(/64-pad-dev|64-pad-chs/.test(location.pathname)){var el=document.getElementById('affiliate-section');if(el)el.style.display='none';}</script>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.0.0"></script>
-<script src="lang-en.js?v=3.0.0"></script>
-<script src="lang-ja.js?v=3.0.0"></script>
-<script src="lang-zh.js?v=3.0.0"></script>
-<script src="lang-es.js?v=3.0.0"></script>
-<script src="lang-fr.js?v=3.0.0"></script>
-<script src="lang-pt.js?v=3.0.0"></script>
-<script src="lang-de.js?v=3.0.0"></script>
-<script src="lang-ko.js?v=3.0.0"></script>
-<script src="lang-it.js?v=3.0.0"></script>
+<script src="i18n.js?v=3.1.0"></script>
+<script src="lang-en.js?v=3.1.0"></script>
+<script src="lang-ja.js?v=3.1.0"></script>
+<script src="lang-zh.js?v=3.1.0"></script>
+<script src="lang-es.js?v=3.1.0"></script>
+<script src="lang-fr.js?v=3.1.0"></script>
+<script src="lang-pt.js?v=3.1.0"></script>
+<script src="lang-de.js?v=3.1.0"></script>
+<script src="lang-ko.js?v=3.1.0"></script>
+<script src="lang-it.js?v=3.1.0"></script>
 <!-- App JS -->
-<script src="data.js?v=3.0.0"></script>
-<script src="audio.js?v=3.0.0"></script>
-<script src="theory.js?v=3.0.0"></script>
-<script src="render.js?v=3.0.0"></script>
-<script src="plain.js?v=3.0.0"></script>
-<script src="perform.js?v=3.0.0"></script>
-<script src="builder.js?v=3.0.0"></script>
-<script src="main.js?v=3.0.0"></script>
-<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
+<script src="data.js?v=3.1.0"></script>
+<script src="audio.js?v=3.1.0"></script>
+<script src="theory.js?v=3.1.0"></script>
+<script src="render.js?v=3.1.0"></script>
+<script src="plain.js?v=3.1.0"></script>
+<script src="perform.js?v=3.1.0"></script>
+<script src="builder.js?v=3.1.0"></script>
+<script src="main.js?v=3.1.0"></script>
+<script>if (typeof window.__JUCE__ === 'undefined' && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </body>
 </html>

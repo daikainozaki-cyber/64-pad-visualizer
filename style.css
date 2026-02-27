@@ -320,7 +320,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .pad-label { pointer-events: none; user-select: none; }
 
 /* === Legend & Info === */
-.pad-footer { height: 50px; overflow: hidden; }
+.pad-footer { height: 40px; overflow: hidden; }
 .legend { display: flex; gap: 14px; margin-top: 10px; font-size: 0.7rem; flex-wrap: wrap; justify-content: center; }
 .legend-item { display: flex; align-items: center; gap: 4px; }
 .legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
@@ -360,6 +360,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   cursor: pointer; letter-spacing: 0.5px; font-weight: 600;
 }
 .engine-btn.active { background: var(--accent); color: #000; }
+@keyframes hint-pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
 
 /* === Filter Toggle (Lo Cut / Hi Cut) === */
 .filter-toggle {
@@ -410,7 +411,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   gap: 3px;
 }
 .slot-btn {
-  aspect-ratio: 1;
+  height: 52px;
   background: var(--pad-off);
   border: 2px solid var(--border);
   border-radius: 8px;
@@ -654,6 +655,17 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 }
 
 /* ============================================
+   TABLET (768px - 1100px) — iPad etc.
+   All panels shrink to fit one screen
+   ============================================ */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .pad-area { flex-shrink: 1; min-width: 320px; }
+  .pad-area #pad-grid { width: 100%; height: auto; display: block; }
+  .control-panel { flex-shrink: 1; min-width: 300px; }
+  #staff-ep-panel { min-width: 280px !important; flex-shrink: 1; }
+}
+
+/* ============================================
    MOBILE PORTRAIT (max-width: 767px)
    3-screen horizontal swipe
    ============================================ */
@@ -685,6 +697,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
     -webkit-overflow-scrolling: touch;
     gap: 0;
     height: calc(100dvh - 60px);
+
     justify-content: flex-start;
     align-items: stretch;
   }
@@ -699,6 +712,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
     flex: 0 0 100vw;
     min-width: 100vw;
     max-width: 100vw;
+
     scroll-snap-align: start;
     overflow-y: auto;
     overflow-x: hidden;
@@ -749,7 +763,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 
   /* Memory section on Screen 2 */
   #memory-section { margin-top: 4px; }
-  .slot-btn { font-size: 0.55rem; }
+  .slot-btn { font-size: 0.55rem; height: auto; aspect-ratio: 1; }
   .bank-label { font-size: 0.6rem; max-width: 140px; }
 
   /* Staff & sound on Screen 3 */
@@ -778,6 +792,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr;
     height: calc(100dvh - 4px);
+
     gap: 4px;
     overflow: hidden;
   }
@@ -785,6 +800,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   /* Pad area: left column */
   .pad-area {
     grid-column: 1;
+
     overflow-y: auto;
     padding: 2px;
   }
@@ -802,11 +818,13 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   .control-panel {
     grid-column: 2;
     width: auto;
+
     overflow-y: auto;
     border-radius: 6px;
   }
   #staff-ep-panel {
     grid-column: 2;
+
     overflow-y: auto;
     min-width: auto;
   }

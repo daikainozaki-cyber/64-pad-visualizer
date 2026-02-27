@@ -96,6 +96,7 @@ I18N.addLang('zh', {
     close: '关闭',
     slot_hint: '点击选择 \u2192 Save(c) / Shift+点击清除',
     save_settings: '保存设置',
+    sound_hint: '请选择 ORGAN 或 E.PIANO 以启用声音',
   },
   label: {
     note_name: '音名',

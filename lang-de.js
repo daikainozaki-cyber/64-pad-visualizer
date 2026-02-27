@@ -96,6 +96,7 @@ I18N.addLang('de', {
     close: 'Schließen',
     slot_hint: 'Klicken zum Auswählen \u2192 Save(c) / Shift+Klick zum Löschen',
     save_settings: 'Einstellungen speichern',
+    sound_hint: 'Wähle ORGAN oder E.PIANO, um den Sound zu aktivieren',
   },
   label: {
     note_name: 'Note',

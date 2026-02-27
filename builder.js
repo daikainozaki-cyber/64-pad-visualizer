@@ -869,8 +869,12 @@ function onMidiNoteOff(note) {
 }
 
 // Called from C++ (evaluateJavascript) when native MIDI input is received.
-// Sound is already playing via JUCE processBlock — only update UI.
+// When VST loaded: sound plays via C++ processBlock, JS only updates UI.
+// When no VST: play via WebAudioFont (C++ sine is muted).
 function onNativeMidiIn(note, velocity) {
+  if (typeof _useNativeAudio !== 'undefined' && !_useNativeAudio) {
+    noteOn(note, (velocity || 100) / 127, true);
+  }
   if (handlePerformMidi(note)) return;
   midiActiveNotes.add(note);
   if (AppState.mode === 'input') {
@@ -891,6 +895,9 @@ function onNativeMidiIn(note, velocity) {
 }
 
 function onNativeMidiOff(note) {
+  if (typeof _useNativeAudio !== 'undefined' && !_useNativeAudio) {
+    noteOff(note);
+  }
   midiActiveNotes.delete(note);
   if (AppState.mode === 'input' && PlainState.subMode !== 'idle') {
     // latch: keep note in activeNotes

@@ -2,6 +2,8 @@
 // AUDIO ENGINE
 // ========================================
 const _isDesktop = typeof window.__JUCE__ !== 'undefined';
+let _useNativeAudio = false; // true only when VST is loaded (set by C++ via _setDesktopPlugin)
+let _soundMuted = true; // Sound OFF by default — user turns on explicitly
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // --- Master audio graph ---
@@ -125,6 +127,32 @@ tremoloLFO.connect(tremoloGain);
 tremoloGain.connect(masterGain.gain);
 tremoloLFO.start(0);
 
+// Called from C++ when plugin state changes (VST loaded/unloaded)
+function _setDesktopPlugin(hasPlugin) {
+  _useNativeAudio = hasPlugin;
+  if (hasPlugin) {
+    // VST loaded → stop all WebAudioFont voices
+    activeVoices.forEach((v) => { try { v.envelope.cancel(); } catch(_){} });
+    activeVoices.clear();
+  }
+  // Toggle sound engine UI: hide when VST active, show when WebAudioFont
+  const engineRow = document.querySelector('.engine-row');
+  const presetRow = document.getElementById('organ-preset');
+  const effectSliders = document.querySelectorAll('.ep-knob');
+  const showWAF = !hasPlugin;
+  if (engineRow) engineRow.style.display = showWAF ? '' : 'none';
+  if (presetRow) presetRow.style.display = showWAF ? '' : 'none';
+  effectSliders.forEach(el => {
+    // Keep VOL and Velocity visible always; hide engine-specific controls
+    const slider = el.querySelector('input[type="range"]');
+    if (!slider) return;
+    const id = slider.id;
+    if (id === 'snd-volume') return; // always visible
+    if (id && id.startsWith('vel-')) return; // velocity always visible
+    el.style.display = showWAF ? '' : 'none';
+  });
+}
+
 let _audioDecoded = false;
 function ensureAudioResumed() {
   if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -134,7 +162,11 @@ function ensureAudioResumed() {
     // Decode ALL engines' presets upfront to avoid delay on switch
     Object.values(ENGINES).forEach(eng => {
       Object.values(eng.presets).forEach(inst => {
-        wafPlayer.loader.decodeAfterLoading(audioCtx, inst.data);
+        if (inst.sampler) {
+          _decodeSamplerZones(inst.sampler);
+        } else if (inst.data) {
+          wafPlayer.loader.decodeAfterLoading(audioCtx, inst.data);
+        }
       });
     });
   }
@@ -146,6 +178,134 @@ function getAudioCtx() { ensureAudioResumed(); return audioCtx; }
 
 // --- WebAudioFont player + instrument presets ---
 const wafPlayer = new WebAudioFontPlayer();
+
+// --- Sampler engine (velocity-layer-aware) ---
+const _samplerBuffers = new Map(); // 'instrumentName:zoneIdx' → AudioBuffer
+let _samplerDecoded = {};          // instrumentName → true
+
+function _decodeSamplerZones(instrument) {
+  if (!instrument || !instrument.zones) return;
+  const name = instrument.name;
+  if (_samplerDecoded[name]) return;
+  _samplerDecoded[name] = true;
+  // Deduplicate: some zones share the same base64 data
+  const fileCache = new Map(); // base64 hash → Promise<AudioBuffer>
+  instrument.zones.forEach((zone, idx) => {
+    const key = name + ':' + idx;
+    const b64 = zone.file.split(',')[1];
+    // Cache key: DJB2 hash of full base64 (position-based sampling collides on baked loops)
+    var h = 5381;
+    for (var ci = 0; ci < b64.length; ci++) h = ((h << 5) + h + b64.charCodeAt(ci)) | 0;
+    const cacheKey = b64.length + ':' + h;
+    if (fileCache.has(cacheKey)) {
+      fileCache.get(cacheKey).then(buf => { if (buf) _samplerBuffers.set(key, buf); });
+      return;
+    }
+    const promise = new Promise(resolve => {
+      try {
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        audioCtx.decodeAudioData(bytes.buffer.slice(0)).then(buf => {
+          _samplerBuffers.set(key, buf);
+          resolve(buf);
+        }).catch(() => resolve(null));
+      } catch (_) { resolve(null); }
+    });
+    fileCache.set(cacheKey, promise);
+  });
+}
+
+function _findSamplerZone(instrument, midi, velocity127) {
+  const zones = instrument.zones;
+  for (let i = 0; i < zones.length; i++) {
+    const z = zones[i];
+    if (midi >= z.keyLow && midi <= z.keyHigh &&
+        velocity127 >= z.velLow && velocity127 <= z.velHigh)
+      return { zone: z, idx: i };
+  }
+  // Fallback: key match, nearest velocity
+  let best = null, bestDist = Infinity;
+  for (let i = 0; i < zones.length; i++) {
+    const z = zones[i];
+    if (midi >= z.keyLow && midi <= z.keyHigh) {
+      const d = Math.abs(velocity127 - (z.velLow + z.velHigh) / 2);
+      if (d < bestDist) { bestDist = d; best = { zone: z, idx: i }; }
+    }
+  }
+  return best;
+}
+
+// Visual debug for sampler noteOn (shows in version tag)
+function _dbgSampler(msg) {
+  var tag = document.querySelector('.version-tag');
+  if (tag) tag.textContent = 'V3.3 ' + msg;
+  console.log('[sampler] ' + msg);
+}
+
+function _samplerNoteOn(instrument, midi, velocity, dest) {
+  const vel127 = Math.round(velocity * 127);
+  const match = _findSamplerZone(instrument, midi, vel127);
+  if (!match) { _dbgSampler('NO ZONE m=' + midi + ' v=' + vel127); return null; }
+  const { zone, idx } = match;
+  const bufKey = instrument.name + ':' + idx;
+  const buffer = _samplerBuffers.get(bufKey);
+  if (!buffer) { _dbgSampler('NO BUF ' + bufKey + ' tot=' + _samplerBuffers.size); return null; }
+
+  try {
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    // Use playbackRate for pitch (WebAudioFont style — detune is buggy in WKWebView)
+    var semitones = midi - zone.pitchCenter;
+    source.playbackRate.value = Math.pow(2, semitones / 12);
+
+    const voiceGain = audioCtx.createGain();
+    const vol = 0.15 + 0.35 * velocity; // polyphony-safe: 4 voices at full vel ≈ 2.0
+    voiceGain.gain.setValueAtTime(vol, audioCtx.currentTime);
+
+    // Held-note decay: 2-stage model (Weinreich KTH measurements)
+    // "prompt sound" decays fast → "aftersound" sustains longer
+    // T60 = time for 60dB decay, pitch-dependent (low=long, high=short)
+    const T60 = 45 * Math.pow(2, -(midi - 21) / 18);
+    const tauSlow = T60 / 6.91;  // 6.91 = ln(10^3) for 60dB
+    const tauFast = tauSlow * 0.25;
+    const sustainLevel = vol * Math.max(0.10, 0.80 - (midi - 21) * 0.002);
+    voiceGain.gain.setTargetAtTime(sustainLevel, audioCtx.currentTime + 0.005, tauFast);
+
+    // Damper LPF: wide open while held, closes on release (like real Rhodes damper)
+    const damperLpf = audioCtx.createBiquadFilter();
+    damperLpf.type = 'lowpass';
+    damperLpf.frequency.value = 20000; // fully open
+    damperLpf.Q.value = 0.707;
+
+    source.connect(damperLpf);
+    damperLpf.connect(voiceGain);
+    voiceGain.connect(dest);
+    source.start(audioCtx.currentTime, 0.01); // skip 10ms MP3 encoder padding
+
+    _dbgSampler('OK m=' + midi + ' z=' + idx + ' st=' + semitones);
+
+    // Release: SFZ ampeg_release (Rhodes damper feel, pitch-dependent fallback)
+    const releaseTime = zone.ampRelease || 0.3;
+    const releaseTau = releaseTime / 5.0; // ~5 time constants for full decay
+
+    return {
+      cancel: function() {
+        const now = audioCtx.currentTime;
+        voiceGain.gain.cancelScheduledValues(now);
+        voiceGain.gain.setValueAtTime(voiceGain.gain.value, now);
+        voiceGain.gain.setTargetAtTime(0, now, releaseTau);
+        // Damper darkening: LPF closes faster than volume, absorbs high-freq noise
+        damperLpf.frequency.setValueAtTime(damperLpf.frequency.value, now);
+        damperLpf.frequency.setTargetAtTime(200, now, releaseTau * 0.4);
+        source.stop(now + releaseTau * 6);
+      }
+    };
+  } catch (e) {
+    _dbgSampler('ERR: ' + e.message);
+    return null;
+  }
+}
 
 // ======== SOUND ENGINES ========
 const ENGINES = {
@@ -162,13 +322,19 @@ const ENGINES = {
   ep: {
     name: 'E.PIANO',
     presets: {
-      'Rhodes 1':  { data: _tone_0040_FluidR3_GM_sf2_file, label: 'Rhodes 1' },
-      'Rhodes 2':  { data: _tone_0040_GeneralUserGS_sf2_file, label: 'Rhodes 2' },
-      'Rhodes 3':  { data: _tone_0040_Chaos_sf2_file, label: 'Rhodes 3' },
-      'Rhodes 4':  { data: _tone_0040_JCLive_sf2_file, label: 'Rhodes 4' },
-      'Rhodes 5':  { data: _tone_0040_SBLive_sf2, label: 'Rhodes 5' },
-      'FM EP 1':   { data: _tone_0050_FluidR3_GM_sf2_file, label: 'FM EP 1' },
-      'FM EP 2':   { data: _tone_0050_GeneralUserGS_sf2_file, label: 'FM EP 2' },
+      // WebAudioFont (no noise, no velocity layers — clean fallback)
+      'Rhodes 1': { data: _tone_0040_FluidR3_GM_sf2_file, label: 'Rhodes 1' },
+      'Rhodes 2': { data: _tone_0040_GeneralUserGS_sf2_file, label: 'Rhodes 2' },
+      'Rhodes 3': { data: _tone_0040_Chaos_sf2_file, label: 'Rhodes 3' },
+      'Rhodes 4': { data: _tone_0040_JCLive_sf2_file, label: 'Rhodes 4' },
+      'Rhodes 5': { data: _tone_0040_SBLive_sf2, label: 'Rhodes 5' },
+      'FM EP 1':  { data: _tone_0050_FluidR3_GM_sf2_file, label: 'FM EP 1' },
+      'FM EP 2':  { data: _tone_0050_GeneralUserGS_sf2_file, label: 'FM EP 2' },
+      // Sampler (5 velocity layers, baked loops)
+      'jRhodes3c': {
+        sampler: typeof _jRhodes3c !== 'undefined' ? _jRhodes3c : null,
+        label: '1977 Rhodes Mark I (Sampler)',
+      },
     },
     defaultPreset: 'Rhodes 1',
   },
@@ -183,6 +349,9 @@ const AudioState = {
 
 function setEngine(key) {
   if (!ENGINES[key]) return;
+  // Selecting an engine turns sound on
+  if (_soundMuted) { _soundMuted = false; _updateMuteBtn(); }
+  _hideFirstTimeHint();
   noteOffAll();
   AudioState.engineKey = key;
   AudioState.engine = ENGINES[key];
@@ -190,7 +359,11 @@ function setEngine(key) {
   AudioState.instrument = AudioState.engine.presets[AudioState.presetKey];
   // Decode new engine's presets
   Object.values(AudioState.engine.presets).forEach(p => {
-    wafPlayer.loader.decodeAfterLoading(audioCtx, p.data);
+    if (p.sampler) {
+      _decodeSamplerZones(p.sampler);
+    } else if (p.data) {
+      wafPlayer.loader.decodeAfterLoading(audioCtx, p.data);
+    }
   });
   renderSoundControls();
   saveSoundSettings();
@@ -218,18 +391,39 @@ function saveSoundSettings() {
     const hc = document.getElementById('snd-hicut-toggle');
     if (lc) s.loCutEnabled = lc.checked;
     if (hc) s.hiCutEnabled = hc.checked;
+    s.soundMuted = _soundMuted;
     localStorage.setItem('64pad-sound', JSON.stringify(s));
   } catch(_) {}
+}
+
+function _showFirstTimeHint() {
+  var header = document.getElementById('sound-header');
+  if (!header) return;
+  var hint = document.createElement('div');
+  hint.id = 'sound-first-hint';
+  hint.textContent = I18N && I18N.t ? I18N.t('ui.sound_hint') : 'Select ORGAN or E.PIANO to enable sound';
+  hint.style.cssText = 'font-size:0.65rem;color:#4a9eff;text-align:center;padding:2px 0;animation:hint-pulse 2s ease-in-out infinite';
+  header.parentNode.insertBefore(hint, header);
+}
+
+function _hideFirstTimeHint() {
+  var hint = document.getElementById('sound-first-hint');
+  if (hint) hint.remove();
 }
 
 function loadSoundSettings() {
   try {
     const raw = localStorage.getItem('64pad-sound');
-    if (!raw) return;
+    if (!raw) { _showFirstTimeHint(); return; }
     const s = JSON.parse(raw);
     if (s.engine && ENGINES[s.engine]) {
+      // setEngine turns sound on, so temporarily suppress
+      var wasMuted = _soundMuted;
       setEngine(s.engine);
       if (s.preset && AudioState.engine.presets[s.preset]) setPreset(s.preset);
+      // Restore muted state from saved settings (default: muted)
+      _soundMuted = s.soundMuted !== undefined ? s.soundMuted : true;
+      _updateMuteBtn();
     }
     ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut'].forEach(id => {
       if (s[id] === undefined) return;
@@ -272,10 +466,29 @@ function renderSoundControls() {
 // --- Voice management ---
 const activeVoices = new Map(); // midi → { envelope }
 
+function _updateMuteBtn() {
+  var btn = document.getElementById('sound-mute-btn');
+  if (btn) {
+    btn.textContent = _soundMuted ? '\uD83D\uDD07' : '\uD83D\uDD0A';
+    btn.style.opacity = _soundMuted ? '0.5' : '1';
+  }
+  // Dim engine buttons when muted
+  document.querySelectorAll('.engine-btn').forEach(function(b) {
+    b.style.opacity = _soundMuted ? '0.4' : '';
+  });
+}
+
+function toggleSoundMute() {
+  _soundMuted = !_soundMuted;
+  _updateMuteBtn();
+  saveSoundSettings();
+}
+
 function noteOn(midi, velocity, poly, _retries) {
   velocity = velocity || 0.8;
-  // Desktop: route to JUCE native audio engine
-  if (_isDesktop) {
+  if (_soundMuted) return;
+  // Desktop with VST loaded: route to JUCE native audio engine
+  if (_isDesktop && _useNativeAudio) {
     window.__JUCE__._callNative("noteOn")(midi, velocity);
     return;
   }
@@ -287,11 +500,16 @@ function noteOn(midi, velocity, poly, _retries) {
     activeVoices.delete(midi);
   }
 
-  // queueWaveTable: sustain for very long duration, cancel on noteOff
-  const envelope = wafPlayer.queueWaveTable(
-    audioCtx, masterGain, AudioState.instrument.data,
-    0, midi, 99999, velocity
-  );
+  // Route to sampler engine or WebAudioFont
+  let envelope;
+  if (AudioState.instrument.sampler) {
+    envelope = _samplerNoteOn(AudioState.instrument.sampler, midi, velocity, masterGain);
+  } else {
+    envelope = wafPlayer.queueWaveTable(
+      audioCtx, masterGain, AudioState.instrument.data,
+      0, midi, 99999, velocity
+    );
+  }
   if (!envelope) {
     // Sample not yet decoded — retry after short delay (up to 3 times)
     _retries = _retries || 0;
@@ -304,7 +522,7 @@ function noteOn(midi, velocity, poly, _retries) {
 }
 
 function noteOff(midi) {
-  if (_isDesktop) {
+  if (_isDesktop && _useNativeAudio) {
     window.__JUCE__._callNative("noteOff")(midi);
     return;
   }
@@ -315,7 +533,7 @@ function noteOff(midi) {
 }
 
 function noteOffAll() {
-  if (_isDesktop) {
+  if (_isDesktop && _useNativeAudio) {
     window.__JUCE__._callNative("allNotesOff")();
     return;
   }
@@ -412,6 +630,8 @@ function playMidiNotes(midiNotes) {
 
 // Slider labels + live parameter update
 onReady(() => {
+  // Set initial mute button state
+  _updateMuteBtn();
   // Hide CHS export on production (reverse-engineered Chordcat format — dev only)
   if (!IS_DEV) {
     ['btn-chs-export-plain', 'btn-chs-export-mem', 'btn-chs-import'].forEach(function(id) { var b = document.getElementById(id); if (b) b.style.display = 'none'; });
@@ -424,10 +644,12 @@ onReady(() => {
       saveSoundSettings();
     });
   });
-  // Real-time VOL → masterGain
+  // Real-time VOL → masterGain (WebAudioFont) + C++ masterGain (VST)
   const volSlider = document.getElementById('snd-volume');
   if (volSlider) volSlider.addEventListener('input', () => {
-    masterGain.gain.setValueAtTime(parseFloat(volSlider.value), audioCtx.currentTime);
+    const val = parseFloat(volSlider.value);
+    masterGain.gain.setValueAtTime(val, audioCtx.currentTime);
+    if (_isDesktop) window.__JUCE__._callNative("setMasterVolume")(val);
   });
   // Initialize masterGain from slider
   if (volSlider) masterGain.gain.setValueAtTime(parseFloat(volSlider.value), 0);

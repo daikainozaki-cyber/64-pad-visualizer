@@ -100,6 +100,7 @@ I18N.addLang('ja', {
     save_settings: '設定を保存',
     sound_hint: 'ORGAN または E.PIANO を選んで音を有効にしてください',
     load_vst: 'VST/AU プラグインを読み込む...',
+    affiliate_label: '徳を積みたい方はこちら…',
   },
   label: {
     note_name: '音名',

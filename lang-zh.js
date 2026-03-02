@@ -98,6 +98,7 @@ I18N.addLang('zh', {
     save_settings: '保存设置',
     sound_hint: '请选择 ORGAN 或 E.PIANO 以启用声音',
     load_vst: '加载 VST/AU 插件...',
+    affiliate_label: '',
   },
   label: {
     note_name: '音名',

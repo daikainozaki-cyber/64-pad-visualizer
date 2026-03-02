@@ -98,6 +98,7 @@ I18N.addLang('fr', {
     save_settings: 'Sauvegarder',
     sound_hint: 'Sélectionnez ORGAN ou E.PIANO pour activer le son',
     load_vst: 'Charger un plugin VST/AU...',
+    affiliate_label: '',
   },
   label: {
     note_name: 'Note',

@@ -98,6 +98,7 @@ I18N.addLang('ko', {
     save_settings: '설정 저장',
     sound_hint: 'ORGAN 또는 E.PIANO를 선택하여 소리를 활성화하세요',
     load_vst: 'VST/AU 플러그인 불러오기...',
+    affiliate_label: '',
   },
   label: {
     note_name: '음이름',

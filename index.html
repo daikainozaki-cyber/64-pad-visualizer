@@ -202,38 +202,21 @@ if (typeof window.__JUCE__ === 'undefined') {
       <li data-i18n="help.sc_help"><kbd>?</kbd> — ヘルプ表示切替</li>
     </ul>
 
-    <h2>Version History</h2>
+    <h2 data-i18n="help.version_history">Version History</h2>
     <ul style="font-size:0.75rem;color:var(--text-muted);">
-      <li><b>V3.7</b> (2026-03-02) — コードビルダー: ボイシングポジション保持（半音移動時にフィンガリング形状を自動維持、グリッド端では音域優先フォールバック）。Performモード/Play All/MIDI再生時にパッドグリッド・五線譜・コード検出を表示。バナー更新</li>
-      <li><b>V3.6</b> (2026-03-02) — Desktop版: 内蔵音源無効化（ライセンスリスク回避）。Standalone=VSTホスト+可視化ツール、VST3/AU=DAW内MIDI可視化。パッドクリックは常にC++経由（VST or サイン波フォールバック）</li>
-      <li><b>V3.5</b> (2026-03-02) — MIDIファイル再生→パッド点灯（タイムライン再生、コード名表示、Play/Pause/Stop/Seek対応）。音源ライセンス整備（JCLive/SBLive除外、クレジット表記追加）。Desktop版ビルド全フォーマット（Standalone/VST3/AU）検証完了</li>
-      <li><b>V3.4</b> (2026-02-28) — E.PIANOサンプラー搭載（1977 Rhodes Mark I, 5ベロシティレイヤー, ベイクドループ）。WebAudioFont EPプリセット7種復活（Rhodes 1-5, FM EP 1-2）。リサーチベース減衰曲線（Weinreich 2段階モデル）。Sound ON/OFFトグル（初回は音色選択を促すメッセージ表示）。iPadタブレットレイアウト対応</li>
-      <li><b>V3.1</b> (2026-02-27) — ベロシティ感度調整（Threshold / Drive / Compand / Range の4パラメータ、Push 3風UIとカーブ可視化）。Push 3オクターブボタン対応（CC#54/55でアプリ内オクターブ連動）。Desktop版互換コードSSOT化。<a href="https://youtu.be/4vCkISlMVxc" target="_blank" style="color:var(--accent);">紹介動画</a></li>
-      <li><b>V2.50</b> (2026-02-25) — 複数メモリーバンク: 曲ごとに16スロット×最大16バンク。バンク切替・追加・複製・削除・リネーム対応。既存データは自動マイグレーション。[/]キーでバンク切替</li>
-      <li><b>V2.18</b> (2026-02-20) — 全設定保存: キー/スケール/モード/オクターブ/表示トグル/音名度数切替/メモリースロット16個をlocalStorageに自動保存・復元。音色(V2.16)+MIDIデバイス(V2.17)と合わせて全設定が永続化</li>
-      <li><b>V2.17</b> (2026-02-20) — MIDIデバイス設定保存: 選択したMIDI入力デバイスをlocalStorageに保存。ページリロード後も自動選択（デバイス名で照合、ID変更に対応）</li>
-      <li><b>V2.16</b> (2026-02-20) — 音色デフォルト保存: エンジン/プリセット/エフェクト設定をlocalStorageに自動保存・復元。ページリロード後も前回の音色設定を維持</li>
-      <li><b>V2.15</b> (2026-02-20) — メモリー再生パッド反映: Play▶やスロットクリック再生時にパッドがコード音をハイライト（度数ラベル付き）。再生停止で自動クリア</li>
-      <li><b>V2.14</b> (2026-02-20) — オクターブ変更で再生音連動: オクターブ▲▼ボタン操作時に再生音のピッチも連動。スペースキー・ボイシングボックスクリック・スラッシュコードのベース音も対応</li>
-      <li><b>V2.13</b> (2026-02-20) — 楽器スケールオーバーレイ: Available Scale選択時にギター/ベース/ピアノにスケール音を表示（特性音ハイライト）。render順序修正でパッドオーバーレイの初回表示も改善</li>
-      <li><b>V2.12</b> (2026-02-20) — Plain Mode SSOT統合: コード検出時に度数ラベル（R, 3, 5, b7等）をパッドに表示、ギター・ベース・ピアノ・五線譜に自動連動。MIDI入力とPlain表示の競合を解消</li>
-      <li><b>V2.9</b> (2026-02-18) — パッドでビルダー直接更新: パッドを押すとコード入力パネルのRoot/Quality/Tensionが自動切替（C△7にD追加→C△7(9)に変化）。スペースキー = 現在のコードを再生</li>
-      <li><b>V2.8</b> (2026-02-18) — テンション追加モード完成: 64パッド・ギター・ベース・鍵盤で追加音トグル（クリックでON/OFF）→ ビルダーコードと合成してコード名判定・Available Scale絞り込み。全4入力対応</li>
-      <li><b>V2.7</b> (2026-02-18) — 楽器入力とChordモードの統合（テンション追加モード）: ギター/ベース/ピアノで追加音入力 → ビルダーコードと合成してコード判定・Available Scale絞り込み</li>
-      <li><b>V2.6</b> (2026-02-17) — 表記修正: aug→(#5)表記、mM7 #11非表示、テンションdimming改善</li>
-      <li><b>V2.3</b> (2026-02-16) — Scale Overlay: コード上のAvailable Scaleをパッドにオーバーレイ表示、特性音ハイライト</li>
-      <li><b>V2.2</b> (2026-02-16) — Parent Scale: Available Tensions表示、テンションフィルタ、オートセレクト、Exact/Partial match区別</li>
-      <li><b>V2.1</b> (2026-02-13) — 楽器入力UI修正、Audio事前ウォーミング</li>
-      <li><b>V1.9</b> (2026-02-13) — 9言語対応（i18n）</li>
-      <li><b>V1.8</b> (2026-02-09) — Performモード、16スロット、Undo、D&D</li>
-      <li><b>V1.7</b> (2026-02-06) — MIDI改善、スロット再生、Lo/Hi Cut</li>
-      <li><b>V1.6</b> (2026-02-06) — HTTPSダウンロード対応、テスト環境構築</li>
-      <li><b>V1.5</b> (2026-02-06) — Plainモード、メモリースロット、MIDI/CHS書き出し</li>
-      <li><b>V1.4</b> (2026-02-04) — オンコードベース音完全対応</li>
-      <li><b>V1.3</b> (2026-02-04) — Avoidノート色表示</li>
-      <li><b>V1.2</b> (2026-02-04) — キーボードショートカット</li>
-      <li><b>V1.1</b> (2026-02-04) — 度数ラベル・異名同音修正</li>
-      <li><b>V1.0</b> (2026-02-04) — 初回リリース（Scale/Chord/Voicing/Sound/MIDI）</li>
+      <li data-i18n="help.vh_37"><b>V3.7</b> — ボイシングポジション保持（半音移動時にフィンガリング形状を自動維持）。再生中にパッドグリッド・五線譜・コード検出を表示。<a href="https://youtu.be/mHSMM4GDNkE" target="_blank" style="color:var(--accent);">紹介動画</a></li>
+      <li data-i18n="help.vh_35"><b>V3.5</b> — MIDIファイル再生→パッド点灯（タイムライン再生、コード名表示、Play/Pause/Stop/Seek）</li>
+      <li data-i18n="help.vh_34"><b>V3.4</b> — E.PIANOサンプラー搭載（Rhodes Mark I）。EPプリセット7種。Sound ON/OFFトグル。iPad対応</li>
+      <li data-i18n="help.vh_31"><b>V3.1</b> — ベロシティ感度調整（4パラメータ+カーブ可視化）。Push 3オクターブボタン対応。<a href="https://youtu.be/4vCkISlMVxc" target="_blank" style="color:var(--accent);">紹介動画</a></li>
+      <li data-i18n="help.vh_250"><b>V2.50</b> — 複数メモリーバンク（16スロット×最大16バンク、切替・複製・リネーム対応）</li>
+      <li data-i18n="help.vh_218"><b>V2.18</b> — 全設定の自動保存・復元（キー/スケール/音色/MIDI/メモリー）</li>
+      <li data-i18n="help.vh_213"><b>V2.13</b> — 楽器スケールオーバーレイ（ギター/ベース/ピアノにAvailable Scale表示）。パッド度数ラベル。再生音オクターブ連動</li>
+      <li data-i18n="help.vh_27"><b>V2.7</b> — テンション追加モード（パッド/ギター/ベース/鍵盤でコード合成→Available Scale絞り込み）</li>
+      <li data-i18n="help.vh_22"><b>V2.2</b> — Parent Scale + Scale Overlay（Available Tensions表示、パッドにスケールオーバーレイ）</li>
+      <li data-i18n="help.vh_19"><b>V1.9</b> — 9言語対応</li>
+      <li data-i18n="help.vh_18"><b>V1.8</b> — Performモード、16メモリースロット、Undo、D&D</li>
+      <li data-i18n="help.vh_15"><b>V1.5</b> — Plainモード、MIDI/CHS書き出し</li>
+      <li data-i18n="help.vh_10"><b>V1.0</b> — 初回リリース（Scale/Chord/Voicing/Sound/MIDI）</li>
     </ul>
 
     <p style="font-size:0.7rem;color:var(--text-muted);margin-top:12px;text-align:center;" data-i18n="help.footer">

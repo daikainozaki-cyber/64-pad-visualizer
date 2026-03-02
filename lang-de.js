@@ -105,8 +105,9 @@ I18N.addLang('de', {
   },
   header: {
     portal: 'HPS Portal',
-    blog: 'murinaikurashi',
+    blog: 'Mein Blog',
     guide: 'Anleitung',
+    wishlist: 'Wunschliste',
   },
   input: {
     status_idle: 'Capture drücken, um Akkorde zu erstellen',

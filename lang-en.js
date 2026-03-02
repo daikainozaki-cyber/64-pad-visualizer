@@ -107,8 +107,9 @@ I18N.addLang('en', {
   },
   header: {
     portal: 'HPS Portal',
-    blog: 'murinaikurashi',
+    blog: 'My Blog',
     guide: 'Guide',
+    wishlist: 'Wishlist',
   },
   input: {
     status_idle: 'Press Capture to start building chords',

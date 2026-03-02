@@ -105,8 +105,9 @@ I18N.addLang('it', {
   },
   header: {
     portal: 'HPS Portal',
-    blog: 'murinaikurashi',
+    blog: 'Il mio Blog',
     guide: 'Guida',
+    wishlist: 'Wishlist',
   },
   input: {
     status_idle: 'Premi Capture per iniziare a costruire accordi',

@@ -105,8 +105,9 @@ I18N.addLang('fr', {
   },
   header: {
     portal: 'HPS Portal',
-    blog: 'murinaikurashi',
+    blog: 'Mon Blog',
     guide: 'Guide',
+    wishlist: 'Wishlist',
   },
   input: {
     status_idle: 'Appuyer sur Capture pour commencer à construire des accords',

@@ -105,8 +105,9 @@ I18N.addLang('pt', {
   },
   header: {
     portal: 'HPS Portal',
-    blog: 'murinaikurashi',
+    blog: 'Meu Blog',
     guide: 'Guia',
+    wishlist: 'Wishlist',
   },
   input: {
     status_idle: 'Prima Capture para começar a construir acordes',

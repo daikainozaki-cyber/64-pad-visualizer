@@ -105,8 +105,9 @@ I18N.addLang('es', {
   },
   header: {
     portal: 'HPS Portal',
-    blog: 'murinaikurashi',
+    blog: 'Mi Blog',
     guide: 'Gu\u00EDa',
+    wishlist: 'Wishlist',
   },
   input: {
     status_idle: 'Pulsa Capture para empezar a construir acordes',

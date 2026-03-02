@@ -105,8 +105,9 @@ I18N.addLang('zh', {
   },
   header: {
     portal: 'HPS Portal',
-    blog: 'murinaikurashi',
+    blog: '博客',
     guide: '指南',
+    wishlist: '愿望清单',
   },
   input: {
     status_idle: '按Capture开始构建和弦',

@@ -109,6 +109,7 @@ I18N.addLang('ja', {
     portal: 'HPSポータル',
     blog: '無理ない暮らし',
     guide: 'ガイド',
+    wishlist: '欲しいものリスト',
   },
   input: {
     status_idle: 'Press Capture to start building chords',

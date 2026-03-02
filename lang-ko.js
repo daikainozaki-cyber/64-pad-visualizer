@@ -105,8 +105,9 @@ I18N.addLang('ko', {
   },
   header: {
     portal: 'HPS Portal',
-    blog: 'murinaikurashi',
+    blog: '\uBE14\uB85C\uADF8',
     guide: '\uAC00\uC774\uB4DC',
+    wishlist: '\uC704\uC2DC\uB9AC\uC2A4\uD2B8',
   },
   input: {
     status_idle: 'Capture를 눌러 코드 만들기를 시작하세요',

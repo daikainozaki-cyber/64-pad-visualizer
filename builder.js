@@ -1047,6 +1047,7 @@ function highlightPlaybackPads(midiNotes) {
 let selectedMidiInputId = null; // null = all inputs
 
 function initWebMIDI() {
+  if (_isDesktop) return; // Desktop: C++ handles MIDI via MidiInput::openDevice() — WebMIDI would cause double reception
   if (!navigator.requestMIDIAccess) return;
   navigator.requestMIDIAccess().then(access => {
     midiAccess = access;

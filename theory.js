@@ -51,14 +51,14 @@ function setShellExtension(n) {
 function setInversion(inv) {
   VoicingState.inversion = inv;
   VoicingState.shell = null;
-  resetVoicingSelection();
+  if (VoicingState.selectedBoxIdx !== null) VoicingState._preservePosition = { type: 'voicing' };
   updateVoicingButtons(); updateChordDisplay(); render();
   playCurrentChord();
 }
 function setDrop(drop) {
   VoicingState.drop = VoicingState.drop === drop ? null : drop;
   VoicingState.shell = null;
-  resetVoicingSelection();
+  if (VoicingState.selectedBoxIdx !== null) VoicingState._preservePosition = { type: 'voicing' };
   updateVoicingButtons(); updateChordDisplay(); render();
   playCurrentChord();
 }
@@ -235,10 +235,16 @@ function computeAndDrawVoicingBoxes(svg, offsets, targetPC, strokeColor, badgeCo
         return rs <= maxRS && cs <= maxCS;
       }) : allVP;
       if (filtered.length === 0) continue;
-      boxes.push({ midi, alternatives: filtered });
+      boxes.push({ midi, row, col, alternatives: filtered });
     }
   }
   boxes.sort((a, b) => a.midi - b.midi);
+  // Save previous selection for proximity matching (only when flagged)
+  const preserve = VoicingState._preservePosition;
+  const prevBoxData = (preserve && VoicingState.selectedBoxIdx !== null
+    && VoicingState.lastBoxes[VoicingState.selectedBoxIdx])
+    ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx] : null;
+  VoicingState._preservePosition = false; // consume flag
   // Build lastBoxes with alternatives and current cycling index
   const cycleableSet = new Set();
   VoicingState.lastBoxes = boxes.map((b, idx) => {
@@ -247,11 +253,74 @@ function computeAndDrawVoicingBoxes(svg, offsets, targetPC, strokeColor, badgeCo
     const currentVP = b.alternatives[safeIdx];
     if (b.alternatives.length > 1) cycleableSet.add(idx);
     return {
+      rootRow: b.row, rootCol: b.col,
       midiNotes: currentVP.positions.map(p => baseMidi() + p.row * ROW_INTERVAL + p.col).sort((a, b) => a - b),
       alternatives: b.alternatives,
       currentAlt: safeIdx
     };
   });
+  // Position preservation (only on transpose/inversion/drop)
+  if (prevBoxData !== null && VoicingState.lastBoxes.length > 0) {
+    if (preserve.type === 'transpose') {
+      // Shape-based matching: compare physical finger shape (relative grid offsets from root)
+      const prevAlt = prevBoxData.alternatives[prevBoxData.currentAlt];
+      const prevShape = prevAlt.positions
+        .map(p => ({ dr: p.row - prevBoxData.rootRow, dc: p.col - prevBoxData.rootCol }))
+        .sort((a, b) => a.dr - b.dr || a.dc - b.dc);
+      const bm = baseMidi();
+      const prevRootMidi = bm + prevBoxData.rootRow * ROW_INTERVAL + prevBoxData.rootCol;
+      const expectedMidi = prevRootMidi + preserve.midiDelta;
+      // Search all boxes × all alternatives for matching shape
+      let bestIdx = -1, bestAltIdx = -1, bestPitchDist = Infinity, bestGridDist = Infinity;
+      let fallbackIdx = 0, fallbackPitchDist = Infinity, fallbackGridDist = Infinity;
+      VoicingState.lastBoxes.forEach((box, i) => {
+        const boxMidi = bm + box.rootRow * ROW_INTERVAL + box.rootCol;
+        const pitchDist = Math.abs(boxMidi - expectedMidi);
+        const gridDist = Math.abs(box.rootRow - prevBoxData.rootRow) + Math.abs(box.rootCol - prevBoxData.rootCol);
+        // Track fallback (closest pitch, then closest grid position as tiebreaker)
+        if (pitchDist < fallbackPitchDist || (pitchDist === fallbackPitchDist && gridDist < fallbackGridDist)) {
+          fallbackPitchDist = pitchDist; fallbackGridDist = gridDist; fallbackIdx = i;
+        }
+        // Check every alternative of this box for shape match
+        box.alternatives.forEach((alt, j) => {
+          const shape = alt.positions
+            .map(p => ({ dr: p.row - box.rootRow, dc: p.col - box.rootCol }))
+            .sort((a, b) => a.dr - b.dr || a.dc - b.dc);
+          if (shape.length === prevShape.length &&
+              shape.every((s, k) => s.dr === prevShape[k].dr && s.dc === prevShape[k].dc)) {
+            if (pitchDist < bestPitchDist || (pitchDist === bestPitchDist && gridDist < bestGridDist)) {
+              bestPitchDist = pitchDist; bestGridDist = gridDist; bestIdx = i; bestAltIdx = j;
+            }
+          }
+        });
+      });
+      // Prefer shape match, but reject if it jumps too far (> 7 semitones from expected)
+      if (bestIdx >= 0 && bestPitchDist <= 7) {
+        VoicingState.selectedBoxIdx = bestIdx;
+        // Switch to the matching alternative
+        VoicingState.cycleIndices[bestIdx] = bestAltIdx;
+        const selBox = VoicingState.lastBoxes[bestIdx];
+        selBox.currentAlt = bestAltIdx;
+        selBox.midiNotes = selBox.alternatives[bestAltIdx].positions
+          .map(p => bm + p.row * ROW_INTERVAL + p.col).sort((a, b) => a - b);
+      } else {
+        // No nearby shape match: stay in same pitch range (fallback)
+        VoicingState.selectedBoxIdx = fallbackIdx;
+      }
+    } else {
+      // Voicing change (inversion/drop): root stays same, find exact same root position
+      const pr = prevBoxData.rootRow, pc = prevBoxData.rootCol;
+      let bestIdx = null, bestDist = Infinity;
+      VoicingState.lastBoxes.forEach((box, i) => {
+        if (box.rootRow === pr && box.rootCol === pc) { bestIdx = i; return; }
+        const dist = Math.abs(box.rootRow - pr) + Math.abs(box.rootCol - pc);
+        if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+      });
+      if (bestIdx !== null) VoicingState.selectedBoxIdx = bestIdx;
+    }
+  } else if (VoicingState.selectedBoxIdx !== null && VoicingState.lastBoxes.length === 0) {
+    VoicingState.selectedBoxIdx = null;
+  }
   const midiCount = new Map();
   boxes.forEach(b => midiCount.set(b.midi, (midiCount.get(b.midi) || 0) + 1));
   const dupSet = new Set();

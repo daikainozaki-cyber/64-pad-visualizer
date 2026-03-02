@@ -99,6 +99,7 @@ I18N.addLang('en', {
     slot_hint: 'Click to select \u2192 Save(c) / Shift+click to clear',
     save_settings: 'Save Settings',
     sound_hint: 'Select ORGAN or E.PIANO to enable sound',
+    load_vst: 'Load VST/AU Plugin...',
   },
   label: {
     note_name: 'Note',

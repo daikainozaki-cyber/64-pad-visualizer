@@ -278,6 +278,7 @@ const VoicingState = {
   selectedBoxIdx: null,  // selected bounding box index for staff display
   lastBoxes: [],         // [{midiNotes: [...], alternatives: [...], currentAlt: n}, ...] stored from last render
   cycleIndices: {},      // { boxIdx: alternativeIdx } - tracks cycling state per box
+  _preservePosition: false, // flag: find nearest box after chord change (transpose/inversion/drop)
 };
 
 const PlainState = {

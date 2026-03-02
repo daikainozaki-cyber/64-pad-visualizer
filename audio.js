@@ -151,6 +151,43 @@ function _setDesktopPlugin(hasPlugin) {
     if (id && id.startsWith('vel-')) return; // velocity always visible
     el.style.display = showWAF ? '' : 'none';
   });
+  // Update Desktop VST message
+  var vstMsg = document.getElementById('desktop-vst-message');
+  if (vstMsg) vstMsg.style.display = hasPlugin ? 'none' : '';
+}
+
+// Desktop版: 内蔵音源を無効化（ライセンスリスク回避）
+// Standalone = VSTホスト + 可視化ツール、VST3/AU = DAW内MIDI可視化
+function _initDesktopSoundMode() {
+  if (!_isDesktop) return;
+  _soundMuted = true;
+  _useNativeAudio = true; // Always route to C++ (VST or silence)
+  // Hide internal sound engine UI (ORGAN/E.PIANO buttons, presets, effects)
+  var engineSel = document.getElementById('engine-selector');
+  if (engineSel) engineSel.style.display = 'none';
+  var expandBtn = document.getElementById('sound-expand-btn');
+  if (expandBtn) expandBtn.style.display = 'none';
+  var muteBtn = document.getElementById('sound-mute-btn');
+  if (muteBtn) muteBtn.style.display = 'none';
+  var details = document.getElementById('sound-details');
+  if (details) details.style.display = 'none';
+  // Show VOL slider only (it controls C++ masterGain)
+  // Show Desktop-specific VST load button (pulsing, i18n)
+  var vstMsg = document.getElementById('desktop-vst-message');
+  if (!vstMsg) {
+    vstMsg = document.createElement('button');
+    vstMsg.id = 'desktop-vst-message';
+    vstMsg.style.cssText = 'font-size:0.7rem;padding:4px 14px;background:#1a3a5c;color:#4fc3f7;border:1px solid #4fc3f7;border-radius:6px;cursor:pointer;animation:hint-pulse 2s ease-in-out infinite;';
+    vstMsg.textContent = typeof t === 'function' ? t('ui.load_vst') : 'Load VST/AU Plugin...';
+    vstMsg.onclick = function() {
+      window.__JUCE__._callNative("showPluginMenu")();
+    };
+    var header = document.getElementById('sound-header');
+    if (header) header.appendChild(vstMsg);
+  }
+  // Hide header links (paid product — no promotional links, keep Help/About only)
+  var headerLinks = document.getElementById('header-links');
+  if (headerLinks) headerLinks.style.display = 'none';
 }
 
 let _audioDecoded = false;
@@ -326,8 +363,6 @@ const ENGINES = {
       'Rhodes 1': { data: _tone_0040_FluidR3_GM_sf2_file, label: 'Rhodes 1' },
       'Rhodes 2': { data: _tone_0040_GeneralUserGS_sf2_file, label: 'Rhodes 2' },
       'Rhodes 3': { data: _tone_0040_Chaos_sf2_file, label: 'Rhodes 3' },
-      'Rhodes 4': { data: _tone_0040_JCLive_sf2_file, label: 'Rhodes 4' },
-      'Rhodes 5': { data: _tone_0040_SBLive_sf2, label: 'Rhodes 5' },
       'FM EP 1':  { data: _tone_0050_FluidR3_GM_sf2_file, label: 'FM EP 1' },
       'FM EP 2':  { data: _tone_0050_GeneralUserGS_sf2_file, label: 'FM EP 2' },
       // Sampler (5 velocity layers, baked loops)
@@ -349,6 +384,7 @@ const AudioState = {
 
 function setEngine(key) {
   if (!ENGINES[key]) return;
+  if (_isDesktop) return; // Desktop: no internal sound engines
   // Selecting an engine turns sound on
   if (_soundMuted) { _soundMuted = false; _updateMuteBtn(); }
   _hideFirstTimeHint();
@@ -414,7 +450,7 @@ function _hideFirstTimeHint() {
 function loadSoundSettings() {
   try {
     const raw = localStorage.getItem('64pad-sound');
-    if (!raw) { _showFirstTimeHint(); return; }
+    if (!raw) { if (!_isDesktop) _showFirstTimeHint(); return; }
     const s = JSON.parse(raw);
     if (s.engine && ENGINES[s.engine]) {
       // setEngine turns sound on, so temporarily suppress
@@ -486,12 +522,12 @@ function toggleSoundMute() {
 
 function noteOn(midi, velocity, poly, _retries) {
   velocity = velocity || 0.8;
-  if (_soundMuted) return;
-  // Desktop with VST loaded: route to JUCE native audio engine
-  if (_isDesktop && _useNativeAudio) {
+  // Desktop: always route to C++ (VST or sine wave fallback)
+  if (_isDesktop) {
     window.__JUCE__._callNative("noteOn")(midi, velocity);
     return;
   }
+  if (_soundMuted) return;
   ensureAudioResumed();
   // Kill same note if re-triggered
   const existing = activeVoices.get(midi);
@@ -522,7 +558,7 @@ function noteOn(midi, velocity, poly, _retries) {
 }
 
 function noteOff(midi) {
-  if (_isDesktop && _useNativeAudio) {
+  if (_isDesktop) {
     window.__JUCE__._callNative("noteOff")(midi);
     return;
   }
@@ -533,7 +569,7 @@ function noteOff(midi) {
 }
 
 function noteOffAll() {
-  if (_isDesktop && _useNativeAudio) {
+  if (_isDesktop) {
     window.__JUCE__._callNative("allNotesOff")();
     return;
   }
@@ -758,4 +794,5 @@ onReady(() => {
 
   renderSoundControls();
   loadSoundSettings();
+  _initDesktopSoundMode(); // Desktop: hide internal sounds, show VST message
 });

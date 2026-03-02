@@ -207,7 +207,9 @@ document.addEventListener('keydown', (e) => {
       const delta = key === 'ArrowRight' ? 1 : 11;
       BuilderState.root = (BuilderState.root + delta) % 12;
       highlightPianoKey('piano-keyboard', BuilderState.root);
-      resetVoicingSelection();
+      if (VoicingState.selectedBoxIdx !== null) {
+        VoicingState._preservePosition = { type: 'transpose', midiDelta: key === 'ArrowRight' ? 1 : -1 };
+      }
       updateChordDisplay(); render();
     }
     return;

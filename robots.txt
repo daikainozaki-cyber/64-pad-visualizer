@@ -1,0 +1,27 @@
+# robots.txt for 64 Pad Explorer
+# https://murinaikurashi.com/apps/64-pad/
+# Updated: 2026-03-03
+
+# Allow all bots to crawl the site
+User-agent: *
+Allow: /
+
+# Specific bot rules
+User-agent: Googlebot
+Allow: /
+
+User-agent: AdsBot-Google
+Allow: /
+
+# Disallow non-public files
+Disallow: /admin/
+Disallow: /*.json$
+Disallow: /.*\.bak$
+Disallow: /.git
+Disallow: /.github
+
+# Crawl delay (optional - helps server)
+Crawl-delay: 2
+
+# Sitemap location
+Sitemap: https://murinaikurashi.com/apps/64-pad/sitemap.xml

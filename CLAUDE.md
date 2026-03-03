@@ -321,6 +321,7 @@ fingerings.json に追加
 | Phase 6 | **ダイアグラム描画モジュール化** | 未着手 | ギター/ベース/ピアノ描画を再利用可能な単位に切り出し |
 | Phase 7 | **五度圏アプリにダイアグラム統合** | 未着手 | モジュールを五度圏アプリにインポート |
 | ~~Phase 8~~ | ~~記事からのデータ抽出パイプライン~~ | **廃止** | Phase 5廃止に伴い不要 |
+| Phase M | **モバイルPlay対応（iPhone限定）** | **設計完了** | View=64パッド(縦持ち)、Play=32パッド(横持ち4×8)。詳細: `docs/mobile-play-design.md` |
 
 **Phase 1〜2はコード表示・スケール表示まで。うりなみさん見積: 約2時間。**
 
@@ -869,6 +870,32 @@ z x c v   → slot 13-16
 | ~~iOSネイティブアプリ~~ | ~~Capacitor + CoreMIDIブリッジ~~ | **見送り**（2026-02-16決定） |
 
 **実装済み（記録漏れ）**: シェル+テンション — シェルボイシング状態でテンションを選択すると、シェル音にテンション音が加わる。実際の演奏に近い操作感。
+
+### モバイルPlay設計（iPhone限定、2026-03-03設計）
+
+**スコープ**: iPhone限定。iPadは現状のタブレットレイアウトで問題なし（パッドが十分大きい）。
+
+**コンセプト**: View / Play モード切替
+- **Portrait（縦持ち）= View専用**: 既存の3画面スワイプ（8×8 = 64パッド）でフィンガリング・ボイシング確認
+- **Landscape（横持ち）= Play モード**: 画面回転で自動切替、4×8 = 32パッド（演奏向け）
+
+**GRID_PLAY定数**:
+```javascript
+GRID_PLAY = { ROWS: 4, COLS: 8, BASE_MIDI: 36, ROW_INTERVAL: 5, COL_INTERVAL: 1, PAD_GAP: 4, MARGIN: 8 }
+// PAD_SIZEはviewportから動的計算: Math.floor((vw - MARGIN*2 - 7*PAD_GAP) / 8)
+```
+
+**パッドサイズ**: iPhone SE ~72px、iPhone 15 ~95px、iPhone 15 Pro Max ~105px（十分弾ける大きさ）
+
+**既存メディアクエリ活用**: `@media (max-width: 812px) and (max-height: 500px) and (orientation: landscape)` がiPhone landscapeを正確にターゲット（iPad除外済み）
+
+**技術変更**: render()でGRID/GRID_PLAYを分岐、Landscape CSSでパッドフルスクリーン、ミニコントロールバー（Key/Scale/Sound）、タッチイベント最適化（multitouch、haptic feedback）
+
+**実装フェーズ**: Phase M1=4×8パッド基本 → M2=ミニコントロール → M3=タッチ最適化 → M4=PWA最適化
+
+**詳細設計書**: `docs/mobile-play-design.md`
+
+**うりなみさん確認待ち**: ①4×8でOK？ ②自動切替？ ③Play中のコントロール？ ④Performモード統合？
 
 ### MIDI Timeline Playback (V3.5, 2026-03-02)
 

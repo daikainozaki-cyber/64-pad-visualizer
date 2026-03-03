@@ -39,6 +39,26 @@ if (typeof window.__JUCE__ === 'undefined') {
   gtag('config', 'G-ZWTBLDWP7P');
 }
 </script>
+<script>
+// Outbound & cross-property click tracking
+document.addEventListener('click', function(e) {
+  var link = e.target.closest('a[href]');
+  if (!link) return;
+  var url = link.href;
+  var dest = null;
+  if (url.indexOf('note.com') !== -1) dest = 'note';
+  else if (url.indexOf('/apps/hps-glossary') !== -1) dest = 'hps-portal';
+  else if (url.indexOf('murinaikurashi.com') !== -1 && url.indexOf('/apps/64-pad') === -1) dest = 'blog';
+  else if (url.indexOf('amazon') !== -1) dest = 'amazon';
+  if (dest && typeof gtag === 'function') {
+    gtag('event', 'outbound_click', {
+      link_url: url,
+      link_text: (link.textContent || '').trim().slice(0, 50),
+      link_destination: dest
+    });
+  }
+});
+</script>
 <link rel="stylesheet" href="style.css?v=3.7.2">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
@@ -78,11 +98,11 @@ if (typeof window.__JUCE__ === 'undefined') {
 <div class="header-links" id="header-links">
   <a href="guide.html" data-i18n="header.guide">Guide</a>
   <span class="link-sep">|</span>
-  <a href="https://murinaikurashi.com/apps/hps-glossary/" target="_blank" data-i18n="header.portal">HPSポータル</a>
+  <a href="https://murinaikurashi.com/apps/hps-glossary/?utm_source=64pad&utm_medium=tool-link&utm_campaign=app-cta" target="_blank" data-i18n="header.portal">HPSポータル</a>
   <span class="link-sep">|</span>
-  <a href="https://note.com/urinami/membership" target="_blank">HPS</a>
+  <a href="https://note.com/urinami/membership?utm_source=64pad&utm_medium=tool-link&utm_campaign=membership-cta" target="_blank">HPS</a>
   <span class="link-sep">|</span>
-  <a href="https://murinaikurashi.com/" target="_blank" data-i18n="header.blog">無理ない暮らし</a>
+  <a href="https://murinaikurashi.com/?utm_source=64pad&utm_medium=tool-link&utm_campaign=blog-link" target="_blank" data-i18n="header.blog">無理ない暮らし</a>
   <span class="link-sep">|</span>
   <a href="https://www.amazon.co.jp/hz/wishlist/ls/2U3B7JYF1BLGD?tag=urinami-22" target="_blank" data-i18n="header.wishlist">欲しいものリスト</a>
 </div>
@@ -241,9 +261,9 @@ if (typeof window.__JUCE__ === 'undefined') {
       64 Pad Explorer — HPS（Hardcore Pad Style）
     </p>
     <p style="font-size:0.7rem;color:var(--text-muted);text-align:center;">
-      <a href="https://murinaikurashi.com/apps/hps-glossary/" style="color:var(--accent);" data-i18n="header.portal">HPSポータル</a> |
-      <a href="https://note.com/urinami/membership" style="color:var(--accent);">HPS</a> |
-      <a href="https://murinaikurashi.com/" style="color:var(--accent);" data-i18n="header.blog">無理ない暮らし</a>
+      <a href="https://murinaikurashi.com/apps/hps-glossary/?utm_source=64pad&utm_medium=tool-link&utm_campaign=app-cta" style="color:var(--accent);" data-i18n="header.portal">HPSポータル</a> |
+      <a href="https://note.com/urinami/membership?utm_source=64pad&utm_medium=tool-link&utm_campaign=membership-cta" style="color:var(--accent);">HPS</a> |
+      <a href="https://murinaikurashi.com/?utm_source=64pad&utm_medium=tool-link&utm_campaign=blog-link" style="color:var(--accent);" data-i18n="header.blog">無理ない暮らし</a>
     </p>
     <button class="close-btn" onclick="document.getElementById('help-overlay').classList.remove('active')" data-i18n="ui.close">閉じる</button>
   </div>

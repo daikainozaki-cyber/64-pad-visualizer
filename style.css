@@ -140,7 +140,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   justify-content: center;
   align-items: flex-start;
 }
-.pad-area { flex-shrink: 0; }
+.pad-area { flex-shrink: 0; overflow: hidden; }
 .control-panel {
   width: 440px;
   background: var(--panel-bg);

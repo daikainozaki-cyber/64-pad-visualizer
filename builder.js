@@ -869,8 +869,7 @@ function onMidiNoteOff(note) {
 }
 
 // Called from C++ (evaluateJavascript) when native MIDI input is received.
-// When VST loaded: sound plays via C++ processBlock, JS only updates UI.
-// When no VST: play via WebAudioFont (C++ sine is muted).
+// Sound engine removed — noteOn/noteOff are no-ops (visualization only).
 function onNativeMidiIn(note, velocity) {
   if (typeof _useNativeAudio !== 'undefined' && !_useNativeAudio) {
     noteOn(note, (velocity || 100) / 127, true);

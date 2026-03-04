@@ -878,10 +878,8 @@ const DIAGRAM_WIDTH = 564;              // shared width for pad, guitar & piano 
 let showGuitar = false;
 let showPiano = false;
 let showStaff = true;
-let showSound = true;
 let showBass = false;
 let guitarLabelMode = 'name'; // 'name' or 'degree'
-let soundExpanded = false;
 let memoryViewMode = 'memory'; // 'memory' or 'perform'
 
 function toggleMemoryView(mode) {
@@ -895,28 +893,19 @@ function toggleMemoryView(mode) {
   updateMemorySlotUI();
 }
 
-function toggleSoundExpand() {
-  soundExpanded = !soundExpanded;
-  document.getElementById('sound-details').style.display = soundExpanded ? '' : 'none';
-  document.getElementById('sound-expand-btn').innerHTML = soundExpanded ? '&#x25B2;' : '&#x25BC;';
-}
-
 function toggleInstrument(which) {
   if (which === 'guitar') showGuitar = !showGuitar;
   if (which === 'bass') showBass = !showBass;
   if (which === 'piano') showPiano = !showPiano;
   if (which === 'staff') showStaff = !showStaff;
-  if (which === 'sound') showSound = !showSound;
   document.getElementById('inst-toggle-guitar').classList.toggle('active', showGuitar);
   document.getElementById('inst-toggle-bass').classList.toggle('active', showBass);
   document.getElementById('inst-toggle-piano').classList.toggle('active', showPiano);
   document.getElementById('inst-toggle-staff').classList.toggle('active', showStaff);
-  document.getElementById('inst-toggle-sound').classList.toggle('active', showSound);
   document.getElementById('guitar-wrap').style.display = showGuitar ? '' : 'none';
   document.getElementById('bass-wrap').style.display = showBass ? '' : 'none';
   document.getElementById('piano-wrap-display').style.display = showPiano ? '' : 'none';
   document.getElementById('staff-area').style.display = showStaff ? '' : 'none';
-  document.getElementById('sound-controls').style.display = showSound ? '' : 'none';
   document.getElementById('guitar-label-btn').style.display = (showGuitar || showBass) ? '' : 'none';
   render();
   saveAppSettings();

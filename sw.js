@@ -1,11 +1,10 @@
-var CACHE_NAME = '64pad-v3.1.0';
+var CACHE_NAME = '64pad-v3.8.0';
 var ASSETS = [
   './',
   'index.html',
   'style.css?v=3.0.0',
   'data.js?v=3.0.0',
   'theory.js?v=3.0.0',
-  'audio.js?v=3.0.0',
   'render.js?v=3.0.0',
   'builder.js?v=3.0.0',
   'plain.js?v=3.0.0',

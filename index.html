@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>64 Pad Explorer - パッドでスケール・コード・ボイシングを可視化【無料】</title>
-<meta name="description" content="64パッドでスケール・コード・ボイシングを可視化。Ableton Push / Maschine対応。コード判定、ギター・鍵盤・五線譜の同時表示、MIDI入出力、ボイシング自動保持。ブラウザだけで動く音源内蔵の無料音楽理論ツール。">
+<meta name="description" content="64パッドでスケール・コード・ボイシングを可視化。Ableton Push / Maschine対応。コード判定、ギター・鍵盤・五線譜の同時表示、MIDI入出力、ボイシング自動保持。ブラウザだけで動く無料音楽理論ツール。">
 <meta name="keywords" content="64パッド, スケール可視化, コード可視化, パッド演奏, Ableton Push, Maschine, 音楽理論, MIDI, ボイシング, フィンガードラム, pad scale visualizer, chord visualizer">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="manifest" href="manifest.json">
@@ -60,21 +60,7 @@ document.addEventListener('click', function(e) {
 });
 </script>
 <link rel="stylesheet" href="style.css?v=3.7.2">
-<!-- WebAudioFont: player + organ instruments -->
-<script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
-<script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
-<script src="https://surikov.github.io/webaudiofontdata/sound/0170_FluidR3_GM_sf2_file.js"></script>
-<script src="https://surikov.github.io/webaudiofontdata/sound/0180_FluidR3_GM_sf2_file.js"></script>
-<script src="https://surikov.github.io/webaudiofontdata/sound/0190_FluidR3_GM_sf2_file.js"></script>
-<!-- E.Piano WebAudioFont presets (Rhodes + FM EP) -->
-<script src="https://surikov.github.io/webaudiofontdata/sound/0040_FluidR3_GM_sf2_file.js"></script>
-<script src="https://surikov.github.io/webaudiofontdata/sound/0040_GeneralUserGS_sf2_file.js"></script>
-<script src="https://surikov.github.io/webaudiofontdata/sound/0040_Chaos_sf2_file.js"></script>
-<!-- JCLive/SBLive removed: no license documentation (2026-03-02) -->
-<script src="https://surikov.github.io/webaudiofontdata/sound/0050_FluidR3_GM_sf2_file.js"></script>
-<script src="https://surikov.github.io/webaudiofontdata/sound/0050_GeneralUserGS_sf2_file.js"></script>
-<!-- E.Piano: jRhodes3c velocity-layer sampler (5 layers, 1977 Rhodes Mark I) -->
-<script src="jrhodes3c-samples.js?v=3.7.2"></script>
+<!-- Sound engine removed (2026-03-04) — visualization tool, not an instrument -->
 </head>
 <body>
 
@@ -146,16 +132,6 @@ document.addEventListener('click', function(e) {
       <li data-i18n="help.display_inst"><strong>Guitar / Piano / Staff</strong> — ギターフレットボード、ピアノ鍵盤、五線譜を個別にON/OFF</li>
       <li data-i18n="help.display_label"><strong>音名/度数</strong> — ギター・パッド上の表示を音名(C, D, E)と度数(R, 2, 3)で切り替え</li>
       <li data-i18n="help.display_oct"><strong>Octave ▲▼</strong> — パッドの音域をオクターブシフト</li>
-    </ul>
-
-    <h2 data-i18n="help.sound">Sound</h2>
-    <ul>
-      <li data-i18n="help.sound_onoff"><strong>&#x1F50A; ON/OFF</strong> — スピーカーアイコンで音のON/OFFを切り替え</li>
-      <li data-i18n="help.sound_select"><strong>ORGAN / E.PIANO</strong> — 音色エンジンを選択。&#x25BC;を押すとプリセットやエフェクトの詳細パネルが開く</li>
-      <li data-i18n="help.sound_organ"><strong>ORGAN</strong> — 4プリセット（Jazz, Perc, Full, Gospel）</li>
-      <li data-i18n="help.sound_ep"><strong>E.PIANO</strong> — 9プリセット（Rhodes 1-5, FM EP 1-2, jRhodes3c Sampler）</li>
-      <li data-i18n="help.sound_fx"><strong>エフェクト</strong> — Lo Cut, Hi Cut, Reverb, Phaser, Flanger, Tremolo, Speed, Volume</li>
-      <li data-i18n="help.sound_play">パッドをクリック、またはボイシングボックスをクリックで発音</li>
     </ul>
 
     <h2>MIDI</h2>
@@ -244,7 +220,7 @@ document.addEventListener('click', function(e) {
     <ul style="font-size:0.75rem;color:var(--text-muted);">
       <li data-i18n="help.vh_37"><b>V3.7</b> — ボイシングポジション保持（半音移動時にフィンガリング形状を自動維持）。再生中にパッドグリッド・五線譜・コード検出を表示。<a href="https://youtu.be/mHSMM4GDNkE" target="_blank" style="color:var(--accent);">紹介動画</a></li>
       <li data-i18n="help.vh_35"><b>V3.5</b> — MIDIファイル再生→パッド点灯（タイムライン再生、コード名表示、Play/Pause/Stop/Seek）</li>
-      <li data-i18n="help.vh_34"><b>V3.4</b> — E.PIANOサンプラー搭載（Rhodes Mark I）。EPプリセット7種。Sound ON/OFFトグル。iPad対応</li>
+      <li data-i18n="help.vh_34"><b>V3.4</b> — iPad対応</li>
       <li data-i18n="help.vh_31"><b>V3.1</b> — ベロシティ感度調整（4パラメータ+カーブ可視化）。Push 3オクターブボタン対応。<a href="https://youtu.be/4vCkISlMVxc" target="_blank" style="color:var(--accent);">紹介動画</a></li>
       <li data-i18n="help.vh_250"><b>V2.50</b> — 複数メモリーバンク（16スロット×最大16バンク、切替・複製・リネーム対応）</li>
       <li data-i18n="help.vh_218"><b>V2.18</b> — 全設定の自動保存・復元（キー/スケール/音色/MIDI/メモリー）</li>
@@ -254,7 +230,7 @@ document.addEventListener('click', function(e) {
       <li data-i18n="help.vh_19"><b>V1.9</b> — 9言語対応</li>
       <li data-i18n="help.vh_18"><b>V1.8</b> — Performモード、16メモリースロット、Undo、D&D</li>
       <li data-i18n="help.vh_15"><b>V1.5</b> — Plainモード、MIDI/CHS書き出し</li>
-      <li data-i18n="help.vh_10"><b>V1.0</b> — 初回リリース（Scale/Chord/Voicing/Sound/MIDI）</li>
+      <li data-i18n="help.vh_10"><b>V1.0</b> — 初回リリース（Scale/Chord/Voicing/MIDI）</li>
     </ul>
 
     <p style="font-size:0.7rem;color:var(--text-muted);margin-top:12px;text-align:center;" data-i18n="help.footer">
@@ -427,47 +403,13 @@ document.addEventListener('click', function(e) {
 
   </div>
 
-  <!-- Right: Staff + Sound Controls -->
+  <!-- Right: Staff + Memory -->
   <div id="staff-ep-panel" style="display:flex;flex-direction:column;gap:4px;min-width:360px;">
     <div style="display:flex;justify-content:center;gap:4px;">
       <button id="inst-toggle-staff" class="inst-toggle active" onclick="toggleInstrument('staff')">Staff</button>
-      <button id="inst-toggle-sound" class="inst-toggle active" onclick="toggleInstrument('sound')">Sound</button>
     </div>
     <div id="staff-area" style="display:flex;justify-content:center;">
       <svg id="staff-notation" width="280" height="0" style="display:none;"></svg>
-    </div>
-    <div id="sound-controls" style="padding:8px 10px;background:linear-gradient(180deg,#1a1a2a,#12121e);border:1px solid #333;border-radius:6px;">
-      <div id="sound-header" style="display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;">
-        <button id="sound-mute-btn" onclick="toggleSoundMute()" title="Sound ON/OFF" style="font-size:0.85rem;padding:2px 6px;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;line-height:1;opacity:0.5;">&#x1F507;</button>
-        <div id="engine-selector" style="display:flex;gap:4px;justify-content:center;">
-          <button class="engine-btn active" id="eng-organ" onclick="setEngine('organ')">ORGAN</button>
-          <button class="engine-btn" id="eng-ep" onclick="setEngine('ep')">E.PIANO</button>
-        </div>
-        <label class="ep-knob"><span>VOL</span><input type="range" id="snd-volume" min="0" max="1" step="0.01" value="0.6"><span id="snd-vol-val" class="ep-val">0.60</span></label>
-        <button id="sound-expand-btn" onclick="toggleSoundExpand()" style="font-size:0.7rem;padding:2px 8px;background:transparent;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;cursor:pointer;">&#x25BC;</button>
-      </div>
-      <div id="sound-details" style="display:none;margin-top:6px;">
-        <div style="display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;">
-          <label class="ep-knob"><span>PRESET</span><select id="organ-preset" style="font-size:0.6rem;background:var(--surface);color:var(--text);border:1px solid var(--text-muted);border-radius:3px;padding:1px 2px;width:64px;"></select></label>
-          <label class="ep-knob"><span>REV</span><input type="range" id="snd-reverb" min="0" max="0.5" step="0.01" value="0.08"><span id="snd-rev-val" class="ep-val">0.08</span></label>
-          <label class="ep-knob"><span>PHASE</span><input type="range" id="snd-phaser" min="0" max="1" step="0.01" value="0"><span id="snd-phs-val" class="ep-val">0.00</span></label>
-          <label class="ep-knob"><span>FLANG</span><input type="range" id="snd-flanger" min="0" max="1" step="0.01" value="0"><span id="snd-flg-val" class="ep-val">0.00</span></label>
-          <label class="ep-knob"><span>LO CUT</span><span class="filter-toggle"><input type="checkbox" id="snd-locut-toggle"></span><input type="range" id="snd-locut" min="20" max="500" step="1" value="80"><span id="snd-locut-val" class="ep-val">80</span></label>
-          <label class="ep-knob"><span>HI CUT</span><span class="filter-toggle"><input type="checkbox" id="snd-hicut-toggle"></span><input type="range" id="snd-hicut" min="1000" max="20000" step="100" value="10000"><span id="snd-hicut-val" class="ep-val">10000</span></label>
-          <label class="ep-knob"><span>TREM</span><input type="range" id="snd-tremolo" min="0" max="0.4" step="0.01" value="0"><span id="snd-trm-val" class="ep-val">0.00</span></label>
-          <label class="ep-knob"><span>SPEED</span><input type="range" id="snd-tremolo-spd" min="1" max="12" step="0.1" value="4.5"><span id="snd-trm-spd-val" class="ep-val">4.5</span></label>
-        </div>
-        <div id="vel-section" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--border);">
-          <div style="font-size:0.55rem;color:var(--text-muted);text-align:center;margin-bottom:2px;">VELOCITY SENSITIVITY</div>
-          <div style="display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;">
-            <label class="ep-knob"><span>THRESH</span><input type="range" id="vel-threshold" min="0" max="64" step="1" value="0"><span id="vel-thr-val" class="ep-val">0</span></label>
-            <label class="ep-knob"><span>DRIVE</span><input type="range" id="vel-drive" min="-64" max="64" step="1" value="0"><span id="vel-drv-val" class="ep-val">0</span></label>
-            <label class="ep-knob"><span>COMP</span><input type="range" id="vel-compand" min="-64" max="64" step="1" value="0"><span id="vel-cmp-val" class="ep-val">0</span></label>
-            <label class="ep-knob"><span>RANGE</span><input type="range" id="vel-range" min="1" max="127" step="1" value="127"><span id="vel-rng-val" class="ep-val">127</span></label>
-          </div>
-          <canvas id="vel-curve-canvas" width="200" height="60" style="display:block;margin:4px auto 0;border-radius:4px;background:rgba(0,0,0,0.3);"></canvas>
-        </div>
-      </div>
     </div>
     <!-- Memory Slots (always visible, all modes) -->
     <div id="memory-section" style="margin-top:6px;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;">
@@ -555,14 +497,6 @@ document.addEventListener('click', function(e) {
 </div>
 <script>if(typeof window.__JUCE__!=='undefined'||/64-pad-dev|64-pad-chs/.test(location.pathname)){var el=document.getElementById('affiliate-section');if(el)el.style.display='none';}</script>
 
-<!-- Sound Credits -->
-<div style="text-align:center;font-size:0.5rem;color:var(--text-muted);padding:8px 12px;opacity:0.6;line-height:1.6;">
-  Sound: <a href="https://github.com/surikov/webaudiofont" target="_blank" style="color:var(--text-muted);">WebAudioFont</a> by Srgy Surkv (GPL-3.0)
-  | <a href="https://github.com/Jeff-Learman/jRhodes3c" target="_blank" style="color:var(--text-muted);">jRhodes3c</a> by Jeff Learman (CC-BY-4.0)
-  | FluidR3 GM by Frank Wen (MIT)
-  | GeneralUser GS by S. Christian Collins
-  | Chaos Bank (CC0)
-</div>
 
 <script>
 (function(){

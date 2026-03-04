@@ -493,8 +493,8 @@ document.addEventListener('click', function(e) {
   <span class="dot" onclick="goToScreen(2)"></span>
 </div>
 
-<!-- Footer: Plugin Boutique + Buy Me a Coffee (all users) -->
-<div id="affiliate-section" style="text-align:center;padding:4px 8px;">
+<!-- Footer: Plugin Boutique + Buy Me a Coffee (non-JA only, JA has these in instrument area) -->
+<div id="affiliate-section" class="non-ja-affiliate" style="text-align:center;padding:4px 8px;display:none;">
   <div style="display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;opacity:0.7;">
     <a href="https://www.pluginboutique.com/bundles?utm_source=PIB%20bundles&amp;utm_medium=AFRS&amp;utm_campaign=PIB%20bundles&amp;a_aid=5dddfe6ee2cc6&amp;a_bid=81cae465" target="_blank" rel="nofollow"><img src="//loopmasters.postaffiliatepro.com/accounts/default1/hfwq3b89wu2/81cae465.jpg" alt="Music Software Bundles from Pluginboutique.com" title="Music Software Bundles from Pluginboutique.com" width="300" height="50" style="border:none;vertical-align:middle;"></a>
   </div>
@@ -502,7 +502,7 @@ document.addEventListener('click', function(e) {
     <a href="https://buymeacoffee.com/urinami" target="_blank" rel="noopener" id="bmac-link" style="padding:6px 16px;background:#FFDD00;color:#000;border-radius:20px;font-size:0.75rem;text-decoration:none;font-weight:bold;opacity:0.85;">☕ Buy me a coffee</a>
   </p>
 </div>
-<script>if(typeof window.__JUCE__!=='undefined'||/64-pad-dev|64-pad-chs/.test(location.pathname)){var el=document.getElementById('affiliate-section');if(el)el.style.display='none';var el2=document.getElementById('affiliate-instrument-area');if(el2)el2.style.display='none';}</script>
+<script>if(typeof window.__JUCE__!=='undefined'||/64-pad-dev|64-pad-chs/.test(location.pathname)){var _h=document.querySelectorAll('#affiliate-section,.ja-affiliate');for(var _i=0;_i<_h.length;_i++)_h[_i].style.display='none';}</script>
 
 
 <script>
@@ -515,16 +515,16 @@ document.addEventListener('click', function(e) {
   s.crossOrigin = 'anonymous';
   document.head.appendChild(s);
   if (lang !== 'ja') {
-    // Hide JA-only affiliates, show non-JA AdSense slot
+    // Hide JA-only affiliates, show non-JA footer + AdSense slot
     var jaAff = document.querySelectorAll('.ja-affiliate');
     for (var i = 0; i < jaAff.length; i++) jaAff[i].style.display = 'none';
+    var nonJaAff = document.querySelectorAll('.non-ja-affiliate');
+    for (var i = 0; i < nonJaAff.length; i++) nonJaAff[i].style.display = '';
     var sec = document.getElementById('adsense-section');
     if (sec) sec.style.display = 'block';
     s.onload = function(){ (adsbygoogle = window.adsbygoogle || []).push({}); };
   } else {
-    // JA users: show AdSense slot below fretboard area
-    var secJa = document.getElementById('adsense-ja-section');
-    if (secJa) secJa.style.display = 'block';
+    // JA users: instrument area affiliates already visible, hide footer
     s.onload = function(){ (adsbygoogle = window.adsbygoogle || []).push({}); };
   }
 })();

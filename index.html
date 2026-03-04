@@ -314,14 +314,17 @@ document.addEventListener('click', function(e) {
           <button onclick="clearInstrumentInput()" style="font-size:0.7rem;padding:3px 14px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">Clear</button>
           <button onclick="playInstrumentInput()" style="font-size:0.7rem;padding:3px 14px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">Play ▶</button>
         </div>
-        <!-- AdSense JA only: below fretboard area, hidden when fretboard is visible -->
-        <div id="adsense-ja-section" style="display:none;margin-top:4px;text-align:center;">
-          <ins class="adsbygoogle"
-               style="display:block"
-               data-ad-client="ca-pub-5342075134165411"
-               data-ad-slot="auto"
-               data-ad-format="rectangle"
-               data-full-width-responsive="false"></ins>
+        <!-- Affiliate banners: below fretboard area, visible when Guitar/Bass/Piano are off -->
+        <div id="affiliate-instrument-area" class="ja-affiliate" style="margin-top:4px;text-align:center;">
+          <div style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;padding:4px;opacity:0.7;">
+            <a href="https://h.accesstrade.net/sp/cc?rk=01000gil00iidb" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" target="_blank"><img src="https://h.accesstrade.net/sp/rr?rk=01000gil00iidb" alt="サウンドハウス" border="0" style="vertical-align:middle;"></a>
+            <a href="//af.moshimo.com/af/c/click?a_id=892719&p_id=170&pc_id=185&pl_id=4071" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" attributionsrc target="_blank"><img src="//image.moshimo.com/af-img/0068/000000004071.gif" width="164" height="28" style="border:none;vertical-align:middle;"></a><img src="//i.moshimo.com/af/i/impression?a_id=892719&p_id=170&pc_id=185&pl_id=4071" width="1" height="1" style="border:none;" loading="lazy">
+            <a href="//af.moshimo.com/af/c/click?a_id=892164&p_id=54&pc_id=54&pl_id=616" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" attributionsrc target="_blank"><img src="//image.moshimo.com/af-img/0032/000000000616.gif" width="88" height="31" style="border:none;vertical-align:middle;"></a><img src="//i.moshimo.com/af/i/impression?a_id=892164&p_id=54&pc_id=54&pl_id=616" width="1" height="1" style="border:none;" loading="lazy">
+            <a href="//af.moshimo.com/af/c/click?a_id=956662&p_id=1225&pc_id=1925&pl_id=18518" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" attributionsrc target="_blank"><img src="//image.moshimo.com/af-img/0349/000000018518.jpg" width="234" height="60" style="border:none;vertical-align:middle;"></a><img src="//i.moshimo.com/af/i/impression?a_id=956662&p_id=1225&pc_id=1925&pl_id=18518" width="1" height="1" style="border:none;" loading="lazy">
+            <a href="https://h.accesstrade.net/sp/cc?rk=0100pqbq00iidb" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" target="_blank"><img src="https://h.accesstrade.net/sp/rr?rk=0100pqbq00iidb" alt="メルカリ購入" border="0" style="vertical-align:middle;"></a>
+            <a href="https://www.pluginboutique.com/bundles?utm_source=PIB%20bundles&amp;utm_medium=AFRS&amp;utm_campaign=PIB%20bundles&amp;a_aid=5dddfe6ee2cc6&amp;a_bid=81cae465" target="_blank" rel="nofollow"><img src="//loopmasters.postaffiliatepro.com/accounts/default1/hfwq3b89wu2/81cae465.jpg" alt="Music Software Bundles from Pluginboutique.com" title="Music Software Bundles from Pluginboutique.com" width="300" height="50" style="border:none;vertical-align:middle;"></a>
+          </div>
+          <a href="https://buymeacoffee.com/urinami" target="_blank" rel="noopener" style="padding:4px 12px;background:#FFDD00;color:#000;border-radius:20px;font-size:0.65rem;text-decoration:none;font-weight:bold;opacity:0.85;">☕ Buy me a coffee</a>
         </div>
       </div>
     </div>
@@ -490,25 +493,16 @@ document.addEventListener('click', function(e) {
   <span class="dot" onclick="goToScreen(2)"></span>
 </div>
 
-<!-- Affiliate Banners (hidden on dev/chs URLs) -->
-<div id="affiliate-section">
-<p class="ja-affiliate" style="text-align:center;font-size:0.65rem;color:var(--text-muted);margin:12px 0 2px;opacity:0.6;">徳を積みたい方はこちら…</p>
-<div style="display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;padding:0 8px 8px;opacity:0.7;">
-  <span class="ja-affiliate">
-  <a href="https://h.accesstrade.net/sp/cc?rk=01000gil00iidb" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" target="_blank"><img src="https://h.accesstrade.net/sp/rr?rk=01000gil00iidb" alt="サウンドハウス" border="0" style="vertical-align:middle;"></a>
-  <a href="//af.moshimo.com/af/c/click?a_id=892719&p_id=170&pc_id=185&pl_id=4071" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" attributionsrc target="_blank"><img src="//image.moshimo.com/af-img/0068/000000004071.gif" width="164" height="28" style="border:none;vertical-align:middle;"></a><img src="//i.moshimo.com/af/i/impression?a_id=892719&p_id=170&pc_id=185&pl_id=4071" width="1" height="1" style="border:none;" loading="lazy">
-  <a href="//af.moshimo.com/af/c/click?a_id=892164&p_id=54&pc_id=54&pl_id=616" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" attributionsrc target="_blank"><img src="//image.moshimo.com/af-img/0032/000000000616.gif" width="88" height="31" style="border:none;vertical-align:middle;"></a><img src="//i.moshimo.com/af/i/impression?a_id=892164&p_id=54&pc_id=54&pl_id=616" width="1" height="1" style="border:none;" loading="lazy">
-  <a href="//af.moshimo.com/af/c/click?a_id=956662&p_id=1225&pc_id=1925&pl_id=18518" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" attributionsrc target="_blank"><img src="//image.moshimo.com/af-img/0349/000000018518.jpg" width="234" height="60" style="border:none;vertical-align:middle;"></a><img src="//i.moshimo.com/af/i/impression?a_id=956662&p_id=1225&pc_id=1925&pl_id=18518" width="1" height="1" style="border:none;" loading="lazy">
-  <a href="https://h.accesstrade.net/sp/cc?rk=0100pqbq00iidb" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" target="_blank"><img src="https://h.accesstrade.net/sp/rr?rk=0100pqbq00iidb" alt="メルカリ購入" border="0" style="vertical-align:middle;"></a>
-  </span>
-  <a href="https://www.pluginboutique.com/bundles?utm_source=PIB%20bundles&amp;utm_medium=AFRS&amp;utm_campaign=PIB%20bundles&amp;a_aid=5dddfe6ee2cc6&amp;a_bid=81cae465" target="_blank" rel="nofollow"><img src="//loopmasters.postaffiliatepro.com/accounts/default1/hfwq3b89wu2/81cae465.jpg" alt="Music Software Bundles from Pluginboutique.com" title="Music Software Bundles from Pluginboutique.com" width="300" height="50" style="border:none;vertical-align:middle;"></a>
+<!-- Footer: Plugin Boutique + Buy Me a Coffee (all users) -->
+<div id="affiliate-section" style="text-align:center;padding:4px 8px;">
+  <div style="display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;opacity:0.7;">
+    <a href="https://www.pluginboutique.com/bundles?utm_source=PIB%20bundles&amp;utm_medium=AFRS&amp;utm_campaign=PIB%20bundles&amp;a_aid=5dddfe6ee2cc6&amp;a_bid=81cae465" target="_blank" rel="nofollow"><img src="//loopmasters.postaffiliatepro.com/accounts/default1/hfwq3b89wu2/81cae465.jpg" alt="Music Software Bundles from Pluginboutique.com" title="Music Software Bundles from Pluginboutique.com" width="300" height="50" style="border:none;vertical-align:middle;"></a>
+  </div>
+  <p style="margin:4px 0 8px;">
+    <a href="https://buymeacoffee.com/urinami" target="_blank" rel="noopener" id="bmac-link" style="padding:6px 16px;background:#FFDD00;color:#000;border-radius:20px;font-size:0.75rem;text-decoration:none;font-weight:bold;opacity:0.85;">☕ Buy me a coffee</a>
+  </p>
 </div>
-<!-- Buy Me a Coffee (all users, hidden until account URL is set) -->
-<p style="text-align:center;margin:4px 0 8px;">
-  <a href="https://buymeacoffee.com/urinami" target="_blank" rel="noopener" id="bmac-link" style="padding:6px 16px;background:#FFDD00;color:#000;border-radius:20px;font-size:0.75rem;text-decoration:none;font-weight:bold;opacity:0.85;">☕ Buy me a coffee</a>
-</p>
-</div>
-<script>if(typeof window.__JUCE__!=='undefined'||/64-pad-dev|64-pad-chs/.test(location.pathname)){var el=document.getElementById('affiliate-section');if(el)el.style.display='none';}</script>
+<script>if(typeof window.__JUCE__!=='undefined'||/64-pad-dev|64-pad-chs/.test(location.pathname)){var el=document.getElementById('affiliate-section');if(el)el.style.display='none';var el2=document.getElementById('affiliate-instrument-area');if(el2)el2.style.display='none';}</script>
 
 
 <script>

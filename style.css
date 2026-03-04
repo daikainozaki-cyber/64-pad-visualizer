@@ -411,7 +411,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   gap: 3px;
 }
 .slot-btn {
-  height: 52px;
+  height: 40px;
   background: var(--pad-off);
   border: 2px solid var(--border);
   border-radius: 8px;
@@ -846,4 +846,35 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   .diatonic-btn { padding: 3px 1px; font-size: 0.55rem; }
   .mode-btn { padding: 4px 0; font-size: 0.7rem; }
   .chord-name { font-size: 1.2rem; }
+}
+
+/* === To DAW mode === */
+.to-daw-mode .slot-btn.filled {
+  cursor: grab;
+}
+.to-daw-mode .slot-btn.filled:hover {
+  background: rgba(76,175,80,0.10);
+}
+/* DAW multi-select: Cmd+click selected slots */
+.slot-btn.daw-selected {
+  border-color: #66BB6A;
+  background: #4CAF50;
+  color: #000;
+  font-weight: 700;
+  cursor: grab;
+  animation: daw-pulse 1.2s ease-in-out infinite;
+}
+
+/* ALL pad in To DAW mode — spans full row, pulses green */
+.daw-all-pad {
+  grid-column: 1 / -1;
+  background: #4CAF50 !important;
+  color: #000 !important;
+  border-color: #66BB6A !important;
+  font-weight: 700;
+  cursor: grab !important;
+}
+@keyframes daw-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }

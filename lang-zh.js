@@ -139,7 +139,7 @@ I18N.addLang('zh', {
   },
   memory: {
     slot_empty: '插槽 {slot}：空',
-    midi_selected: 'MIDI: {chord}',
+    midi_selected: 'MIDI Export {chord}',
     midi_all: 'MIDI Export All',
     chs_selected: 'CHS: {chord}',
     chs_all: 'CHS Export All',

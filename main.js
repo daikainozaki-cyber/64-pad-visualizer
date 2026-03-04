@@ -11,6 +11,7 @@ initQualityGrid();
 initTensionGrid();
 updateOctaveLabel();
 initMemorySlots();
+initToDAWButton();
 initWebMIDI();
 I18N.init();
 
@@ -79,6 +80,15 @@ document.addEventListener('keydown', (e) => {
 
   const key = e.key;
   const lk = key.toLowerCase(); // for letter key matching (case-insensitive)
+
+  // Escape: clear DAW selection
+  if (_isDesktop && key === 'Escape' && PlainState.dawSelection.size > 0) {
+    e.preventDefault();
+    e.stopPropagation();
+    PlainState.dawSelection.clear();
+    updateMemorySlotUI();
+    return;
+  }
 
   // [ / ]: Bank switch (全モード共通)
   if (key === '[') { switchBank(-1); return; }

@@ -713,9 +713,50 @@ function initMemorySlots() {
     btn.draggable = true;
     btn.addEventListener('dragstart', (ev) => {
       if (!PlainState.memory[i]) { ev.preventDefault(); return; }
+      // Desktop To DAW mode: block HTML drag (OS drag via mousedown)
+      if (_isDesktop && PlainState.toDAW) { ev.preventDefault(); return; }
       ev.dataTransfer.setData('text/plain', String(i));
       ev.dataTransfer.effectAllowed = 'copyMove';
     });
+    // Desktop To DAW mode: drag slot → MIDI to DAW (no cmd needed)
+    btn.addEventListener('mousedown', (function(idx) {
+      return function(e) {
+        if (!_isDesktop || !PlainState.toDAW) return;
+        if (!PlainState.memory[idx]) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+        // Determine what to drag
+        var slots = [];
+        if (PlainState.dawSelection.size > 0 && PlainState.dawSelection.has(idx)) {
+          PlainState.dawSelection.forEach(function(si) {
+            if (PlainState.memory[si]) slots.push(PlainState.memory[si]);
+          });
+        } else {
+          slots.push(PlainState.memory[idx]);
+        }
+        if (slots.length === 0) return;
+        if (slots.length === 1) {
+          _juceInvoke("startMidiDrag", [slots[0].midiNotes, slots[0].chordName]);
+        } else {
+          var data = slots.map(function(s) { return { notes: s.midiNotes, name: s.chordName }; });
+          _juceInvoke("startMidiDragAll", [data]);
+        }
+        var sx = e.clientX, sy = e.clientY, fired = false;
+        function onMove(ev) {
+          if (fired) return;
+          var dx = ev.clientX - sx, dy = ev.clientY - sy;
+          if (dx * dx + dy * dy > 64) {
+            fired = true;
+            _juceInvoke("executeMidiDrag", []);
+          }
+        }
+        function onUp() {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      };
+    })(i));
     // D&D: accept drops from other slots (swap/move)
     btn.addEventListener('dragover', (ev) => {
       ev.preventDefault();
@@ -744,6 +785,7 @@ function initMemorySlots() {
         pushUndoState();
         PlainState.memory[i] = null;
         if (PlainState.currentSlot === i) PlainState.currentSlot = null;
+        PlainState.dawSelection.delete(i);
         updateMemorySlotUI();
         const toast = document.getElementById('slot-save-toast');
         if (toast) {
@@ -755,6 +797,22 @@ function initMemorySlots() {
         saveAppSettings();
         return;
       }
+      // Desktop To DAW mode
+      if (_isDesktop && PlainState.toDAW && PlainState.memory[i]) {
+        if (ev.metaKey || ev.ctrlKey) {
+          // Cmd+click: toggle multi-select
+          if (PlainState.dawSelection.has(i)) PlainState.dawSelection.delete(i);
+          else PlainState.dawSelection.add(i);
+        } else {
+          // Normal click: select this one only
+          PlainState.dawSelection.clear();
+          PlainState.dawSelection.add(i);
+        }
+        updateMemorySlotUI();
+        return;
+      }
+      // Normal click: clear DAW selection, recall slot
+      if (PlainState.dawSelection.size > 0) PlainState.dawSelection.clear();
       recallPlainSlot(i);
     };
     container.appendChild(btn);
@@ -764,21 +822,23 @@ function initMemorySlots() {
 function updateMemorySlotUI() {
   const container = document.getElementById('memory-slots');
   if (!container) return;
-  const btns = container.querySelectorAll('.slot-btn');
+  const btns = container.querySelectorAll('.slot-btn:not(.daw-all-pad)');
   const isPerformView = memoryViewMode === 'perform';
   btns.forEach((btn, i) => {
+    if (i >= 16) return;
     const slot = PlainState.memory[i];
     const label = String(i + 1);
     const isCaptureTarget = PlainState.subMode === 'capture' && i === PlainState.captureIndex;
     const isCurrent = PlainState.currentSlot === i;
     const isPlaying = isPerformView && PerformState.activePad === i;
     // Reset classes
-    btn.classList.remove('filled', 'selected', 'capture-target', 'playing');
+    btn.classList.remove('filled', 'selected', 'capture-target', 'playing', 'daw-selected');
     if (slot) {
       btn.textContent = slot.chordName;
       btn.title = label + ': ' + slot.chordName;
       btn.classList.add('filled');
-      if (isPlaying) btn.classList.add('playing');
+      if (PlainState.dawSelection.has(i)) btn.classList.add('daw-selected');
+      else if (isPlaying) btn.classList.add('playing');
       else if (isCurrent && !isPerformView) btn.classList.add('selected');
     } else {
       btn.textContent = label;
@@ -804,6 +864,92 @@ function updateMemorySlotUI() {
     if (playBtn) playBtn.textContent = sel ? t('memory.play_selected', {chord: sel.chordName}) : t('memory.play_all') + (slotCount ? ' (' + slotCount + ')' : '');
   }
   updateBankUI();
+  if (PlainState.toDAW) { updateAllPad(); updateDAWHint(); }
+}
+
+// Desktop: "To DAW" toggle — when ON, dragging memory slots sends MIDI to DAW
+function toggleToDAW() {
+  PlainState.toDAW = !PlainState.toDAW;
+  if (!PlainState.toDAW) PlainState.dawSelection.clear();
+  var btn = document.getElementById('btn-to-daw');
+  if (btn) {
+    if (PlainState.toDAW) btn.classList.add('active');
+    else btn.classList.remove('active');
+  }
+  // Visual feedback on slots
+  var container = document.getElementById('memory-slots');
+  if (container) {
+    container.classList.toggle('to-daw-mode', PlainState.toDAW);
+  }
+  // Add/remove ALL pad
+  updateAllPad();
+  // Hint
+  updateDAWHint();
+}
+
+function updateDAWHint() {
+  var hint = document.querySelector('[data-i18n="ui.slot_hint"]');
+  if (!hint) return;
+  if (!PlainState.toDAW) { hint.textContent = t('ui.slot_hint'); return; }
+  if (PlainState.dawSelection.size > 0) {
+    var names = [];
+    PlainState.dawSelection.forEach(function(i) {
+      if (PlainState.memory[i]) names.push(PlainState.memory[i].chordName);
+    });
+    hint.textContent = 'Selected: ' + names.join(' | ') + ' \u2014 drag to DAW';
+  } else {
+    hint.textContent = 'Drag slot \u2192 DAW / Cmd+click to select multiple';
+  }
+}
+
+function updateAllPad() {
+  var container = document.getElementById('memory-slots');
+  if (!container) return;
+  var existing = document.getElementById('daw-all-pad');
+  if (existing) existing.remove();
+  if (!PlainState.toDAW) return;
+  var count = PlainState.memory.filter(function(s) { return s !== null; }).length;
+  if (count === 0) return;
+  var pad = document.createElement('button');
+  pad.id = 'daw-all-pad';
+  pad.className = 'slot-btn daw-all-pad';
+  pad.textContent = 'ALL (' + count + ')';
+  pad.title = 'Drag all chords to DAW';
+  // Click ALL: select all filled slots (visual feedback), then drag to DAW
+  pad.addEventListener('mousedown', function(e) {
+    // Select all filled slots
+    PlainState.dawSelection.clear();
+    PlainState.memory.forEach(function(s, i) { if (s) PlainState.dawSelection.add(i); });
+    updateMemorySlotUI();
+    // Prepare MIDI drag
+    var slots = PlainState.memory.filter(function(s) { return s !== null; });
+    if (slots.length === 0) return;
+    var data = slots.map(function(s) { return { notes: s.midiNotes, name: s.chordName }; });
+    _juceInvoke("startMidiDragAll", [data]);
+    var sx = e.clientX, sy = e.clientY, fired = false;
+    function onMove(ev) {
+      if (fired) return;
+      var dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (dx * dx + dy * dy > 64) {
+        fired = true;
+        _juceInvoke("executeMidiDrag", []);
+      }
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+  container.appendChild(pad);
+}
+
+function initToDAWButton() {
+  // To DAW only available in plugin mode (VST3/AU), not Standalone
+  if (typeof _isPlugin === 'undefined' || !_isPlugin) return;
+  var btn = document.getElementById('btn-to-daw');
+  if (btn) btn.style.display = '';
 }
 
 // SMF Type 0 MIDI export (selected slot → single, no selection → all)
@@ -815,6 +961,18 @@ function exportPlainMidi() {
     slots = PlainState.memory.filter(s => s !== null);
   }
   if (slots.length === 0) { const toast = document.getElementById('slot-save-toast'); toast.textContent = t('notify.no_chords'); toast.style.opacity = '1'; setTimeout(() => toast.style.opacity = '0', 2000); return; }
+  // Desktop: save MIDI file to ~/Music/64 Pad Explorer/
+  if (typeof _isDesktop !== 'undefined' && _isDesktop) {
+    var data = slots.map(function(s) { return { notes: s.midiNotes, name: s.chordName }; });
+    _juceInvoke("prepareMidiExport", [data]);
+    var toast = document.getElementById('slot-save-toast');
+    if (toast) {
+      toast.textContent = 'Saved to ~/Music/64 Pad Explorer/ (' + slots.length + ' chords)';
+      toast.style.opacity = '1';
+      setTimeout(function() { toast.style.opacity = '0'; }, 4000);
+    }
+    return;
+  }
   const ticksPerBeat = 480;
   const track = [];
 

@@ -139,7 +139,7 @@ I18N.addLang('ko', {
   },
   memory: {
     slot_empty: 'Slot {slot}: 비어 있음',
-    midi_selected: 'MIDI: {chord}',
+    midi_selected: 'MIDI Export {chord}',
     midi_all: 'MIDI Export All',
     chs_selected: 'CHS: {chord}',
     chs_all: 'CHS Export All',

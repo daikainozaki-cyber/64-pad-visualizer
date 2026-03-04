@@ -287,6 +287,8 @@ const PlainState = {
   currentSlot: null,             // 現在選択中スロット (0-15)
   subMode: 'idle',               // 'idle' | 'capture' | 'edit'
   captureIndex: 0,               // 次にキャプチャするスロット番号
+  toDAW: false,                  // Desktop: drag slots to DAW mode
+  dawSelection: new Set(),       // Desktop: cmd+click multi-select for D&D to DAW
 };
 
 const PerformState = {

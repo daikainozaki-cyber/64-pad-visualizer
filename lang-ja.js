@@ -141,7 +141,7 @@ I18N.addLang('ja', {
   },
   memory: {
     slot_empty: 'Slot {slot}: Empty',
-    midi_selected: 'MIDI: {chord}',
+    midi_selected: 'MIDI Export {chord}',
     midi_all: 'MIDI Export All',
     chs_selected: 'CHS: {chord}',
     chs_all: 'CHS Export All',

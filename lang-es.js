@@ -139,7 +139,7 @@ I18N.addLang('es', {
   },
   memory: {
     slot_empty: 'Ranura {slot}: Vacía',
-    midi_selected: 'MIDI: {chord}',
+    midi_selected: 'MIDI Export {chord}',
     midi_all: 'MIDI Export All',
     chs_selected: 'CHS: {chord}',
     chs_all: 'CHS Export All',

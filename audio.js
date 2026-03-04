@@ -23,20 +23,26 @@ function loadSoundSettings() {}
 function renderSoundControls() {}
 
 // Voice management — Desktop routes through C++ native bridge
-function noteOn(midi, vel) {
-    if (_isDesktop && window.__JUCE__) {
-        window.__JUCE__._callNative("noteOn")(midi, vel || 0.5);
+// Uses postMessage directly (most reliable low-level JUCE bridge)
+function _juceInvoke(name, args) {
+    if (!_isDesktop || !window.__JUCE__) return;
+    try {
+        window.__JUCE__.postMessage(JSON.stringify({
+            eventId: "__juce__invoke",
+            payload: { name: name, params: args || [], resultId: 0 }
+        }));
+    } catch(e) {
+        console.error("JUCE bridge error:", e);
     }
+}
+function noteOn(midi, vel) {
+    _juceInvoke("noteOn", [midi, vel || 0.5]);
 }
 function noteOff(midi) {
-    if (_isDesktop && window.__JUCE__) {
-        window.__JUCE__._callNative("noteOff")(midi);
-    }
+    _juceInvoke("noteOff", [midi]);
 }
 function noteOffAll() {
-    if (_isDesktop && window.__JUCE__) {
-        window.__JUCE__._callNative("allNotesOff")();
-    }
+    _juceInvoke("allNotesOff", []);
 }
 function playMidiNotes(notes, velocity) {
     if (!notes || !notes.length) return;
@@ -70,11 +76,9 @@ function applyVelocityCurve(velocity127) {
 
 function drawVelocityCurve() {}
 function syncVelocityToDesktop() {
-  if (_isDesktop) {
-    window.__JUCE__._callNative("setVelocityParams")(
-      AppState.velThreshold, AppState.velDrive, AppState.velCompand, AppState.velRange
-    );
-  }
+  _juceInvoke("setVelocityParams", [
+    AppState.velThreshold, AppState.velDrive, AppState.velCompand, AppState.velRange
+  ]);
 }
 
 // Desktop plugin callback (C++ calls this)
@@ -88,6 +92,27 @@ function _initDesktopSoundMode() {
   // Hide header links (paid product — no promotional links, keep Help/About only)
   var headerLinks = document.getElementById('header-links');
   if (headerLinks) headerLinks.style.display = 'none';
+
+  // Desktop VOL slider (controls C++ masterGain for hosted plugin)
+  var staffArea = document.getElementById('staff-area');
+  if (staffArea) {
+    var vol = document.createElement('div');
+    vol.id = 'sound-controls';
+    vol.style.cssText = 'padding:6px 10px;background:linear-gradient(180deg,#1a1a2a,#12121e);border:1px solid #333;border-radius:6px;display:flex;justify-content:center;';
+    vol.innerHTML = '<label class="ep-knob"><span>VOL</span>'
+      + '<input type="range" id="snd-volume" min="0" max="1" step="0.01" value="0.6">'
+      + '<span id="snd-vol-val" class="ep-val">0.60</span></label>';
+    staffArea.parentNode.insertBefore(vol, staffArea.nextSibling);
+    var slider = document.getElementById('snd-volume');
+    var valSpan = document.getElementById('snd-vol-val');
+    if (slider) {
+      slider.addEventListener('input', function() {
+        var v = parseFloat(slider.value);
+        if (valSpan) valSpan.textContent = v.toFixed(2);
+        _juceInvoke("setMasterVolume", [v]);
+      });
+    }
+  }
 }
 
 // Global held-note tracking (used by render.js pad interaction)

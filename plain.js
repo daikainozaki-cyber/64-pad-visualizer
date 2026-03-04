@@ -1096,7 +1096,8 @@ function parseMidiToSlots(buf) {
 }
 
 // ========================================
-// MIDI TIMELINE PLAYBACK (v2.51)
+// MIDI TIMELINE PLAYBACK — REMOVED (v3.8)
+// Replaced by: MIDI Import → Memory slots → Play All in Perform mode
 // ========================================
 
 // A. Parse MIDI file preserving timing information

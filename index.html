@@ -530,9 +530,14 @@ document.addEventListener('click', function(e) {
     for (var i = 0; i < nonJaAff.length; i++) nonJaAff[i].style.display = '';
     var sec = document.getElementById('adsense-section');
     if (sec) sec.style.display = 'block';
+    // Remove hidden JA ad slot so push() doesn't target it
+    var jaAdIns = document.querySelector('#adsense-ja ins.adsbygoogle');
+    if (jaAdIns) jaAdIns.remove();
     s.onload = function(){ (adsbygoogle = window.adsbygoogle || []).push({}); };
   } else {
-    // JA users: affiliates + AdSense below them
+    // JA: remove hidden sidebar ad slot, keep JA ad below affiliates
+    var sidebarIns = document.querySelector('#adsense-section ins.adsbygoogle');
+    if (sidebarIns) sidebarIns.remove();
     s.onload = function(){ (adsbygoogle = window.adsbygoogle || []).push({}); };
   }
 })();

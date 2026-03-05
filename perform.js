@@ -29,16 +29,20 @@ function performPadTap(idx) {
 
 // Handle perform mode MIDI input - returns true if handled
 // Dynamic: computes grid position from baseMidi() so octaveShift/semitoneShift are respected
+// Row inversion: Push/controller bottom (low MIDI) = display bottom (slots 12-15)
+//                Push/controller top (high MIDI) = display top (slots 0-3)
 function handlePerformMidi(note) {
   if (memoryViewMode !== 'perform') return false;
   // Perform grid occupies rows 3-6, cols 0-3 of the 64-pad grid
   const performBase = baseMidi() + 3 * ROW_INTERVAL; // Row 3 start
   const offset = note - performBase;
   if (offset < 0) return false;
-  const row = Math.floor(offset / ROW_INTERVAL);
+  const gridRow = Math.floor(offset / ROW_INTERVAL);
   const col = offset % ROW_INTERVAL;
-  if (row >= 4 || col >= 4) return false;
-  performPadTap(row * 4 + col);
+  if (gridRow >= 4 || col >= 4) return false;
+  // Invert: grid row 0 (low) → display row 3 (bottom), grid row 3 (high) → display row 0 (top)
+  const displayRow = 3 - gridRow;
+  performPadTap(displayRow * 4 + col);
   return true;
 }
 

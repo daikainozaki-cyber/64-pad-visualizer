@@ -199,46 +199,10 @@ function playCurrentChord() {
 
 
 // ========================================
-// VOICING CALCULATION
+// VOICING CALCULATION — Adapters to pad-core pure functions
 // ========================================
-
-// Extract shell voicing intervals (R, 3rd, 7th + extensions)
-// Returns sorted interval array, or null if 3rd/7th not found
 function getShellIntervals(qualityPCS, shellMode, extension, fullPCS) {
-  let thirdIv = null, seventhIv = null;
-  if (qualityPCS) {
-    if (qualityPCS.includes(4)) thirdIv = 4;
-    else if (qualityPCS.includes(3)) thirdIv = 3;
-    if (qualityPCS.includes(11)) seventhIv = 11;
-    else if (qualityPCS.includes(10)) seventhIv = 10;
-    else if (qualityPCS.includes(9) && !qualityPCS.includes(10) && !qualityPCS.includes(11)) {
-      seventhIv = 9;
-    }
-  }
-  if (thirdIv === null || seventhIv === null) return null;
-  let intervals = [0, thirdIv, seventhIv];
-  // Auto-include tension intervals (compound intervals >= 12)
-  if (fullPCS) {
-    fullPCS.filter(iv => iv >= 12).forEach(iv => {
-      if (!intervals.includes(iv)) intervals.push(iv);
-    });
-  }
-  if (extension > 0 && fullPCS) {
-    const shellSet = new Set(intervals.map(iv => iv % 12));
-    const extras = fullPCS.filter(iv => !shellSet.has(iv)).sort((a, b) => {
-      const at = a >= 12 ? 0 : 1;
-      const bt = b >= 12 ? 0 : 1;
-      if (at !== bt) return at - bt;
-      return a - b;
-    });
-    const extCount = Math.min(extension, extras.length);
-    for (let i = 0; i < extCount; i++) intervals.push(extras[i]);
-  }
-  if (shellMode === '173') {
-    intervals = intervals.map(iv => iv === thirdIv ? iv + 12 : iv);
-  }
-  intervals.sort((a, b) => a - b);
-  return intervals;
+  return padGetShellIntervals(qualityPCS, shellMode, extension, fullPCS);
 }
 
 // Search grid for all valid voicing positions, draw bounding boxes, update VoicingState.lastBoxes
@@ -355,82 +319,19 @@ function computeAndDrawVoicingBoxes(svg, offsets, targetPC, strokeColor, badgeCo
 }
 
 function calcVoicingOffsets(chordPCS, inversion, drop) {
-  let voiced = [...chordPCS].sort((a, b) => a - b);
-  // Apply inversion: rotate bottom notes up an octave
-  for (let i = 0; i < inversion && i < voiced.length; i++) {
-    voiced.push(voiced.shift() + 12);
-  }
-  // Apply drop: move Nth from top down an octave
-  if (drop === 'drop2' && voiced.length >= 4) {
-    const idx = voiced.length - 2;
-    voiced[idx] -= 12;
-    voiced.sort((a, b) => a - b);
-  } else if (drop === 'drop3' && voiced.length >= 4) {
-    const idx = voiced.length - 3;
-    voiced[idx] -= 12;
-    voiced.sort((a, b) => a - b);
-  }
-  // bassInterval: the interval of the lowest note relative to chord root
-  const bassInterval = voiced[0];
-  const minVal = voiced[0];
-  const offsets = voiced.map(v => v - minVal);
-  return { offsets, bassInterval, voiced };
+  return padCalcVoicingOffsets(chordPCS, inversion, drop);
 }
 
-// On-chord bass: determine if bass is a chord tone (Case 1) or not (Case 2)
 function getBassCase(bassPC, rootPC, chordPCS) {
-  const bassIv = ((bassPC - rootPC) % 12 + 12) % 12;
-  const sorted = [...new Set(chordPCS.map(iv => iv % 12))].sort((a, b) => a - b);
-  const idx = sorted.indexOf(bassIv);
-  return { isChordTone: idx >= 0, inversionIndex: idx >= 0 ? idx : null };
+  return padGetBassCase(bassPC, rootPC, chordPCS);
 }
 
-// On-chord bass: insert bass note below the voiced intervals
 function applyOnChordBass(voiced, rootPC, bassPC) {
-  const bassIv = ((bassPC - rootPC) % 12 + 12) % 12;
-  const lowestPC = ((voiced[0] % 12) + 12) % 12;
-  if (lowestPC === bassIv) return voiced;
-  let bassVal = bassIv;
-  while (bassVal >= voiced[0]) bassVal -= 12;
-  return [bassVal, ...voiced].sort((a, b) => a - b);
+  return padApplyOnChordBass(voiced, rootPC, bassPC);
 }
 
-// Generalized voicing position calculator - returns ALL valid positions (sorted by compactness)
 function calcAllVoicingPositions(bassRow, bassCol, offsets, maxResults) {
-  if (maxResults === undefined) maxResults = 10;
-  const bm = baseMidi();
-  const bassMidi2 = bm + bassRow * ROW_INTERVAL + bassCol;
-  const candidates = offsets.slice(1).map(offset => {
-    const targetMidi = bassMidi2 + offset;
-    const positions = [];
-    for (let r = 0; r < ROWS; r++) {
-      const c = targetMidi - bm - r * ROW_INTERVAL;
-      if (c >= 0 && c < COLS) positions.push({ row: r, col: c });
-    }
-    return positions;
-  });
-  if (candidates.some(c => c.length === 0)) return [];
-  const bassPos = { row: bassRow, col: bassCol };
-  const results = [];
-  function search(idx, chosen) {
-    if (idx === candidates.length) {
-      const all = [bassPos, ...chosen];
-      const minR = Math.min(...all.map(p => p.row));
-      const maxR = Math.max(...all.map(p => p.row));
-      const minC = Math.min(...all.map(p => p.col));
-      const maxC = Math.max(...all.map(p => p.col));
-      const rowSpan = maxR - minR + 1, colSpan = maxC - minC + 1;
-      if (rowSpan > 5 || colSpan > 6) return;
-      const maxDim = Math.max(rowSpan, colSpan);
-      const area = rowSpan * colSpan;
-      results.push({ positions: all, minRow: minR, maxRow: maxR, minCol: minC, maxCol: maxC, maxDim, area });
-      return;
-    }
-    for (const pos of candidates[idx]) search(idx + 1, [...chosen, pos]);
-  }
-  search(0, []);
-  results.sort((a, b) => a.maxDim - b.maxDim || a.area - b.area);
-  return results.slice(0, maxResults);
+  return padCalcAllVoicingPositions(bassRow, bassCol, offsets, ROWS, COLS, baseMidi(), ROW_INTERVAL, maxResults);
 }
 
 // Backward-compatible wrapper: returns single best position or null
@@ -524,35 +425,12 @@ function chordDegreeName(interval, qualityPCS, finalPCS) {
 }
 
 function midiNote(row, col) { return baseMidi() + row * ROW_INTERVAL + col * COL_INTERVAL; }
-function pitchClass(midi) { return ((midi % 12) + 12) % 12; }
+function pitchClass(midi) { return padPitchClass(midi); }
 function noteName(midi) { return pcName(pitchClass(midi)) + (Math.floor(midi / 12) - 2); }
 
-// ======== TENSION APPLICATION ========
+// ======== TENSION APPLICATION — Adapter to pad-core ========
 function applyTension(basePCS, mods) {
-  let pcs = [...basePCS];
-  if (mods.replace3 !== undefined) {
-    pcs = pcs.filter(p => p !== 3 && p !== 4);
-    if (!pcs.includes(mods.replace3)) pcs.push(mods.replace3);
-  }
-  if (mods.sharp5) {
-    const i = pcs.indexOf(7);
-    if (i >= 0) pcs[i] = 8;
-    else if (!pcs.includes(8)) pcs.push(8);
-  }
-  if (mods.flat5) {
-    const i = pcs.indexOf(7);
-    if (i >= 0) pcs[i] = 6;
-    else if (!pcs.includes(6)) pcs.push(6);
-  }
-  if (mods.add) {
-    for (const pc of mods.add) {
-      // Tensions go above the basic chord (compound intervals: +12)
-      if (!pcs.some(p => p % 12 === pc)) pcs.push(pc + 12);
-    }
-  }
-  if (mods.omit3) { pcs = pcs.filter(p => p !== 3 && p !== 4); }
-  if (mods.omit5) { pcs = pcs.filter(p => p !== 6 && p !== 7 && p !== 8); }
-  return pcs.sort((a, b) => a - b);
+  return padApplyTension(basePCS, mods);
 }
 
 // ======== GET ACTIVE PCS FOR CHORD BUILDER ========
@@ -564,65 +442,11 @@ function getBuilderPCS() {
 }
 
 function _chordContextKey() {
-  // Diatonic (root is a scale tone) → use scale key context
-  // Non-diatonic → use chord root's own context
-  var scale = SCALES[AppState.scaleIdx];
-  var rootIv = ((BuilderState.root - AppState.key) % 12 + 12) % 12;
-  if (scale.pcs.includes(rootIv)) {
-    return getParentMajorKey(AppState.scaleIdx, AppState.key);
-  }
-  return BuilderState.root;
+  return padChordContextKey(BuilderState.root, AppState.scaleIdx, AppState.key);
 }
 
 function getBuilderChordName() {
-  if (BuilderState.root === null) return '';
-  var rootKey = _chordContextKey();
-  let name = pcName(BuilderState.root, rootKey);
-  if (BuilderState.quality) name += BuilderState.quality.name;
-  if (BuilderState.tension) {
-    let tl = BuilderState.tension.label.replaceAll(')\n(', ',').replace(/\n/g, '');
-    // In 7th chord context, b5 → #11 (tension notation, not quality alteration)
-    const has7th = BuilderState.quality && (
-      BuilderState.quality.pcs.includes(10) || BuilderState.quality.pcs.includes(11) ||
-      (BuilderState.quality.pcs.includes(9) && BuilderState.quality.pcs.includes(6))
-    );
-    if (has7th) {
-      if (tl === 'b5') {
-        tl = '#11';
-      } else if (tl.startsWith('b5(') || tl.startsWith('b5,')) {
-        const inner = tl.slice(2).replace(/[()]/g, '');
-        const parts = inner.split(',').map(s => s.trim()).filter(Boolean);
-        parts.push('#11');
-        const ORDER = {'b9':1,'#9':2,'9':3,'11':4,'#11':5,'b13':6,'13':7};
-        parts.sort((a, b) => (ORDER[a] || 99) - (ORDER[b] || 99));
-        tl = parts.join(',');
-      }
-    }
-    // aug → (#5): "aug" is triad name only. On non-Maj qualities, use (#5) notation
-    if (BuilderState.quality && BuilderState.quality.name !== '') {
-      if (tl === 'aug') {
-        tl = '(#5)';
-      } else if (tl.startsWith('aug(')) {
-        const inner = tl.slice(4, -1);
-        const parts = inner.split(',').map(s => s.trim()).filter(Boolean);
-        parts.push('#5');
-        const ORDER = {'#5':0,'b9':1,'#9':2,'9':3,'11':4,'#11':5,'b13':6,'13':7};
-        parts.sort((a, b) => (ORDER[a] || 99) - (ORDER[b] || 99));
-        tl = '(' + parts.join(',') + ')';
-      }
-    }
-    const noWrap = tl.startsWith('(') || tl.startsWith('sus') || tl.startsWith('aug') ||
-                   tl.startsWith('add') || tl.startsWith('b5') || tl.startsWith('6');
-    if (noWrap) {
-      name += tl;
-    } else {
-      name += '(' + tl + ')';
-    }
-  }
-  if (BuilderState.bass !== null) {
-    name += '/' + pcName(BuilderState.bass, rootKey);
-  }
-  return name;
+  return padGetBuilderChordName(BuilderState.root, BuilderState.quality, BuilderState.tension, BuilderState.bass, AppState.scaleIdx, AppState.key);
 }
 
 // ======== DRAW BOUNDING BOXES HELPER ========
@@ -713,59 +537,11 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
 // DIATONIC CHORD BAR
 // ========================================
 function noteNameForKey(pc, key) {
-  const parentKey = getParentMajorKey(AppState.scaleIdx, key);
-  return KEY_SPELLINGS[parentKey][pc];
+  return padNoteNameForKey(pc, key);
 }
 
 function getDiatonicTetrads(scalePCS, key) {
-  if (scalePCS.length !== 7) return [];
-  const ROMAN = ['I','II','III','IV','V','VI','VII'];
-  const tetrads = [];
-  for (let i = 0; i < 7; i++) {
-    const rootIv = scalePCS[i];
-    const i3 = ((scalePCS[(i + 2) % 7] - rootIv) + 12) % 12;
-    const i5 = ((scalePCS[(i + 4) % 7] - rootIv) + 12) % 12;
-    const i7 = ((scalePCS[(i + 6) % 7] - rootIv) + 12) % 12;
-    const pcs = [0, i3, i5, i7];
-
-    // Match to BUILDER_QUALITIES (4-note entries only)
-    let quality = null;
-    for (const row of BUILDER_QUALITIES) {
-      for (const q of row) {
-        if (q && q.pcs.length === 4 &&
-            q.pcs[1] === i3 && q.pcs[2] === i5 && q.pcs[3] === i7) {
-          quality = q; break;
-        }
-      }
-      if (quality) break;
-    }
-    // augMaj7 is not in BUILDER_QUALITIES
-    if (!quality && i3 === 4 && i5 === 8 && i7 === 11) {
-      quality = {name:'aug\u25B37', label:'aug\u25B37', pcs:[0,4,8,11]};
-    }
-    if (!quality) quality = {name:'?', label:'?', pcs: pcs};
-
-    const rootPC = (rootIv + key) % 12;
-    const chordName = noteNameForKey(rootPC, key) + quality.name;
-
-    // Degree label (uppercase = major/dom, lowercase = minor/dim)
-    let roman = ROMAN[i];
-    let suffix;
-    switch (quality.name) {
-      case '\u25B37': suffix = '\u25B37'; break;           // △7
-      case '7':       suffix = '7'; break;
-      case 'm7':      roman = roman.toLowerCase(); suffix = '7'; break;
-      case 'm\u25B37': roman = roman.toLowerCase(); suffix = '\u25B37'; break; // m△7
-      case 'm7(b5)':  roman = roman.toLowerCase(); suffix = '\u00F87'; break;  // ø7
-      case 'dim7':    roman = roman.toLowerCase(); suffix = '\u00B07'; break;  // °7
-      case 'aug\u25B37': suffix = '+\u25B37'; break;       // aug△7
-      default:        suffix = ''; break;
-    }
-    const degree = roman + suffix;
-
-    tetrads.push({ rootPC, pcs, quality, chordName, degree });
-  }
-  return tetrads;
+  return padGetDiatonicTetrads(scalePCS, key);
 }
 
 function renderDiatonicBar() {
@@ -811,204 +587,13 @@ function renderDiatonicBar() {
 // ========================================
 
 function fifthsDistance(key1, key2) {
-  const d = ((key2 - key1) * 7 + 144) % 12;
-  return Math.min(d, 12 - d);
+  return padFifthsDistance(key1, key2);
 }
 
-function psKeyName(entry) {
-  const relMajor = entry.system === '○' ? entry.parentKey : (entry.parentKey + 3) % 12;
-  return FLAT_MAJOR_KEYS.has(relMajor) ? NOTE_NAMES_FLAT[entry.parentKey] : NOTE_NAMES_SHARP[entry.parentKey];
-}
-
-function getParentScaleAbsPCS(entry) {
-  let scalePCS;
-  if (entry.system === '○') scalePCS = SCALES[0].pcs;
-  else if (entry.system === 'NM') scalePCS = SCALES[5].pcs;
-  else if (entry.system === '■') scalePCS = SCALES[7].pcs;
-  else scalePCS = SCALES[14].pcs;
-  return new Set(scalePCS.map(pc => (pc + entry.parentKey) % 12));
-}
-
-function psDegreeLabel(degreeNum, quality) {
-  const ROMAN = ['I','II','III','IV','V','VI','VII'];
-  let roman = ROMAN[degreeNum - 1];
-  const name = quality.name;
-  if (name.startsWith('m') || name === 'dim' || name === 'dim7') {
-    roman = roman.toLowerCase();
-  }
-  let suffix = '';
-  switch (name) {
-    case '\u25B37': suffix = '\u25B37'; break;
-    case '7': suffix = '7'; break;
-    case 'm7': suffix = '7'; break;
-    case 'm\u25B37': suffix = '\u25B37'; break;
-    case 'm7(b5)': suffix = '\u00F87'; break;
-    case 'dim7': suffix = '\u00B07'; break;
-    case 'aug\u25B37': suffix = '+\u25B37'; break;
-    default: break;
-  }
-  return roman + suffix;
-}
-
-const DIATONIC_CHORD_DB = (function() {
-  const db = {};
-  const SYSTEMS = [
-    { cat: '○', label: 'Major', baseIdx: 0, scalePCS: SCALES[0].pcs },
-    { cat: '■', label: 'Harm.Min', baseIdx: 7, scalePCS: SCALES[7].pcs },
-    { cat: '◆', label: 'Mel.Min', baseIdx: 14, scalePCS: SCALES[14].pcs },
-  ];
-  for (const sys of SYSTEMS) {
-    for (let key = 0; key < 12; key++) {
-      const tetrads = getDiatonicTetrads(sys.scalePCS, key);
-      for (let i = 0; i < tetrads.length; i++) {
-        const t = tetrads[i];
-        const degreeNum = i + 1;
-        if (!db[t.rootPC]) db[t.rootPC] = [];
-        db[t.rootPC].push({
-          parentKey: key, system: sys.cat, systemLabel: sys.label,
-          degreeNum, scaleName: SCALES[sys.baseIdx + i].name,
-          scaleIdx: sys.baseIdx + i, rootPC: t.rootPC,
-          quality: t.quality, tetradPCS: t.quality.pcs,
-        });
-        // Generate Natural Minor entry from Major system
-        if (sys.cat === '○') {
-          db[t.rootPC].push({
-            parentKey: (key + 9) % 12, system: 'NM', systemLabel: 'Nat.Min',
-            degreeNum: ((degreeNum + 1) % 7) + 1,
-            scaleName: SCALES[i].name, scaleIdx: i, rootPC: t.rootPC,
-            quality: t.quality, tetradPCS: t.quality.pcs,
-          });
-        }
-      }
-    }
-  }
-  return db;
-})();
+// DIATONIC_CHORD_DB, psKeyName, getParentScaleAbsPCS, psDegreeLabel — from pad-core
 
 function findParentScales(rootPC, chordIntervals, currentKey) {
-  const entries = DIATONIC_CHORD_DB[rootPC];
-  if (!entries) return [];
-  const results = [];
-  const strictKeys = new Set(); // track strict matches to avoid duplicates in omit5
-
-  // Maj6 filter: M3(4) + 6th(9) + no 7th → exclude scales containing b7
-  const isMaj6 = chordIntervals.has(4) && chordIntervals.has(9) &&
-    !chordIntervals.has(10) && !chordIntervals.has(11);
-  const flat7AbsPC = (rootPC + 10) % 12; // b7 absolute pitch class
-
-  for (const entry of entries) {
-    // Check all chord tones (mod 12) are contained in the parent scale
-    const scaleAbsPCS = getParentScaleAbsPCS(entry);
-    let allIn = true;
-    for (const iv of chordIntervals) {
-      const absPC = (iv + rootPC) % 12;
-      if (!scaleAbsPCS.has(absPC)) { allIn = false; break; }
-    }
-    if (!allIn) continue;
-    // Maj6: skip scales that contain b7 (e.g. Mixolydian, Dorian for C6)
-    if (isMaj6 && scaleAbsPCS.has(flat7AbsPC)) continue;
-    const key = entry.parentKey + ':' + entry.scaleIdx;
-    strictKeys.add(key);
-    const sat = SCALE_AVAIL_TENSIONS[entry.scaleIdx];
-    const avoidCount = (sat && sat.avoid) ? sat.avoid.length : 0;
-    results.push({
-      parentKey: entry.parentKey, parentKeyName: psKeyName(entry),
-      system: entry.system, systemLabel: entry.systemLabel,
-      degree: psDegreeLabel(entry.degreeNum, entry.quality),
-      degreeNum: entry.degreeNum, scaleName: entry.scaleName,
-      scaleIdx: entry.scaleIdx, distance: fifthsDistance(currentKey, entry.parentKey),
-      omit5Match: false, avoidCount,
-    });
-  }
-
-  // Omit-5 matching: if chord has perfect 5th (interval 7), also search without it
-  if (chordIntervals.has(7)) {
-    const omit5Intervals = new Set(chordIntervals);
-    omit5Intervals.delete(7);
-    for (const entry of entries) {
-      const key = entry.parentKey + ':' + entry.scaleIdx;
-      if (strictKeys.has(key)) continue; // already a strict match
-      const scaleAbsPCS = getParentScaleAbsPCS(entry);
-      let allIn = true;
-      for (const iv of omit5Intervals) {
-        const absPC = (iv + rootPC) % 12;
-        if (!scaleAbsPCS.has(absPC)) { allIn = false; break; }
-      }
-      if (!allIn) continue;
-      if (isMaj6 && scaleAbsPCS.has(flat7AbsPC)) continue;
-      const sat2 = SCALE_AVAIL_TENSIONS[entry.scaleIdx];
-      const avoidCount2 = (sat2 && sat2.avoid) ? sat2.avoid.length : 0;
-      results.push({
-        parentKey: entry.parentKey, parentKeyName: psKeyName(entry),
-        system: entry.system, systemLabel: entry.systemLabel,
-        degree: psDegreeLabel(entry.degreeNum, entry.quality),
-        degreeNum: entry.degreeNum, scaleName: entry.scaleName,
-        scaleIdx: entry.scaleIdx, distance: fifthsDistance(currentKey, entry.parentKey),
-        omit5Match: true, avoidCount: avoidCount2,
-      });
-    }
-  }
-
-  // Non-diatonic scales (symmetric): check containment + chord-type constraint
-  const NON_DIATONIC_SCALES = [
-    { scaleIdx: 25, needsAll: [10] },       // Whole Tone: needs b7 (dominant)
-    { scaleIdx: 26, needsAll: [4, 10] },    // H-W Dim (CombiDim): needs M3+b7 (dom7)
-    { scaleIdx: 27, needsAll: [3, 6] },     // W-H Dim: needs b3+b5 (diminished)
-  ];
-  const ndMatched = new Set();
-  for (const nd of NON_DIATONIC_SCALES) {
-    // Chord-type gate: skip if chord lacks required intervals
-    if (nd.needsAll && !nd.needsAll.every(iv => chordIntervals.has(iv))) continue;
-    const scalePCSSet = new Set(SCALES[nd.scaleIdx].pcs);
-    let allIn = true;
-    for (const iv of chordIntervals) {
-      if (!scalePCSSet.has(iv % 12)) { allIn = false; break; }
-    }
-    if (!allIn) continue;
-    ndMatched.add(nd.scaleIdx);
-    const sat = SCALE_AVAIL_TENSIONS[nd.scaleIdx];
-    const avoidCount = (sat && sat.avoid) ? sat.avoid.length : 0;
-    results.push({
-      parentKey: rootPC, parentKeyName: '',
-      system: '', systemLabel: '',
-      degree: '', degreeNum: 0,
-      scaleName: SCALES[nd.scaleIdx].name,
-      scaleIdx: nd.scaleIdx, distance: 0,
-      omit5Match: false, avoidCount,
-    });
-  }
-  // Omit-5 matching for non-diatonic (e.g. Whole Tone for 7(#5) where #5 replaces 5)
-  if (chordIntervals.has(7)) {
-    const omit5Ivs = new Set(chordIntervals);
-    omit5Ivs.delete(7);
-    for (const nd of NON_DIATONIC_SCALES) {
-      if (ndMatched.has(nd.scaleIdx)) continue;
-      if (nd.needsAll && !nd.needsAll.every(iv => omit5Ivs.has(iv))) continue;
-      const scalePCSSet = new Set(SCALES[nd.scaleIdx].pcs);
-      let allIn = true;
-      for (const iv of omit5Ivs) {
-        if (!scalePCSSet.has(iv % 12)) { allIn = false; break; }
-      }
-      if (!allIn) continue;
-      const sat = SCALE_AVAIL_TENSIONS[nd.scaleIdx];
-      const avoidCount = (sat && sat.avoid) ? sat.avoid.length : 0;
-      results.push({
-        parentKey: rootPC, parentKeyName: '',
-        system: '', systemLabel: '',
-        degree: '', degreeNum: 0,
-        scaleName: SCALES[nd.scaleIdx].name,
-        scaleIdx: nd.scaleIdx, distance: 0,
-        omit5Match: true, avoidCount,
-      });
-    }
-  }
-
-  const SYS_ORDER = { '○': 0, 'NM': 1, '■': 2, '◆': 3 };
-  results.sort((a, b) =>
-    (a.omit5Match - b.omit5Match) ||
-    (a.distance - b.distance) || (SYS_ORDER[a.system] || 99) - (SYS_ORDER[b.system] || 99) || (a.degreeNum - b.degreeNum)
-  );
-  return results;
+  return padFindParentScales(rootPC, chordIntervals, currentKey);
 }
 
 function onDiatonicClick(tetrad) {
@@ -1045,7 +630,6 @@ if (typeof module !== 'undefined') module.exports = {
   calcAllVoicingPositions, calcVoicingPositions,
   getShellIntervals, applyTension, getBuilderPCS,
   chordDegreeName, getDiatonicTetrads, getBuilderChordName,
-  findParentScales, fifthsDistance,
-  DIATONIC_CHORD_DB, noteNameForKey,
+  findParentScales, fifthsDistance, noteNameForKey,
 };
 

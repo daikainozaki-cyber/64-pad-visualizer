@@ -1103,10 +1103,20 @@ function initWebMIDI() {
             if (rawNote === 55) { shiftOctave(1); return; }
             if (rawNote === 54) { shiftOctave(-1); return; }
           }
-          const note = isPush ? pushSerialToFourths(rawNote) : rawNote;
-          if (isPush && cmd === 0x90 && velocity > 0 && memoryViewMode === 'perform') {
-            console.log('[PERF] raw=' + rawNote + ' →fourths=' + note + ' baseMidi=' + baseMidi());
+          // Push perform mode: serial 4x4 → slots directly (bypass fourths conversion)
+          if (isPush && memoryViewMode === 'perform' && cmd === 0x90 && velocity > 0) {
+            var si = rawNote - PUSH_SERIAL_BASE;
+            if (si >= 0 && si < 64) {
+              var sRow = Math.floor(si / 8);
+              var sCol = si % 8;
+              if (sRow <= 3 && sCol <= 3) {
+                performPadTap((3 - sRow) * 4 + sCol);
+                ensureAudioResumed();
+                return;
+              }
+            }
           }
+          const note = isPush ? pushSerialToFourths(rawNote) : rawNote;
           if (cmd === 0x90 && velocity > 0) onMidiNoteOn(note, velocity);
           else if (cmd === 0x80 || (cmd === 0x90 && velocity === 0)) onMidiNoteOff(note);
         };

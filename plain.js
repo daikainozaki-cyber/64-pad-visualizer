@@ -766,12 +766,8 @@ function updateMemorySlotUI() {
   if (!container) return;
   const btns = container.querySelectorAll('.slot-btn');
   const isPerformView = memoryViewMode === 'perform';
-  // Perform mode: reverse row order to match MPC/Push physical layout (low pads at bottom)
-  container.classList.toggle('pad-order', isPerformView);
   btns.forEach((btn, i) => {
     if (i >= 16) return;
-    // Perform mode: CSS order to reverse rows (row 3 at top, row 0 at bottom)
-    btn.style.order = isPerformView ? String(-Math.floor(i / 4)) : '';
     const slot = PlainState.memory[i];
     const label = String(i + 1);
     const isCaptureTarget = PlainState.subMode === 'capture' && i === PlainState.captureIndex;

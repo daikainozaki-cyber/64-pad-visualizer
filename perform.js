@@ -29,9 +29,6 @@ function performPadTap(idx) {
 
 // Handle perform mode MIDI input - returns true if handled
 // Rows 3-6 of grid (playable chord range), cols 0-3
-// Row mapping inverted so grid visual position matches slot display:
-//   Grid row 3 (bottom of perform area) → slots 12-15 (display bottom)
-//   Grid row 6 (top of perform area)    → slots 0-3   (display top)
 // Dynamic: baseMidi() tracks octaveShift/semitoneShift
 function handlePerformMidi(note) {
   if (memoryViewMode !== 'perform') return false;
@@ -41,7 +38,7 @@ function handlePerformMidi(note) {
   const row = Math.floor(offset / ROW_INTERVAL);
   const col = offset % ROW_INTERVAL;
   if (row >= 4 || col >= 4) return false;
-  performPadTap((3 - row) * 4 + col);
+  performPadTap(row * 4 + col);
   return true;
 }
 

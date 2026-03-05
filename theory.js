@@ -563,9 +563,20 @@ function getBuilderPCS() {
   return pcs;
 }
 
+function _chordContextKey() {
+  // Diatonic (root is a scale tone) → use scale key context
+  // Non-diatonic → use chord root's own context
+  var scale = SCALES[AppState.scaleIdx];
+  var rootIv = ((BuilderState.root - AppState.key) % 12 + 12) % 12;
+  if (scale.pcs.includes(rootIv)) {
+    return getParentMajorKey(AppState.scaleIdx, AppState.key);
+  }
+  return BuilderState.root;
+}
+
 function getBuilderChordName() {
   if (BuilderState.root === null) return '';
-  var rootKey = BuilderState.root; // chord root as context key
+  var rootKey = _chordContextKey();
   let name = pcName(BuilderState.root, rootKey);
   if (BuilderState.quality) name += BuilderState.quality.name;
   if (BuilderState.tension) {

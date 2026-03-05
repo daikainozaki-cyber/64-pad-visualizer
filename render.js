@@ -513,7 +513,7 @@ function renderInfoText(state) {
         return pcName(absPC);
       });
       let txt = activeLabel + ' (' + t('info.note_count', {n: pcs.length}) + ') : ' + notes.join(' - ');
-      if (BuilderState.bass !== null) txt += ' / ' + pcName(BuilderState.bass, BuilderState.root);
+      if (BuilderState.bass !== null) txt += ' / ' + pcName(BuilderState.bass, _chordContextKey());
       const mods = [];
       if (VoicingState.shell) {
         let shellLabel = 'Shell ' + VoicingState.shell.split('').join('-');

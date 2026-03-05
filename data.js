@@ -78,9 +78,27 @@ function getParentMajorKey(scaleIdx, key) {
   return key;
 }
 
+// Per-key enharmonic spelling (parent major key → 12 pitch class names)
+// Sharp keys use NOTE_NAMES_SHARP, flat keys use NOTE_NAMES_FLAT,
+// with Gb(6) corrected for Cb at pc=11.
+// Extensible for available note scale support.
+const KEY_SPELLINGS = [
+  NOTE_NAMES_SHARP, // C  (0#)
+  NOTE_NAMES_FLAT,  // Db (5b)
+  NOTE_NAMES_SHARP, // D  (2#)
+  NOTE_NAMES_FLAT,  // Eb (3b)
+  NOTE_NAMES_SHARP, // E  (4#)
+  NOTE_NAMES_FLAT,  // F  (1b)
+  ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','Cb'], // Gb (6b: Cb not B)
+  NOTE_NAMES_SHARP, // G  (1#)
+  NOTE_NAMES_FLAT,  // Ab (4b)
+  NOTE_NAMES_SHARP, // A  (3#)
+  NOTE_NAMES_FLAT,  // Bb (2b)
+  NOTE_NAMES_SHARP, // B  (5#)
+];
 function pcName(pc) {
   const parentKey = getParentMajorKey(AppState.scaleIdx, AppState.key);
-  return FLAT_MAJOR_KEYS.has(parentKey) ? NOTE_NAMES_FLAT[pc] : NOTE_NAMES_SHARP[pc];
+  return KEY_SPELLINGS[parentKey][pc];
 }
 
 // ======== QUALITY DEFINITIONS (Step 2) ========

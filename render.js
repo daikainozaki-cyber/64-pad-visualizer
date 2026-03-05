@@ -2237,3 +2237,12 @@ function syncPlayControls() {
   if (ps) ps.value = AppState.scaleIdx;
 }
 
+function toggleFullscreen() {
+  var el = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } else {
+    (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+  }
+}
+

@@ -72,7 +72,7 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
-<link rel="stylesheet" href="style.css?v=3.14.1">
+<link rel="stylesheet" href="style.css?v=3.15.0">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -87,7 +87,7 @@ document.addEventListener('click', function(e) {
 <script src="https://surikov.github.io/webaudiofontdata/sound/0050_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0050_GeneralUserGS_sf2_file.js"></script>
 <!-- E.Piano: jRhodes3c velocity-layer sampler (5 layers, 1977 Rhodes Mark I) -->
-<script src="jrhodes3c-samples.js?v=3.14.1"></script>
+<script src="jrhodes3c-samples.js?v=3.15.0"></script>
 </head>
 <body>
 
@@ -526,11 +526,17 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- Landscape 32-pad fullscreen overlay (iPhone only, CSS-controlled) -->
+<div id="audio-start-overlay" onclick="dismissAudioOverlay()">
+  <div class="audio-start-content">
+    <div class="audio-start-icon">🎹</div>
+    <div class="audio-start-text" data-i18n="ui.tap_to_start">Tap to enable sound</div>
+  </div>
+</div>
 <div id="pad-view-32" class="landscape-play-overlay">
   <div class="play-header">
-    <button id="play-mode-scale" class="play-mode-btn active" onclick="setMode('scale')">S</button>
-    <button id="play-mode-chord" class="play-mode-btn" onclick="setMode('chord')">C</button>
-    <button id="play-mode-input" class="play-mode-btn" onclick="setMode('input')">I</button>
+    <button id="play-mode-scale" class="play-mode-btn active" onclick="setMode('scale')" title="Scale mode">S</button>
+    <button id="play-mode-chord" class="play-mode-btn" onclick="setMode('chord')" title="Chord mode">C</button>
+    <button id="play-mode-input" class="play-mode-btn" onclick="setMode('input')" title="Input mode">I</button>
     <select id="play-key-select" onchange="AppState.key=+this.value; updateKeyButtons(); render(); saveAppSettings();"></select>
     <select id="play-scale-select" onchange="AppState.scaleIdx=+this.value; render(); saveAppSettings();"></select>
     <span id="play-chord-name" style="font-size:0.75rem;font-weight:700;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
@@ -634,25 +640,25 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.14.1"></script>
-<script src="lang-en.js?v=3.14.1"></script>
-<script src="lang-ja.js?v=3.14.1"></script>
-<script src="lang-zh.js?v=3.14.1"></script>
-<script src="lang-es.js?v=3.14.1"></script>
-<script src="lang-fr.js?v=3.14.1"></script>
-<script src="lang-pt.js?v=3.14.1"></script>
-<script src="lang-de.js?v=3.14.1"></script>
-<script src="lang-ko.js?v=3.14.1"></script>
-<script src="lang-it.js?v=3.14.1"></script>
+<script src="i18n.js?v=3.15.0"></script>
+<script src="lang-en.js?v=3.15.0"></script>
+<script src="lang-ja.js?v=3.15.0"></script>
+<script src="lang-zh.js?v=3.15.0"></script>
+<script src="lang-es.js?v=3.15.0"></script>
+<script src="lang-fr.js?v=3.15.0"></script>
+<script src="lang-pt.js?v=3.15.0"></script>
+<script src="lang-de.js?v=3.15.0"></script>
+<script src="lang-ko.js?v=3.15.0"></script>
+<script src="lang-it.js?v=3.15.0"></script>
 <!-- App JS -->
-<script src="data.js?v=3.14.1"></script>
-<script src="audio.js?v=3.14.1"></script>
-<script src="theory.js?v=3.14.1"></script>
-<script src="render.js?v=3.14.1"></script>
-<script src="plain.js?v=3.14.1"></script>
-<script src="perform.js?v=3.14.1"></script>
-<script src="builder.js?v=3.14.1"></script>
-<script src="main.js?v=3.14.1"></script>
-<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=3.14.1');</script>
+<script src="data.js?v=3.15.0"></script>
+<script src="audio.js?v=3.15.0"></script>
+<script src="theory.js?v=3.15.0"></script>
+<script src="render.js?v=3.15.0"></script>
+<script src="plain.js?v=3.15.0"></script>
+<script src="perform.js?v=3.15.0"></script>
+<script src="builder.js?v=3.15.0"></script>
+<script src="main.js?v=3.15.0"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=3.15.0');</script>
 </body>
 </html>

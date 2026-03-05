@@ -374,11 +374,28 @@ function _showFirstTimeHint() {
   hint.textContent = I18N && I18N.t ? I18N.t('ui.sound_hint') : 'Select ORGAN or E.PIANO to enable sound';
   hint.style.cssText = 'font-size:0.65rem;color:#4a9eff;text-align:center;padding:2px 0;animation:hint-pulse 2s ease-in-out infinite';
   header.parentNode.insertBefore(hint, header);
+  // Also show the fullscreen audio overlay for first-time users
+  _showAudioOverlay();
 }
 
 function _hideFirstTimeHint() {
   var hint = document.getElementById('sound-first-hint');
   if (hint) hint.remove();
+}
+
+function _showAudioOverlay() {
+  var overlay = document.getElementById('audio-start-overlay');
+  if (overlay) overlay.classList.add('active');
+}
+
+function dismissAudioOverlay() {
+  var overlay = document.getElementById('audio-start-overlay');
+  if (overlay) overlay.classList.remove('active');
+  ensureAudioResumed();
+  // Auto-select Organ if no engine set yet (first-time user)
+  if (_soundMuted) {
+    setEngine('organ');
+  }
 }
 
 function loadSoundSettings() {

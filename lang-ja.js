@@ -99,6 +99,7 @@ I18N.addLang('ja', {
     slot_hint: 'クリックで選択 \u2192 Save(c) / Shift+クリックで消去',
     save_settings: '設定を保存',
     sound_hint: 'ORGAN または E.PIANO を選んで音を有効にしてください',
+    tap_to_start: 'タップして音を有効にする',
     load_vst: 'VST/AU プラグインを読み込む...',
     affiliate_label: '徳を積みたい方はこちら…',
   },

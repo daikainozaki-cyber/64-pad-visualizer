@@ -97,6 +97,7 @@ I18N.addLang('it', {
     slot_hint: 'Clicca per selezionare \u2192 Save(c) / Shift+clic per cancellare',
     save_settings: 'Salva impostazioni',
     sound_hint: 'Seleziona ORGAN o E.PIANO per attivare il suono',
+    tap_to_start: 'Tocca per attivare il suono',
     load_vst: 'Carica plugin VST/AU...',
     affiliate_label: '',
   },

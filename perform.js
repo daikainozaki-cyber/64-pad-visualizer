@@ -2,14 +2,9 @@
 // PERFORM MODE (Memory Slots → real-time playback)
 // ========================================
 
-// PERFORM MIDI MAP: starts at D#2 (MIDI 51 = Row 3 of 64-pad grid), 5-semitone row interval
-// Aligns physical controller with the visual 64-pad grid (Rows 3-6, playable chord range)
-const PERFORM_MIDI_MAP = {
-  51:0, 52:1, 53:2, 54:3,
-  56:4, 57:5, 58:6, 59:7,
-  61:8, 62:9, 63:10, 64:11,
-  66:12, 67:13, 68:14, 69:15
-};
+// PERFORM MIDI MAP: dynamic, based on baseMidi() + Row 3-6 of 64-pad grid
+// Rows 3-6 = playable chord range, cols 0-3 = 4x4 perform grid
+// Computed at runtime so octaveShift/semitoneShift changes are reflected
 
 const PERFORM_KEY_MAP = {
   '1':0, '2':1, '3':2, '4':3,
@@ -33,11 +28,17 @@ function performPadTap(idx) {
 }
 
 // Handle perform mode MIDI input - returns true if handled
+// Dynamic: computes grid position from baseMidi() so octaveShift/semitoneShift are respected
 function handlePerformMidi(note) {
   if (memoryViewMode !== 'perform') return false;
-  const padIdx = PERFORM_MIDI_MAP[note];
-  if (padIdx === undefined) return false;
-  performPadTap(padIdx);
+  // Perform grid occupies rows 3-6, cols 0-3 of the 64-pad grid
+  const performBase = baseMidi() + 3 * ROW_INTERVAL; // Row 3 start
+  const offset = note - performBase;
+  if (offset < 0) return false;
+  const row = Math.floor(offset / ROW_INTERVAL);
+  const col = offset % ROW_INTERVAL;
+  if (row >= 4 || col >= 4) return false;
+  performPadTap(row * 4 + col);
   return true;
 }
 

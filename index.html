@@ -72,7 +72,7 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
-<link rel="stylesheet" href="style.css?v=3.10.2">
+<link rel="stylesheet" href="style.css?v=3.10.3">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -87,7 +87,7 @@ document.addEventListener('click', function(e) {
 <script src="https://surikov.github.io/webaudiofontdata/sound/0050_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0050_GeneralUserGS_sf2_file.js"></script>
 <!-- E.Piano: jRhodes3c velocity-layer sampler (5 layers, 1977 Rhodes Mark I) -->
-<script src="jrhodes3c-samples.js?v=3.10.2"></script>
+<script src="jrhodes3c-samples.js?v=3.10.3"></script>
 </head>
 <body>
 
@@ -628,44 +628,25 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.10.2"></script>
-<script src="lang-en.js?v=3.10.2"></script>
-<script src="lang-ja.js?v=3.10.2"></script>
-<script src="lang-zh.js?v=3.10.2"></script>
-<script src="lang-es.js?v=3.10.2"></script>
-<script src="lang-fr.js?v=3.10.2"></script>
-<script src="lang-pt.js?v=3.10.2"></script>
-<script src="lang-de.js?v=3.10.2"></script>
-<script src="lang-ko.js?v=3.10.2"></script>
-<script src="lang-it.js?v=3.10.2"></script>
+<script src="i18n.js?v=3.10.3"></script>
+<script src="lang-en.js?v=3.10.3"></script>
+<script src="lang-ja.js?v=3.10.3"></script>
+<script src="lang-zh.js?v=3.10.3"></script>
+<script src="lang-es.js?v=3.10.3"></script>
+<script src="lang-fr.js?v=3.10.3"></script>
+<script src="lang-pt.js?v=3.10.3"></script>
+<script src="lang-de.js?v=3.10.3"></script>
+<script src="lang-ko.js?v=3.10.3"></script>
+<script src="lang-it.js?v=3.10.3"></script>
 <!-- App JS -->
-<script src="data.js?v=3.10.2"></script>
-<script src="audio.js?v=3.10.2"></script>
-<script src="theory.js?v=3.10.2"></script>
-<script src="render.js?v=3.10.2"></script>
-<script src="plain.js?v=3.10.2"></script>
-<script src="perform.js?v=3.10.2"></script>
-<script src="builder.js?v=3.10.2"></script>
-<script src="main.js?v=3.10.2"></script>
-<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=3.10.2');</script>
-<script>
-(function(){
-  var d = document.createElement('div');
-  d.id = 'debug-viewport';
-  d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:red;color:white;font-size:16px;padding:6px 10px;text-align:center;pointer-events:none;';
-  document.body.appendChild(d);
-  function upd(){
-    var mq = window.matchMedia('(max-height: 500px) and (orientation: landscape)');
-    var ol = document.querySelector('.landscape-play-overlay');
-    var olStyle = ol ? getComputedStyle(ol).display : 'NO-EL';
-    var orient = window.innerWidth > window.innerHeight ? 'LAND' : 'PORT';
-    d.textContent = window.innerWidth+'x'+window.innerHeight+' '+orient+' mq='+mq.matches+' ov='+olStyle;
-  }
-  upd();
-  window.addEventListener('resize', upd);
-  window.addEventListener('orientationchange', upd);
-  setInterval(upd, 1000);
-})();
-</script>
+<script src="data.js?v=3.10.3"></script>
+<script src="audio.js?v=3.10.3"></script>
+<script src="theory.js?v=3.10.3"></script>
+<script src="render.js?v=3.10.3"></script>
+<script src="plain.js?v=3.10.3"></script>
+<script src="perform.js?v=3.10.3"></script>
+<script src="builder.js?v=3.10.3"></script>
+<script src="main.js?v=3.10.3"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=3.10.3');</script>
 </body>
 </html>

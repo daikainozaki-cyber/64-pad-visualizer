@@ -83,7 +83,7 @@ function getParentMajorKey(scaleIdx, key) {
 // with Gb(6) corrected for Cb at pc=11.
 // Extensible for available note scale support.
 const KEY_SPELLINGS = [
-  NOTE_NAMES_SHARP, // C  (0#)
+  NOTE_NAMES_FLAT,  // C  (jazz convention: flats)
   NOTE_NAMES_FLAT,  // Db (5b)
   NOTE_NAMES_SHARP, // D  (2#)
   NOTE_NAMES_FLAT,  // Eb (3b)

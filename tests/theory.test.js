@@ -33,9 +33,9 @@ describe('noteName', () => {
     expect(noteName(127)).toBe('G8');
   });
 
-  it('uses sharp notation', () => {
-    expect(noteName(61)).toBe('C#3');
-    expect(noteName(63)).toBe('D#3');
+  it('uses flat notation in C major (jazz convention)', () => {
+    expect(noteName(61)).toBe('Db3');
+    expect(noteName(63)).toBe('Eb3');
   });
 });
 
@@ -337,16 +337,16 @@ describe('getParentMajorKey', () => {
 });
 
 describe('pcName', () => {
-  it('returns sharp names for sharp keys', () => {
+  it('returns flat names for C major (jazz convention)', () => {
     AppState.scaleIdx = 0; // Ionian
-    AppState.key = 0;      // C (parent=C, not in FLAT_MAJOR_KEYS)
+    AppState.key = 0;      // C (parent=C, jazz convention uses flats)
     expect(pcName(0)).toBe('C');
-    expect(pcName(1)).toBe('C#');
+    expect(pcName(1)).toBe('Db');
   });
 
   it('returns flat names for flat keys', () => {
     AppState.scaleIdx = 0;
-    AppState.key = 5;      // F (parent=F, pc=5 is in FLAT_MAJOR_KEYS)
+    AppState.key = 5;      // F (parent=F)
     expect(pcName(1)).toBe('Db');
     expect(pcName(3)).toBe('Eb');
   });

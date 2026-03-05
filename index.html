@@ -74,7 +74,7 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
-<link rel="stylesheet" href="style.css?v=3.8.1">
+<link rel="stylesheet" href="style.css?v=3.9.0">
 <!-- Sound engine removed (2026-03-04) — visualization tool, not an instrument -->
 </head>
 <body>
@@ -263,6 +263,11 @@ document.addEventListener('click', function(e) {
 <div class="app-layout">
   <!-- Left: Pad Grid -->
   <div class="pad-area">
+    <div class="wl-tabs">
+      <button class="wl-tab active" id="wl-tab-builder" onclick="switchLeftTab('builder')">Builder</button>
+      <button class="wl-tab" id="wl-tab-pad" onclick="switchLeftTab('pad')">Pad</button>
+    </div>
+    <div id="builder-content">
     <div id="midi-detect" style="line-height:1.3;height:40px;overflow:hidden;padding:4px 8px;background:rgba(0,0,0,0.3);border-radius:6px;margin-bottom:4px;color:var(--text-muted);font-size:0.7rem;"></div>
     <svg id="pad-grid" class="grid-container"></svg>
     <div class="pad-footer">
@@ -314,6 +319,19 @@ document.addEventListener('click', function(e) {
           <button onclick="clearInstrumentInput()" style="font-size:0.7rem;padding:3px 14px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">Clear</button>
           <button onclick="playInstrumentInput()" style="font-size:0.7rem;padding:3px 14px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">Play ▶</button>
         </div>
+      </div>
+    </div>
+    </div><!-- /builder-content -->
+    <div id="pad-view-32" style="display:none;">
+      <svg id="pad-grid-32" class="grid-container" style="width:100%;"></svg>
+      <div class="semitone-shift-bar">
+        <button onclick="shiftSemitone(-1)" id="semi-down">-1</button>
+        <span id="semi-label">±0</span>
+        <button onclick="shiftSemitone(1)" id="semi-up">+1</button>
+        <span style="margin-left:8px;">Oct</span>
+        <button onclick="shiftOctave(-1)">▼</button>
+        <span id="oct-label-32"></span>
+        <button onclick="shiftOctave(1)">▲</button>
       </div>
     </div>
   </div>
@@ -545,25 +563,25 @@ document.addEventListener('click', function(e) {
 </script>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.8.1"></script>
-<script src="lang-en.js?v=3.8.1"></script>
-<script src="lang-ja.js?v=3.8.1"></script>
-<script src="lang-zh.js?v=3.8.1"></script>
-<script src="lang-es.js?v=3.8.1"></script>
-<script src="lang-fr.js?v=3.8.1"></script>
-<script src="lang-pt.js?v=3.8.1"></script>
-<script src="lang-de.js?v=3.8.1"></script>
-<script src="lang-ko.js?v=3.8.1"></script>
-<script src="lang-it.js?v=3.8.1"></script>
+<script src="i18n.js?v=3.9.0"></script>
+<script src="lang-en.js?v=3.9.0"></script>
+<script src="lang-ja.js?v=3.9.0"></script>
+<script src="lang-zh.js?v=3.9.0"></script>
+<script src="lang-es.js?v=3.9.0"></script>
+<script src="lang-fr.js?v=3.9.0"></script>
+<script src="lang-pt.js?v=3.9.0"></script>
+<script src="lang-de.js?v=3.9.0"></script>
+<script src="lang-ko.js?v=3.9.0"></script>
+<script src="lang-it.js?v=3.9.0"></script>
 <!-- App JS -->
-<script src="data.js?v=3.8.1"></script>
-<script src="audio.js?v=3.8.1"></script>
-<script src="theory.js?v=3.8.1"></script>
-<script src="render.js?v=3.8.1"></script>
-<script src="plain.js?v=3.8.1"></script>
-<script src="perform.js?v=3.8.1"></script>
-<script src="builder.js?v=3.8.1"></script>
-<script src="main.js?v=3.8.1"></script>
+<script src="data.js?v=3.9.0"></script>
+<script src="audio.js?v=3.9.0"></script>
+<script src="theory.js?v=3.9.0"></script>
+<script src="render.js?v=3.9.0"></script>
+<script src="plain.js?v=3.9.0"></script>
+<script src="perform.js?v=3.9.0"></script>
+<script src="builder.js?v=3.9.0"></script>
+<script src="main.js?v=3.9.0"></script>
 <script>if (typeof window.__JUCE__ === 'undefined' && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 // ========================================
 // PAD GRID FUNCTIONS
 // ========================================
-function baseMidi() { return BASE_MIDI + AppState.octaveShift * 12; }
+function baseMidi() { return BASE_MIDI + AppState.octaveShift * 12 + AppState.semitoneShift; }
 
 function shiftOctave(delta) {
   const next = AppState.octaveShift + delta;
@@ -18,12 +18,37 @@ function shiftOctave(delta) {
   saveAppSettings();
 }
 
+function shiftSemitone(delta) {
+  var next = AppState.semitoneShift + delta;
+  if (next < -11 || next > 11) return;
+  AppState.semitoneShift = next;
+  updateOctaveLabel();
+  render();
+  saveAppSettings();
+}
+
 function updateOctaveLabel() {
   const lo = baseMidi();
   const hi = lo + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
   document.getElementById('oct-label').textContent = noteName(lo) + ' — ' + noteName(hi);
   document.getElementById('oct-down').disabled = (AppState.octaveShift <= -1);
   document.getElementById('oct-up').disabled = (AppState.octaveShift >= 3);
+  // 32-pad labels
+  var octLabel32 = document.getElementById('oct-label-32');
+  if (octLabel32) {
+    var lo32 = baseMidi();
+    var hi32 = lo32 + (GRID_32.ROWS - 1) * GRID_32.ROW_INTERVAL + (GRID_32.COLS - 1);
+    octLabel32.textContent = noteName(lo32) + '—' + noteName(hi32);
+  }
+  var semiLabel = document.getElementById('semi-label');
+  if (semiLabel) {
+    var s = AppState.semitoneShift;
+    semiLabel.textContent = s === 0 ? '±0' : (s > 0 ? '+' + s : '' + s);
+  }
+  var semiDown = document.getElementById('semi-down');
+  var semiUp = document.getElementById('semi-up');
+  if (semiDown) semiDown.disabled = (AppState.semitoneShift <= -11);
+  if (semiUp) semiUp.disabled = (AppState.semitoneShift >= 11);
 }
 
 function toggleOmit5() { VoicingState.omit5 = !VoicingState.omit5; VoicingState.shell = null; updateVoicingButtons(); render(); playCurrentChord(); }

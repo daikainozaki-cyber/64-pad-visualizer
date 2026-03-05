@@ -241,6 +241,13 @@ const GRID = {
   PAD_SIZE: 62, PAD_GAP: 4, MARGIN: 20,
 };
 const { ROWS, COLS, BASE_MIDI, ROW_INTERVAL, COL_INTERVAL, PAD_SIZE, PAD_GAP, MARGIN } = GRID;
+
+const GRID_32 = {
+  ROWS: 4, COLS: 8,
+  BASE_MIDI: 36, ROW_INTERVAL: 5, COL_INTERVAL: 1,
+  PAD_SIZE: 0,  // computed dynamically from container width
+  PAD_GAP: 4, MARGIN: 8,
+};
 const SCALE_DEGREE_NAMES = ['R','b2','2','b3','3','4','b5','5','b6','6','b7','7'];
 
 // ======== STATE ========
@@ -249,6 +256,7 @@ const AppState = {
   mode: 'scale',  // 'scale' | 'chord' | 'input'
   scaleIdx: 0,
   octaveShift: 0, // -1, 0, +1, +2 — shifts entire grid like Push's octave up/down
+  semitoneShift: 0, // -11 to +11 — fine-tune for 32-pad mode
   showParentScales: false, // Parent Scale panel toggle
   psSortMode: 'practical', // 'practical' | 'diatonic'
   // Velocity sensitivity (Push 3-style parameters)
@@ -333,6 +341,7 @@ function saveAppSettings() {
       velDrive: AppState.velDrive,
       velCompand: AppState.velCompand,
       velRange: AppState.velRange,
+      semitoneShift: AppState.semitoneShift,
       banks: BankState.banks,
       activeBankId: BankState.activeBankId,
     };
@@ -359,6 +368,7 @@ function loadAppSettings() {
     if (s.velDrive !== undefined) AppState.velDrive = s.velDrive;
     if (s.velCompand !== undefined) AppState.velCompand = s.velCompand;
     if (s.velRange !== undefined) AppState.velRange = s.velRange;
+    if (s.semitoneShift !== undefined && s.semitoneShift >= -11 && s.semitoneShift <= 11) AppState.semitoneShift = s.semitoneShift;
     // Migration: banks
     if (Array.isArray(s.banks) && s.banks.length > 0) {
       BankState.banks = s.banks;

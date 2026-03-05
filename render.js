@@ -39,7 +39,7 @@ function moveMemorySection(toMobile) {
 function moveInstrumentRow(toMobile) {
   var instRow = document.getElementById('instrument-row');
   if (!instRow) return;
-  var padArea = document.querySelector('.pad-area');
+  var builderContent = document.getElementById('builder-content') || document.querySelector('.pad-area');
   var staffPanel = document.getElementById('staff-ep-panel');
   if (toMobile) {
     // Move instrument row to top of staff panel (Screen 3)
@@ -48,9 +48,9 @@ function moveInstrumentRow(toMobile) {
     }
     instRow.style.display = '';
   } else {
-    // Move back to pad area
-    if (instRow.parentElement !== padArea) {
-      padArea.appendChild(instRow);
+    // Move back to builder content area
+    if (instRow.parentElement !== builderContent) {
+      builderContent.appendChild(instRow);
     }
     instRow.style.display = '';
   }
@@ -242,17 +242,22 @@ function computeRenderState() {
   return { activePCS, activeIvPCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS };
 }
 
-function renderPads(svg, state) {
+function renderPads(svg, state, grid) {
+  var rows = grid ? grid.ROWS : ROWS;
+  var cols = grid ? grid.COLS : COLS;
+  var padSize = grid ? grid.PAD_SIZE : PAD_SIZE;
+  var padGap = grid ? grid.PAD_GAP : PAD_GAP;
+  var margin = grid ? grid.MARGIN : MARGIN;
   const { activePCS, activeIvPCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS } = state;
   // Build MIDI set for selected voicing box (for dimming non-selected pads)
-  const selBox = VoicingState.selectedBoxIdx !== null ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx] : null;
+  const selBox = !grid && VoicingState.selectedBoxIdx !== null ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx] : null;
   const selMidi = selBox ? new Set(selBox.midiNotes) : null;
-  for (let row = 0; row < ROWS; row++) {
-    for (let col = 0; col < COLS; col++) {
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
       const midi = midiNote(row, col);
       const pc = pitchClass(midi);
-      const x = MARGIN + col * (PAD_SIZE + PAD_GAP);
-      const y = MARGIN + (ROWS - 1 - row) * (PAD_SIZE + PAD_GAP);
+      const x = margin + col * (padSize + padGap);
+      const y = margin + (rows - 1 - row) * (padSize + padGap);
       const interval = ((pc - rootPC) + 12) % 12;
       const isRoot = pc === rootPC && !omittedPCS.has(pc);
       const isBass = bassPC !== null && pc === bassPC;
@@ -300,7 +305,7 @@ function renderPads(svg, state) {
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('class', 'pad');
       rect.setAttribute('x', x); rect.setAttribute('y', y);
-      rect.setAttribute('width', PAD_SIZE); rect.setAttribute('height', PAD_SIZE);
+      rect.setAttribute('width', padSize); rect.setAttribute('height', padSize);
       rect.setAttribute('rx', 6); rect.setAttribute('fill', fill);
       // Hold pad: noteOn on press, noteOff on global release (no mouseleave)
       // Plain mode: click toggles note on/off
@@ -368,8 +373,8 @@ function renderPads(svg, state) {
       const showDegree = rootPC !== null && (isActive || isRoot || isBass || isOmitted || isChar || isGuide || isAvoid || isOverlay);
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('class', 'pad-label');
-      text.setAttribute('x', x + PAD_SIZE / 2);
-      text.setAttribute('y', showDegree ? y + 15 : y + PAD_SIZE / 2 - 4);
+      text.setAttribute('x', x + padSize / 2);
+      text.setAttribute('y', showDegree ? y + 15 : y + padSize / 2 - 4);
       text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'middle');
       text.setAttribute('fill', textColor);
       text.setAttribute('font-size', showDegree ? '10px' : '9px');
@@ -393,7 +398,7 @@ function renderPads(svg, state) {
         }
         const degText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         degText.setAttribute('class', 'pad-label');
-        degText.setAttribute('x', x + PAD_SIZE / 2);
+        degText.setAttribute('x', x + padSize / 2);
         degText.setAttribute('y', y + 34);
         degText.setAttribute('text-anchor', 'middle'); degText.setAttribute('dominant-baseline', 'middle');
         degText.setAttribute('fill', textColor);
@@ -406,8 +411,8 @@ function renderPads(svg, state) {
 
       const octText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       octText.setAttribute('class', 'pad-label');
-      octText.setAttribute('x', x + PAD_SIZE / 2);
-      octText.setAttribute('y', showDegree ? y + 51 : y + PAD_SIZE / 2 + 12);
+      octText.setAttribute('x', x + padSize / 2);
+      octText.setAttribute('y', showDegree ? y + 51 : y + padSize / 2 + 12);
       octText.setAttribute('text-anchor', 'middle'); octText.setAttribute('dominant-baseline', 'middle');
       octText.setAttribute('fill', textColor);
       octText.setAttribute('font-size', '8px'); octText.setAttribute('opacity', isDimmed ? '0.15' : '0.6');
@@ -610,6 +615,10 @@ function render() {
   if (instrumentInputActive) {
     highlightInstrumentPads(getAllInputMidiNotes());
   }
+
+  // Re-render 32-pad if visible
+  var pad32 = document.getElementById('pad-view-32');
+  if (pad32 && pad32.style.display !== 'none') renderPad32();
 
   // Auto-save to selected slot (Chord/Scale mode)
   if (PlainState.currentSlot !== null && (AppState.mode === 'chord' || AppState.mode === 'scale')) {
@@ -2155,5 +2164,41 @@ function applyParentScaleFilter(scaleIdx) {
       }
     }
   });
+}
+
+// ========================================
+// 32-PAD MODE (4x8)
+// ========================================
+function renderPad32() {
+  var svg = document.getElementById('pad-grid-32');
+  if (!svg) return;
+  var container = svg.parentElement;
+  var padSize = Math.floor((container.clientWidth - GRID_32.MARGIN * 2 - 7 * GRID_32.PAD_GAP) / 8);
+  if (padSize < 20) padSize = 20;
+  var g = {
+    ROWS: 4, COLS: 8,
+    BASE_MIDI: GRID_32.BASE_MIDI, ROW_INTERVAL: GRID_32.ROW_INTERVAL, COL_INTERVAL: GRID_32.COL_INTERVAL,
+    PAD_SIZE: padSize, PAD_GAP: GRID_32.PAD_GAP, MARGIN: GRID_32.MARGIN
+  };
+  var totalW = g.COLS * (g.PAD_SIZE + g.PAD_GAP) - g.PAD_GAP + g.MARGIN * 2;
+  var totalH = g.ROWS * (g.PAD_SIZE + g.PAD_GAP) - g.PAD_GAP + g.MARGIN * 2;
+  svg.setAttribute('viewBox', '0 0 ' + totalW + ' ' + totalH);
+  svg.removeAttribute('width'); svg.removeAttribute('height');
+  svg.style.width = '100%'; svg.style.height = 'auto';
+  svg.innerHTML = '';
+  var state = computeRenderState();
+  renderPads(svg, state, g);
+}
+
+function switchLeftTab(tab) {
+  var builderContent = document.getElementById('builder-content');
+  var padView = document.getElementById('pad-view-32');
+  var tabBuilder = document.getElementById('wl-tab-builder');
+  var tabPad = document.getElementById('wl-tab-pad');
+  if (builderContent) builderContent.style.display = tab === 'builder' ? '' : 'none';
+  if (padView) padView.style.display = tab === 'pad' ? '' : 'none';
+  if (tabBuilder) tabBuilder.classList.toggle('active', tab === 'builder');
+  if (tabPad) tabPad.classList.toggle('active', tab === 'pad');
+  if (tab === 'pad') renderPad32();
 }
 

@@ -4,7 +4,7 @@
 var _isMobile = false;
 var _isLandscape = false;
 var _mobileMediaQuery = window.matchMedia('(max-width: 767px)');
-var _landscapeMediaQuery = window.matchMedia('(max-width: 932px) and (max-height: 500px) and (orientation: landscape)');
+var _landscapeMediaQuery = window.matchMedia('(max-height: 500px) and (orientation: landscape)');
 
 function handleMobileChange(e) {
   _isMobile = e.matches;

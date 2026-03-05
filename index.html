@@ -654,7 +654,7 @@ document.addEventListener('click', function(e) {
   d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:red;color:white;font-size:16px;padding:6px 10px;text-align:center;pointer-events:none;';
   document.body.appendChild(d);
   function upd(){
-    var mq = window.matchMedia('(max-width: 932px) and (max-height: 500px) and (orientation: landscape)');
+    var mq = window.matchMedia('(max-height: 500px) and (orientation: landscape)');
     var ol = document.querySelector('.landscape-play-overlay');
     var olStyle = ol ? getComputedStyle(ol).display : 'NO-EL';
     var orient = window.innerWidth > window.innerHeight ? 'LAND' : 'PORT';

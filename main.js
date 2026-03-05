@@ -23,7 +23,6 @@ if (_isMobile) {
   moveInstrumentRow(true);
 } else if (_isLandscape) {
   moveInstrumentRow(true);
-  setLandscapeTab('control');
   syncPlayControls();
   renderPad32();
 }

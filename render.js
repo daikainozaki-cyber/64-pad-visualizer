@@ -4,7 +4,7 @@
 var _isMobile = false;
 var _isLandscape = false;
 var _mobileMediaQuery = window.matchMedia('(max-width: 767px)');
-var _landscapeMediaQuery = window.matchMedia('(max-width: 812px) and (max-height: 500px) and (orientation: landscape)');
+var _landscapeMediaQuery = window.matchMedia('(max-width: 932px) and (max-height: 500px) and (orientation: landscape)');
 
 function handleMobileChange(e) {
   _isMobile = e.matches;
@@ -16,8 +16,6 @@ function handleMobileChange(e) {
 function handleLandscapeChange(e) {
   _isLandscape = e.matches;
   if (_isLandscape) {
-    // Default: show control, hide info
-    setLandscapeTab('control');
     // Move instrument row to info panel for landscape too
     moveInstrumentRow(true);
     // Render 32-pad overlay
@@ -377,10 +375,10 @@ function renderPads(svg, state, grid) {
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('class', 'pad-label');
       text.setAttribute('x', x + padSize / 2);
-      text.setAttribute('y', showDegree ? y + 15 : y + padSize / 2 - 4);
+      text.setAttribute('y', showDegree ? y + padSize * 0.24 : y + padSize / 2 - 4);
       text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'middle');
       text.setAttribute('fill', textColor);
-      text.setAttribute('font-size', showDegree ? '10px' : '9px');
+      text.setAttribute('font-size', padSize < 50 ? '8px' : (showDegree ? '10px' : '9px'));
       text.setAttribute('font-weight', showDegree ? '600' : '400');
       text.textContent = pcName(pc);
       if (isDimmed) text.setAttribute('opacity', '0.3');
@@ -402,10 +400,10 @@ function renderPads(svg, state, grid) {
         const degText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         degText.setAttribute('class', 'pad-label');
         degText.setAttribute('x', x + padSize / 2);
-        degText.setAttribute('y', y + 34);
+        degText.setAttribute('y', y + padSize * 0.55);
         degText.setAttribute('text-anchor', 'middle'); degText.setAttribute('dominant-baseline', 'middle');
         degText.setAttribute('fill', textColor);
-        degText.setAttribute('font-size', '13px'); degText.setAttribute('font-weight', '700');
+        degText.setAttribute('font-size', padSize < 50 ? '10px' : '13px'); degText.setAttribute('font-weight', '700');
         if (isOmitted) degText.setAttribute('text-decoration', 'line-through');
         degText.textContent = degName;
         if (isDimmed) degText.setAttribute('opacity', '0.3');
@@ -415,10 +413,10 @@ function renderPads(svg, state, grid) {
       const octText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       octText.setAttribute('class', 'pad-label');
       octText.setAttribute('x', x + padSize / 2);
-      octText.setAttribute('y', showDegree ? y + 51 : y + padSize / 2 + 12);
+      octText.setAttribute('y', showDegree ? y + padSize * 0.82 : y + padSize / 2 + 12);
       octText.setAttribute('text-anchor', 'middle'); octText.setAttribute('dominant-baseline', 'middle');
       octText.setAttribute('fill', textColor);
-      octText.setAttribute('font-size', '8px'); octText.setAttribute('opacity', isDimmed ? '0.15' : '0.6');
+      octText.setAttribute('font-size', padSize < 50 ? '6px' : '8px'); octText.setAttribute('opacity', isDimmed ? '0.15' : '0.6');
       octText.textContent = noteName(midi);
       svg.appendChild(octText);
     }
@@ -2187,7 +2185,10 @@ function renderPad32() {
   if (!svg) return;
   var container = svg.parentElement;
   var availWidth = container.clientWidth || window.innerWidth;
-  var padSize = Math.floor((availWidth - GRID_32.MARGIN * 2 - 7 * GRID_32.PAD_GAP) / 8);
+  var availHeight = svg.clientHeight || container.clientHeight || (window.innerHeight - 60);
+  var padFromW = Math.floor((availWidth - GRID_32.MARGIN * 2 - 7 * GRID_32.PAD_GAP) / 8);
+  var padFromH = Math.floor((availHeight - GRID_32.MARGIN * 2 - 3 * GRID_32.PAD_GAP) / 4);
+  var padSize = Math.min(padFromW, padFromH);
   if (padSize < 20) padSize = 20;
   var g = {
     ROWS: 4, COLS: 8,
@@ -2197,8 +2198,9 @@ function renderPad32() {
   var totalW = g.COLS * (g.PAD_SIZE + g.PAD_GAP) - g.PAD_GAP + g.MARGIN * 2;
   var totalH = g.ROWS * (g.PAD_SIZE + g.PAD_GAP) - g.PAD_GAP + g.MARGIN * 2;
   svg.setAttribute('viewBox', '0 0 ' + totalW + ' ' + totalH);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
   svg.removeAttribute('width'); svg.removeAttribute('height');
-  svg.style.width = '100%'; svg.style.height = 'auto';
+  svg.style.width = '100%'; svg.style.height = '100%';
   svg.innerHTML = '';
   var state = computeRenderState();
   renderPads(svg, state, g);

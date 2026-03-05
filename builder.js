@@ -1104,6 +1104,9 @@ function initWebMIDI() {
             if (rawNote === 54) { shiftOctave(-1); return; }
           }
           const note = isPush ? pushSerialToFourths(rawNote) : rawNote;
+          if (isPush && cmd === 0x90 && velocity > 0 && memoryViewMode === 'perform') {
+            console.log('[PERF] raw=' + rawNote + ' →fourths=' + note + ' baseMidi=' + baseMidi());
+          }
           if (cmd === 0x90 && velocity > 0) onMidiNoteOn(note, velocity);
           else if (cmd === 0x80 || (cmd === 0x90 && velocity === 0)) onMidiNoteOff(note);
         };

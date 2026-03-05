@@ -96,8 +96,8 @@ const KEY_SPELLINGS = [
   NOTE_NAMES_FLAT,  // Bb (2b)
   NOTE_NAMES_SHARP, // B  (5#)
 ];
-function pcName(pc) {
-  const parentKey = getParentMajorKey(AppState.scaleIdx, AppState.key);
+function pcName(pc, contextKey) {
+  const parentKey = contextKey !== undefined ? contextKey : getParentMajorKey(AppState.scaleIdx, AppState.key);
   return KEY_SPELLINGS[parentKey][pc];
 }
 
@@ -420,7 +420,7 @@ function resetVoicingSelection() {
 
 // Conditional exports for Node.js (Vitest) — ignored in browser
 if (typeof module !== 'undefined') module.exports = {
-  SCALES, NOTE_NAMES_SHARP, NOTE_NAMES_FLAT, FLAT_MAJOR_KEYS,
+  SCALES, NOTE_NAMES_SHARP, NOTE_NAMES_FLAT, FLAT_MAJOR_KEYS, KEY_SPELLINGS,
   BUILDER_QUALITIES, TENSION_ROWS, SCALE_AVAIL_TENSIONS,
   GRID, ROWS, COLS, BASE_MIDI, ROW_INTERVAL, COL_INTERVAL, PAD_SIZE, PAD_GAP, MARGIN,
   SCALE_DEGREE_NAMES, PC_TO_TENSION_NAME, TENSION_NAME_TO_PC,

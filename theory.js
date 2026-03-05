@@ -565,7 +565,8 @@ function getBuilderPCS() {
 
 function getBuilderChordName() {
   if (BuilderState.root === null) return '';
-  let name = pcName(BuilderState.root);
+  var rootKey = BuilderState.root; // chord root as context key
+  let name = pcName(BuilderState.root, rootKey);
   if (BuilderState.quality) name += BuilderState.quality.name;
   if (BuilderState.tension) {
     let tl = BuilderState.tension.label.replaceAll(')\n(', ',').replace(/\n/g, '');
@@ -608,7 +609,7 @@ function getBuilderChordName() {
     }
   }
   if (BuilderState.bass !== null) {
-    name += '/' + pcName(BuilderState.bass);
+    name += '/' + pcName(BuilderState.bass, rootKey);
   }
   return name;
 }
@@ -702,7 +703,7 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
 // ========================================
 function noteNameForKey(pc, key) {
   const parentKey = getParentMajorKey(AppState.scaleIdx, key);
-  return FLAT_MAJOR_KEYS.has(parentKey) ? NOTE_NAMES_FLAT[pc] : NOTE_NAMES_SHARP[pc];
+  return KEY_SPELLINGS[parentKey][pc];
 }
 
 function getDiatonicTetrads(scalePCS, key) {

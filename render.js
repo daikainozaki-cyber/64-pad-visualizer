@@ -513,7 +513,7 @@ function renderInfoText(state) {
         return pcName(absPC);
       });
       let txt = activeLabel + ' (' + t('info.note_count', {n: pcs.length}) + ') : ' + notes.join(' - ');
-      if (BuilderState.bass !== null) txt += ' / ' + pcName(BuilderState.bass);
+      if (BuilderState.bass !== null) txt += ' / ' + pcName(BuilderState.bass, BuilderState.root);
       const mods = [];
       if (VoicingState.shell) {
         let shellLabel = 'Shell ' + VoicingState.shell.split('').join('-');
@@ -2259,7 +2259,6 @@ function syncPlayChordName() {
   if (!el) return;
   if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
     var name = getBuilderChordName();
-    if (BuilderState.bass !== null) name += '/' + pcName(BuilderState.bass);
     var mods = [];
     if (VoicingState.inversion > 0) {
       var invNames = ['', '1st Inv', '2nd Inv', '3rd Inv'];

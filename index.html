@@ -647,5 +647,22 @@ document.addEventListener('click', function(e) {
 <script src="builder.js?v=3.10.0"></script>
 <script src="main.js?v=3.10.0"></script>
 <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=3.10.0');</script>
+<script>
+(function(){
+  var d = document.createElement('div');
+  d.id = 'debug-viewport';
+  d.style.cssText = 'position:fixed;bottom:0;left:0;z-index:9999;background:red;color:white;font-size:12px;padding:4px 8px;pointer-events:none;';
+  document.body.appendChild(d);
+  function upd(){
+    var mq = window.matchMedia('(max-width: 932px) and (max-height: 500px) and (orientation: landscape)');
+    var ol = document.querySelector('.landscape-play-overlay');
+    var olStyle = ol ? getComputedStyle(ol).display : 'no-el';
+    d.textContent = window.innerWidth+'x'+window.innerHeight+' orient='+screen.orientation.type+' mq='+mq.matches+' overlay='+olStyle;
+  }
+  upd();
+  window.addEventListener('resize', upd);
+  screen.orientation.addEventListener('change', upd);
+})();
+</script>
 </body>
 </html>

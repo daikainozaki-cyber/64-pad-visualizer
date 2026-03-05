@@ -651,17 +651,19 @@ document.addEventListener('click', function(e) {
 (function(){
   var d = document.createElement('div');
   d.id = 'debug-viewport';
-  d.style.cssText = 'position:fixed;bottom:0;left:0;z-index:9999;background:red;color:white;font-size:12px;padding:4px 8px;pointer-events:none;';
+  d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:red;color:white;font-size:16px;padding:6px 10px;text-align:center;pointer-events:none;';
   document.body.appendChild(d);
   function upd(){
     var mq = window.matchMedia('(max-width: 932px) and (max-height: 500px) and (orientation: landscape)');
     var ol = document.querySelector('.landscape-play-overlay');
-    var olStyle = ol ? getComputedStyle(ol).display : 'no-el';
-    d.textContent = window.innerWidth+'x'+window.innerHeight+' orient='+screen.orientation.type+' mq='+mq.matches+' overlay='+olStyle;
+    var olStyle = ol ? getComputedStyle(ol).display : 'NO-EL';
+    var orient = window.innerWidth > window.innerHeight ? 'LAND' : 'PORT';
+    d.textContent = window.innerWidth+'x'+window.innerHeight+' '+orient+' mq='+mq.matches+' ov='+olStyle;
   }
   upd();
   window.addEventListener('resize', upd);
-  screen.orientation.addEventListener('change', upd);
+  window.addEventListener('orientationchange', upd);
+  setInterval(upd, 1000);
 })();
 </script>
 </body>

@@ -619,7 +619,7 @@ function render() {
   }
 
   // Re-render 32-pad if in landscape mode
-  if (_isLandscape) { syncPlayControls(); renderPad32(); }
+  if (_isLandscape) { syncPlayControls(); renderPad32(); syncPlayChordName(); }
 
   // Auto-save to selected slot (Chord/Scale mode)
   if (PlainState.currentSlot !== null && (AppState.mode === 'chord' || AppState.mode === 'scale')) {
@@ -2236,6 +2236,33 @@ function syncPlayControls() {
   var ps = document.getElementById('play-scale-select');
   if (pk) pk.value = AppState.key;
   if (ps) ps.value = AppState.scaleIdx;
+}
+
+function cycleInversion(dir) {
+  var max = getBuilderPCS() ? getBuilderPCS().length - 1 : 3;
+  var inv = VoicingState.inversion + dir;
+  if (inv < 0) inv = max;
+  if (inv > max) inv = 0;
+  setInversion(inv);
+}
+
+function syncPlayChordName() {
+  var el = document.getElementById('play-chord-name');
+  if (!el) return;
+  if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
+    var name = getBuilderChordName();
+    if (BuilderState.bass !== null) name += '/' + pcName(BuilderState.bass);
+    var mods = [];
+    if (VoicingState.inversion > 0) {
+      var invNames = ['', '1st Inv', '2nd Inv', '3rd Inv'];
+      mods.push(invNames[VoicingState.inversion]);
+    }
+    if (VoicingState.drop) mods.push(VoicingState.drop === 'drop2' ? 'Drop 2' : 'Drop 3');
+    if (mods.length > 0) name += ' [' + mods.join(', ') + ']';
+    el.textContent = name;
+  } else {
+    el.textContent = '';
+  }
 }
 
 function toggleFullscreen() {

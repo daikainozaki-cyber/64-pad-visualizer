@@ -7,10 +7,6 @@ function shiftOctave(delta) {
   const next = AppState.octaveShift + delta;
   if (next < -1 || next > 3) return;
   AppState.octaveShift = next;
-  // Desktop: sync octave shift to C++ for Push serial→fourths conversion
-  if (typeof _isDesktop !== 'undefined' && _isDesktop) {
-    window.__JUCE__._callNative("setOctaveShift")(AppState.octaveShift);
-  }
   resetVoicingSelection();
   updateOctaveLabel();
   render();

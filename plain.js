@@ -713,50 +713,9 @@ function initMemorySlots() {
     btn.draggable = true;
     btn.addEventListener('dragstart', (ev) => {
       if (!PlainState.memory[i]) { ev.preventDefault(); return; }
-      // Desktop To DAW mode: block HTML drag (OS drag via mousedown)
-      if (_isDesktop && PlainState.toDAW) { ev.preventDefault(); return; }
       ev.dataTransfer.setData('text/plain', String(i));
       ev.dataTransfer.effectAllowed = 'copyMove';
     });
-    // Desktop To DAW mode: drag slot → MIDI to DAW (no cmd needed)
-    btn.addEventListener('mousedown', (function(idx) {
-      return function(e) {
-        if (!_isDesktop || !PlainState.toDAW) return;
-        if (!PlainState.memory[idx]) return;
-        if (e.metaKey || e.ctrlKey || e.shiftKey) return;
-        // Determine what to drag
-        var slots = [];
-        if (PlainState.dawSelection.size > 0 && PlainState.dawSelection.has(idx)) {
-          PlainState.dawSelection.forEach(function(si) {
-            if (PlainState.memory[si]) slots.push(PlainState.memory[si]);
-          });
-        } else {
-          slots.push(PlainState.memory[idx]);
-        }
-        if (slots.length === 0) return;
-        if (slots.length === 1) {
-          _juceInvoke("startMidiDrag", [slots[0].midiNotes, slots[0].chordName]);
-        } else {
-          var data = slots.map(function(s) { return { notes: s.midiNotes, name: s.chordName }; });
-          _juceInvoke("startMidiDragAll", [data]);
-        }
-        var sx = e.clientX, sy = e.clientY, fired = false;
-        function onMove(ev) {
-          if (fired) return;
-          var dx = ev.clientX - sx, dy = ev.clientY - sy;
-          if (dx * dx + dy * dy > 64) {
-            fired = true;
-            _juceInvoke("executeMidiDrag", []);
-          }
-        }
-        function onUp() {
-          document.removeEventListener('mousemove', onMove);
-          document.removeEventListener('mouseup', onUp);
-        }
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-      };
-    })(i));
     // D&D: accept drops from other slots (swap/move)
     btn.addEventListener('dragover', (ev) => {
       ev.preventDefault();
@@ -785,7 +744,6 @@ function initMemorySlots() {
         pushUndoState();
         PlainState.memory[i] = null;
         if (PlainState.currentSlot === i) PlainState.currentSlot = null;
-        PlainState.dawSelection.delete(i);
         updateMemorySlotUI();
         const toast = document.getElementById('slot-save-toast');
         if (toast) {
@@ -797,22 +755,6 @@ function initMemorySlots() {
         saveAppSettings();
         return;
       }
-      // Desktop To DAW mode
-      if (_isDesktop && PlainState.toDAW && PlainState.memory[i]) {
-        if (ev.metaKey || ev.ctrlKey) {
-          // Cmd+click: toggle multi-select
-          if (PlainState.dawSelection.has(i)) PlainState.dawSelection.delete(i);
-          else PlainState.dawSelection.add(i);
-        } else {
-          // Normal click: select this one only
-          PlainState.dawSelection.clear();
-          PlainState.dawSelection.add(i);
-        }
-        updateMemorySlotUI();
-        return;
-      }
-      // Normal click: clear DAW selection, recall slot
-      if (PlainState.dawSelection.size > 0) PlainState.dawSelection.clear();
       recallPlainSlot(i);
     };
     container.appendChild(btn);
@@ -822,7 +764,7 @@ function initMemorySlots() {
 function updateMemorySlotUI() {
   const container = document.getElementById('memory-slots');
   if (!container) return;
-  const btns = container.querySelectorAll('.slot-btn:not(.daw-all-pad)');
+  const btns = container.querySelectorAll('.slot-btn');
   const isPerformView = memoryViewMode === 'perform';
   btns.forEach((btn, i) => {
     if (i >= 16) return;
@@ -832,13 +774,12 @@ function updateMemorySlotUI() {
     const isCurrent = PlainState.currentSlot === i;
     const isPlaying = isPerformView && PerformState.activePad === i;
     // Reset classes
-    btn.classList.remove('filled', 'selected', 'capture-target', 'playing', 'daw-selected');
+    btn.classList.remove('filled', 'selected', 'capture-target', 'playing');
     if (slot) {
       btn.textContent = slot.chordName;
       btn.title = label + ': ' + slot.chordName;
       btn.classList.add('filled');
-      if (PlainState.dawSelection.has(i)) btn.classList.add('daw-selected');
-      else if (isPlaying) btn.classList.add('playing');
+      if (isPlaying) btn.classList.add('playing');
       else if (isCurrent && !isPerformView) btn.classList.add('selected');
     } else {
       btn.textContent = label;
@@ -864,93 +805,9 @@ function updateMemorySlotUI() {
     if (playBtn) playBtn.textContent = sel ? t('memory.play_selected', {chord: sel.chordName}) : t('memory.play_all') + (slotCount ? ' (' + slotCount + ')' : '');
   }
   updateBankUI();
-  if (PlainState.toDAW) { updateAllPad(); updateDAWHint(); }
 }
 
-// Desktop: "To DAW" toggle — when ON, dragging memory slots sends MIDI to DAW
-function toggleToDAW() {
-  PlainState.toDAW = !PlainState.toDAW;
-  if (!PlainState.toDAW) PlainState.dawSelection.clear();
-  var btn = document.getElementById('btn-to-daw');
-  if (btn) {
-    if (PlainState.toDAW) btn.classList.add('active');
-    else btn.classList.remove('active');
-  }
-  // Visual feedback on slots
-  var container = document.getElementById('memory-slots');
-  if (container) {
-    container.classList.toggle('to-daw-mode', PlainState.toDAW);
-  }
-  // Add/remove ALL pad
-  updateAllPad();
-  // Hint
-  updateDAWHint();
-}
 
-function updateDAWHint() {
-  var hint = document.querySelector('[data-i18n="ui.slot_hint"]');
-  if (!hint) return;
-  if (!PlainState.toDAW) { hint.textContent = t('ui.slot_hint'); return; }
-  if (PlainState.dawSelection.size > 0) {
-    var names = [];
-    PlainState.dawSelection.forEach(function(i) {
-      if (PlainState.memory[i]) names.push(PlainState.memory[i].chordName);
-    });
-    hint.textContent = 'Selected: ' + names.join(' | ') + ' \u2014 drag to DAW';
-  } else {
-    hint.textContent = 'Drag slot \u2192 DAW / Cmd+click to select multiple';
-  }
-}
-
-function updateAllPad() {
-  var container = document.getElementById('memory-slots');
-  if (!container) return;
-  var existing = document.getElementById('daw-all-pad');
-  if (existing) existing.remove();
-  if (!PlainState.toDAW) return;
-  var count = PlainState.memory.filter(function(s) { return s !== null; }).length;
-  if (count === 0) return;
-  var pad = document.createElement('button');
-  pad.id = 'daw-all-pad';
-  pad.className = 'slot-btn daw-all-pad';
-  pad.textContent = 'ALL (' + count + ')';
-  pad.title = 'Drag all chords to DAW';
-  // Click ALL: select all filled slots (visual feedback), then drag to DAW
-  pad.addEventListener('mousedown', function(e) {
-    // Select all filled slots
-    PlainState.dawSelection.clear();
-    PlainState.memory.forEach(function(s, i) { if (s) PlainState.dawSelection.add(i); });
-    updateMemorySlotUI();
-    // Prepare MIDI drag
-    var slots = PlainState.memory.filter(function(s) { return s !== null; });
-    if (slots.length === 0) return;
-    var data = slots.map(function(s) { return { notes: s.midiNotes, name: s.chordName }; });
-    _juceInvoke("startMidiDragAll", [data]);
-    var sx = e.clientX, sy = e.clientY, fired = false;
-    function onMove(ev) {
-      if (fired) return;
-      var dx = ev.clientX - sx, dy = ev.clientY - sy;
-      if (dx * dx + dy * dy > 64) {
-        fired = true;
-        _juceInvoke("executeMidiDrag", []);
-      }
-    }
-    function onUp() {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-    }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-  });
-  container.appendChild(pad);
-}
-
-function initToDAWButton() {
-  // To DAW only available in plugin mode (VST3/AU), not Standalone
-  if (typeof _isPlugin === 'undefined' || !_isPlugin) return;
-  var btn = document.getElementById('btn-to-daw');
-  if (btn) btn.style.display = '';
-}
 
 // SMF Type 0 MIDI export (selected slot → single, no selection → all)
 function exportPlainMidi() {
@@ -961,18 +818,6 @@ function exportPlainMidi() {
     slots = PlainState.memory.filter(s => s !== null);
   }
   if (slots.length === 0) { const toast = document.getElementById('slot-save-toast'); toast.textContent = t('notify.no_chords'); toast.style.opacity = '1'; setTimeout(() => toast.style.opacity = '0', 2000); return; }
-  // Desktop: save MIDI file to ~/Music/64 Pad Explorer/
-  if (typeof _isDesktop !== 'undefined' && _isDesktop) {
-    var data = slots.map(function(s) { return { notes: s.midiNotes, name: s.chordName }; });
-    _juceInvoke("prepareMidiExport", [data]);
-    var toast = document.getElementById('slot-save-toast');
-    if (toast) {
-      toast.textContent = 'Saved to ~/Music/64 Pad Explorer/ (' + slots.length + ' chords)';
-      toast.style.opacity = '1';
-      setTimeout(function() { toast.style.opacity = '0'; }, 4000);
-    }
-    return;
-  }
   const ticksPerBeat = 480;
   const track = [];
 
@@ -1251,401 +1096,6 @@ function parseMidiToSlots(buf) {
     slots.push({ midiNotes: lastNotes, chordName: lastName });
   }
   return slots;
-}
-
-// ========================================
-// MIDI TIMELINE PLAYBACK (v2.51)
-// ========================================
-
-// A. Parse MIDI file preserving timing information
-function parseMidiToTimeline(buf) {
-  if (buf.length < 14) return null;
-  // Validate MThd
-  if (buf[0] !== 0x4D || buf[1] !== 0x54 || buf[2] !== 0x68 || buf[3] !== 0x64) return null;
-  var ticksPerBeat = (buf[12] << 8) | buf[13];
-  if (ticksPerBeat === 0) return null;
-
-  // Find first MTrk
-  var pos = 14;
-  while (pos + 8 <= buf.length) {
-    if (buf[pos] === 0x4D && buf[pos+1] === 0x54 && buf[pos+2] === 0x72 && buf[pos+3] === 0x6B) break;
-    pos++;
-  }
-  if (pos + 8 > buf.length) return null;
-  var trackLen = (buf[pos+4] << 24) | (buf[pos+5] << 16) | (buf[pos+6] << 8) | buf[pos+7];
-  pos += 8;
-  var trackEnd = Math.min(pos + trackLen, buf.length);
-
-  // Default tempo: 120 BPM (500000 µs/beat)
-  var microsecondsPerBeat = 500000;
-  var tempoChanges = [{ tick: 0, usPerBeat: 500000 }];
-  var absTick = 0;
-  var runningStatus = 0;
-  var noteOns = []; // {tick, note, velocity}
-  var noteOffs = []; // {tick, note}
-  var markers = []; // {tick, text}
-
-  while (pos < trackEnd) {
-    var delta = 0;
-    while (pos < trackEnd) {
-      var b = buf[pos++];
-      delta = (delta << 7) | (b & 0x7F);
-      if (!(b & 0x80)) break;
-    }
-    absTick += delta;
-    if (pos >= trackEnd) break;
-
-    var status = buf[pos];
-    if (status < 0x80) {
-      status = runningStatus;
-    } else {
-      pos++;
-      if (status >= 0x80 && status < 0xF0) runningStatus = status;
-    }
-
-    var cmd = status & 0xF0;
-    if (cmd === 0x90) {
-      var note = buf[pos++] & 0x7F;
-      var vel = buf[pos++] & 0x7F;
-      if (vel > 0) {
-        noteOns.push({ tick: absTick, note: note, velocity: vel });
-      } else {
-        noteOffs.push({ tick: absTick, note: note });
-      }
-    } else if (cmd === 0x80) {
-      var offNote = buf[pos++] & 0x7F;
-      pos++; // velocity byte
-      noteOffs.push({ tick: absTick, note: offNote });
-    } else if (status === 0xFF) {
-      var metaType = buf[pos++];
-      var len = 0;
-      while (pos < trackEnd) {
-        var b2 = buf[pos++];
-        len = (len << 7) | (b2 & 0x7F);
-        if (!(b2 & 0x80)) break;
-      }
-      if (metaType === 0x51 && len === 3) {
-        // Tempo meta event
-        microsecondsPerBeat = (buf[pos] << 16) | (buf[pos+1] << 8) | buf[pos+2];
-        tempoChanges.push({ tick: absTick, usPerBeat: microsecondsPerBeat });
-      } else if (metaType === 0x06 && len > 0) {
-        markers.push({ tick: absTick, text: new TextDecoder().decode(buf.slice(pos, pos + len)) });
-      }
-      if (metaType === 0x2F) break; // End of track
-      pos += len;
-    } else if (status === 0xF0 || status === 0xF7) {
-      var sLen = 0;
-      while (pos < trackEnd) {
-        var b3 = buf[pos++];
-        sLen = (sLen << 7) | (b3 & 0x7F);
-        if (!(b3 & 0x80)) break;
-      }
-      pos += sLen;
-    } else if (cmd === 0xC0 || cmd === 0xD0) {
-      pos++;
-    } else {
-      pos += 2;
-    }
-  }
-
-  // Convert ticks to milliseconds using tempo map
-  function tickToMs(tick) {
-    var ms = 0;
-    var prevTick = 0;
-    var usPerBeat = 500000;
-    for (var i = 0; i < tempoChanges.length; i++) {
-      var tc = tempoChanges[i];
-      if (tc.tick >= tick) break;
-      // Add time from prevTick to tc.tick at current rate
-      if (tc.tick > prevTick) {
-        ms += ((tc.tick - prevTick) / ticksPerBeat) * (usPerBeat / 1000);
-        prevTick = tc.tick;
-      }
-      usPerBeat = tc.usPerBeat;
-    }
-    // Add remaining time from prevTick to target tick
-    ms += ((tick - prevTick) / ticksPerBeat) * (usPerBeat / 1000);
-    return ms;
-  }
-
-  // Match note-ons with note-offs
-  var notes = [];
-  for (var i = 0; i < noteOns.length; i++) {
-    var on = noteOns[i];
-    var offTick = absTick; // default: end of track
-    for (var j = 0; j < noteOffs.length; j++) {
-      if (noteOffs[j].note === on.note && noteOffs[j].tick > on.tick) {
-        offTick = noteOffs[j].tick;
-        noteOffs.splice(j, 1);
-        break;
-      }
-    }
-    notes.push({
-      midi: on.note,
-      velocity: on.velocity,
-      startTick: on.tick,
-      endTick: offTick,
-      startMs: tickToMs(on.tick),
-      endMs: tickToMs(offTick)
-    });
-  }
-
-  // Group simultaneous notes into events (chord clusters)
-  notes.sort(function(a, b) { return a.startTick - b.startTick || a.midi - b.midi; });
-  var events = [];
-  var currentEvent = null;
-  for (var i = 0; i < notes.length; i++) {
-    var n = notes[i];
-    if (!currentEvent || n.startTick !== currentEvent.tick) {
-      if (currentEvent) events.push(currentEvent);
-      // Find marker at this tick
-      var marker = null;
-      for (var m = 0; m < markers.length; m++) {
-        if (markers[m].tick === n.startTick) { marker = markers[m].text; break; }
-      }
-      var midiNotes = [n.midi];
-      var candidates = detectChord(midiNotes);
-      currentEvent = {
-        tick: n.startTick,
-        startMs: n.startMs,
-        endMs: n.endMs,
-        notes: [{ midi: n.midi, velocity: n.velocity, endMs: n.endMs }],
-        chordName: marker || (candidates.length > 0 ? candidates[0].name : '?')
-      };
-    } else {
-      currentEvent.notes.push({ midi: n.midi, velocity: n.velocity, endMs: n.endMs });
-      currentEvent.endMs = Math.max(currentEvent.endMs, n.endMs);
-      // Re-detect chord with all notes in cluster
-      var allMidi = currentEvent.notes.map(function(x) { return x.midi; });
-      var cands = detectChord(allMidi);
-      if (cands.length > 0 && !currentEvent._hasMarker) currentEvent.chordName = cands[0].name;
-    }
-    if (currentEvent && markers.some(function(m) { return m.tick === currentEvent.tick; })) {
-      currentEvent._hasMarker = true;
-    }
-  }
-  if (currentEvent) events.push(currentEvent);
-
-  // Clean up _hasMarker
-  events.forEach(function(e) { delete e._hasMarker; });
-
-  var totalMs = events.length > 0 ? events[events.length - 1].endMs : 0;
-  var bpm = Math.round(60000000 / microsecondsPerBeat);
-
-  return {
-    events: events,
-    ticksPerBeat: ticksPerBeat,
-    bpm: bpm,
-    totalMs: totalMs
-  };
-}
-
-// B. MIDI Sequencer — requestAnimationFrame-based playback engine
-var MidiSequencer = {
-  timeline: null,      // parseMidiToTimeline result
-  state: 'stopped',    // 'stopped' | 'playing' | 'paused'
-  startTime: 0,        // performance.now() at play start
-  pauseOffset: 0,      // ms offset when paused
-  currentEventIdx: -1, // last fired event index
-  activeNotes: new Set(), // currently sounding MIDI notes
-  _rafId: null,
-
-  load: function(timeline) {
-    this.stop();
-    this.timeline = timeline;
-    this.currentEventIdx = -1;
-    this.pauseOffset = 0;
-    updateMidiPlayerUI();
-  },
-
-  play: function() {
-    if (!this.timeline || this.timeline.events.length === 0) return;
-    if (this.state === 'playing') return;
-    this.state = 'playing';
-    this.startTime = performance.now() - this.pauseOffset;
-    // Find starting event index based on pauseOffset
-    if (this.pauseOffset === 0) {
-      this.currentEventIdx = -1;
-    }
-    this._tick();
-    updateMidiPlayerUI();
-  },
-
-  pause: function() {
-    if (this.state !== 'playing') return;
-    this.state = 'paused';
-    this.pauseOffset = performance.now() - this.startTime;
-    if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
-    // Release all held notes
-    this.activeNotes.forEach(function(m) { noteOff(m); });
-    this.activeNotes.clear();
-    updateMidiPlayerUI();
-  },
-
-  stop: function() {
-    this.state = 'stopped';
-    this.pauseOffset = 0;
-    this.currentEventIdx = -1;
-    if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
-    this.activeNotes.forEach(function(m) { noteOff(m); });
-    this.activeNotes.clear();
-    PlainState.activeNotes.clear();
-    updatePlainDisplay();
-    highlightPlaybackPads(null);
-    render();
-    updateMidiPlayerUI();
-  },
-
-  seek: function(ms) {
-    var wasPlaying = this.state === 'playing';
-    if (wasPlaying) {
-      if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
-      this.activeNotes.forEach(function(m) { noteOff(m); });
-      this.activeNotes.clear();
-    }
-    this.pauseOffset = ms;
-    // Find event index for this position
-    this.currentEventIdx = -1;
-    if (this.timeline) {
-      for (var i = 0; i < this.timeline.events.length; i++) {
-        if (this.timeline.events[i].startMs <= ms) this.currentEventIdx = i;
-        else break;
-      }
-    }
-    if (wasPlaying) {
-      this.startTime = performance.now() - ms;
-      this._tick();
-    }
-    highlightPlaybackPads(null);
-    updateMidiPlayerUI();
-  },
-
-  _tick: function() {
-    var self = this;
-    if (self.state !== 'playing') return;
-    var now = performance.now() - self.startTime;
-    var events = self.timeline.events;
-
-    // Fire new events
-    while (self.currentEventIdx + 1 < events.length && events[self.currentEventIdx + 1].startMs <= now) {
-      self.currentEventIdx++;
-      var evt = events[self.currentEventIdx];
-      // NoteOn for this event
-      var midiNotes = evt.notes.map(function(n) { return n.midi; });
-      midiNotes.forEach(function(m) {
-        noteOn(m, undefined, true);
-        self.activeNotes.add(m);
-      });
-      // Show chord on pad grid + staff
-      PlainState.activeNotes = new Set(midiNotes);
-      updatePlainDisplay();
-      render();
-      highlightPlaybackPads(midiNotes);
-      // Update chord name display
-      var detectEl = document.getElementById('midi-player-chord');
-      if (detectEl) detectEl.textContent = evt.chordName;
-    }
-
-    // Check for note-offs (per-note end times)
-    if (self.currentEventIdx >= 0) {
-      var evt = events[self.currentEventIdx];
-      var hadNotes = self.activeNotes.size > 0;
-      evt.notes.forEach(function(n) {
-        if (n.endMs <= now && self.activeNotes.has(n.midi)) {
-          noteOff(n.midi);
-          self.activeNotes.delete(n.midi);
-        }
-      });
-      // Clear highlight once when transitioning from "has notes" to "no notes"
-      if (hadNotes && self.activeNotes.size === 0) {
-        PlainState.activeNotes.clear();
-        updatePlainDisplay();
-        highlightPlaybackPads(null);
-      }
-    }
-
-    // Update progress
-    updateMidiPlayerProgress(now);
-
-    // Check if playback finished
-    if (now >= self.timeline.totalMs) {
-      self.stop();
-      return;
-    }
-
-    self._rafId = requestAnimationFrame(function() { self._tick(); });
-  }
-};
-
-// C. UI update functions for MIDI player
-function updateMidiPlayerUI() {
-  var section = document.getElementById('midi-player-section');
-  if (!section) return;
-  var hasTimeline = MidiSequencer.timeline !== null;
-  section.style.display = hasTimeline ? '' : 'none';
-  var playBtn = document.getElementById('midi-player-play');
-  var pauseBtn = document.getElementById('midi-player-pause');
-  var stopBtn = document.getElementById('midi-player-stop');
-  if (playBtn) playBtn.style.display = MidiSequencer.state === 'playing' ? 'none' : '';
-  if (pauseBtn) pauseBtn.style.display = MidiSequencer.state === 'playing' ? '' : 'none';
-  if (stopBtn) stopBtn.disabled = MidiSequencer.state === 'stopped';
-  // BPM display
-  var bpmEl = document.getElementById('midi-player-bpm');
-  if (bpmEl && hasTimeline) bpmEl.textContent = MidiSequencer.timeline.bpm + ' BPM';
-  // Duration
-  var durEl = document.getElementById('midi-player-duration');
-  if (durEl && hasTimeline) durEl.textContent = formatMidiTime(MidiSequencer.timeline.totalMs);
-  // Progress bar max
-  var progress = document.getElementById('midi-player-progress');
-  if (progress && hasTimeline) progress.max = Math.ceil(MidiSequencer.timeline.totalMs);
-  // Time display
-  updateMidiPlayerProgress(MidiSequencer.pauseOffset);
-}
-
-function updateMidiPlayerProgress(nowMs) {
-  var progress = document.getElementById('midi-player-progress');
-  var timeEl = document.getElementById('midi-player-time');
-  if (progress) progress.value = Math.min(nowMs, parseFloat(progress.max) || 0);
-  if (timeEl) timeEl.textContent = formatMidiTime(nowMs);
-}
-
-function formatMidiTime(ms) {
-  var sec = Math.floor(ms / 1000);
-  var min = Math.floor(sec / 60);
-  sec = sec % 60;
-  return min + ':' + (sec < 10 ? '0' : '') + sec;
-}
-
-// Import MIDI for timeline playback
-function importMidiTimeline() {
-  var input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.mid,.midi';
-  input.onchange = function(e) {
-    var file = e.target.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function(ev) {
-      var buf = new Uint8Array(ev.target.result);
-      var timeline = parseMidiToTimeline(buf);
-      if (!timeline || timeline.events.length === 0) {
-        var toast = document.getElementById('slot-save-toast');
-        toast.textContent = t('notify.no_chords');
-        toast.style.opacity = '1';
-        clearTimeout(toast._timer);
-        toast._timer = setTimeout(function() { toast.style.opacity = '0'; }, 2000);
-        return;
-      }
-      MidiSequencer.load(timeline);
-      var toast = document.getElementById('slot-save-toast');
-      toast.textContent = 'MIDI loaded: ' + timeline.events.length + ' events, ' + timeline.bpm + ' BPM';
-      toast.style.opacity = '1';
-      clearTimeout(toast._timer);
-      toast._timer = setTimeout(function() { toast.style.opacity = '0'; }, 3000);
-    };
-    reader.readAsArrayBuffer(file);
-  };
-  input.click();
 }
 
 // --- CHS Import (dev only) ---

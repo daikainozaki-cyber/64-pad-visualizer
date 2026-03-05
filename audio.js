@@ -1,8 +1,6 @@
 // ========================================
 // AUDIO ENGINE
 // ========================================
-const _isDesktop = typeof window.__JUCE__ !== 'undefined';
-let _useNativeAudio = false; // true only when VST is loaded (set by C++ via _setDesktopPlugin)
 let _soundMuted = true; // Sound OFF by default — user turns on explicitly
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -126,69 +124,6 @@ tremoloGain.gain.setValueAtTime(0, 0);
 tremoloLFO.connect(tremoloGain);
 tremoloGain.connect(masterGain.gain);
 tremoloLFO.start(0);
-
-// Called from C++ when plugin state changes (VST loaded/unloaded)
-function _setDesktopPlugin(hasPlugin) {
-  _useNativeAudio = hasPlugin;
-  if (hasPlugin) {
-    // VST loaded → stop all WebAudioFont voices
-    activeVoices.forEach((v) => { try { v.envelope.cancel(); } catch(_){} });
-    activeVoices.clear();
-  }
-  // Toggle sound engine UI: hide when VST active, show when WebAudioFont
-  const engineRow = document.querySelector('.engine-row');
-  const presetRow = document.getElementById('organ-preset');
-  const effectSliders = document.querySelectorAll('.ep-knob');
-  const showWAF = !hasPlugin;
-  if (engineRow) engineRow.style.display = showWAF ? '' : 'none';
-  if (presetRow) presetRow.style.display = showWAF ? '' : 'none';
-  effectSliders.forEach(el => {
-    // Keep VOL and Velocity visible always; hide engine-specific controls
-    const slider = el.querySelector('input[type="range"]');
-    if (!slider) return;
-    const id = slider.id;
-    if (id === 'snd-volume') return; // always visible
-    if (id && id.startsWith('vel-')) return; // velocity always visible
-    el.style.display = showWAF ? '' : 'none';
-  });
-  // Update Desktop VST message
-  var vstMsg = document.getElementById('desktop-vst-message');
-  if (vstMsg) vstMsg.style.display = hasPlugin ? 'none' : '';
-}
-
-// Desktop版: 内蔵音源を無効化（ライセンスリスク回避）
-// Standalone = VSTホスト + 可視化ツール、VST3/AU = DAW内MIDI可視化
-function _initDesktopSoundMode() {
-  if (!_isDesktop) return;
-  _soundMuted = true;
-  _useNativeAudio = true; // Always route to C++ (VST or silence)
-  // Hide internal sound engine UI (ORGAN/E.PIANO buttons, presets, effects)
-  var engineSel = document.getElementById('engine-selector');
-  if (engineSel) engineSel.style.display = 'none';
-  var expandBtn = document.getElementById('sound-expand-btn');
-  if (expandBtn) expandBtn.style.display = 'none';
-  var muteBtn = document.getElementById('sound-mute-btn');
-  if (muteBtn) muteBtn.style.display = 'none';
-  var details = document.getElementById('sound-details');
-  if (details) details.style.display = 'none';
-  // Show VOL slider only (it controls C++ masterGain)
-  // Show Desktop-specific VST load button (pulsing, i18n)
-  var vstMsg = document.getElementById('desktop-vst-message');
-  if (!vstMsg) {
-    vstMsg = document.createElement('button');
-    vstMsg.id = 'desktop-vst-message';
-    vstMsg.style.cssText = 'font-size:0.7rem;padding:4px 14px;background:#1a3a5c;color:#4fc3f7;border:1px solid #4fc3f7;border-radius:6px;cursor:pointer;animation:hint-pulse 2s ease-in-out infinite;';
-    vstMsg.textContent = typeof t === 'function' ? t('ui.load_vst') : 'Load VST/AU Plugin...';
-    vstMsg.onclick = function() {
-      window.__JUCE__._callNative("showPluginMenu")();
-    };
-    var header = document.getElementById('sound-header');
-    if (header) header.appendChild(vstMsg);
-  }
-  // Hide header links (paid product — no promotional links, keep Help/About only)
-  var headerLinks = document.getElementById('header-links');
-  if (headerLinks) headerLinks.style.display = 'none';
-}
 
 let _audioDecoded = false;
 function ensureAudioResumed() {
@@ -384,7 +319,6 @@ const AudioState = {
 
 function setEngine(key) {
   if (!ENGINES[key]) return;
-  if (_isDesktop) return; // Desktop: no internal sound engines
   // Selecting an engine turns sound on
   if (_soundMuted) { _soundMuted = false; _updateMuteBtn(); }
   _hideFirstTimeHint();
@@ -450,7 +384,7 @@ function _hideFirstTimeHint() {
 function loadSoundSettings() {
   try {
     const raw = localStorage.getItem('64pad-sound');
-    if (!raw) { if (!_isDesktop) _showFirstTimeHint(); return; }
+    if (!raw) { _showFirstTimeHint(); return; }
     const s = JSON.parse(raw);
     if (s.engine && ENGINES[s.engine]) {
       // setEngine turns sound on, so temporarily suppress
@@ -522,11 +456,6 @@ function toggleSoundMute() {
 
 function noteOn(midi, velocity, poly, _retries) {
   velocity = velocity || 0.8;
-  // Desktop: always route to C++ (VST or sine wave fallback)
-  if (_isDesktop) {
-    window.__JUCE__._callNative("noteOn")(midi, velocity);
-    return;
-  }
   if (_soundMuted) return;
   ensureAudioResumed();
   // Kill same note if re-triggered
@@ -558,10 +487,6 @@ function noteOn(midi, velocity, poly, _retries) {
 }
 
 function noteOff(midi) {
-  if (_isDesktop) {
-    window.__JUCE__._callNative("noteOff")(midi);
-    return;
-  }
   const v = activeVoices.get(midi);
   if (!v) return;
   try { v.envelope.cancel(); } catch(_){}
@@ -569,10 +494,6 @@ function noteOff(midi) {
 }
 
 function noteOffAll() {
-  if (_isDesktop) {
-    window.__JUCE__._callNative("allNotesOff")();
-    return;
-  }
   for (const [midi, v] of [...activeVoices.entries()]) {
     v.envelope.cancel();
   }
@@ -633,14 +554,6 @@ function drawVelocityCurve() {
   ctx.stroke();
 }
 
-function syncVelocityToDesktop() {
-  if (_isDesktop) {
-    window.__JUCE__._callNative("setVelocityParams")(
-      AppState.velThreshold, AppState.velDrive, AppState.velCompand, AppState.velRange
-    );
-  }
-}
-
 // Global held-note tracking (mouse / touch)
 let _heldMidi = null;
 let _heldTouchMidi = null;
@@ -680,12 +593,11 @@ onReady(() => {
       saveSoundSettings();
     });
   });
-  // Real-time VOL → masterGain (WebAudioFont) + C++ masterGain (VST)
+  // Real-time VOL → masterGain (WebAudioFont)
   const volSlider = document.getElementById('snd-volume');
   if (volSlider) volSlider.addEventListener('input', () => {
     const val = parseFloat(volSlider.value);
     masterGain.gain.setValueAtTime(val, audioCtx.currentTime);
-    if (_isDesktop) window.__JUCE__._callNative("setMasterVolume")(val);
   });
   // Initialize masterGain from slider
   if (volSlider) masterGain.gain.setValueAtTime(parseFloat(volSlider.value), 0);
@@ -784,15 +696,12 @@ onReady(() => {
         AppState[key] = parseInt(s.value);
         v.textContent = s.value;
         drawVelocityCurve();
-        syncVelocityToDesktop();
         saveAppSettings();
       });
     }
   });
   drawVelocityCurve();
-  syncVelocityToDesktop();
 
   renderSoundControls();
   loadSoundSettings();
-  _initDesktopSoundMode(); // Desktop: hide internal sounds, show VST message
 });

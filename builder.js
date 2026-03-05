@@ -872,9 +872,7 @@ function onMidiNoteOff(note) {
 // When VST loaded: sound plays via C++ processBlock, JS only updates UI.
 // When no VST: play via WebAudioFont (C++ sine is muted).
 function onNativeMidiIn(note, velocity) {
-  if (typeof _useNativeAudio !== 'undefined' && !_useNativeAudio) {
-    noteOn(note, (velocity || 100) / 127, true);
-  }
+  noteOn(note, (velocity || 100) / 127, true);
   if (handlePerformMidi(note)) return;
   midiActiveNotes.add(note);
   if (AppState.mode === 'input') {
@@ -895,9 +893,7 @@ function onNativeMidiIn(note, velocity) {
 }
 
 function onNativeMidiOff(note) {
-  if (typeof _useNativeAudio !== 'undefined' && !_useNativeAudio) {
-    noteOff(note);
-  }
+  noteOff(note);
   midiActiveNotes.delete(note);
   if (AppState.mode === 'input' && PlainState.subMode !== 'idle') {
     // latch: keep note in activeNotes
@@ -1047,7 +1043,6 @@ function highlightPlaybackPads(midiNotes) {
 let selectedMidiInputId = null; // null = all inputs
 
 function initWebMIDI() {
-  if (_isDesktop) return; // Desktop: C++ handles MIDI via MidiInput::openDevice() — WebMIDI would cause double reception
   if (!navigator.requestMIDIAccess) return;
   navigator.requestMIDIAccess().then(access => {
     midiAccess = access;

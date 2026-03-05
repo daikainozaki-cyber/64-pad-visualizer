@@ -13,6 +13,7 @@ updateOctaveLabel();
 initMemorySlots();
 initToDAWButton();
 initWebMIDI();
+initPlayControls();
 I18N.init();
 
 // Mobile responsive init
@@ -24,6 +25,8 @@ if (_isMobile) {
 } else if (_isLandscape) {
   moveInstrumentRow(true);
   setLandscapeTab('control');
+  syncPlayControls();
+  renderPad32();
 }
 initScreenDots();
 _mobileMediaQuery.addEventListener('change', handleMobileChange);
@@ -55,10 +58,12 @@ _landscapeMediaQuery.addEventListener('change', handleLandscapeChange);
   document.getElementById('inst-toggle-bass').classList.toggle('active', showBass);
   document.getElementById('inst-toggle-piano').classList.toggle('active', showPiano);
   document.getElementById('inst-toggle-staff').classList.toggle('active', showStaff);
+  document.getElementById('inst-toggle-sound').classList.toggle('active', showSound);
   document.getElementById('guitar-wrap').style.display = showGuitar ? '' : 'none';
   document.getElementById('bass-wrap').style.display = showBass ? '' : 'none';
   document.getElementById('piano-wrap-display').style.display = showPiano ? '' : 'none';
   document.getElementById('staff-area').style.display = showStaff ? '' : 'none';
+  document.getElementById('sound-controls').style.display = showSound ? '' : 'none';
   document.getElementById('guitar-label-btn').style.display = (showGuitar || showBass) ? '' : 'none';
   document.getElementById('guitar-label-btn').textContent = guitarLabelMode === 'name' ? t('label.note_name') : t('label.degree');
   // Memory slots UI

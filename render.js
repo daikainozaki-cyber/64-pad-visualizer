@@ -20,6 +20,9 @@ function handleLandscapeChange(e) {
     setLandscapeTab('control');
     // Move instrument row to info panel for landscape too
     moveInstrumentRow(true);
+    // Render 32-pad overlay
+    syncPlayControls();
+    renderPad32();
   } else if (!_isMobile) {
     // Restore desktop layout
     moveInstrumentRow(false);
@@ -39,7 +42,7 @@ function moveMemorySection(toMobile) {
 function moveInstrumentRow(toMobile) {
   var instRow = document.getElementById('instrument-row');
   if (!instRow) return;
-  var builderContent = document.getElementById('builder-content') || document.querySelector('.pad-area');
+  var builderContent = document.querySelector('.pad-area');
   var staffPanel = document.getElementById('staff-ep-panel');
   if (toMobile) {
     // Move instrument row to top of staff panel (Screen 3)
@@ -616,9 +619,8 @@ function render() {
     highlightInstrumentPads(getAllInputMidiNotes());
   }
 
-  // Re-render 32-pad if visible
-  var pad32 = document.getElementById('pad-view-32');
-  if (pad32 && pad32.style.display !== 'none') renderPad32();
+  // Re-render 32-pad if in landscape mode
+  if (_isLandscape) { syncPlayControls(); renderPad32(); }
 
   // Auto-save to selected slot (Chord/Scale mode)
   if (PlainState.currentSlot !== null && (AppState.mode === 'chord' || AppState.mode === 'scale')) {
@@ -888,8 +890,16 @@ let showGuitar = false;
 let showPiano = false;
 let showStaff = true;
 let showBass = false;
+let showSound = true;
+let soundExpanded = false;
 let guitarLabelMode = 'name'; // 'name' or 'degree'
 let memoryViewMode = 'memory'; // 'memory' or 'perform'
+
+function toggleSoundExpand() {
+  soundExpanded = !soundExpanded;
+  document.getElementById('sound-details').style.display = soundExpanded ? '' : 'none';
+  document.getElementById('sound-expand-btn').innerHTML = soundExpanded ? '&#x25B2;' : '&#x25BC;';
+}
 
 function toggleMemoryView(mode) {
   memoryViewMode = mode;
@@ -907,14 +917,17 @@ function toggleInstrument(which) {
   if (which === 'bass') showBass = !showBass;
   if (which === 'piano') showPiano = !showPiano;
   if (which === 'staff') showStaff = !showStaff;
+  if (which === 'sound') showSound = !showSound;
   document.getElementById('inst-toggle-guitar').classList.toggle('active', showGuitar);
   document.getElementById('inst-toggle-bass').classList.toggle('active', showBass);
   document.getElementById('inst-toggle-piano').classList.toggle('active', showPiano);
   document.getElementById('inst-toggle-staff').classList.toggle('active', showStaff);
+  document.getElementById('inst-toggle-sound').classList.toggle('active', showSound);
   document.getElementById('guitar-wrap').style.display = showGuitar ? '' : 'none';
   document.getElementById('bass-wrap').style.display = showBass ? '' : 'none';
   document.getElementById('piano-wrap-display').style.display = showPiano ? '' : 'none';
   document.getElementById('staff-area').style.display = showStaff ? '' : 'none';
+  document.getElementById('sound-controls').style.display = showSound ? '' : 'none';
   document.getElementById('guitar-label-btn').style.display = (showGuitar || showBass) ? '' : 'none';
   render();
   saveAppSettings();
@@ -2173,7 +2186,8 @@ function renderPad32() {
   var svg = document.getElementById('pad-grid-32');
   if (!svg) return;
   var container = svg.parentElement;
-  var padSize = Math.floor((container.clientWidth - GRID_32.MARGIN * 2 - 7 * GRID_32.PAD_GAP) / 8);
+  var availWidth = container.clientWidth || window.innerWidth;
+  var padSize = Math.floor((availWidth - GRID_32.MARGIN * 2 - 7 * GRID_32.PAD_GAP) / 8);
   if (padSize < 20) padSize = 20;
   var g = {
     ROWS: 4, COLS: 8,
@@ -2190,15 +2204,34 @@ function renderPad32() {
   renderPads(svg, state, g);
 }
 
-function switchLeftTab(tab) {
-  var builderContent = document.getElementById('builder-content');
-  var padView = document.getElementById('pad-view-32');
-  var tabBuilder = document.getElementById('wl-tab-builder');
-  var tabPad = document.getElementById('wl-tab-pad');
-  if (builderContent) builderContent.style.display = tab === 'builder' ? '' : 'none';
-  if (padView) padView.style.display = tab === 'pad' ? '' : 'none';
-  if (tabBuilder) tabBuilder.classList.toggle('active', tab === 'builder');
-  if (tabPad) tabPad.classList.toggle('active', tab === 'pad');
-  if (tab === 'pad') renderPad32();
+// Populate and sync landscape overlay Key/Scale selects
+function initPlayControls() {
+  var pk = document.getElementById('play-key-select');
+  var ps = document.getElementById('play-scale-select');
+  if (!pk || !ps) return;
+  // Key options
+  pk.innerHTML = '';
+  for (var i = 0; i < 12; i++) {
+    var o = document.createElement('option');
+    o.value = i;
+    o.textContent = NOTE_NAMES_SHARP[i];
+    pk.appendChild(o);
+  }
+  // Scale options
+  ps.innerHTML = '';
+  for (var j = 0; j < SCALES.length; j++) {
+    var o = document.createElement('option');
+    o.value = j;
+    o.textContent = SCALES[j].name;
+    ps.appendChild(o);
+  }
+  syncPlayControls();
+}
+
+function syncPlayControls() {
+  var pk = document.getElementById('play-key-select');
+  var ps = document.getElementById('play-scale-select');
+  if (pk) pk.value = AppState.key;
+  if (ps) ps.value = AppState.scaleIdx;
 }
 

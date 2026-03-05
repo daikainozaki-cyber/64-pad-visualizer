@@ -619,7 +619,7 @@ function render() {
   }
 
   // Re-render 32-pad if in landscape mode
-  if (_isLandscape) { syncPlayControls(); renderPad32(); syncPlayChordName(); }
+  if (_isLandscape) { syncPlayControls(); renderPad32(); syncPlayChordName(); syncPlayMode(); }
 
   // Auto-save to selected slot (Chord/Scale mode)
   if (PlainState.currentSlot !== null && (AppState.mode === 'chord' || AppState.mode === 'scale')) {
@@ -2244,6 +2244,14 @@ function cycleInversion(dir) {
   if (inv < 0) inv = max;
   if (inv > max) inv = 0;
   setInversion(inv);
+}
+
+function syncPlayMode() {
+  var modes = ['scale', 'chord', 'input'];
+  modes.forEach(function(m) {
+    var btn = document.getElementById('play-mode-' + m);
+    if (btn) btn.classList.toggle('active', AppState.mode === m);
+  });
 }
 
 function syncPlayChordName() {

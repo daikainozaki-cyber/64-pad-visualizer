@@ -525,7 +525,7 @@ function chordDegreeName(interval, qualityPCS, finalPCS) {
 
 function midiNote(row, col) { return baseMidi() + row * ROW_INTERVAL + col * COL_INTERVAL; }
 function pitchClass(midi) { return ((midi % 12) + 12) % 12; }
-function noteName(midi) { return NOTE_NAMES_SHARP[pitchClass(midi)] + (Math.floor(midi / 12) - 2); }
+function noteName(midi) { return pcName(pitchClass(midi)) + (Math.floor(midi / 12) - 2); }
 
 // ======== TENSION APPLICATION ========
 function applyTension(basePCS, mods) {

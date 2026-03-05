@@ -339,7 +339,8 @@ function renderPads(svg, state, grid) {
           e.preventDefault();
           if (AppState.mode === 'input') { togglePlainNote(m); }
           else {
-            _heldTouchMidi = m; noteOn(m);
+            for (const t of e.changedTouches) { _heldTouches.set(t.identifier, m); }
+            noteOn(m);
             if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
               if (padExtNotes.size === 0) {
                 const builderNotes = getCurrentChordMidiNotes() || [];

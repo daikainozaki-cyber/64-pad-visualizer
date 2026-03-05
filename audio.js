@@ -556,20 +556,27 @@ function drawVelocityCurve() {
 
 // Global held-note tracking (mouse / touch)
 let _heldMidi = null;
-let _heldTouchMidi = null;
+const _heldTouches = new Map(); // touch.identifier → midi
 document.addEventListener('mouseup', () => {
   if (_heldMidi !== null) { noteOff(_heldMidi); _heldMidi = null; }
 });
-document.addEventListener('touchend', () => {
-  if (_heldTouchMidi !== null) { noteOff(_heldTouchMidi); _heldTouchMidi = null; }
+document.addEventListener('touchend', (e) => {
+  for (const t of e.changedTouches) {
+    const midi = _heldTouches.get(t.identifier);
+    if (midi !== undefined) { noteOff(midi); _heldTouches.delete(t.identifier); }
+  }
 });
-document.addEventListener('touchcancel', () => {
-  if (_heldTouchMidi !== null) { noteOff(_heldTouchMidi); _heldTouchMidi = null; }
+document.addEventListener('touchcancel', (e) => {
+  for (const t of e.changedTouches) {
+    const midi = _heldTouches.get(t.identifier);
+    if (midi !== undefined) { noteOff(midi); _heldTouches.delete(t.identifier); }
+  }
 });
-// Safety: if window loses focus while holding, release note
+// Safety: if window loses focus while holding, release all notes
 window.addEventListener('blur', () => {
   if (_heldMidi !== null) { noteOff(_heldMidi); _heldMidi = null; }
-  if (_heldTouchMidi !== null) { noteOff(_heldTouchMidi); _heldTouchMidi = null; }
+  _heldTouches.forEach((midi) => noteOff(midi));
+  _heldTouches.clear();
 });
 
 function playMidiNotes(midiNotes) {

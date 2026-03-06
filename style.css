@@ -237,6 +237,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .builder-nav button {
   padding: 3px 10px; font-size: 0.7rem; border-radius: 4px;
   background: var(--surface); color: var(--text); border: 1px solid var(--border); cursor: pointer;
+  position: relative;
 }
 .builder-nav button:hover { background: #1e2d50; }
 .builder-nav button:disabled { opacity: 0.3; cursor: default; }
@@ -324,13 +325,15 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 /* === Keyboard Shortcut Badges === */
 .kbd-hint {
   position: absolute; top: 1px; left: 3px;
-  font-size: 0.45rem; color: var(--text-muted); opacity: 0.5;
+  font-size: 0.55rem; color: var(--accent); opacity: 0.7;
   line-height: 1; pointer-events: none; user-select: none;
   text-transform: uppercase; font-weight: 700;
 }
 .mem-view-btn { position: relative; }
-.voicing-btn.active .kbd-hint { color: rgba(255,255,255,0.4); }
-.mem-view-btn.active .kbd-hint { color: rgba(0,0,0,0.35); }
+.inst-toggle { position: relative; }
+.voicing-btn.active .kbd-hint { color: rgba(255,255,255,0.6); }
+.mem-view-btn.active .kbd-hint { color: rgba(0,0,0,0.5); }
+.inst-toggle.active .kbd-hint { color: rgba(255,255,255,0.6); }
 @media (hover: none) and (pointer: coarse) { .kbd-hint { display: none; } }
 
 /* === Grid === */

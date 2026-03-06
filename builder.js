@@ -1116,6 +1116,13 @@ function initWebMIDI() {
               }
             }
           }
+          // Non-Push fourths-layout controller perform mode (Linnstrument, Launchpad, etc.)
+          if (!isPush && memoryViewMode === 'perform' && cmd === 0x90 && velocity > 0) {
+            if (handlePerformMidi(rawNote)) {
+              ensureAudioResumed();
+              return;
+            }
+          }
           const note = isPush ? pushSerialToFourths(rawNote) : rawNote;
           if (cmd === 0x90 && velocity > 0) onMidiNoteOn(note, velocity);
           else if (cmd === 0x80 || (cmd === 0x90 && velocity === 0)) onMidiNoteOff(note);

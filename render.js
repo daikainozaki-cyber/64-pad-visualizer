@@ -609,8 +609,9 @@ function render() {
   // Instrument diagrams (guitar + bass + piano)
   lastRenderRootPC = state.rootPC;
   lastRenderActivePCS = new Set(state.activePCS);
-  renderGuitarDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS);
-  renderBassDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS);
+  lastRenderState = state;
+  renderGuitarDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state);
+  renderBassDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state);
   renderPianoDisplay(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS);
 
   // Re-apply instrument highlights after SVG rebuild
@@ -931,12 +932,18 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
 // GUITAR DIAGRAM
 // ========================================
 // Colors: white/black clean style
-const INST_ROOT_COLOR = '#333';         // dark (root)
+const INST_ROOT_COLOR = '#E69F00';       // amber (matches --pad-root)
 const INST_ACTIVE_COLOR = '#666';       // medium gray (active notes)
-const INST_ROOT_TEXT = '#fff';
+const INST_ROOT_TEXT = '#000';
 const INST_ACTIVE_TEXT = '#fff';
 const INST_BASS_COLOR = '#ff9800';     // orange (matches pad bass color)
 const INST_BASS_TEXT = '#000';
+const INST_GUIDE3_COLOR = '#CC79A7';   // pink (matches --pad-guide3)
+const INST_GUIDE7_COLOR = '#009E73';   // green (matches --pad-guide7)
+const INST_TENSION_COLOR = '#0072B2';  // blue (matches --pad-tension)
+const INST_AVOID_COLOR = '#D55E00';    // red-orange (matches --pad-avoid)
+const INST_OMITTED_COLOR = '#555';     // dim gray (matches --pad-omitted)
+const INST_CHORD_COLOR = '#56B4E9';    // sky blue (matches --pad-chord)
 const INST_OVERLAY_COLOR = '#56B4E9';   // Okabe-Ito sky blue (scale overlay)
 const INST_OVERLAY_CHAR_COLOR = '#F0E442'; // Okabe-Ito yellow (char note overlay)
 const INST_OVERLAY_TEXT = '#aaa';
@@ -996,7 +1003,7 @@ function toggleGuitarLabelMode() {
   saveAppSettings();
 }
 
-function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) {
+function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, extraState) {
   const svg = document.getElementById('guitar-diagram');
   if (!pcsSet) pcsSet = new Set();
   // Interval-based PCS for chordDegreeName
@@ -1125,7 +1132,13 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS)
     }
   }
 
-  // Note dots (scale/chord tones + overlay) with labels
+  // Note dots (scale/chord tones + overlay) with labels — pad-style colors
+  const st = extraState || lastRenderState || {};
+  const _g3 = st.guide3PCS || new Set();
+  const _g7 = st.guide7PCS || new Set();
+  const _tp = st.tensionPCS || new Set();
+  const _av = st.avoidPCS || new Set();
+  const _om = st.omittedPCS || new Set();
   for (let s = 0; s < 6; s++) {
     const openPC = strings[s] % 12;
     const sy = topM + s * strH;
@@ -1133,20 +1146,48 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS)
       const pc = (openPC + f) % 12;
       const isBass = bassPC !== undefined && bassPC !== null && pc === bassPC;
       const isOvl = !pcsSet.has(pc) && !isBass && overlayPCS && overlayPCS.has(pc);
-      if (!pcsSet.has(pc) && !isBass && !isOvl) continue;
-      const isRoot = pc === rootPC;
+      if (!pcsSet.has(pc) && !isBass && !isOvl && !_om.has(pc)) continue;
+      const isRoot = pc === rootPC && !_om.has(pc);
+      const isOmitted = _om.has(pc);
+      const isGuide3 = AppState.mode === 'chord' && _g3.has(pc) && !isRoot && !_tp.has(pc);
+      const isGuide7 = AppState.mode === 'chord' && _g7.has(pc) && !isRoot && !_tp.has(pc);
+      const isTension = AppState.mode === 'chord' && _tp.has(pc) && !isRoot && !isGuide3 && !isGuide7;
+      const isAvoid = AppState.mode === 'chord' && _av.has(pc) && !isRoot;
       const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
       const r = f === 0 ? (solo ? 7 : 5) : (solo ? 10 : 7);
       const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       dot.setAttribute('cx', fx); dot.setAttribute('cy', sy);
       dot.setAttribute('r', r);
+      let dotColor, textColor;
       if (isOvl) {
         const isChar = overlayCharPCS && overlayCharPCS.has(pc);
         dot.setAttribute('fill', isChar ? INST_OVERLAY_CHAR_COLOR : INST_OVERLAY_COLOR);
         dot.setAttribute('opacity', isChar ? '0.5' : '0.4');
+        textColor = INST_OVERLAY_TEXT;
+      } else if (isOmitted) {
+        dotColor = INST_OMITTED_COLOR; textColor = '#fff';
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.5');
+      } else if (isRoot) {
+        dotColor = INST_ROOT_COLOR; textColor = INST_ROOT_TEXT;
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+      } else if (isBass) {
+        dotColor = INST_BASS_COLOR; textColor = INST_BASS_TEXT;
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+      } else if (isGuide3) {
+        dotColor = INST_GUIDE3_COLOR; textColor = '#fff';
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+      } else if (isGuide7) {
+        dotColor = INST_GUIDE7_COLOR; textColor = '#fff';
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+      } else if (isAvoid) {
+        dotColor = INST_AVOID_COLOR; textColor = '#fff';
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+      } else if (isTension) {
+        dotColor = INST_TENSION_COLOR; textColor = '#fff';
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
       } else {
-        dot.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBass ? INST_BASS_COLOR : INST_ACTIVE_COLOR));
-        dot.setAttribute('opacity', '0.9');
+        dotColor = INST_CHORD_COLOR; textColor = '#000';
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
       }
       svg.appendChild(dot);
       // Label inside dot
@@ -1163,7 +1204,7 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS)
         lt.setAttribute('text-anchor', 'middle');
         const fs = solo ? (labelText.length > 2 ? '7px' : '9px') : (labelText.length > 2 ? '5px' : '6px');
         lt.setAttribute('font-size', fs);
-        lt.setAttribute('fill', isOvl ? INST_OVERLAY_TEXT : (isRoot ? INST_ROOT_TEXT : (isBass ? INST_BASS_TEXT : INST_ACTIVE_TEXT)));
+        lt.setAttribute('fill', textColor);
         lt.setAttribute('font-weight', '700');
         lt.textContent = labelText;
         svg.appendChild(lt);
@@ -1225,7 +1266,7 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS)
 const BASS_OPEN_MIDI = [43, 38, 33, 28]; // G2, D2, A1, E1
 let bassSelectedFrets = [null, null, null, null];
 
-function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) {
+function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, extraState) {
   const svg = document.getElementById('bass-diagram');
   if (!svg) return;
   if (!pcsSet) pcsSet = new Set();
@@ -1351,7 +1392,13 @@ function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) {
     }
   }
 
-  // Note dots (chord tones + overlay)
+  // Note dots (chord tones + overlay) — pad-style colors
+  const bSt = extraState || lastRenderState || {};
+  const _bg3 = bSt.guide3PCS || new Set();
+  const _bg7 = bSt.guide7PCS || new Set();
+  const _btp = bSt.tensionPCS || new Set();
+  const _bav = bSt.avoidPCS || new Set();
+  const _bom = bSt.omittedPCS || new Set();
   for (let s = 0; s < 4; s++) {
     const openPC = strings[s] % 12;
     const sy = topM + s * strH;
@@ -1359,20 +1406,48 @@ function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) {
       const pc = (openPC + f) % 12;
       const isBassNote = bassPC !== undefined && bassPC !== null && pc === bassPC;
       const isOvl = !pcsSet.has(pc) && !isBassNote && overlayPCS && overlayPCS.has(pc);
-      if (!pcsSet.has(pc) && !isBassNote && !isOvl) continue;
-      const isRoot = pc === rootPC;
+      if (!pcsSet.has(pc) && !isBassNote && !isOvl && !_bom.has(pc)) continue;
+      const isRoot = pc === rootPC && !_bom.has(pc);
+      const isOmitted = _bom.has(pc);
+      const isGuide3 = AppState.mode === 'chord' && _bg3.has(pc) && !isRoot && !_btp.has(pc);
+      const isGuide7 = AppState.mode === 'chord' && _bg7.has(pc) && !isRoot && !_btp.has(pc);
+      const isTension = AppState.mode === 'chord' && _btp.has(pc) && !isRoot && !isGuide3 && !isGuide7;
+      const isAvoid = AppState.mode === 'chord' && _bav.has(pc) && !isRoot;
       const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
       const r = f === 0 ? (solo ? 7 : 5) : (solo ? 10 : 7);
       const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       dot.setAttribute('cx', fx); dot.setAttribute('cy', sy);
       dot.setAttribute('r', r);
+      let dotColor, textColor;
       if (isOvl) {
         const isChar = overlayCharPCS && overlayCharPCS.has(pc);
         dot.setAttribute('fill', isChar ? INST_OVERLAY_CHAR_COLOR : INST_OVERLAY_COLOR);
         dot.setAttribute('opacity', isChar ? '0.5' : '0.4');
+        textColor = INST_OVERLAY_TEXT;
+      } else if (isOmitted) {
+        dotColor = INST_OMITTED_COLOR; textColor = '#fff';
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.5');
+      } else if (isRoot) {
+        dotColor = INST_ROOT_COLOR; textColor = INST_ROOT_TEXT;
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+      } else if (isBassNote) {
+        dotColor = INST_BASS_COLOR; textColor = INST_BASS_TEXT;
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+      } else if (isGuide3) {
+        dotColor = INST_GUIDE3_COLOR; textColor = '#fff';
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+      } else if (isGuide7) {
+        dotColor = INST_GUIDE7_COLOR; textColor = '#fff';
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+      } else if (isAvoid) {
+        dotColor = INST_AVOID_COLOR; textColor = '#fff';
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+      } else if (isTension) {
+        dotColor = INST_TENSION_COLOR; textColor = '#fff';
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
       } else {
-        dot.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBassNote ? INST_BASS_COLOR : INST_ACTIVE_COLOR));
-        dot.setAttribute('opacity', '0.9');
+        dotColor = INST_CHORD_COLOR; textColor = '#000';
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
       }
       svg.appendChild(dot);
       if (f > 0) {
@@ -1388,7 +1463,7 @@ function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) {
         lt.setAttribute('text-anchor', 'middle');
         const fs = solo ? (labelText.length > 2 ? '7px' : '9px') : (labelText.length > 2 ? '5px' : '6px');
         lt.setAttribute('font-size', fs);
-        lt.setAttribute('fill', isOvl ? INST_OVERLAY_TEXT : (isRoot ? INST_ROOT_TEXT : (isBassNote ? INST_BASS_TEXT : INST_ACTIVE_TEXT)));
+        lt.setAttribute('fill', textColor);
         lt.setAttribute('font-weight', '700');
         lt.textContent = labelText;
         svg.appendChild(lt);
@@ -1857,6 +1932,7 @@ function playInstrumentInput() {
 // State for restoring diagrams when MIDI notes are released
 let lastRenderRootPC = 0;
 let lastRenderActivePCS = new Set();
+let lastRenderState = null; // full state for instrument diagram color classification
 
 // ========================================
 // PARENT SCALE PANEL
@@ -1905,8 +1981,20 @@ const DIATONIC_AUTO_PREF = {
   7: [19, 6],   // viiø7 → Locrian ♮2, Locrian
 };
 
-function findBestAutoSelect(results) {
+function isSecondaryDominant(qualityIntervals, results) {
+  var isDom7 = qualityIntervals.has(4) && qualityIntervals.has(10) && !qualityIntervals.has(11);
+  if (!isDom7) return false;
+  return !results.some(function(r) {
+    return r.system === '○' && r.distance === 0 && r.degreeNum === 5 && !r.omit5Match;
+  });
+}
+
+function findBestAutoSelect(results, isSecDom) {
   if (AppState.psSortMode === 'practical') {
+    if (isSecDom) {
+      var lydb7 = results.find(function(r) { return r.scaleIdx === 17 && r.exactMatch && !r.omit5Match; });
+      if (lydb7) return lydb7;
+    }
     const diaMatch = results.find(r =>
       r.system === '○' && r.distance === 0 && !r.omit5Match);
     if (diaMatch) {
@@ -2013,14 +2101,20 @@ function renderParentScales() {
     _psResults = _psResults.filter(r => r.system !== '' || !DOM_ND.has(r.scaleIdx));
   }
 
+  // Secondary dominant detection: boost Lydian b7 for non-diatonic dom7 chords
+  var _isSecDom = isSecondaryDominant(qualityIntervals, _psResults);
+  _psResults.forEach(function(r) {
+    r.secDomBoost = (_isSecDom && r.scaleIdx === 17 && !r.omit5Match) ? 1 : 0;
+  });
+
   // Re-sort: exact matches first, then by mode-specific criteria
   const SYS = { '\u25CB': 0, 'NM': 1, '\u25A0': 2, '\u25C6': 3 };
   if (AppState.psSortMode === 'practical') {
-    // Practical: exactMatch → omit5 → distance → system → avoidCount → degreeNum
-    // distance first: in-key scales before distant alternatives (Mixolydian > Lydian b7)
+    // Practical: exactMatch → omit5 → secDomBoost → distance → system → avoidCount → degreeNum
     _psResults.sort((a, b) =>
       (b.exactMatch - a.exactMatch) ||
       (a.omit5Match - b.omit5Match) ||
+      (b.secDomBoost - a.secDomBoost) ||
       (a.distance - b.distance) ||
       ((SYS[a.system] || 0) - (SYS[b.system] || 0)) ||
       (a.avoidCount - b.avoidCount) ||
@@ -2068,7 +2162,7 @@ function renderParentScales() {
 
   // Auto-select best result based on sort mode
   if (!_selectedPS && _psAutoSelect && _psResults.length > 0) {
-    const best = findBestAutoSelect(_psResults);
+    const best = findBestAutoSelect(_psResults, _isSecDom);
     _selectedPS = { parentKey: best.parentKey, scaleIdx: best.scaleIdx };
   }
 

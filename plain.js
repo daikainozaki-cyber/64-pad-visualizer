@@ -631,16 +631,26 @@ function updatePlainDisplay() {
   const noteNames = notes.map(n => NOTE_NAMES_SHARP[n % 12]);
   const candidates = detectChord(notes);
   if (candidates.length > 0) {
-    let html = '<span class="detect-candidate-best" onclick="transferDetectedCandidate(0,this)">' + candidates[0].name + '</span>';
+    let html = '<span class="detect-candidate-best" draggable="true" data-candidate-idx="0" onclick="transferDetectedCandidate(0,this)">' + candidates[0].name + '</span>';
     if (candidates.length > 1) {
       html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:2px;">';
       candidates.slice(1).forEach((c, i) => {
-        html += '<span class="detect-candidate" onclick="transferDetectedCandidate(' + (i + 1) + ',this)">' + c.name + '</span>';
+        html += '<span class="detect-candidate" draggable="true" data-candidate-idx="' + (i + 1) + '" onclick="transferDetectedCandidate(' + (i + 1) + ',this)">' + c.name + '</span>';
       });
       html += '</div>';
     }
     html += '<div style="font-size:0.65rem;color:#aaa;margin-top:2px;letter-spacing:0.5px;">' + t('input.notes_label') + noteNames.join(' ') + '</div>';
     detectEl.innerHTML = html;
+    // Attach dragstart to candidate labels for D&D to memory slots
+    detectEl.querySelectorAll('[data-candidate-idx]').forEach(el => {
+      el.addEventListener('dragstart', (ev) => {
+        if (lastDetectedNotes.length === 0) { ev.preventDefault(); return; }
+        const idx = parseInt(el.dataset.candidateIdx);
+        const name = (lastDetectedCandidates[idx] || lastDetectedCandidates[0] || {}).name || '';
+        ev.dataTransfer.setData('application/x-64pad-detect', JSON.stringify({ midiNotes: lastDetectedNotes, chordName: name }));
+        ev.dataTransfer.effectAllowed = 'copy';
+      });
+    });
   } else {
     detectEl.textContent = noteNames.join(' ');
   }
@@ -724,10 +734,15 @@ function initMemorySlots() {
       ev.dataTransfer.setData('text/plain', String(i));
       ev.dataTransfer.effectAllowed = 'copyMove';
     });
-    // D&D: accept drops from other slots (Option+drag = copy, drag = swap)
+    // D&D: accept drops from other slots or chord detection labels
     btn.addEventListener('dragover', (ev) => {
       ev.preventDefault();
-      ev.dataTransfer.dropEffect = ev.altKey ? 'copy' : 'move';
+      var types = ev.dataTransfer.types || [];
+      if (types.indexOf('application/x-64pad-detect') >= 0) {
+        ev.dataTransfer.dropEffect = 'copy';
+      } else {
+        ev.dataTransfer.dropEffect = ev.altKey ? 'copy' : 'move';
+      }
       btn.classList.add('drag-over');
     });
     btn.addEventListener('dragleave', () => {
@@ -736,6 +751,22 @@ function initMemorySlots() {
     btn.addEventListener('drop', (ev) => {
       ev.preventDefault();
       btn.classList.remove('drag-over');
+      // D&D from chord detection label
+      const detectData = ev.dataTransfer.getData('application/x-64pad-detect');
+      if (detectData) {
+        try {
+          const { midiNotes, chordName } = JSON.parse(detectData);
+          if (midiNotes && midiNotes.length > 0) {
+            pushUndoState();
+            PlainState.memory[i] = { midiNotes: [...midiNotes], chordName: chordName || '' };
+            PlainState.currentSlot = i;
+            updateMemorySlotUI();
+            saveAppSettings();
+          }
+        } catch (e) { /* ignore parse errors */ }
+        return;
+      }
+      // D&D between memory slots
       const srcIdx = parseInt(ev.dataTransfer.getData('text/plain'));
       if (isNaN(srcIdx) || srcIdx === i) return;
       pushUndoState();

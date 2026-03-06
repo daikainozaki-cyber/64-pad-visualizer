@@ -189,6 +189,20 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .mode-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
 .mode-btn.active .kbd-hint { color: rgba(0,0,0,0.35); }
 
+.play-btn {
+  padding: 7px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+.play-btn:hover { background: #1e2d50; }
+
 /* === Key Buttons (Scale mode) === */
 .key-buttons { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 10px; }
 .key-btn {
@@ -199,6 +213,9 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .key-btn:hover { background: #1e2d50; }
 .key-btn.active { background: var(--pad-root); color: #000; border-color: var(--pad-root); }
 .key-btn.black-key { background: #111; }
+.key-buttons.disabled .key-btn { opacity: 0.3; cursor: default; }
+.key-buttons.disabled .key-btn:hover { background: var(--surface); }
+.key-buttons.disabled .key-btn.black-key:hover { background: #111; }
 
 /* === Scale Select === */
 .scale-select-wrap select {
@@ -535,7 +552,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   animation: slot-save-flash 0.5s ease-out;
 }
 
-/* Perform key hint on slots */
+/* Perform key hint on slots (hidden by default, shown in Perform or Option held) */
 .slot-key-hint {
   position: absolute;
   top: 1px; left: 3px;
@@ -545,6 +562,16 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   pointer-events: none;
   text-transform: uppercase;
   line-height: 1;
+  display: none;
+}
+.show-keys .slot-key-hint { display: block; }
+.opt-held .slot-key-hint {
+  display: block;
+  animation: opt-pulse 0.8s ease-in-out infinite;
+}
+@keyframes opt-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 .slot-btn.playing .slot-key-hint { color: rgba(0,0,0,0.5); }
 

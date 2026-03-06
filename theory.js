@@ -615,7 +615,7 @@ function onDiatonicClick(tetrad) {
   resetVoicingSelection();
 
   // Update builder UI
-  highlightPianoKey('piano-keyboard', tetrad.rootPC);
+  updateKeyButtons();
   highlightQuality(tetrad.quality);
   clearTensionSelection();
   updateControlsForQuality(tetrad.quality);

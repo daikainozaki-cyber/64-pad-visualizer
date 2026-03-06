@@ -6,7 +6,6 @@ loadAppSettings();
 
 initKeyButtons();
 initScaleSelect();
-buildPianoKeyboard('piano-keyboard', selectRoot);
 initQualityGrid();
 initTensionGrid();
 updateOctaveLabel();
@@ -148,14 +147,9 @@ document.addEventListener('keydown', (e) => {
     }
   }
 
-  // c: Save to selected slot (全モード共通) or Plain capture
-  if (lk === 'c') {
-    if (PlainState.currentSlot !== null) {
-      saveToPlainSlot(PlainState.currentSlot);
-      return;
-    }
-    if (AppState.mode === 'input') { plainCapture(); return; }
-    // Chord/Scale mode: fall through to voicing box A-I handler below
+  // c: Plain capture (input mode only)
+  if (lk === 'c' && AppState.mode === 'input') {
+    plainCapture(); return;
   }
 
   // Escape: Close help modal → exit Plain edit → deselect slot → deselect voicing box
@@ -188,6 +182,14 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
+  // Shift+Space: Play All (memory slots sequential)
+  if (key === ' ' && e.shiftKey) {
+    e.preventDefault();
+    ensureAudioResumed();
+    playMemorySlots();
+    return;
+  }
+
   // Space: Play current chord
   if (key === ' ') {
     e.preventDefault();
@@ -204,15 +206,15 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // m: Switch to Memory view
+  // m: Toggle Memory view (Memory ↔ previous)
   if (lk === 'm') {
-    if (memoryViewMode !== 'memory') toggleMemoryView('memory');
+    toggleMemoryView(memoryViewMode === 'memory' ? 'perform' : 'memory');
     return;
   }
 
-  // p: Switch to Perform view
+  // p: Toggle Perform view (Perform ↔ previous)
   if (lk === 'p') {
-    if (memoryViewMode !== 'perform') toggleMemoryView('perform');
+    toggleMemoryView(memoryViewMode === 'perform' ? 'memory' : 'perform');
     return;
   }
 
@@ -255,7 +257,7 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault();
       const delta = key === 'ArrowRight' ? 1 : 11;
       BuilderState.root = (BuilderState.root + delta) % 12;
-      highlightPianoKey('piano-keyboard', BuilderState.root);
+      updateKeyButtons();
       if (VoicingState.selectedBoxIdx !== null) {
         VoicingState._preservePosition = { type: 'transpose', midiDelta: key === 'ArrowRight' ? 1 : -1 };
       }
@@ -339,6 +341,21 @@ document.addEventListener('keydown', (e) => {
 
   // d: Drop cycle moved to Shift+D (above A-I handler)
 
+});
+
+// Option key hold: show save key labels on slots
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Alt') {
+    document.getElementById('memory-slots')?.classList.add('opt-held');
+  }
+});
+document.addEventListener('keyup', (e) => {
+  if (e.key === 'Alt') {
+    document.getElementById('memory-slots')?.classList.remove('opt-held');
+  }
+});
+window.addEventListener('blur', () => {
+  document.getElementById('memory-slots')?.classList.remove('opt-held');
 });
 
 render();

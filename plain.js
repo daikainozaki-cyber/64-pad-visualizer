@@ -251,7 +251,7 @@ function applyNotesToBuilder(midiNotes, forcedRootPC = null) {
   resetVoicingSelection();
 
   // Update builder UI
-  highlightPianoKey('piano-keyboard', rootPC);
+  updateKeyButtons();
   highlightQuality(bestQuality);
   clearTensionSelection();
   if (matchedTension && matchedEl) matchedEl.classList.add('selected');
@@ -363,7 +363,7 @@ function transferToChordMode() {
   document.getElementById('input-panel').style.display = 'none';
 
   // Update builder UI
-  highlightPianoKey('piano-keyboard', rootPC);
+  updateKeyButtons();
   highlightQuality(bestQuality);
   clearTensionSelection();
   if (matchedTension && matchedEl) matchedEl.classList.add('selected');
@@ -511,24 +511,25 @@ function updatePlainUI() {
   const captureBtn = document.getElementById('btn-plain-capture');
   const endBtn = document.getElementById('btn-plain-end');
   if (!statusEl) return;
+  var kbdC = '<span class="kbd-hint" style="color:rgba(255,255,255,0.4);">C</span>';
   if (PlainState.subMode === 'idle') {
     statusEl.textContent = t('input.status_idle');
     statusEl.style.color = 'var(--text-muted)';
-    captureBtn.textContent = 'Capture';
+    captureBtn.innerHTML = kbdC + 'Capture';
     captureBtn.style.background = '#2a6e2a';
     endBtn.style.display = 'none';
   } else if (PlainState.subMode === 'capture') {
     const slotNum = Math.min(PlainState.captureIndex + 1, 16);
     statusEl.textContent = t('input.status_capturing', {slot: slotNum});
     statusEl.style.color = '#4a4';
-    captureBtn.textContent = 'Capture (' + slotNum + ')';
+    captureBtn.innerHTML = kbdC + 'Capture (' + slotNum + ')';
     captureBtn.style.background = '#2a6e2a';
     endBtn.style.display = '';
   } else if (PlainState.subMode === 'edit') {
     const slotNum = PlainState.currentSlot !== null ? PlainState.currentSlot + 1 : '?';
     statusEl.textContent = t('input.status_editing', {slot: slotNum});
     statusEl.style.color = 'var(--accent)';
-    captureBtn.textContent = 'Capture';
+    captureBtn.innerHTML = kbdC + 'Capture';
     captureBtn.style.background = '#2a6e2a';
     endBtn.style.display = '';
   }
@@ -827,6 +828,7 @@ function updateMemorySlotUI() {
   if (!container) return;
   const btns = container.querySelectorAll('.slot-btn');
   const isPerformView = memoryViewMode === 'perform';
+  container.classList.toggle('show-keys', isPerformView);
   btns.forEach((btn, i) => {
     if (i >= 16) return;
     const slot = PlainState.memory[i];
@@ -836,7 +838,7 @@ function updateMemorySlotUI() {
     const isPlaying = isPerformView && PerformState.activePad === i;
     // Reset classes
     btn.classList.remove('filled', 'selected', 'capture-target', 'playing');
-    var keyHint = (isPerformView && typeof PERFORM_KEY_LABELS !== 'undefined' && PERFORM_KEY_LABELS[i])
+    var keyHint = (typeof PERFORM_KEY_LABELS !== 'undefined' && PERFORM_KEY_LABELS[i])
       ? '<span class="slot-key-hint">' + PERFORM_KEY_LABELS[i] + '</span>' : '';
     if (slot) {
       btn.innerHTML = keyHint + slot.chordName;

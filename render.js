@@ -592,7 +592,6 @@ function render() {
   if (AppState.mode !== 'input') {
     renderVoicingBoxes(svg, state);
   }
-  renderInfoText(state);
   renderLegend(state);
 
   // Staff notation

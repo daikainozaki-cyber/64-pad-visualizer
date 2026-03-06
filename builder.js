@@ -17,6 +17,7 @@ function setMode(mode) {
     BuilderState.root = AppState.key; // carry over key
     setBuilderStep(1);
   }
+  updateKeyButtons();
   // モード切替時にスロット選択を解除
   PlainState.currentSlot = null;
   updateMemorySlotUI();
@@ -37,13 +38,27 @@ function initKeyButtons() {
     const btn = document.createElement('button');
     btn.className = 'key-btn' + (i === AppState.key ? ' active' : '') + (blackKeys.includes(i) ? ' black-key' : '');
     btn.textContent = NOTE_NAMES_FLAT[i] !== name ? name + '/' + NOTE_NAMES_FLAT[i] : name;
-    btn.onclick = () => { AppState.key = i; updateKeyButtons(); render(); saveAppSettings(); };
+    btn.onclick = () => {
+      if (AppState.mode === 'chord') {
+        selectRoot(i);
+      } else {
+        AppState.key = i;
+        updateKeyButtons();
+        render();
+        saveAppSettings();
+      }
+    };
     container.appendChild(btn);
   });
 }
 function updateKeyButtons() {
+  var isInput = AppState.mode === 'input';
+  var activePC = AppState.mode === 'chord' ? BuilderState.root : AppState.key;
+  var container = document.getElementById('key-buttons');
+  container.classList.toggle('disabled', isInput);
   document.querySelectorAll('#key-buttons .key-btn').forEach((btn, i) => {
-    btn.classList.toggle('active', i === AppState.key);
+    btn.classList.toggle('active', !isInput && i === activePC);
+    btn.disabled = isInput;
   });
 }
 
@@ -137,7 +152,7 @@ function builderClear() {
   BuilderState._fromDiatonic = false;
   document.getElementById('step-label').style.background = '';
   setBuilderStep(1);
-  clearPianoSelection('piano-keyboard');
+  updateKeyButtons();
   clearQualitySelection();
   clearTensionSelection();
   clearInstrumentInput();
@@ -163,7 +178,7 @@ function builderBack() {
       setBuilderStep(1);
     } else if (BuilderState.root !== null) {
       BuilderState.root = null;
-      clearPianoSelection('piano-keyboard');
+      updateKeyButtons();
       setBuilderStep(1);
     }
   }
@@ -179,10 +194,9 @@ function selectRoot(pc) {
     // In bass input mode, set bass note instead of root
     BuilderState.bass = pc;
     BuilderState.bassInputMode = false;
-    // Restore root highlight (bass selection was temporary use of this keyboard)
-    if (BuilderState.root !== null) highlightPianoKey('piano-keyboard', BuilderState.root);
     if (BuilderState.quality) { setBuilderStep(2); }
     else { setBuilderStep(1); }
+    updateKeyButtons();
     updateChordDisplay();
     render();
     return;
@@ -191,10 +205,10 @@ function selectRoot(pc) {
   BuilderState.quality = null; BuilderState.tension = null; BuilderState.bass = null;
   BuilderState._fromDiatonic = false; // Manual root selection → hide diatonic bar
   resetVoicingSelection();
-  highlightPianoKey('piano-keyboard', pc);
+  updateKeyButtons();
   clearQualitySelection();
   clearTensionSelection();
-  setBuilderStep(1); // Stay on step 1 (Root + Quality visible)
+  setBuilderStep(1); // Stay on step 1 (Quality visible)
   render();
 }
 

@@ -2196,12 +2196,12 @@ function renderParentScales() {
     if (m.flat5) chordTensionPCs.add(6);
   }
 
-  const sortLabel = AppState.psSortMode === 'practical' ? t('parent.sortPractical') : t('parent.sortDiatonic');
   let html = '<div class="ps-header">' +
     t('parent.header', { n: _psResults.length });
-  html += ' <button class="ps-sort-toggle" onclick="togglePsSortMode()" title="' +
-    (AppState.psSortMode === 'practical' ? 'Switch to Diatonic sort' : 'Switch to Practical sort') + '">' +
-    sortLabel + '</button>';
+  html += ' <button class="ps-sort-toggle' + (AppState.psSortMode === 'practical' ? ' active' : '') +
+    '" onclick="if(AppState.psSortMode!==\'practical\')togglePsSortMode()">' + t('parent.sortPractical') + '</button>';
+  html += '<button class="ps-sort-toggle' + (AppState.psSortMode === 'diatonic' ? ' active' : '') +
+    '" onclick="if(AppState.psSortMode!==\'diatonic\')togglePsSortMode()">' + t('parent.sortDiatonic') + '</button>';
   if (farResults.length > 0) {
     html += ' <button class="ps-expand" onclick="togglePSExpand()">' +
       (_psExpanded ? '\u25B2' : '\u25BC ' + t('parent.expand')) + '</button>';

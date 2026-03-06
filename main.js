@@ -101,6 +101,40 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
+  // Shift+letter: shortcuts that conflict with A-I voicing box range
+  if (e.shiftKey && !e.metaKey && !e.ctrlKey) {
+    if (lk === 'd') {
+      // Shift+D: Cycle Drop
+      if (AppState.mode === 'chord' && BuilderState.quality) {
+        if (!VoicingState.drop) setDrop('drop2');
+        else if (VoicingState.drop === 'drop2') setDrop('drop3');
+        else setDrop(null);
+      }
+      return;
+    }
+    if (lk === 'g') { toggleInstrument('guitar'); return; }
+    if (lk === 'b') { toggleInstrument('bass'); return; }
+    if (lk === 'p') { toggleInstrument('piano'); return; }
+  }
+
+  // Tab / Shift+Tab: Mode cycle (Scale → Chord → Input → Scale)
+  if (key === 'Tab') {
+    e.preventDefault();
+    const modes = ['scale', 'chord', 'input'];
+    const cur = modes.indexOf(AppState.mode);
+    const next = e.shiftKey ? (cur - 1 + 3) % 3 : (cur + 1) % 3;
+    document.getElementById('mode-' + modes[next]).click();
+    return;
+  }
+
+  // Backspace: Back (chord builder)
+  if (key === 'Backspace') {
+    if (AppState.mode === 'chord') {
+      builderBack();
+    }
+    return;
+  }
+
   // Perform view: keyboard pad triggering (highest priority for letter/number keys)
   if (memoryViewMode === 'perform') {
     if (handlePerformKey(lk)) {
@@ -293,15 +327,7 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // d: Cycle Drop (off → Drop 2 → Drop 3 → off)
-  if (lk === 'd') {
-    if (AppState.mode === 'chord' && BuilderState.quality) {
-      if (!VoicingState.drop) setDrop('drop2');
-      else if (VoicingState.drop === 'drop2') setDrop('drop3');
-      else setDrop(null);
-    }
-    return;
-  }
+  // d: Drop cycle moved to Shift+D (above A-I handler)
 
 });
 

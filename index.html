@@ -72,7 +72,7 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
-<link rel="stylesheet" href="style.css?v=3.18.3">
+<link rel="stylesheet" href="style.css?v=3.18.4">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -87,7 +87,7 @@ document.addEventListener('click', function(e) {
 <script src="https://surikov.github.io/webaudiofontdata/sound/0050_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0050_GeneralUserGS_sf2_file.js"></script>
 <!-- E.Piano: jRhodes3c velocity-layer sampler (5 layers, 1977 Rhodes Mark I) -->
-<script src="jrhodes3c-samples.js?v=3.18.3"></script>
+<script src="jrhodes3c-samples.js?v=3.18.4"></script>
 </head>
 <body>
 
@@ -484,10 +484,11 @@ document.addEventListener('click', function(e) {
     </div>
     <!-- Memory Slots (always visible, all modes) -->
     <div id="memory-section" style="margin-top:6px;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:6px;">
-      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:5px;">
+      <div style="display:flex;gap:6px;justify-content:center;margin-bottom:3px;">
         <button id="mem-view-memory" class="mem-view-btn active" onclick="toggleMemoryView('memory')"><span class="kbd-hint">M</span>Memory</button>
         <button id="mem-view-perform" class="mem-view-btn" onclick="toggleMemoryView('perform')"><span class="kbd-hint">P</span>Perform</button>
       </div>
+      <div id="mem-hint" style="text-align:center;font-size:0.5rem;color:var(--text-muted);opacity:0.6;margin-bottom:3px;line-height:1.3;" data-i18n-html="mem.hint">Click: select · Shift+#: save · Opt+Drag: copy</div>
       <div id="bank-bar" style="display:flex;gap:3px;align-items:center;justify-content:center;margin-bottom:3px;position:relative;">
         <button id="bank-prev" class="bank-nav-btn" onclick="switchBank(-1)">&lt;</button>
         <span id="bank-name" class="bank-label" onclick="renameBank()">Bank 1 (0/16)</span>
@@ -643,29 +644,29 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.18.3"></script>
-<script src="lang-en.js?v=3.18.3"></script>
-<script src="lang-ja.js?v=3.18.3"></script>
-<script src="lang-zh.js?v=3.18.3"></script>
-<script src="lang-es.js?v=3.18.3"></script>
-<script src="lang-fr.js?v=3.18.3"></script>
-<script src="lang-pt.js?v=3.18.3"></script>
-<script src="lang-de.js?v=3.18.3"></script>
-<script src="lang-ko.js?v=3.18.3"></script>
-<script src="lang-it.js?v=3.18.3"></script>
+<script src="i18n.js?v=3.18.4"></script>
+<script src="lang-en.js?v=3.18.4"></script>
+<script src="lang-ja.js?v=3.18.4"></script>
+<script src="lang-zh.js?v=3.18.4"></script>
+<script src="lang-es.js?v=3.18.4"></script>
+<script src="lang-fr.js?v=3.18.4"></script>
+<script src="lang-pt.js?v=3.18.4"></script>
+<script src="lang-de.js?v=3.18.4"></script>
+<script src="lang-ko.js?v=3.18.4"></script>
+<script src="lang-it.js?v=3.18.4"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=3.18.3"></script>
-<script src="pad-core/theory.js?v=3.18.3"></script>
-<script src="pad-core/render.js?v=3.18.3"></script>
+<script src="pad-core/data.js?v=3.18.4"></script>
+<script src="pad-core/theory.js?v=3.18.4"></script>
+<script src="pad-core/render.js?v=3.18.4"></script>
 <!-- App JS -->
-<script src="data.js?v=3.18.3"></script>
-<script src="audio.js?v=3.18.3"></script>
-<script src="theory.js?v=3.18.3"></script>
-<script src="render.js?v=3.18.3"></script>
-<script src="plain.js?v=3.18.3"></script>
-<script src="perform.js?v=3.18.3"></script>
-<script src="builder.js?v=3.18.3"></script>
-<script src="main.js?v=3.18.3"></script>
-<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=3.18.3');</script>
+<script src="data.js?v=3.18.4"></script>
+<script src="audio.js?v=3.18.4"></script>
+<script src="theory.js?v=3.18.4"></script>
+<script src="render.js?v=3.18.4"></script>
+<script src="plain.js?v=3.18.4"></script>
+<script src="perform.js?v=3.18.4"></script>
+<script src="builder.js?v=3.18.4"></script>
+<script src="main.js?v=3.18.4"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=3.18.4');</script>
 </body>
 </html>

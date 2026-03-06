@@ -237,9 +237,9 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .chord-bass { font-size: 1.2rem; font-weight: 600; min-width: 24px; }
 .builder-nav { display: flex; flex-direction: column; gap: 3px; margin-left: auto; }
 .builder-nav button {
-  padding: 3px 10px; font-size: 0.7rem; border-radius: 4px;
+  padding: 6px 18px 14px; font-size: 0.8rem; border-radius: 4px;
   background: var(--surface); color: var(--text); border: 1px solid var(--border); cursor: pointer;
-  position: relative;
+  position: relative; font-weight: 600;
 }
 .builder-nav button:hover { background: #1e2d50; }
 .builder-nav button:disabled { opacity: 0.3; cursor: default; }
@@ -336,11 +336,15 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .voicing-btn.active .kbd-hint { color: rgba(255,255,255,0.6); }
 .mem-view-btn.active .kbd-hint { color: rgba(0,0,0,0.5); }
 .inst-toggle.active .kbd-hint { color: rgba(255,255,255,0.6); }
-/* Narrow buttons: badge at bottom-right to avoid text overlap */
+/* Narrow buttons: badge centered at bottom to avoid text overlap */
 .inst-toggle .kbd-hint,
 .builder-nav .kbd-hint {
   top: auto; bottom: 1px;
-  left: auto; right: 2px;
+  left: 0; right: 0;
+  text-align: center;
+}
+.inst-toggle:has(.kbd-hint) {
+  padding-bottom: 12px;
 }
 @media (hover: none) and (pointer: coarse) { .kbd-hint { display: none; } }
 

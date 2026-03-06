@@ -628,8 +628,22 @@ function updatePlainDisplay() {
     updateMemorySlotUI();
     return;
   }
-  const noteNames = notes.map(n => NOTE_NAMES_SHARP[n % 12]);
   const candidates = detectChord(notes);
+  // Note names: use degree-aware enharmonic spelling when chord is detected
+  var noteNames;
+  if (candidates.length > 0) {
+    var rootPC = candidates[0].rootPC;
+    noteNames = notes.map(function(n) {
+      var pc = n % 12;
+      var iv = ((pc - rootPC) + 12) % 12;
+      // b-degree intervals → flat name, #-degree → sharp name
+      var deg = SCALE_DEGREE_NAMES[iv]; // R,b2,2,b3,3,4,b5,5,b6,6,b7,7
+      if (deg && deg.startsWith('b')) return NOTE_NAMES_FLAT[pc];
+      return NOTE_NAMES_SHARP[pc];
+    });
+  } else {
+    noteNames = notes.map(function(n) { return NOTE_NAMES_SHARP[n % 12]; });
+  }
   if (candidates.length > 0) {
     let html = '<span class="detect-candidate-best" draggable="true" data-candidate-idx="0" onclick="transferDetectedCandidate(0,this)">' + candidates[0].name + '</span>';
     if (candidates.length > 1) {

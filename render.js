@@ -2151,7 +2151,7 @@ function renderParentScales() {
       (!hasTension && r.omit5Match ? ' ps-omit5' : '') +
       (hasAvoidConflict ? ' ps-avoid' : '') +
       '" onclick="onPSSelect(' + globalIdx + ')">' +
-      '<span class="ps-cat">' + r.system + '</span>' +
+      '<span class="ps-cat ' + (r.system === '○' ? 'ps-cat-dia' : r.system === '■' ? 'ps-cat-hm' : r.system === '◆' ? 'ps-cat-mm' : '') + '">' + r.system + '</span>' +
       '<span class="ps-scale">' + NOTE_NAMES_SHARP[psRoot] + ' ' + r.scaleName + '</span>' +
       '<span class="ps-degree">' + r.degree + '</span>' +
       (r.parentKeyName ? '<span class="ps-parent-info">← ' + r.parentKeyName + ' ' + r.systemLabel + '</span>' : '');

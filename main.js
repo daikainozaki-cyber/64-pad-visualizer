@@ -89,27 +89,21 @@ document.addEventListener('keydown', (e) => {
   if (key === ']') { switchBank(1); return; }
 
   // Option+Perform keys: Save to slot using Perform layout (全16スロット, 全モード共通)
-  if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
-    const slotIdx = (typeof PERFORM_KEY_MAP !== 'undefined') ? PERFORM_KEY_MAP[lk] : undefined;
-    if (slotIdx !== undefined) {
-      e.preventDefault();
-      saveToPlainSlot(slotIdx);
-      return;
+  // Must use e.code because Option+key produces special chars on Mac (e.g. Option+Q = œ)
+  if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.code) {
+    let physKey = null;
+    if (e.code.startsWith('Digit')) physKey = e.code.charAt(5); // Digit1→1
+    else if (e.code.startsWith('Key')) physKey = e.code.charAt(3).toLowerCase(); // KeyQ→q
+    if (physKey && typeof PERFORM_KEY_MAP !== 'undefined') {
+      const slotIdx = PERFORM_KEY_MAP[physKey];
+      if (slotIdx !== undefined) {
+        e.preventDefault();
+        saveToPlainSlot(slotIdx);
+        return;
+      }
     }
   }
 
-  // Shift+数字: Save current chord to Plain memory slot (全モード共通)
-  // Numpad (e.location === 3) は除外
-  if (e.shiftKey && e.code && e.code.startsWith('Digit') && e.location !== 3) {
-    const num = parseInt(e.code.charAt(5)); // Digit0→0, Digit1→1, ...
-    const idx = num === 0 ? 9 : num - 1;    // 1→slot0, ..., 9→slot8, 0→slot9
-    if (idx < 16) {
-      if (saveToPlainSlot(idx)) {
-        e.preventDefault();
-      }
-    }
-    return;
-  }
 
   // Shift+letter: shortcuts that conflict with A-I voicing box range
   if (e.shiftKey && !e.metaKey && !e.ctrlKey) {

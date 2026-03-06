@@ -388,12 +388,15 @@ function saveToPlainSlot(idx) {
   pushUndoState();
   PlainState.memory[idx] = { midiNotes: [...midiNotes], chordName };
   updateMemorySlotUI();
-  // Visual feedback: flash slot button (if visible)
+  // Visual feedback: flash slot button with CSS animation
   const slotBtns = document.querySelectorAll('.slot-btn');
   if (slotBtns[idx]) {
-    slotBtns[idx].style.background = '#4CAF50';
-    slotBtns[idx].style.transition = 'background 0.3s';
-    setTimeout(() => { slotBtns[idx].style.background = ''; }, 400);
+    slotBtns[idx].classList.remove('save-flash');
+    void slotBtns[idx].offsetWidth; // force reflow to restart animation
+    slotBtns[idx].classList.add('save-flash');
+    slotBtns[idx].addEventListener('animationend', function() {
+      slotBtns[idx].classList.remove('save-flash');
+    }, { once: true });
   }
   // Toast notification (especially useful in non-Plain modes)
   const toast = document.getElementById('slot-save-toast');

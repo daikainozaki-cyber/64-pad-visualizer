@@ -525,6 +525,16 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   background: rgba(230,159,0,0.15);
 }
 
+/* Slot save flash animation */
+@keyframes slot-save-flash {
+  0% { background: #4CAF50; transform: scale(1.08); }
+  50% { background: #66BB6A; transform: scale(1.04); }
+  100% { background: var(--surface); transform: scale(1); }
+}
+.slot-btn.save-flash {
+  animation: slot-save-flash 0.5s ease-out;
+}
+
 /* Perform key hint on slots */
 .slot-key-hint {
   position: absolute;

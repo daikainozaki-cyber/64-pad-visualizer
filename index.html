@@ -139,7 +139,7 @@ document.addEventListener('click', function(e) {
 
     <h2 data-i18n="help.chord_mode">Chord Mode（3ステップ）</h2>
     <ul>
-      <li data-i18n="help.chord_step1"><strong>Step 1: Root</strong> — ピアノ鍵盤でルートを選択</li>
+      <li data-i18n="help.chord_step1"><strong>Step 1: Root</strong> — 12キーボタンでルートを選択</li>
       <li data-i18n="help.chord_step2"><strong>Step 2: Quality</strong> — コードタイプを選択（Maj, m, aug, dim, sus 等）</li>
       <li data-i18n="help.chord_step3"><strong>Step 3: Tension</strong> — テンションを追加（9, b9, #9, 11, #11, 13, b13 等）。複数選択可</li>
       <li data-i18n="help.chord_onchord"><strong>On Chord</strong> — 「/」ボタンでスラッシュコード（分数コード）を指定</li>
@@ -224,7 +224,7 @@ document.addEventListener('click', function(e) {
       <li data-i18n="help.sc_omit"><kbd>o</kbd> — Omit 5 切り替え</li>
       <li data-i18n="help.sc_rootless"><kbd>r</kbd> — Rootless 切り替え</li>
       <li data-i18n="help.sc_shell"><kbd>s</kbd> — Shell循環（off → 1-3-7 → 1-7-3 → off）</li>
-      <li data-i18n="help.sc_drop"><kbd>d</kbd> — Drop循環（off → Drop 2 → Drop 3 → off）</li>
+      <li data-i18n="help.sc_drop"><kbd>Shift</kbd>+<kbd>d</kbd> — Drop循環（off → Drop 2 → Drop 3 → off）</li>
       <li data-i18n="help.sc_clear"><kbd>x</kbd> — コードクリア（Chordモード）</li>
       <li data-i18n="help.sc_pad_explore"></li>
     </ul>
@@ -245,16 +245,22 @@ document.addEventListener('click', function(e) {
     </ul>
     <h3 data-i18n="help.shortcut_common">共通（全モード）</h3>
     <ul>
-      <li data-i18n="help.sc_perform"><kbd>p</kbd> — Perform表示の切り替え</li>
+      <li data-i18n="help.sc_tab"><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd> — モード切替（Scale → Chord → Input）</li>
+      <li data-i18n="help.sc_space"><kbd>Space</kbd> — 現在のコード/スケールを再生</li>
+      <li data-i18n="help.sc_space_all"><kbd>Shift</kbd>+<kbd>Space</kbd> — Play All（メモリースロット順次再生）</li>
+      <li data-i18n="help.sc_memory"><kbd>m</kbd> — Memory / Perform 切替</li>
+      <li data-i18n="help.sc_perform"><kbd>p</kbd> — Perform / Memory 切替</li>
+      <li data-i18n="help.sc_save"><kbd>Option</kbd>+<kbd>1234</kbd><kbd>qwer</kbd><kbd>asdf</kbd><kbd>zxcv</kbd> — メモリースロットに保存（16スロット対応）</li>
+      <li data-i18n="help.sc_bank"><kbd>[</kbd> / <kbd>]</kbd> — バンク切替</li>
+      <li data-i18n="help.sc_inst"><kbd>Shift</kbd>+<kbd>g</kbd> / <kbd>b</kbd> / <kbd>p</kbd> — Guitar / Bass / Piano 表示切替</li>
       <li data-i18n="help.sc_undo"><kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>z</kbd> — メモリースロットのUndo（最大30回）</li>
-      <li data-i18n="help.sc_shift_save"><kbd>Shift</kbd>+<kbd>1</kbd>〜<kbd>0</kbd> — Inputメモリースロットに保存（どのモードからでも）</li>
-      <li data-i18n="help.sc_space"></li>
-      <li data-i18n="help.sc_esc"><kbd>Esc</kbd> — ボイシングボックス選択解除 / ヘルプを閉じる</li>
+      <li data-i18n="help.sc_esc"><kbd>Esc</kbd> — 選択解除 / ヘルプを閉じる</li>
       <li data-i18n="help.sc_help"><kbd>?</kbd> — ヘルプ表示切替</li>
     </ul>
 
     <h2 data-i18n="help.version_history">Version History</h2>
     <ul style="font-size:0.75rem;color:var(--text-muted);">
+      <li data-i18n="help.vh_318"><b>V3.18</b> — UXオーバーホール: キーボードショートカット全面刷新（バッジ表示）、共通12ボタンキー選択（パッドOS統一）、Play/Save/Memory/Performの操作統一、Option+キーで全16スロット保存、レイアウト最適化</li>
       <li data-i18n="help.vh_37"><b>V3.7</b> — ボイシングポジション保持（半音移動時にフィンガリング形状を自動維持）。再生中にパッドグリッド・五線譜・コード検出を表示。<a href="https://youtu.be/mHSMM4GDNkE" target="_blank" style="color:var(--accent);">紹介動画</a></li>
       <li data-i18n="help.vh_35"><b>V3.5</b> — MIDIファイル再生→パッド点灯（タイムライン再生、コード名表示、Play/Pause/Stop/Seek）</li>
       <li data-i18n="help.vh_34"><b>V3.4</b> — iPad対応</li>

@@ -535,6 +535,7 @@ function updatePlainUI() {
 function clearPlainNotes() {
   PlainState.activeNotes.forEach(m => noteOff(m));
   PlainState.activeNotes.clear();
+  if (instrumentInputActive) clearInstrumentInput();
   if (PlainState.subMode === 'edit' && PlainState.currentSlot !== null) {
     // editモードでクリア → スロットも空に
     pushUndoState();
@@ -638,7 +639,7 @@ function updatePlainDisplay() {
       });
       html += '</div>';
     }
-    html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">' + t('input.notes_label') + noteNames.join(' ') + '</div>';
+    html += '<div style="font-size:0.65rem;color:#aaa;margin-top:2px;letter-spacing:0.5px;">' + t('input.notes_label') + noteNames.join(' ') + '</div>';
     detectEl.innerHTML = html;
   } else {
     detectEl.textContent = noteNames.join(' ');

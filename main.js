@@ -88,6 +88,16 @@ document.addEventListener('keydown', (e) => {
   if (key === '[') { switchBank(-1); return; }
   if (key === ']') { switchBank(1); return; }
 
+  // Option+Perform keys: Save to slot using Perform layout (全16スロット, 全モード共通)
+  if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+    const slotIdx = (typeof PERFORM_KEY_MAP !== 'undefined') ? PERFORM_KEY_MAP[lk] : undefined;
+    if (slotIdx !== undefined) {
+      e.preventDefault();
+      saveToPlainSlot(slotIdx);
+      return;
+    }
+  }
+
   // Shift+数字: Save current chord to Plain memory slot (全モード共通)
   // Numpad (e.location === 3) は除外
   if (e.shiftKey && e.code && e.code.startsWith('Digit') && e.location !== 3) {

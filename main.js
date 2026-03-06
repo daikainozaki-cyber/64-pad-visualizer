@@ -200,9 +200,15 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // p: Toggle Perform view
+  // m: Switch to Memory view
+  if (lk === 'm') {
+    if (memoryViewMode !== 'memory') toggleMemoryView('memory');
+    return;
+  }
+
+  // p: Switch to Perform view
   if (lk === 'p') {
-    toggleMemoryView(memoryViewMode === 'perform' ? 'memory' : 'perform');
+    if (memoryViewMode !== 'perform') toggleMemoryView('perform');
     return;
   }
 

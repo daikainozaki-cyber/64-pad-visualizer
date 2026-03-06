@@ -488,7 +488,6 @@ document.addEventListener('click', function(e) {
         <button id="mem-view-memory" class="mem-view-btn active" onclick="toggleMemoryView('memory')"><span class="kbd-hint">M</span>Memory</button>
         <button id="mem-view-perform" class="mem-view-btn" onclick="toggleMemoryView('perform')"><span class="kbd-hint">P</span>Perform</button>
       </div>
-      <div id="mem-hint" style="text-align:center;font-size:0.5rem;color:var(--text-muted);opacity:0.6;margin-bottom:3px;line-height:1.3;" data-i18n-html="mem.hint">Click: select · Shift+#: save · Opt+Drag: copy</div>
       <div id="bank-bar" style="display:flex;gap:3px;align-items:center;justify-content:center;margin-bottom:3px;position:relative;">
         <button id="bank-prev" class="bank-nav-btn" onclick="switchBank(-1)">&lt;</button>
         <span id="bank-name" class="bank-label" onclick="renameBank()">Bank 1 (0/16)</span>
@@ -515,7 +514,7 @@ document.addEventListener('click', function(e) {
         <button id="btn-midi-import" onclick="importMidi()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">MIDI Import</button>
         <button id="btn-chs-import" onclick="importChs()" style="font-size:0.6rem;padding:2px 8px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">CHS Import</button>
       </div>
-      <div style="font-size:0.5rem;color:var(--text-muted);text-align:center;margin-top:2px;" data-i18n="ui.slot_hint">クリックで選択 → Save(c) / Shift+クリックで消去</div>
+      <div style="font-size:0.5rem;color:var(--text-muted);text-align:center;margin-top:2px;" data-i18n="ui.slot_hint">Click→Save(c) / Shift+#: save / Shift+Click: delete / Opt+Drag: copy</div>
     </div>
     <!-- AdSense (non-JA only, sidebar position) -->
     <div id="adsense-section" style="display:none;margin-top:6px;text-align:center;">

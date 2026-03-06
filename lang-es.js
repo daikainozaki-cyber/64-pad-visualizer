@@ -94,7 +94,7 @@ I18N.addLang('es', {
   },
   ui: {
     close: 'Cerrar',
-    slot_hint: 'Clic para seleccionar \u2192 Save(c) / Shift+clic para borrar',
+    slot_hint: 'Click\u2192Save(c) / Shift+#: save / Shift+Click: delete / Opt+Drag: copy',
     save_settings: 'Guardar configuración',
     sound_hint: 'Selecciona ORGAN o E.PIANO para activar el sonido',
     tap_to_start: 'Toca para activar el sonido',

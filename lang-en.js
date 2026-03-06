@@ -96,7 +96,7 @@ I18N.addLang('en', {
   },
   ui: {
     close: 'Close',
-    slot_hint: 'Click to select \u2192 Save(c) / Shift+click to clear',
+    slot_hint: 'Click\u2192Save(c) / Shift+#: save / Shift+Click: delete / Opt+Drag: copy',
     save_settings: 'Save Settings',
     sound_hint: 'Select ORGAN or E.PIANO to enable sound',
     tap_to_start: 'Tap to enable sound',

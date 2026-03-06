@@ -829,6 +829,13 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
       degName = chordDegreeName(interval, qualityPCS, activeIvPCS || null);
       staffResult = degreeAwareStaffPos(midi, rootPC, degName, defaultFlats);
       degreeNoteName = staffResult.noteName || null;
+    } else if (mode === 'input' && typeof lastDetectedCandidates !== 'undefined' && lastDetectedCandidates.length > 0) {
+      // Input mode with chord detection: use degree-aware spelling
+      var detRootPC = lastDetectedCandidates[0].rootPC;
+      var detIv = ((pc - detRootPC) + 12) % 12;
+      degName = SCALE_DEGREE_NAMES[detIv];
+      staffResult = degreeAwareStaffPos(midi, detRootPC, degName, defaultFlats);
+      degreeNoteName = staffResult.noteName || null;
     } else {
       if (mode === 'chord') {
         if (degName.startsWith('b') || degName === 'm3') useFlats = true;

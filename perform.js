@@ -2,14 +2,9 @@
 // PERFORM MODE (Memory Slots → real-time playback)
 // ========================================
 
-// PERFORM MIDI MAP: starts at D#2 (MIDI 51 = Row 3 of 64-pad grid), 5-semitone row interval
-// Aligns physical controller with the visual 64-pad grid (Rows 3-6, playable chord range)
-const PERFORM_MIDI_MAP = {
-  51:0, 52:1, 53:2, 54:3,
-  56:4, 57:5, 58:6, 59:7,
-  61:8, 62:9, 63:10, 64:11,
-  66:12, 67:13, 68:14, 69:15
-};
+// PERFORM MIDI MAP: dynamic calculation from baseMidi()
+// Linnstrument/Launchpad send fourths-layout natively (no conversion needed)
+// Push has its own handler in builder.js (serial→slot direct mapping)
 
 const PERFORM_KEY_MAP = {
   '1':0, '2':1, '3':2, '4':3,
@@ -33,15 +28,18 @@ function performPadTap(idx) {
 }
 
 // Handle perform mode MIDI input - returns true if handled
+// Dynamic: bottom-left 4×4 of grid (rows 0-3, cols 0-3) relative to baseMidi()
+// Works for any fourths-layout controller (Linnstrument, Launchpad, etc.)
+// Orientation matches Push handler: bottom row → slots 12-15, top row → slots 0-3
 function handlePerformMidi(note) {
   if (memoryViewMode !== 'perform') return false;
-  var padIdx = PERFORM_MIDI_MAP[note];
-  if (padIdx === undefined) {
-    // Debug: show what note was received but not matched
-    console.log('[PERF] miss note=' + note + ' (not in map 51-69)');
-    return false;
-  }
-  console.log('[PERF] HIT note=' + note + ' → slot ' + (padIdx + 1));
+  var offset = note - baseMidi();
+  if (offset < 0) return false;
+  var row = Math.floor(offset / ROW_INTERVAL);
+  var col = offset % ROW_INTERVAL;
+  if (row >= 4 || col >= 4) return false;
+  var padIdx = (3 - row) * 4 + col;
+  console.log('[PERF] HIT note=' + note + ' → row=' + row + ' col=' + col + ' → slot ' + (padIdx + 1));
   performPadTap(padIdx);
   return true;
 }

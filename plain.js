@@ -130,8 +130,15 @@ function undoMemory() {
 // Get current chord MIDI notes from any mode (for cross-mode slot save)
 function getCurrentChordMidiNotes() {
   if (AppState.mode === 'input') {
-    if (PlainState.activeNotes.size === 0) return null;
-    return [...PlainState.activeNotes].sort((a, b) => a - b);
+    let notes = [...PlainState.activeNotes];
+    if (instrumentInputActive) {
+      const instrNotes = getAllInputMidiNotes();
+      const merged = new Set([...instrNotes, ...notes]);
+      notes = [...merged];
+    }
+    notes.sort((a, b) => a - b);
+    if (notes.length === 0) return null;
+    return notes;
   }
   // Chord/Scale mode
   if (AppState.mode === 'chord' || AppState.mode === 'scale') {

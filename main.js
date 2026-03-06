@@ -89,7 +89,8 @@ document.addEventListener('keydown', (e) => {
   if (key === ']') { switchBank(1); return; }
 
   // Shift+数字: Save current chord to Plain memory slot (全モード共通)
-  if (e.shiftKey && e.code && e.code.startsWith('Digit')) {
+  // Numpad (e.location === 3) は除外
+  if (e.shiftKey && e.code && e.code.startsWith('Digit') && e.location !== 3) {
     const num = parseInt(e.code.charAt(5)); // Digit0→0, Digit1→1, ...
     const idx = num === 0 ? 9 : num - 1;    // 1→slot0, ..., 9→slot8, 0→slot9
     if (idx < 16) {
@@ -124,6 +125,8 @@ document.addEventListener('keydown', (e) => {
     const helpOverlay = document.getElementById('help-overlay');
     if (helpOverlay.classList.contains('active')) {
       helpOverlay.classList.remove('active');
+    } else if (memoryViewMode === 'perform' && PerformState.activePad !== null) {
+      clearPerform();
     } else if (AppState.mode === 'input' && (PlainState.subMode === 'edit' || PlainState.subMode === 'capture')) {
       PlainState.subMode = 'idle';
       PlainState.activeNotes.forEach(m => noteOff(m));
@@ -222,7 +225,7 @@ document.addEventListener('keydown', (e) => {
     if (lk === 'e') { plainEnd(); return; }
     if (lk === 'x') { clearPlainNotes(); return; }
     // Number keys 1-9, 0: recall/edit slot (1-9→slot 0-8, 0→slot 9)
-    if (key >= '0' && key <= '9') {
+    if (key >= '0' && key <= '9' && e.location !== 3) {
       const idx = key === '0' ? 9 : parseInt(key) - 1;
       if (idx < 16) recallPlainSlot(idx);
       return;
@@ -233,7 +236,7 @@ document.addEventListener('keydown', (e) => {
 
 
   // Number keys 1-7: Select diatonic chord (Scale/Chord mode)
-  if (key >= '1' && key <= '7') {
+  if (key >= '1' && key <= '7' && e.location !== 3) {
     const num = parseInt(key);
     const scale = SCALES[AppState.scaleIdx];
     if (scale.pcs.length === 7) {

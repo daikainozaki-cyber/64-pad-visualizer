@@ -763,6 +763,47 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
     return { pos: (octave - 4) * 7 + pcToPos[pc], accidental: isSharp ? 'sharp' : null };
   }
 
+  // Degree-aware staff positioning (chord mode only)
+  // Uses degree name to determine correct diatonic line and accidental
+  // e.g., Db7 b7 = Cb (C line + flat), not B natural
+  var DIATONIC_SEMITONES = [0, 2, 4, 5, 7, 9, 11]; // C D E F G A B
+  var LETTER_NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+  var PC_TO_DIA_SHARP = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
+  var PC_TO_DIA_FLAT  = [0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6];
+
+  function degreeToDiatonicOffset(degName) {
+    if (degName === 'R') return 0;
+    if (degName === 'b9' || degName === '9' || degName === '2' || degName === '#9') return 1;
+    if (degName === 'm3' || degName === '3') return 2;
+    if (degName === '4' || degName === '11' || degName === '#11') return 3;
+    if (degName === 'b5' || degName === '5' || degName === '#5') return 4;
+    if (degName === 'b13' || degName === '6' || degName === '13') return 5;
+    if (degName === 'b7' || degName === '\u25B37') return 6; // △7
+    return null;
+  }
+
+  function degreeAwareStaffPos(midi, rootPC, degName, defaultFlats) {
+    var diaOffset = degreeToDiatonicOffset(degName);
+    if (diaOffset === null) return midiToStaffPos(midi, defaultFlats);
+    var rootDia = defaultFlats ? PC_TO_DIA_FLAT[rootPC] : PC_TO_DIA_SHARP[rootPC];
+    var targetDia = (rootDia + diaOffset) % 7;
+    var targetSemitone = DIATONIC_SEMITONES[targetDia];
+    // Find the octave where this diatonic note is closest to the MIDI pitch
+    var midiOctave = Math.floor(midi / 12) - 1;
+    var bestOctave = midiOctave, minDiff = Infinity;
+    for (var o = midiOctave - 1; o <= midiOctave + 1; o++) {
+      var diff = Math.abs(midi - ((o + 1) * 12 + targetSemitone));
+      if (diff < minDiff) { minDiff = diff; bestOctave = o; }
+    }
+    var pos = (bestOctave - 4) * 7 + targetDia;
+    var accVal = midi - ((bestOctave + 1) * 12 + targetSemitone);
+    // Double sharp/flat: fallback to midiToStaffPos
+    if (accVal > 1 || accVal < -1) return midiToStaffPos(midi, defaultFlats);
+    var accStr = accVal === 1 ? 'sharp' : accVal === -1 ? 'flat' : null;
+    var noteName = LETTER_NAMES[targetDia] + (accVal === 1 ? '#' : accVal === -1 ? 'b' : '');
+    return { pos: pos, accidental: accStr, noteName: noteName };
+  }
+
   // Staff pos 0 = C4 (middle C). Treble staff bottom line (E4) = pos 2. Y coords:
   // Middle C (pos 0): trebleTop + 5 * staffLineGap (one ledger line below treble)
   const middleCY = trebleTop + 5 * staffLineGap;
@@ -782,13 +823,21 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
     // b7 → Bb (not A#), #11 → F# (not Gb), etc.
     let useFlats = defaultFlats;
     let degName = SCALE_DEGREE_NAMES[interval];
+    let staffResult;
+    let degreeNoteName = null;
     if (mode === 'chord' && qualityPCS) {
       degName = chordDegreeName(interval, qualityPCS, activeIvPCS || null);
-      if (degName.startsWith('b') || degName === 'm3') useFlats = true;
-      else if (degName.startsWith('#') || degName.startsWith('△')) useFlats = false;
+      staffResult = degreeAwareStaffPos(midi, rootPC, degName, defaultFlats);
+      degreeNoteName = staffResult.noteName || null;
+    } else {
+      if (mode === 'chord') {
+        if (degName.startsWith('b') || degName === 'm3') useFlats = true;
+        else if (degName.startsWith('#') || degName.startsWith('△')) useFlats = false;
+      }
+      staffResult = midiToStaffPos(midi, useFlats);
     }
 
-    const { pos, accidental } = midiToStaffPos(midi, useFlats);
+    const { pos, accidental } = staffResult;
     const ny = posToY(pos);
     const nx = noteX + idx * noteSpacing;
 
@@ -866,7 +915,7 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
     label.setAttribute('x', nx); label.setAttribute('y', totalH - 4);
     label.setAttribute('text-anchor', 'middle');
     label.setAttribute('font-size', '9px'); label.setAttribute('fill', '#999');
-    label.textContent = useFlats ? NOTE_NAMES_FLAT[pc] : NOTE_NAMES_SHARP[pc];
+    label.textContent = degreeNoteName || (useFlats ? NOTE_NAMES_FLAT[pc] : NOTE_NAMES_SHARP[pc]);
     staffSvg.appendChild(label);
   });
 }
@@ -904,6 +953,7 @@ function toggleMemoryView(mode) {
   memoryViewMode = mode;
   document.getElementById('mem-view-memory').classList.toggle('active', mode === 'memory');
   document.getElementById('mem-view-perform').classList.toggle('active', mode === 'perform');
+  document.getElementById('perform-clear-wrap').style.display = mode === 'perform' ? '' : 'none';
   // Clear perform active pad when switching away
   if (mode === 'memory') {
     PerformState.activePad = null;

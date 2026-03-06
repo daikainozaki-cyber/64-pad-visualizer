@@ -52,3 +52,13 @@ function handlePerformKey(lk) {
   performPadTap(padIdx);
   return true;
 }
+
+// Clear perform playback: stop sound, deselect pad, clear display (slot content preserved)
+function clearPerform() {
+  noteOffAll();
+  PerformState.activePad = null;
+  PlainState.activeNotes.clear();
+  updatePlainDisplay();
+  render();
+  updateMemorySlotUI();
+}

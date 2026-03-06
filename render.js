@@ -609,6 +609,9 @@ function render() {
   lastRenderRootPC = state.rootPC;
   lastRenderActivePCS = new Set(state.activePCS);
   lastRenderState = state;
+  // Position alternatives (chord mode: auto-calculate before diagram render)
+  if (typeof updateGuitarPositions === 'function') updateGuitarPositions();
+  if (typeof updateBassPositions === 'function') updateBassPositions();
   renderGuitarDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state);
   renderBassDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state);
   renderPianoDisplay(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS);
@@ -1138,6 +1141,7 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS,
   const _tp = st.tensionPCS || new Set();
   const _av = st.avoidPCS || new Set();
   const _om = st.omittedPCS || new Set();
+  const _gPosActive = GuitarPositionState.enabled;
   for (let s = 0; s < 6; s++) {
     const openPC = strings[s] % 12;
     const sy = topM + s * strH;
@@ -1154,6 +1158,8 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS,
       const isAvoid = AppState.mode === 'chord' && _av.has(pc) && !isRoot;
       const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
       const r = f === 0 ? (solo ? 7 : 5) : (solo ? 10 : 7);
+      // Position mode: dim frets not in selected form
+      const _posDim = _gPosActive && guitarSelectedFrets[s] !== f;
       const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       dot.setAttribute('cx', fx); dot.setAttribute('cy', sy);
       dot.setAttribute('r', r);
@@ -1161,32 +1167,32 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS,
       if (isOvl) {
         const isChar = overlayCharPCS && overlayCharPCS.has(pc);
         dot.setAttribute('fill', isChar ? INST_OVERLAY_CHAR_COLOR : INST_OVERLAY_COLOR);
-        dot.setAttribute('opacity', isChar ? '0.5' : '0.4');
+        dot.setAttribute('opacity', _posDim ? '0.1' : (isChar ? '0.5' : '0.4'));
         textColor = INST_OVERLAY_TEXT;
       } else if (isOmitted) {
         dotColor = INST_OMITTED_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.5');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.1' : '0.5');
       } else if (isRoot) {
         dotColor = INST_ROOT_COLOR; textColor = INST_ROOT_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
       } else if (isBass) {
         dotColor = INST_BASS_COLOR; textColor = INST_BASS_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
       } else if (isGuide3) {
         dotColor = INST_GUIDE3_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
       } else if (isGuide7) {
         dotColor = INST_GUIDE7_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
       } else if (isAvoid) {
         dotColor = INST_AVOID_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
       } else if (isTension) {
         dotColor = INST_TENSION_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
       } else {
         dotColor = INST_CHORD_COLOR; textColor = '#000';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
       }
       svg.appendChild(dot);
       // Label inside dot
@@ -1205,6 +1211,7 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS,
         lt.setAttribute('font-size', fs);
         lt.setAttribute('fill', textColor);
         lt.setAttribute('font-weight', '700');
+        if (_posDim) lt.setAttribute('opacity', '0.15');
         lt.textContent = labelText;
         svg.appendChild(lt);
       }
@@ -1235,6 +1242,38 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS,
       label.setAttribute('font-weight', '700');
       label.textContent = labelText;
       svg.appendChild(label);
+    }
+  }
+
+  // Position mode: X/O marks at nut for muted/open strings
+  if (_gPosActive && GuitarPositionState.alternatives.length > 0) {
+    const form = GuitarPositionState.alternatives[GuitarPositionState.currentAlt];
+    for (let s = 0; s < 6; s++) {
+      const sy = topM + s * strH;
+      const mx = nutX - 2;
+      if (form.frets[s] === null) {
+        // X mark for muted string
+        const sz = solo ? 5 : 3.5;
+        const xl1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        xl1.setAttribute('x1', mx - sz); xl1.setAttribute('y1', sy - sz);
+        xl1.setAttribute('x2', mx + sz); xl1.setAttribute('y2', sy + sz);
+        xl1.setAttribute('stroke', '#aaa'); xl1.setAttribute('stroke-width', 2);
+        svg.appendChild(xl1);
+        const xl2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        xl2.setAttribute('x1', mx + sz); xl2.setAttribute('y1', sy - sz);
+        xl2.setAttribute('x2', mx - sz); xl2.setAttribute('y2', sy + sz);
+        xl2.setAttribute('stroke', '#aaa'); xl2.setAttribute('stroke-width', 2);
+        svg.appendChild(xl2);
+      } else if (form.frets[s] === 0) {
+        // O mark for open string
+        const sz = solo ? 7 : 5;
+        const oc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        oc.setAttribute('cx', mx); oc.setAttribute('cy', sy);
+        oc.setAttribute('r', sz);
+        oc.setAttribute('fill', 'none');
+        oc.setAttribute('stroke', '#fff'); oc.setAttribute('stroke-width', 2);
+        svg.appendChild(oc);
+      }
     }
   }
 
@@ -1398,6 +1437,7 @@ function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, e
   const _btp = bSt.tensionPCS || new Set();
   const _bav = bSt.avoidPCS || new Set();
   const _bom = bSt.omittedPCS || new Set();
+  const _bPosActive = BassPositionState.enabled;
   for (let s = 0; s < 4; s++) {
     const openPC = strings[s] % 12;
     const sy = topM + s * strH;
@@ -1414,6 +1454,7 @@ function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, e
       const isAvoid = AppState.mode === 'chord' && _bav.has(pc) && !isRoot;
       const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
       const r = f === 0 ? (solo ? 7 : 5) : (solo ? 10 : 7);
+      const _bPosDim = _bPosActive && bassSelectedFrets[s] !== f;
       const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       dot.setAttribute('cx', fx); dot.setAttribute('cy', sy);
       dot.setAttribute('r', r);
@@ -1421,32 +1462,32 @@ function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, e
       if (isOvl) {
         const isChar = overlayCharPCS && overlayCharPCS.has(pc);
         dot.setAttribute('fill', isChar ? INST_OVERLAY_CHAR_COLOR : INST_OVERLAY_COLOR);
-        dot.setAttribute('opacity', isChar ? '0.5' : '0.4');
+        dot.setAttribute('opacity', _bPosDim ? '0.1' : (isChar ? '0.5' : '0.4'));
         textColor = INST_OVERLAY_TEXT;
       } else if (isOmitted) {
         dotColor = INST_OMITTED_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.5');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.1' : '0.5');
       } else if (isRoot) {
         dotColor = INST_ROOT_COLOR; textColor = INST_ROOT_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
       } else if (isBassNote) {
         dotColor = INST_BASS_COLOR; textColor = INST_BASS_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
       } else if (isGuide3) {
         dotColor = INST_GUIDE3_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
       } else if (isGuide7) {
         dotColor = INST_GUIDE7_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
       } else if (isAvoid) {
         dotColor = INST_AVOID_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
       } else if (isTension) {
         dotColor = INST_TENSION_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
       } else {
         dotColor = INST_CHORD_COLOR; textColor = '#000';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
       }
       svg.appendChild(dot);
       if (f > 0) {
@@ -1464,6 +1505,7 @@ function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, e
         lt.setAttribute('font-size', fs);
         lt.setAttribute('fill', textColor);
         lt.setAttribute('font-weight', '700');
+        if (_bPosDim) lt.setAttribute('opacity', '0.15');
         lt.textContent = labelText;
         svg.appendChild(lt);
       }
@@ -1496,6 +1538,36 @@ function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, e
     }
   }
 
+  // Position mode: X/O marks at nut for muted/open strings
+  if (_bPosActive && BassPositionState.alternatives.length > 0) {
+    const form = BassPositionState.alternatives[BassPositionState.currentAlt];
+    for (let s = 0; s < 4; s++) {
+      const sy = topM + s * strH;
+      const mx = nutX - 2;
+      if (form.frets[s] === null) {
+        const sz = solo ? 5 : 3.5;
+        const xl1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        xl1.setAttribute('x1', mx - sz); xl1.setAttribute('y1', sy - sz);
+        xl1.setAttribute('x2', mx + sz); xl1.setAttribute('y2', sy + sz);
+        xl1.setAttribute('stroke', '#aaa'); xl1.setAttribute('stroke-width', 2);
+        svg.appendChild(xl1);
+        const xl2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        xl2.setAttribute('x1', mx + sz); xl2.setAttribute('y1', sy - sz);
+        xl2.setAttribute('x2', mx - sz); xl2.setAttribute('y2', sy + sz);
+        xl2.setAttribute('stroke', '#aaa'); xl2.setAttribute('stroke-width', 2);
+        svg.appendChild(xl2);
+      } else if (form.frets[s] === 0) {
+        const sz = solo ? 7 : 5;
+        const oc = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        oc.setAttribute('cx', mx); oc.setAttribute('cy', sy);
+        oc.setAttribute('r', sz);
+        oc.setAttribute('fill', 'none');
+        oc.setAttribute('stroke', '#fff'); oc.setAttribute('stroke-width', 2);
+        svg.appendChild(oc);
+      }
+    }
+  }
+
   // Clickable hit areas
   for (let s = 0; s < 4; s++) {
     const sy = topM + s * strH - strH / 2;
@@ -1523,6 +1595,9 @@ function toggleBassFret(stringIdx, fret) {
   } else {
     bassSelectedFrets[stringIdx] = fret;
   }
+  BassPositionState.enabled = false;
+  BassPositionState._lastKey = null;
+  updatePositionBar('bass');
   updateInstrumentInput();
 }
 
@@ -1712,7 +1787,7 @@ let _guitarSyncSource = null; // null | 'manual' | 'pad' — tracks who set guit
 // Map MIDI notes to guitar fret positions (greedy: low notes → low strings, prefer low frets)
 function syncGuitarFromNotes(midiNotes) {
   if (!showGuitar || !midiNotes || midiNotes.length === 0) return;
-  if (_guitarSyncSource === 'manual') return; // don't overwrite manual guitar selection
+  if (_guitarSyncSource === 'manual' || _guitarSyncSource === 'position') return;
   const sorted = [...midiNotes].sort((a, b) => a - b);
   const newFrets = [null, null, null, null, null, null];
   const usedStrings = new Set();
@@ -1756,6 +1831,9 @@ function toggleGuitarFret(stringIdx, fret) {
     guitarSelectedFrets[stringIdx] = fret;
   }
   _guitarSyncSource = 'manual';
+  GuitarPositionState.enabled = false;
+  GuitarPositionState._lastKey = null;
+  updatePositionBar('guitar');
   updateInstrumentInput();
 }
 
@@ -1904,6 +1982,10 @@ function clearInstrumentInput() {
   padExtNotes.clear();
   instrumentInputActive = false;
   _guitarSyncSource = null;
+  GuitarPositionState.enabled = false;
+  GuitarPositionState._lastKey = null;
+  BassPositionState.enabled = false;
+  BassPositionState._lastKey = null;
   const ctrlEl = document.getElementById('instrument-controls');
   if (ctrlEl) ctrlEl.style.display = 'none';
   document.querySelectorAll('.instrument-highlight').forEach(el => el.remove());

@@ -87,6 +87,10 @@ document.addEventListener('keydown', (e) => {
   if (key === '[') { switchBank(-1); return; }
   if (key === ']') { switchBank(1); return; }
 
+  // , / .: Guitar position cycle (Chord mode)
+  if (key === ',' && GuitarPositionState.enabled) { cycleGuitarPosition(-1); return; }
+  if (key === '.' && GuitarPositionState.enabled) { cycleGuitarPosition(1); return; }
+
   // Option+Perform keys: Save to slot using Perform layout (全16スロット, 全モード共通)
   // Must use e.code because Option+key produces special chars on Mac (e.g. Option+Q = œ)
   if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.code) {

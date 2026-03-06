@@ -73,6 +73,20 @@ const PerformState = {
   activePad: null,              // 現在再生中のパッドインデックス
 };
 
+// ======== GUITAR/BASS POSITION STATE (v3.19) ========
+const GuitarPositionState = {
+  alternatives: [],   // padEnumGuitarChordForms results
+  currentAlt: 0,      // currently displayed index
+  enabled: false,     // true only in Chord mode + chord confirmed
+  _lastKey: null,     // cache key for recalc detection
+};
+const BassPositionState = {
+  alternatives: [],
+  currentAlt: 0,
+  enabled: false,
+  _lastKey: null,
+};
+
 // ======== BANK STATE (v2.50) ========
 const BankState = {
   banks: [],         // [{id, name, memory: Array(16)}]
@@ -178,6 +192,7 @@ if (typeof module !== 'undefined') module.exports = {
   GRID, ROWS, COLS, BASE_MIDI, ROW_INTERVAL, COL_INTERVAL, PAD_SIZE, PAD_GAP, MARGIN,
   SCALE_DEGREE_NAMES, PC_TO_TENSION_NAME, TENSION_NAME_TO_PC,
   AppState, BuilderState, VoicingState, PlainState, PerformState, BankState,
+  GuitarPositionState, BassPositionState,
   resetVoicingSelection, getParentMajorKey, pcName, onReady, IS_DEV,
   getActiveBank, syncMemoryToActiveBank, loadBankMemory,
   GRID_32,

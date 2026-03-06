@@ -390,6 +390,105 @@ function calcShellPositions(rootRow, rootCol, thirdInterval, seventhInterval, sh
 }
 
 // ========================================
+// GUITAR/BASS POSITION ALTERNATIVES (v3.19)
+// ========================================
+function updateGuitarPositions() {
+  if (AppState.mode !== 'chord' || BuilderState.root === null || !BuilderState.quality) {
+    GuitarPositionState.enabled = false;
+    GuitarPositionState._lastKey = null;
+    updatePositionBar('guitar');
+    return;
+  }
+  if (_guitarSyncSource === 'manual') {
+    GuitarPositionState.enabled = false;
+    GuitarPositionState._lastKey = null;
+    updatePositionBar('guitar');
+    return;
+  }
+
+  var pcs = getBuilderPCS();
+  if (!pcs) { GuitarPositionState.enabled = false; GuitarPositionState._lastKey = null; updatePositionBar('guitar'); return; }
+
+  var key = BuilderState.root + ':' + pcs.join(',');
+  if (key !== GuitarPositionState._lastKey) {
+    GuitarPositionState._lastKey = key;
+    GuitarPositionState.currentAlt = 0;
+    GuitarPositionState.alternatives = padEnumGuitarChordForms(pcs, BuilderState.root, GUITAR_OPEN_MIDI, 21, 4);
+    GuitarPositionState.enabled = GuitarPositionState.alternatives.length > 0;
+    if (GuitarPositionState.enabled) {
+      applyGuitarForm(GuitarPositionState.alternatives[0]);
+    }
+  }
+  updatePositionBar('guitar');
+}
+
+function updateBassPositions() {
+  if (AppState.mode !== 'chord' || BuilderState.root === null || !BuilderState.quality) {
+    BassPositionState.enabled = false;
+    BassPositionState._lastKey = null;
+    updatePositionBar('bass');
+    return;
+  }
+
+  var pcs = getBuilderPCS();
+  if (!pcs) { BassPositionState.enabled = false; BassPositionState._lastKey = null; updatePositionBar('bass'); return; }
+
+  var key = BuilderState.root + ':' + pcs.join(',');
+  if (key !== BassPositionState._lastKey) {
+    BassPositionState._lastKey = key;
+    BassPositionState.currentAlt = 0;
+    BassPositionState.alternatives = padEnumGuitarChordForms(pcs, BuilderState.root, BASS_OPEN_MIDI, 21, 4);
+    BassPositionState.enabled = BassPositionState.alternatives.length > 0;
+    if (BassPositionState.enabled) {
+      applyBassForm(BassPositionState.alternatives[0]);
+    }
+  }
+  updatePositionBar('bass');
+}
+
+function applyGuitarForm(form) {
+  guitarSelectedFrets = form.frets.slice();
+  _guitarSyncSource = 'position';
+  instrumentInputActive = true;
+}
+
+function applyBassForm(form) {
+  bassSelectedFrets = form.frets.slice();
+}
+
+function cycleGuitarPosition(delta) {
+  if (!GuitarPositionState.enabled || GuitarPositionState.alternatives.length === 0) return;
+  var len = GuitarPositionState.alternatives.length;
+  GuitarPositionState.currentAlt = (GuitarPositionState.currentAlt + delta + len) % len;
+  applyGuitarForm(GuitarPositionState.alternatives[GuitarPositionState.currentAlt]);
+  updatePositionBar('guitar');
+  render();
+}
+
+function cycleBassPosition(delta) {
+  if (!BassPositionState.enabled || BassPositionState.alternatives.length === 0) return;
+  var len = BassPositionState.alternatives.length;
+  BassPositionState.currentAlt = (BassPositionState.currentAlt + delta + len) % len;
+  applyBassForm(BassPositionState.alternatives[BassPositionState.currentAlt]);
+  updatePositionBar('bass');
+  render();
+}
+
+function updatePositionBar(which) {
+  var state = which === 'guitar' ? GuitarPositionState : BassPositionState;
+  var bar = document.getElementById(which + '-position-bar');
+  var label = document.getElementById(which + '-pos-label');
+  if (!bar || !label) return;
+  if (state.enabled && state.alternatives.length > 0) {
+    bar.style.display = 'flex';
+    var letter = String.fromCharCode(65 + state.currentAlt);
+    label.textContent = letter + ' ' + (state.currentAlt + 1) + '/' + state.alternatives.length;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+// ========================================
 // CHORD NAMING & HELPERS
 // ========================================
 function chordDegreeName(interval, qualityPCS, finalPCS) {

@@ -94,7 +94,7 @@ I18N.addLang('it', {
   },
   ui: {
     close: 'Chiudi',
-    slot_hint: 'Click\u2192Save(c) / Shift+#: save / Shift+Click: delete / Opt+Drag: copy',
+    slot_hint: '<span><b style="color:var(--text);opacity:0.6;">Click</b> select</span><span><b style="color:var(--text);opacity:0.6;">C</b> save</span><span><b style="color:var(--text);opacity:0.6;">Shift+#</b> save</span><span><b style="color:var(--text);opacity:0.6;">Shift+Click</b> delete</span><span><b style="color:var(--text);opacity:0.6;">Opt+Drag</b> copy</span>',
     save_settings: 'Salva impostazioni',
     sound_hint: 'Seleziona ORGAN o E.PIANO per attivare il suono',
     tap_to_start: 'Tocca per attivare il suono',

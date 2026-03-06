@@ -94,7 +94,7 @@ I18N.addLang('zh', {
   },
   ui: {
     close: '关闭',
-    slot_hint: 'Click\u2192Save(c) / Shift+#: save / Shift+Click: delete / Opt+Drag: copy',
+    slot_hint: '<span><b style="color:var(--text);opacity:0.6;">Click</b> select</span><span><b style="color:var(--text);opacity:0.6;">C</b> save</span><span><b style="color:var(--text);opacity:0.6;">Shift+#</b> save</span><span><b style="color:var(--text);opacity:0.6;">Shift+Click</b> delete</span><span><b style="color:var(--text);opacity:0.6;">Opt+Drag</b> copy</span>',
     save_settings: '保存设置',
     sound_hint: '请选择 ORGAN 或 E.PIANO 以启用声音',
     tap_to_start: '轻触以启用声音',

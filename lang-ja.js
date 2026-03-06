@@ -96,7 +96,7 @@ I18N.addLang('ja', {
   },
   ui: {
     close: '閉じる',
-    slot_hint: 'Click\u2192Save(c) / Shift+#: save / Shift+Click: delete / Opt+Drag: copy',
+    slot_hint: '<span><b style="color:var(--text);opacity:0.6;">Click</b> 選択</span><span><b style="color:var(--text);opacity:0.6;">C</b> 保存</span><span><b style="color:var(--text);opacity:0.6;">Shift+#</b> 保存</span><span><b style="color:var(--text);opacity:0.6;">Shift+Click</b> 削除</span><span><b style="color:var(--text);opacity:0.6;">Opt+Drag</b> コピー</span>',
     save_settings: '設定を保存',
     sound_hint: 'ORGAN または E.PIANO を選んで音を有効にしてください',
     tap_to_start: 'タップして音を有効にする',

@@ -94,7 +94,7 @@ I18N.addLang('ko', {
   },
   ui: {
     close: '닫기',
-    slot_hint: 'Click\u2192Save(c) / Shift+#: save / Shift+Click: delete / Opt+Drag: copy',
+    slot_hint: '<span><b style="color:var(--text);opacity:0.6;">Click</b> select</span><span><b style="color:var(--text);opacity:0.6;">C</b> save</span><span><b style="color:var(--text);opacity:0.6;">Shift+#</b> save</span><span><b style="color:var(--text);opacity:0.6;">Shift+Click</b> delete</span><span><b style="color:var(--text);opacity:0.6;">Opt+Drag</b> copy</span>',
     save_settings: '설정 저장',
     sound_hint: 'ORGAN 또는 E.PIANO를 선택하여 소리를 활성화하세요',
     tap_to_start: '탭하여 소리 활성화',

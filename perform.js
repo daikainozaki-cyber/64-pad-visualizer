@@ -12,6 +12,7 @@ const PERFORM_KEY_MAP = {
   'a':8, 's':9, 'd':10, 'f':11,
   'z':12, 'x':13, 'c':14, 'v':15
 };
+const PERFORM_KEY_LABELS = ['1','2','3','4','Q','W','E','R','A','S','D','F','Z','X','C','V'];
 
 function performPadTap(idx) {
   const slot = PlainState.memory[idx];

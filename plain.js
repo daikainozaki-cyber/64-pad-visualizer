@@ -833,14 +833,16 @@ function updateMemorySlotUI() {
     const isPlaying = isPerformView && PerformState.activePad === i;
     // Reset classes
     btn.classList.remove('filled', 'selected', 'capture-target', 'playing');
+    var keyHint = (isPerformView && typeof PERFORM_KEY_LABELS !== 'undefined' && PERFORM_KEY_LABELS[i])
+      ? '<span class="slot-key-hint">' + PERFORM_KEY_LABELS[i] + '</span>' : '';
     if (slot) {
-      btn.textContent = slot.chordName;
+      btn.innerHTML = keyHint + slot.chordName;
       btn.title = label + ': ' + slot.chordName;
       btn.classList.add('filled');
       if (isPlaying) btn.classList.add('playing');
       else if (isCurrent && !isPerformView) btn.classList.add('selected');
     } else {
-      btn.textContent = label;
+      btn.innerHTML = keyHint + label;
       btn.title = t('memory.slot_empty', {slot: label});
       if (!isPerformView && (isCurrent || isCaptureTarget)) btn.classList.add('capture-target');
     }

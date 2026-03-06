@@ -480,6 +480,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   gap: 3px;
 }
 .slot-btn {
+  position: relative;
   height: 40px;
   background: var(--pad-off);
   border: 2px solid var(--border);
@@ -523,6 +524,19 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   border-color: var(--pad-root);
   background: rgba(230,159,0,0.15);
 }
+
+/* Perform key hint on slots */
+.slot-key-hint {
+  position: absolute;
+  top: 1px; left: 3px;
+  font-size: 0.5rem;
+  color: #e55;
+  font-weight: 700;
+  pointer-events: none;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.slot-btn.playing .slot-key-hint { color: rgba(0,0,0,0.5); }
 
 /* === Memory/Perform View Toggle === */
 .mem-view-btn {

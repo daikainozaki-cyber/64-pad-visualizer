@@ -568,7 +568,7 @@ function renderDiatonicBar() {
   bar.style.display = 'flex';
   const tetrads = getDiatonicTetrads(scale.pcs, AppState.key);
   bar.innerHTML = '';
-  tetrads.forEach(t => {
+  tetrads.forEach((t, i) => {
     const btn = document.createElement('button');
     btn.className = 'diatonic-btn';
     // Highlight if current chord matches this diatonic chord
@@ -576,7 +576,7 @@ function renderDiatonicBar() {
         BuilderState.quality.name === t.quality.name && !BuilderState.tension) {
       btn.classList.add('active');
     }
-    btn.innerHTML = '<div>' + t.chordName + '</div><div class="degree">' + t.degree + '</div>';
+    btn.innerHTML = '<span class="dia-num">' + (i + 1) + '</span><div>' + t.chordName + '</div><div class="degree">' + t.degree + '</div>';
     btn.onclick = () => onDiatonicClick(t);
     bar.appendChild(btn);
   });

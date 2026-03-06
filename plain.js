@@ -723,10 +723,10 @@ function initMemorySlots() {
       ev.dataTransfer.setData('text/plain', String(i));
       ev.dataTransfer.effectAllowed = 'copyMove';
     });
-    // D&D: accept drops from other slots (swap/move)
+    // D&D: accept drops from other slots (Option+drag = copy, drag = swap)
     btn.addEventListener('dragover', (ev) => {
       ev.preventDefault();
-      ev.dataTransfer.dropEffect = 'move';
+      ev.dataTransfer.dropEffect = ev.altKey ? 'copy' : 'move';
       btn.classList.add('drag-over');
     });
     btn.addEventListener('dragleave', () => {
@@ -737,11 +737,16 @@ function initMemorySlots() {
       btn.classList.remove('drag-over');
       const srcIdx = parseInt(ev.dataTransfer.getData('text/plain'));
       if (isNaN(srcIdx) || srcIdx === i) return;
-      // Swap or move
       pushUndoState();
-      const temp = PlainState.memory[i];
-      PlainState.memory[i] = PlainState.memory[srcIdx];
-      PlainState.memory[srcIdx] = temp;
+      if (ev.altKey && PlainState.memory[srcIdx]) {
+        // Option+drag: copy slot (source preserved)
+        PlainState.memory[i] = { ...PlainState.memory[srcIdx], midiNotes: [...PlainState.memory[srcIdx].midiNotes] };
+      } else {
+        // Normal drag: swap
+        const temp = PlainState.memory[i];
+        PlainState.memory[i] = PlainState.memory[srcIdx];
+        PlainState.memory[srcIdx] = temp;
+      }
       updateMemorySlotUI();
       saveAppSettings();
     });

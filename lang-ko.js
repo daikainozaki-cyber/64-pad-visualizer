@@ -105,6 +105,8 @@ I18N.addLang('ko', {
   label: {
     note_name: '음이름',
     degree: '도수',
+    chord_input: '코드 입력',
+    chord_hint: '텐션은 ( ) 안에: C7(b9,#11) | dim, h=m7♭5 지원',
   },
   header: {
     portal: 'HPS Portal',

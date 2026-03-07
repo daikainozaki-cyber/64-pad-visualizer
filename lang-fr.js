@@ -105,6 +105,8 @@ I18N.addLang('fr', {
   label: {
     note_name: 'Note',
     degree: 'Degré',
+    chord_input: 'Saisir un accord',
+    chord_hint: 'Tensions entre ( ): C7(b9,#11) | dim, h=m7♭5 acceptés',
   },
   header: {
     portal: 'HPS Portal',

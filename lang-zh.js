@@ -105,6 +105,8 @@ I18N.addLang('zh', {
   label: {
     note_name: '音名',
     degree: '音级',
+    chord_input: '输入和弦',
+    chord_hint: '延伸音用 ( ): C7(b9,#11) | dim, h=m7♭5 可用',
   },
   header: {
     portal: 'HPS Portal',

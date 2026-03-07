@@ -88,6 +88,14 @@ document.addEventListener('keydown', (e) => {
   const key = e.key;
   const lk = key.toLowerCase(); // for letter key matching (case-insensitive)
 
+  // /: Focus text chord input (Chord mode)
+  if (key === '/' && AppState.mode === 'chord') {
+    e.preventDefault();
+    var tchInput = document.getElementById('text-chord-input');
+    if (tchInput) { tchInput.focus(); tchInput.select(); }
+    return;
+  }
+
   // [ / ]: Bank switch (全モード共通)
   if (key === '[') { switchBank(-1); return; }
   if (key === ']') { switchBank(1); return; }

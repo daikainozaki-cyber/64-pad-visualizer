@@ -105,6 +105,8 @@ I18N.addLang('es', {
   label: {
     note_name: 'Nota',
     degree: 'Grado',
+    chord_input: 'Introducir acorde',
+    chord_hint: 'Tensiones en ( ): C7(b9,#11) | dim, h=m7♭5 soportados',
   },
   header: {
     portal: 'HPS Portal',

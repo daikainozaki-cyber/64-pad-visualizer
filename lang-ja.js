@@ -107,6 +107,8 @@ I18N.addLang('ja', {
   label: {
     note_name: '音名',
     degree: '度数',
+    chord_input: 'コードを入力',
+    chord_hint: 'テンションは ( ) 付き: C7(b9,#11) | dim, h=m7♭5 も可',
   },
   header: {
     portal: 'HPSポータル',

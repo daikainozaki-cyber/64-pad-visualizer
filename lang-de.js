@@ -105,6 +105,8 @@ I18N.addLang('de', {
   label: {
     note_name: 'Note',
     degree: 'Stufe',
+    chord_input: 'Akkord eingeben',
+    chord_hint: 'Tensions in ( ): C7(b9,#11) | dim, h=m7♭5 unterstützt',
   },
   header: {
     portal: 'HPS Portal',

@@ -351,6 +351,7 @@ function buildPianoKeyboard(containerId, onSelect) {
 
 function highlightPianoKey(containerId, pc) {
   const wrap = document.getElementById(containerId);
+  if (!wrap) return;
   wrap.querySelectorAll('.piano-white-key, .piano-black-key').forEach(k => {
     k.classList.toggle('selected', parseInt(k.dataset.pc) === pc);
   });
@@ -1297,17 +1298,23 @@ function generateTextChordCandidates(input) {
   }
 
   var candidates = [];
+  var seenIntervals = {};
   for (var i = 0; i < PAD_QUALITY_KEYS.length; i++) {
     var qKey = PAD_QUALITY_KEYS[i];
     if (qKey.indexOf(qualityInput) === 0 || qKey.toLowerCase().indexOf(qualityInput.toLowerCase()) === 0) {
       var fullName = rootStr + qKey;
       var parsed = padParseChordName(fullName);
       if (parsed) {
-        candidates.push({
-          name: parsed.displayName,
-          quality: qKey,
-          exactMatch: qKey === qualityInput || qKey.toLowerCase() === qualityInput.toLowerCase(),
-        });
+        // Dedup by intervals (same voicing = same chord)
+        var dedupKey = parsed.intervals.slice().sort(function(a,b){return a-b;}).join(',') + ':' + (parsed.bass === null ? '' : parsed.bass);
+        if (!seenIntervals[dedupKey]) {
+          seenIntervals[dedupKey] = true;
+          candidates.push({
+            name: parsed.displayName,
+            quality: qKey,
+            exactMatch: qKey === qualityInput || qKey.toLowerCase() === qualityInput.toLowerCase(),
+          });
+        }
       }
     }
   }
@@ -1315,8 +1322,21 @@ function generateTextChordCandidates(input) {
   var wantMinor = (rootWasLower && !qualityInput) || (qualityInput.length > 0 && qualityInput[0] === 'm');
   var wantMajor = qualityInput.length > 0 && qualityInput[0] === 'M';
 
+  // Count tensions: parenthesized items like (b9,#11) = 2 tensions
+  function tensionCount(q) {
+    var m = q.match(/\(([^)]+)\)/);
+    if (!m) {
+      // Check for inline tensions like 7b9, 7#9 (single tension appended without parens)
+      var base = q.replace(/^(m7b5|m7|maj7|dim7|aug7|7|m6|6|dim|aug|m|M7|△7|sus[24]?)/, '');
+      return base.length > 0 ? 1 : 0;
+    }
+    return m[1].split(',').length;
+  }
+
   candidates.sort(function(a, b) {
+    // 1. Exact match first
     if (a.exactMatch !== b.exactMatch) return b.exactMatch - a.exactMatch;
+    // 2. Minor/Major preference
     if (wantMinor) {
       var aM = a.quality.indexOf('m') === 0 ? 1 : 0;
       var bM = b.quality.indexOf('m') === 0 ? 1 : 0;
@@ -1326,10 +1346,15 @@ function generateTextChordCandidates(input) {
       var bJ = (b.quality.indexOf('M') === 0 || b.quality.indexOf('maj') === 0) ? 1 : 0;
       if (aJ !== bJ) return bJ - aJ;
     }
+    // 3. Fewer tensions first (base → single → double → triple)
+    var tA = tensionCount(a.quality);
+    var tB = tensionCount(b.quality);
+    if (tA !== tB) return tA - tB;
+    // 4. Shorter quality name within same tension count
     return a.quality.length - b.quality.length;
   });
 
-  return candidates.slice(0, 12);
+  return candidates.slice(0, 15);
 }
 
 function generateTextChordSlashCandidates(rootStr, quality, bassInput) {

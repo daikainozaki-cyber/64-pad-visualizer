@@ -1820,6 +1820,23 @@ function renderCircle() {
       showTitle: true,
       showDegrees: true,
       showScaleModeButtons: true,
+      colors: {
+        majorSegment: '#1e3a5f',
+        minorSegment: '#2a4a6e',
+        segmentStroke: '#333',
+        centerFill: '#1a1a2e',
+        majorText: '#e0e0e0',
+        minorText: '#aab8c8',
+        titleColor: '#4a9eff',
+        subtitleColor: '#888',
+        degreeText: '#e0e0e0',
+        degreeStroke: '#444',
+        buttonBg: '#16213e',
+        buttonActiveText: '#fff',
+        buttonNatural: '#4a9eff',
+        buttonHarmonic: '#2c6fbb',
+        buttonMelodic: '#3d88dd'
+      },
       onKeySelect: function(circleIdx, type) {
         const chromatic = CIRCLE_TO_CHROMATIC[circleIdx];
         AppState.key = chromatic;

@@ -1802,8 +1802,6 @@ function renderCircle() {
   const svgEl = document.getElementById('circle-of-fifths');
   if (!svgEl) return;
 
-  const circleKeyIndex = CHROMATIC_TO_CIRCLE[AppState.key];
-
   // Determine circle selectedType from current scale
   var circleType = 'major';
   var circleScaleMode = 'natural';
@@ -1811,12 +1809,17 @@ function renderCircle() {
   else if (AppState.scaleIdx === 7) { circleType = 'minor'; circleScaleMode = 'harmonic'; }
   else if (AppState.scaleIdx === 14) { circleType = 'minor'; circleScaleMode = 'melodic'; }
 
+  var circleKeyIndex = CHROMATIC_TO_CIRCLE[AppState.key];
+  if (circleType === 'minor') {
+    circleKeyIndex = (circleKeyIndex - 3 + 12) % 12;
+  }
+
   if (!_circleInstance) {
     _circleInstance = padRenderCircleOfFifths(svgEl, {
       selectedKeyIndex: circleKeyIndex,
       selectedType: circleType,
       scaleMode: circleScaleMode,
-      size: Math.min(DIAGRAM_WIDTH, 400),
+      size: Math.min(DIAGRAM_WIDTH, 500),
       showTitle: true,
       showDegrees: true,
       showScaleModeButtons: true,
@@ -1829,8 +1832,8 @@ function renderCircle() {
         minorText: '#aab8c8',
         titleColor: '#4a9eff',
         subtitleColor: '#888',
-        degreeText: '#e0e0e0',
-        degreeStroke: '#444',
+        degreeText: '#fff',
+        degreeStroke: '#555',
         buttonBg: '#16213e',
         buttonActiveText: '#fff',
         buttonNatural: '#4a9eff',
@@ -1838,7 +1841,12 @@ function renderCircle() {
         buttonMelodic: '#3d88dd'
       },
       onKeySelect: function(circleIdx, type) {
-        const chromatic = CIRCLE_TO_CHROMATIC[circleIdx];
+        var chromatic;
+        if (type === 'minor') {
+          chromatic = CIRCLE_TO_CHROMATIC[(circleIdx + 3) % 12];
+        } else {
+          chromatic = CIRCLE_TO_CHROMATIC[circleIdx];
+        }
         AppState.key = chromatic;
         document.querySelectorAll('.key-btn').forEach(function(btn) {
           btn.classList.toggle('active', parseInt(btn.dataset.key) === chromatic);
@@ -1868,7 +1876,7 @@ function renderCircle() {
       selectedKeyIndex: circleKeyIndex,
       selectedType: circleType,
       scaleMode: circleScaleMode,
-      size: Math.min(DIAGRAM_WIDTH, 400)
+      size: Math.min(DIAGRAM_WIDTH, 500)
     });
   }
 }

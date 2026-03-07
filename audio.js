@@ -522,17 +522,16 @@ function loadSoundSettings() {
       hc.checked = s.hiCutEnabled;
       hc.dispatchEvent(new Event('change'));
     }
+    // Restore type/poles BEFORE toggling, so change handler sees correct values
+    if (s.autoFilterType) {
+      autoFilterType = s.autoFilterType;
+      var tb = document.getElementById('snd-af-type');
+      if (tb) tb.textContent = autoFilterType === 'lowpass' ? 'LP' : 'BP';
+    }
     const af = document.getElementById('snd-af-toggle');
     if (af && s.autoFilterEnabled !== undefined && af.checked !== s.autoFilterEnabled) {
       af.checked = s.autoFilterEnabled;
       af.dispatchEvent(new Event('change'));
-    }
-    if (s.autoFilterType) {
-      autoFilterType = s.autoFilterType;
-      autoFilter.type = autoFilterType;
-      autoFilter2.type = autoFilterType;
-      var tb = document.getElementById('snd-af-type');
-      if (tb) tb.textContent = autoFilterType === 'lowpass' ? 'LP' : 'BP';
     }
     if (s.autoFilterPoles) {
       autoFilterPoles = s.autoFilterPoles;
@@ -820,10 +819,23 @@ onReady(() => {
   if (afToggle) afToggle.addEventListener('change', () => {
     autoFilterEnabled = afToggle.checked;
     afToggle.closest('.ep-knob').classList.toggle('filter-active', autoFilterEnabled);
-    // When off, open filter fully
+    var now = audioCtx.currentTime;
     if (!autoFilterEnabled) {
-      autoFilter.frequency.setValueAtTime(20000, audioCtx.currentTime);
-      autoFilter2.frequency.setValueAtTime(20000, audioCtx.currentTime);
+      // Off: force lowpass@20kHz = transparent (BP@20kHz would mute audio)
+      autoFilter.type = 'lowpass';
+      autoFilter2.type = 'lowpass';
+      autoFilter.frequency.cancelScheduledValues(now);
+      autoFilter2.frequency.cancelScheduledValues(now);
+      autoFilter.frequency.setValueAtTime(20000, now);
+      autoFilter2.frequency.setValueAtTime(20000, now);
+    } else {
+      // On: apply current type and set to envelope start position
+      autoFilter.type = autoFilterType;
+      autoFilter2.type = autoFilterType;
+      var isBP = autoFilterType === 'bandpass';
+      var hiFreq = isBP ? 800 + autoFilterDepth * 2700 : 800 + autoFilterDepth * 7200;
+      autoFilter.frequency.setValueAtTime(hiFreq, now);
+      autoFilter2.frequency.setValueAtTime(hiFreq, now);
     }
     saveSoundSettings();
   });
@@ -858,8 +870,11 @@ onReady(() => {
   if (afTypeBtn) afTypeBtn.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
     autoFilterType = autoFilterType === 'lowpass' ? 'bandpass' : 'lowpass';
-    autoFilter.type = autoFilterType;
-    autoFilter2.type = autoFilterType;
+    // Only change node type when filter is ON; OFF keeps lowpass@20kHz (transparent)
+    if (autoFilterEnabled) {
+      autoFilter.type = autoFilterType;
+      autoFilter2.type = autoFilterType;
+    }
     afTypeBtn.textContent = autoFilterType === 'lowpass' ? 'LP' : 'BP';
     saveSoundSettings();
   });

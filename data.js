@@ -31,6 +31,7 @@ const AppState = {
   semitoneShift: 0, // -11 to +11 — fine-tune for 32-pad mode
   showParentScales: false, // Parent Scale panel toggle
   psSortMode: 'practical', // 'practical' | 'diatonic'
+  diatonicMode: 'tetrad',  // 'tetrad' | 'triad'
   // Velocity sensitivity (Push 3-style parameters)
   velThreshold: 0,   // 0-64: minimum input velocity, below = no sound
   velDrive: 0,       // -64 to +64: curve rise (+soft=loud, -need harder touch)
@@ -79,12 +80,18 @@ const GuitarPositionState = {
   currentAlt: 0,      // currently displayed index
   enabled: false,     // true only in Chord mode + chord confirmed
   _lastKey: null,     // cache key for recalc detection
+  groups: [],         // [{label, forms:[...]}, ...]
+  currentGroupIdx: 0,
+  currentAltInGroup: 0,
 };
 const BassPositionState = {
   alternatives: [],
   currentAlt: 0,
   enabled: false,
   _lastKey: null,
+  groups: [],
+  currentGroupIdx: 0,
+  currentAltInGroup: 0,
 };
 
 // ======== BANK STATE (v2.50) ========
@@ -127,6 +134,7 @@ function saveAppSettings() {
       velCompand: AppState.velCompand,
       velRange: AppState.velRange,
       semitoneShift: AppState.semitoneShift,
+      diatonicMode: AppState.diatonicMode,
       banks: BankState.banks,
       activeBankId: BankState.activeBankId,
     };
@@ -155,6 +163,7 @@ function loadAppSettings() {
     if (s.velCompand !== undefined) AppState.velCompand = s.velCompand;
     if (s.velRange !== undefined) AppState.velRange = s.velRange;
     if (s.semitoneShift !== undefined && s.semitoneShift >= -11 && s.semitoneShift <= 11) AppState.semitoneShift = s.semitoneShift;
+    if (s.diatonicMode === 'triad' || s.diatonicMode === 'tetrad') AppState.diatonicMode = s.diatonicMode;
     // Migration: banks
     if (Array.isArray(s.banks) && s.banks.length > 0) {
       BankState.banks = s.banks;

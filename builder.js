@@ -85,6 +85,49 @@ function initScaleSelect() {
   sel.onchange = () => { AppState.scaleIdx = parseInt(sel.value); render(); saveAppSettings(); };
 }
 
+// ======== TRIAD → TETRAD PROMOTION ========
+const TRIAD_PROMOTE_MAP = {
+  '0,4,7': [{label:'7', targetName:'7'}, {label:'\u25B37', targetName:'\u25B37'}],
+  '0,3,7': [{label:'7', targetName:'m7'}, {label:'\u25B37', targetName:'m\u25B37'}],
+  '0,3,6': [{label:'7', targetName:'m7(b5)'}, {label:'dim7', targetName:'dim7'}],
+};
+
+function showTriadPromoteBar(quality) {
+  hideTriadPromoteBar();
+  const key = [...quality.pcs].sort((a, b) => a - b).join(',');
+  const options = TRIAD_PROMOTE_MAP[key];
+  if (!options) return;
+
+  const bar = document.createElement('div');
+  bar.id = 'triad-promote-bar';
+  bar.className = 'triad-promote-bar';
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'tension-btn promote-btn';
+    btn.textContent = opt.label;
+    btn.onclick = () => promoteTriadTo7th(opt.targetName);
+    bar.appendChild(btn);
+  });
+  const step2 = document.getElementById('step2');
+  step2.insertBefore(bar, step2.firstChild);
+}
+
+function hideTriadPromoteBar() {
+  const existing = document.getElementById('triad-promote-bar');
+  if (existing) existing.remove();
+}
+
+function promoteTriadTo7th(targetName) {
+  for (const row of BUILDER_QUALITIES) {
+    for (const q of row) {
+      if (q && q.name === targetName) {
+        selectQuality(q);
+        return;
+      }
+    }
+  }
+}
+
 // ======== CHORD BUILDER ========
 function setBuilderStep(step) {
   BuilderState.step = step;
@@ -378,14 +421,14 @@ function updateControlsForQuality(quality) {
   btns.forEach(btn => { btn.classList.remove('quality-hidden'); btn.classList.remove('tension-uncommon'); });
 
   // D: Without 7th, no altered tensions
-  // sus4 hidden on all non-7th chords (quality change, not tension; only dom7sus4 is standard via Cat F)
+  // sus4: allowed for triads (Cat D2 handles Maj/m vs dim/aug), hidden for non-7th tetrads (6, m6)
   // b13/b6 (pc=8) allowed: valid on triads (Cm(b6), Cmaj(add b6), Cdim(b13))
   // Natural 13 (pc=9) uses '6' label for non-7th → hide '13' labels but allow 'b13' labels
   if (!has7th) {
     btns.forEach(btn => {
       if (!btn._tension) return;
       const m = btn._tension.mods;
-      if (m.replace3 !== undefined) { btn.classList.add('quality-hidden'); return; }
+      if (m.replace3 !== undefined && !isTriad) { btn.classList.add('quality-hidden'); return; }
       if (m.sharp5 || m.flat5) { btn.classList.add('quality-hidden'); return; }
       if (m.add) {
         for (const pc of m.add) {
@@ -559,6 +602,38 @@ function updateControlsForQuality(quality) {
     btns.forEach(btn => {
       if (btn._tension && btn._tension.label === '9') btn.classList.add('quality-hidden');
     });
+  }
+
+  // === Category D2: Triad-specific tension whitelist ===
+  // Triads without 7th/6th: only allow add9, 6, 6/9, sus4
+  // dim: no 6 (=dim7 enharmonic), no sus4, no 6/9
+  // aug: no 6, no sus4, no 6/9
+  // "Maj or m" = has perfect 5th (pc=7) — distinguishes from dim/aug
+  if (isTriad && !has7th && !has6th) {
+    const isMajOrMin = quality.pcs.includes(7);
+    // Whitelist: add9 always; 6 and 6/9 for Maj/m only
+    const allowedLabels = new Set(['add9']);
+    if (isMajOrMin) { allowedLabels.add('6'); allowedLabels.add('6/9'); }
+
+    btns.forEach(btn => {
+      if (!btn._tension || btn.classList.contains('quality-hidden')) return;
+      const m = btn._tension.mods;
+      // sus4 (replace3) allowed for Maj and m only
+      if (m.replace3 !== undefined) {
+        if (!isMajOrMin) btn.classList.add('quality-hidden');
+        return;
+      }
+      if (!allowedLabels.has(btn._tension.label)) {
+        btn.classList.add('quality-hidden');
+      }
+    });
+  }
+
+  // === Triad promotion bar ===
+  if (isTriad && !has7th && !has6th) {
+    showTriadPromoteBar(quality);
+  } else {
+    hideTriadPromoteBar();
   }
 }
 

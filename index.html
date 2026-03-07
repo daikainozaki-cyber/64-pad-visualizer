@@ -72,7 +72,7 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
-<link rel="stylesheet" href="style.css?v=3.19.0">
+<link rel="stylesheet" href="style.css?v=3.21.0">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -87,7 +87,7 @@ document.addEventListener('click', function(e) {
 <script src="https://surikov.github.io/webaudiofontdata/sound/0050_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0050_GeneralUserGS_sf2_file.js"></script>
 <!-- E.Piano: jRhodes3c velocity-layer sampler (5 layers, 1977 Rhodes Mark I) -->
-<script src="jrhodes3c-samples.js?v=3.19.0"></script>
+<script src="jrhodes3c-samples.js?v=3.21.0"></script>
 </head>
 <body>
 
@@ -324,6 +324,7 @@ document.addEventListener('click', function(e) {
         <div id="guitar-wrap" style="display:none;align-items:center;gap:4px;">
           <svg id="guitar-diagram" style="flex:1;"></svg>
           <div id="guitar-position-bar" class="position-bar" style="display:none;">
+            <div id="guitar-pos-groups" class="pos-groups" style="display:none;"></div>
             <button class="pos-nav-btn" onclick="cycleGuitarPosition(-1)">&#9664;</button>
             <span id="guitar-pos-label">A 1/1</span>
             <button class="pos-nav-btn" onclick="cycleGuitarPosition(1)">&#9654;</button>
@@ -332,6 +333,7 @@ document.addEventListener('click', function(e) {
         <div id="bass-wrap" style="display:none;align-items:center;gap:4px;">
           <svg id="bass-diagram" style="flex:1;"></svg>
           <div id="bass-position-bar" class="position-bar" style="display:none;">
+            <div id="bass-pos-groups" class="pos-groups" style="display:none;"></div>
             <button class="pos-nav-btn" onclick="cycleBassPosition(-1)">&#9664;</button>
             <span id="bass-pos-label">A 1/1</span>
             <button class="pos-nav-btn" onclick="cycleBassPosition(1)">&#9654;</button>
@@ -663,29 +665,29 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.19.0"></script>
-<script src="lang-en.js?v=3.19.0"></script>
-<script src="lang-ja.js?v=3.19.0"></script>
-<script src="lang-zh.js?v=3.19.0"></script>
-<script src="lang-es.js?v=3.19.0"></script>
-<script src="lang-fr.js?v=3.19.0"></script>
-<script src="lang-pt.js?v=3.19.0"></script>
-<script src="lang-de.js?v=3.19.0"></script>
-<script src="lang-ko.js?v=3.19.0"></script>
-<script src="lang-it.js?v=3.19.0"></script>
+<script src="i18n.js?v=3.21.0"></script>
+<script src="lang-en.js?v=3.21.0"></script>
+<script src="lang-ja.js?v=3.21.0"></script>
+<script src="lang-zh.js?v=3.21.0"></script>
+<script src="lang-es.js?v=3.21.0"></script>
+<script src="lang-fr.js?v=3.21.0"></script>
+<script src="lang-pt.js?v=3.21.0"></script>
+<script src="lang-de.js?v=3.21.0"></script>
+<script src="lang-ko.js?v=3.21.0"></script>
+<script src="lang-it.js?v=3.21.0"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=3.19.0"></script>
-<script src="pad-core/theory.js?v=3.19.0"></script>
-<script src="pad-core/render.js?v=3.19.0"></script>
+<script src="pad-core/data.js?v=3.21.0"></script>
+<script src="pad-core/theory.js?v=3.21.0"></script>
+<script src="pad-core/render.js?v=3.21.0"></script>
 <!-- App JS -->
-<script src="data.js?v=3.19.0"></script>
-<script src="audio.js?v=3.19.0"></script>
-<script src="theory.js?v=3.19.0"></script>
-<script src="render.js?v=3.19.0"></script>
-<script src="plain.js?v=3.19.0"></script>
-<script src="perform.js?v=3.19.0"></script>
-<script src="builder.js?v=3.19.0"></script>
-<script src="main.js?v=3.19.0"></script>
-<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=3.19.0');</script>
+<script src="data.js?v=3.21.0"></script>
+<script src="audio.js?v=3.21.0"></script>
+<script src="theory.js?v=3.21.0"></script>
+<script src="render.js?v=3.21.0"></script>
+<script src="plain.js?v=3.21.0"></script>
+<script src="perform.js?v=3.21.0"></script>
+<script src="builder.js?v=3.21.0"></script>
+<script src="main.js?v=3.21.0"></script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=3.21.0');</script>
 </body>
 </html>

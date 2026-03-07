@@ -390,8 +390,59 @@ function calcShellPositions(rootRow, rootCol, thirdInterval, seventhInterval, sh
 }
 
 // ========================================
-// GUITAR/BASS POSITION ALTERNATIVES (v3.19)
+// GUITAR/BASS POSITION ALTERNATIVES (v3.19, groups v3.21)
 // ========================================
+function groupGuitarForms(alternatives, openMidi, rootPC) {
+  var numStrings = openMidi.length;
+  var groups = [];
+  // Root string groups (check bottom 3 strings)
+  var maxRoot = Math.min(3, numStrings);
+  for (var si = numStrings - 1; si >= numStrings - maxRoot; si--) {
+    var forms = [];
+    for (var i = 0; i < alternatives.length; i++) {
+      var f = alternatives[i];
+      if (!f.rootInBass) continue;
+      // Find lowest sounding string
+      var lo = -1;
+      for (var j = f.frets.length - 1; j >= 0; j--) {
+        if (f.frets[j] !== null) { lo = j; break; }
+      }
+      if (lo === si) forms.push(f);
+    }
+    if (forms.length > 0) {
+      groups.push({ labelKey: 'pos.root_' + (si + 1), forms: forms });
+    }
+  }
+  // Open string forms
+  var openForms = [];
+  for (var i = 0; i < alternatives.length; i++) {
+    for (var j = 0; j < alternatives[i].frets.length; j++) {
+      if (alternatives[i].frets[j] === 0) { openForms.push(alternatives[i]); break; }
+    }
+  }
+  if (openForms.length > 0) {
+    groups.push({ labelKey: 'pos.open', forms: openForms });
+  }
+  // All positions
+  if (alternatives.length > 0) {
+    groups.push({ labelKey: 'pos.all', forms: alternatives });
+  }
+  return groups;
+}
+
+function _resetPositionState(state) {
+  state.currentAlt = 0;
+  state.currentGroupIdx = 0;
+  state.currentAltInGroup = 0;
+}
+
+function _currentFormIndex(state) {
+  if (state.groups.length === 0) return 0;
+  var g = state.groups[state.currentGroupIdx];
+  if (!g) return 0;
+  return state.alternatives.indexOf(g.forms[state.currentAltInGroup]);
+}
+
 function updateGuitarPositions() {
   if (AppState.mode !== 'chord' || BuilderState.root === null || !BuilderState.quality) {
     GuitarPositionState.enabled = false;
@@ -412,8 +463,9 @@ function updateGuitarPositions() {
   var key = BuilderState.root + ':' + pcs.join(',');
   if (key !== GuitarPositionState._lastKey) {
     GuitarPositionState._lastKey = key;
-    GuitarPositionState.currentAlt = 0;
-    GuitarPositionState.alternatives = padEnumGuitarChordForms(pcs, BuilderState.root, GUITAR_OPEN_MIDI, 21, 4);
+    GuitarPositionState.alternatives = padEnumGuitarChordForms(pcs, BuilderState.root, GUITAR_OPEN_MIDI, 21, 4, { maxResults: 30 });
+    GuitarPositionState.groups = groupGuitarForms(GuitarPositionState.alternatives, GUITAR_OPEN_MIDI, BuilderState.root);
+    _resetPositionState(GuitarPositionState);
     GuitarPositionState.enabled = GuitarPositionState.alternatives.length > 0;
     if (GuitarPositionState.enabled) {
       applyGuitarForm(GuitarPositionState.alternatives[0]);
@@ -436,8 +488,9 @@ function updateBassPositions() {
   var key = BuilderState.root + ':' + pcs.join(',');
   if (key !== BassPositionState._lastKey) {
     BassPositionState._lastKey = key;
-    BassPositionState.currentAlt = 0;
-    BassPositionState.alternatives = padEnumGuitarChordForms(pcs, BuilderState.root, BASS_OPEN_MIDI, 21, 4);
+    BassPositionState.alternatives = padEnumGuitarChordForms(pcs, BuilderState.root, BASS_OPEN_MIDI, 21, 4, { maxResults: 30 });
+    BassPositionState.groups = groupGuitarForms(BassPositionState.alternatives, BASS_OPEN_MIDI, BuilderState.root);
+    _resetPositionState(BassPositionState);
     BassPositionState.enabled = BassPositionState.alternatives.length > 0;
     if (BassPositionState.enabled) {
       applyBassForm(BassPositionState.alternatives[0]);
@@ -457,19 +510,49 @@ function applyBassForm(form) {
 }
 
 function cycleGuitarPosition(delta) {
-  if (!GuitarPositionState.enabled || GuitarPositionState.alternatives.length === 0) return;
-  var len = GuitarPositionState.alternatives.length;
-  GuitarPositionState.currentAlt = (GuitarPositionState.currentAlt + delta + len) % len;
-  applyGuitarForm(GuitarPositionState.alternatives[GuitarPositionState.currentAlt]);
+  if (!GuitarPositionState.enabled || GuitarPositionState.groups.length === 0) return;
+  var g = GuitarPositionState.groups[GuitarPositionState.currentGroupIdx];
+  if (!g) return;
+  var len = g.forms.length;
+  GuitarPositionState.currentAltInGroup = (GuitarPositionState.currentAltInGroup + delta + len) % len;
+  GuitarPositionState.currentAlt = GuitarPositionState.alternatives.indexOf(g.forms[GuitarPositionState.currentAltInGroup]);
+  applyGuitarForm(g.forms[GuitarPositionState.currentAltInGroup]);
   updatePositionBar('guitar');
   render();
 }
 
 function cycleBassPosition(delta) {
-  if (!BassPositionState.enabled || BassPositionState.alternatives.length === 0) return;
-  var len = BassPositionState.alternatives.length;
-  BassPositionState.currentAlt = (BassPositionState.currentAlt + delta + len) % len;
-  applyBassForm(BassPositionState.alternatives[BassPositionState.currentAlt]);
+  if (!BassPositionState.enabled || BassPositionState.groups.length === 0) return;
+  var g = BassPositionState.groups[BassPositionState.currentGroupIdx];
+  if (!g) return;
+  var len = g.forms.length;
+  BassPositionState.currentAltInGroup = (BassPositionState.currentAltInGroup + delta + len) % len;
+  BassPositionState.currentAlt = BassPositionState.alternatives.indexOf(g.forms[BassPositionState.currentAltInGroup]);
+  applyBassForm(g.forms[BassPositionState.currentAltInGroup]);
+  updatePositionBar('bass');
+  render();
+}
+
+function cycleGuitarGroup(delta) {
+  if (!GuitarPositionState.enabled || GuitarPositionState.groups.length <= 1) return;
+  var len = GuitarPositionState.groups.length;
+  GuitarPositionState.currentGroupIdx = (GuitarPositionState.currentGroupIdx + delta + len) % len;
+  GuitarPositionState.currentAltInGroup = 0;
+  var g = GuitarPositionState.groups[GuitarPositionState.currentGroupIdx];
+  GuitarPositionState.currentAlt = GuitarPositionState.alternatives.indexOf(g.forms[0]);
+  applyGuitarForm(g.forms[0]);
+  updatePositionBar('guitar');
+  render();
+}
+
+function cycleBassGroup(delta) {
+  if (!BassPositionState.enabled || BassPositionState.groups.length <= 1) return;
+  var len = BassPositionState.groups.length;
+  BassPositionState.currentGroupIdx = (BassPositionState.currentGroupIdx + delta + len) % len;
+  BassPositionState.currentAltInGroup = 0;
+  var g = BassPositionState.groups[BassPositionState.currentGroupIdx];
+  BassPositionState.currentAlt = BassPositionState.alternatives.indexOf(g.forms[0]);
+  applyBassForm(g.forms[0]);
   updatePositionBar('bass');
   render();
 }
@@ -478,13 +561,43 @@ function updatePositionBar(which) {
   var state = which === 'guitar' ? GuitarPositionState : BassPositionState;
   var bar = document.getElementById(which + '-position-bar');
   var label = document.getElementById(which + '-pos-label');
+  var groupsEl = document.getElementById(which + '-pos-groups');
   if (!bar || !label) return;
   if (state.enabled && state.alternatives.length > 0) {
     bar.style.display = 'flex';
-    var letter = String.fromCharCode(65 + state.currentAlt);
-    label.textContent = letter + ' ' + (state.currentAlt + 1) + '/' + state.alternatives.length;
+    // Group tabs
+    if (groupsEl) {
+      groupsEl.innerHTML = '';
+      if (state.groups.length > 1) {
+        groupsEl.style.display = 'flex';
+        for (var i = 0; i < state.groups.length; i++) {
+          var tab = document.createElement('button');
+          tab.className = 'pos-group-tab' + (i === state.currentGroupIdx ? ' active' : '');
+          tab.textContent = t(state.groups[i].labelKey);
+          tab.dataset.idx = i;
+          tab.onclick = (function(w, idx) {
+            return function() {
+              if (w === 'guitar') { GuitarPositionState.currentGroupIdx = idx; GuitarPositionState.currentAltInGroup = 0; cycleGuitarGroup(0); }
+              else { BassPositionState.currentGroupIdx = idx; BassPositionState.currentAltInGroup = 0; cycleBassGroup(0); }
+            };
+          })(which, i);
+          groupsEl.appendChild(tab);
+        }
+      } else {
+        groupsEl.style.display = 'none';
+      }
+    }
+    // Label: show current group info
+    var g = state.groups[state.currentGroupIdx];
+    if (g) {
+      var groupLabel = state.groups.length > 1 ? t(g.labelKey) + ': ' : '';
+      label.textContent = groupLabel + (state.currentAltInGroup + 1) + '/' + g.forms.length;
+    } else {
+      label.textContent = (state.currentAlt + 1) + '/' + state.alternatives.length;
+    }
   } else {
     bar.style.display = 'none';
+    if (groupsEl) groupsEl.style.display = 'none';
   }
 }
 
@@ -639,8 +752,14 @@ function noteNameForKey(pc, key) {
   return padNoteNameForKey(pc, key);
 }
 
-function getDiatonicTetrads(scalePCS, key) {
-  return padGetDiatonicTetrads(scalePCS, key);
+function getDiatonicTetrads(scalePCS, key, noteCount) {
+  return padGetDiatonicTetrads(scalePCS, key, noteCount);
+}
+
+function toggleDiatonicMode() {
+  AppState.diatonicMode = AppState.diatonicMode === 'tetrad' ? 'triad' : 'tetrad';
+  renderDiatonicBar();
+  saveAppSettings();
 }
 
 function renderDiatonicBar() {
@@ -665,8 +784,20 @@ function renderDiatonicBar() {
     return;
   }
   bar.style.display = 'flex';
-  const tetrads = getDiatonicTetrads(scale.pcs, AppState.key);
+  const noteCount = AppState.diatonicMode === 'triad' ? 3 : 4;
+  const tetrads = getDiatonicTetrads(scale.pcs, AppState.key, noteCount);
   bar.innerHTML = '';
+  // Segment toggle (3 | 4)
+  const wrap = document.createElement('div');
+  wrap.className = 'diatonic-toggle-wrap';
+  [3, 4].forEach(n => {
+    const btn = document.createElement('button');
+    btn.className = 'diatonic-toggle-btn' + (noteCount === n ? ' active' : '');
+    btn.textContent = n;
+    btn.onclick = () => { AppState.diatonicMode = n === 3 ? 'triad' : 'tetrad'; renderDiatonicBar(); saveAppSettings(); };
+    wrap.appendChild(btn);
+  });
+  bar.appendChild(wrap);
   tetrads.forEach((t, i) => {
     const btn = document.createElement('button');
     btn.className = 'diatonic-btn';

@@ -382,6 +382,12 @@ document.addEventListener('click', function(e) {
 
     <!-- Chord Mode (3-Step Builder) -->
     <div id="chord-panel" style="display:none;">
+      <!-- Text Chord Input -->
+      <div class="text-chord-container">
+        <input type="text" id="text-chord-input" placeholder="Cm7, G7(b9,#11), Am7/G ..." autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div id="text-chord-dropdown" class="text-chord-dropdown"></div>
+      </div>
+
       <!-- Chord Display -->
       <div class="chord-display">
         <span class="chord-name" id="chord-name"></span>

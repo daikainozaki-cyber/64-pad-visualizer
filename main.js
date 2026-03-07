@@ -8,6 +8,7 @@ initKeyButtons();
 initScaleSelect();
 initQualityGrid();
 initTensionGrid();
+initTextChordInput();
 updateOctaveLabel();
 initMemorySlots();
 initWebMIDI();

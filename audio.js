@@ -32,18 +32,44 @@ const autoFilter = audioCtx.createBiquadFilter();
 autoFilter.type = 'lowpass';
 autoFilter.frequency.setValueAtTime(20000, 0); // fully open when off
 autoFilter.Q.setValueAtTime(4, 0); // resonance for wah character
+const autoFilter2 = audioCtx.createBiquadFilter(); // 2nd stage for 4-pole
+autoFilter2.type = 'lowpass';
+autoFilter2.frequency.setValueAtTime(20000, 0);
+autoFilter2.Q.setValueAtTime(4, 0);
 let autoFilterEnabled = false;
 let autoFilterDepth = 0.7;  // 0-1: sweep range
 let autoFilterSpeed = 0.15; // decay time in seconds
+let autoFilterType = 'lowpass';  // 'lowpass' or 'bandpass'
+let autoFilterPoles = 2;         // 2 or 4
+let autoFilterQ = 2;             // resonance: 1=fat, 10=narrow/vocal
 
 function triggerAutoFilter() {
   if (!autoFilterEnabled) return;
   const now = audioCtx.currentTime;
-  const hiFreq = 800 + autoFilterDepth * 7200; // 800-8000 Hz
-  const loFreq = 200 + (1 - autoFilterDepth) * 600; // 200-800 Hz
+  var isBP = autoFilterType === 'bandpass';
+  // LP: Mu-Tron LP style — sweep 800-8kHz, Q=4 (resonant peak)
+  // BP: Cry Baby / Mu-Tron BP — sweep 450-2500Hz, Q=5 (focused wah)
+  //     Depth slider = center freq bias (low=bassy, high=bright)
+  var hiFreq, loFreq;
+  if (isBP) {
+    // Cry Baby / Mu-Tron BP: 800-3500Hz sweep
+    hiFreq = 800 + autoFilterDepth * 2700;
+    loFreq = 350 + autoFilterDepth * 250;
+  } else {
+    // Mu-Tron LP: 800-8000Hz sweep
+    hiFreq = 800 + autoFilterDepth * 7200;
+    loFreq = 200 + (1 - autoFilterDepth) * 600;
+  }
+  autoFilter.Q.setValueAtTime(autoFilterQ, now);
+  autoFilter2.Q.setValueAtTime(autoFilterQ, now);
   autoFilter.frequency.cancelScheduledValues(now);
   autoFilter.frequency.setValueAtTime(hiFreq, now);
   autoFilter.frequency.exponentialRampToValueAtTime(loFreq, now + autoFilterSpeed);
+  if (autoFilterPoles === 4) {
+    autoFilter2.frequency.cancelScheduledValues(now);
+    autoFilter2.frequency.setValueAtTime(hiFreq, now);
+    autoFilter2.frequency.exponentialRampToValueAtTime(loFreq, now + autoFilterSpeed);
+  }
 }
 
 // --- Phaser: 4-stage allpass ---
@@ -68,10 +94,11 @@ const phaserWet = audioCtx.createGain();
 phaserWet.gain.setValueAtTime(0, 0);
 const phaserMix = audioCtx.createGain();
 masterGain.connect(autoFilter);
-autoFilter.connect(phaserFilters[0]);
+autoFilter.connect(autoFilter2);
+autoFilter2.connect(phaserFilters[0]);
 phaserFilters[3].connect(phaserWet);
 phaserWet.connect(phaserMix);
-autoFilter.connect(phaserMix);
+autoFilter2.connect(phaserMix);
 
 // --- Flanger: modulated short delay ---
 const flangerDelay = audioCtx.createDelay(0.02);
@@ -314,16 +341,13 @@ const ENGINES = {
   ep: {
     name: 'E.PIANO',
     presets: {
-      // WebAudioFont (no noise, no velocity layers — clean fallback)
       'Rhodes 1': { data: _tone_0040_FluidR3_GM_sf2_file, label: 'Rhodes 1' },
       'Rhodes 2': { data: _tone_0040_GeneralUserGS_sf2_file, label: 'Rhodes 2' },
       'Rhodes 3': { data: _tone_0040_Chaos_sf2_file, label: 'Rhodes 3' },
       'FM EP 1':  { data: _tone_0050_FluidR3_GM_sf2_file, label: 'FM EP 1' },
       'FM EP 2':  { data: _tone_0050_GeneralUserGS_sf2_file, label: 'FM EP 2' },
-      // Clavinet (GM program 7)
       'Clav 1':   { data: _tone_0070_FluidR3_GM_sf2_file, label: 'Clavinet 1' },
       'Clav 2':   { data: _tone_0070_GeneralUserGS_sf2_file, label: 'Clavinet 2' },
-      // Sampler (5 velocity layers, baked loops)
       'jRhodes3c': {
         sampler: typeof _jRhodes3c !== 'undefined' ? _jRhodes3c : null,
         label: '1977 Rhodes Mark I (Sampler)',
@@ -332,6 +356,29 @@ const ENGINES = {
     defaultPreset: 'Rhodes 1',
   },
 };
+
+// --- Velocity-driven saturation (soft clipping) ---
+let saturationDrive = 0; // 0=off, 0.1-1.0=mild-heavy
+
+function _createVoiceSaturation(velocity) {
+  if (saturationDrive === 0) return { input: masterGain, cleanup: null };
+  var ws = audioCtx.createWaveShaper();
+  // Drive scales with velocity squared: low vel → clean, high vel → gritty
+  var velDrive = 1 + velocity * velocity * saturationDrive * 20;
+  var n = 256, curve = new Float32Array(n);
+  var tanhD = Math.tanh(velDrive);
+  for (var i = 0; i < n; i++) {
+    var x = (i * 2) / n - 1;
+    curve[i] = Math.tanh(x * velDrive) / tanhD;
+  }
+  ws.curve = curve;
+  ws.oversample = '2x';
+  ws.connect(masterGain);
+  return {
+    input: ws,
+    cleanup: function() { try { ws.disconnect(); } catch(_) {} }
+  };
+}
 
 const AudioState = {
   engineKey: 'organ',
@@ -342,7 +389,6 @@ const AudioState = {
 
 function setEngine(key) {
   if (!ENGINES[key]) return;
-  // Selecting an engine turns sound on
   if (_soundMuted) { _soundMuted = false; _updateMuteBtn(); }
   _hideFirstTimeHint();
   noteOffAll();
@@ -350,7 +396,6 @@ function setEngine(key) {
   AudioState.engine = ENGINES[key];
   AudioState.presetKey = AudioState.engine.defaultPreset;
   AudioState.instrument = AudioState.engine.presets[AudioState.presetKey];
-  // Decode new engine's presets
   Object.values(AudioState.engine.presets).forEach(p => {
     if (p.sampler) {
       _decodeSamplerZones(p.sampler);
@@ -362,12 +407,32 @@ function setEngine(key) {
   saveSoundSettings();
 }
 
+function selectSound(combinedValue) {
+  var parts = combinedValue.split(':');
+  var engKey = parts[0], presetKey = parts.slice(1).join(':');
+  if (!ENGINES[engKey] || !ENGINES[engKey].presets[presetKey]) return;
+  if (_soundMuted) { _soundMuted = false; _updateMuteBtn(); }
+  _hideFirstTimeHint();
+  noteOffAll();
+  if (engKey !== AudioState.engineKey) {
+    AudioState.engineKey = engKey;
+    AudioState.engine = ENGINES[engKey];
+    Object.values(AudioState.engine.presets).forEach(p => {
+      if (p.sampler) _decodeSamplerZones(p.sampler);
+      else if (p.data) wafPlayer.loader.decodeAfterLoading(audioCtx, p.data);
+    });
+  }
+  AudioState.presetKey = presetKey;
+  AudioState.instrument = AudioState.engine.presets[presetKey];
+  saveSoundSettings();
+}
+
 function setPreset(name) {
   if (!AudioState.engine.presets[name]) return;
   AudioState.presetKey = name;
   AudioState.instrument = AudioState.engine.presets[name];
   const sel = document.getElementById('organ-preset');
-  if (sel) sel.value = name;
+  if (sel) sel.value = AudioState.engineKey + ':' + name;
   saveSoundSettings();
 }
 
@@ -376,7 +441,7 @@ function saveSoundSettings() {
     const s = {};
     s.engine = AudioState.engineKey;
     s.preset = AudioState.presetKey;
-    ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut','snd-af-depth','snd-af-speed'].forEach(id => {
+    ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut','snd-af-depth','snd-af-speed','snd-af-q','snd-drive'].forEach(id => {
       const el = document.getElementById(id);
       if (el) s[id] = el.value;
     });
@@ -385,6 +450,8 @@ function saveSoundSettings() {
     if (lc) s.loCutEnabled = lc.checked;
     if (hc) s.hiCutEnabled = hc.checked;
     s.autoFilterEnabled = autoFilterEnabled;
+    s.autoFilterType = autoFilterType;
+    s.autoFilterPoles = autoFilterPoles;
     s.soundMuted = _soundMuted;
     localStorage.setItem('64pad-sound', JSON.stringify(s));
   } catch(_) {}
@@ -395,7 +462,7 @@ function _showFirstTimeHint() {
   if (!header) return;
   var hint = document.createElement('div');
   hint.id = 'sound-first-hint';
-  hint.textContent = I18N && I18N.t ? I18N.t('ui.sound_hint') : 'Select ORGAN or E.PIANO to enable sound';
+  hint.textContent = I18N && I18N.t ? I18N.t('ui.sound_hint') : 'Select a preset to enable sound';
   hint.style.cssText = 'font-size:0.65rem;color:#4a9eff;text-align:center;padding:2px 0;animation:hint-pulse 2s ease-in-out infinite';
   header.parentNode.insertBefore(hint, header);
   // Also show the fullscreen audio overlay for first-time users
@@ -428,15 +495,17 @@ function loadSoundSettings() {
     if (!raw) { _showFirstTimeHint(); return; }
     const s = JSON.parse(raw);
     if (s.engine && ENGINES[s.engine]) {
-      // setEngine turns sound on, so temporarily suppress
       var wasMuted = _soundMuted;
       setEngine(s.engine);
       if (s.preset && AudioState.engine.presets[s.preset]) setPreset(s.preset);
+      // Sync dropdown to combined value
+      var sel = document.getElementById('organ-preset');
+      if (sel) sel.value = AudioState.engineKey + ':' + AudioState.presetKey;
       // Restore muted state from saved settings (default: muted)
       _soundMuted = s.soundMuted !== undefined ? s.soundMuted : true;
       _updateMuteBtn();
     }
-    ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut','snd-af-depth','snd-af-speed'].forEach(id => {
+    ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut','snd-af-depth','snd-af-speed','snd-af-q','snd-drive'].forEach(id => {
       if (s[id] === undefined) return;
       const el = document.getElementById(id);
       if (!el) return;
@@ -458,25 +527,36 @@ function loadSoundSettings() {
       af.checked = s.autoFilterEnabled;
       af.dispatchEvent(new Event('change'));
     }
+    if (s.autoFilterType) {
+      autoFilterType = s.autoFilterType;
+      autoFilter.type = autoFilterType;
+      autoFilter2.type = autoFilterType;
+      var tb = document.getElementById('snd-af-type');
+      if (tb) tb.textContent = autoFilterType === 'lowpass' ? 'LP' : 'BP';
+    }
+    if (s.autoFilterPoles) {
+      autoFilterPoles = s.autoFilterPoles;
+      var pb = document.getElementById('snd-af-poles');
+      if (pb) pb.textContent = autoFilterPoles + 'P';
+      if (autoFilterPoles === 2) autoFilter2.frequency.setValueAtTime(20000, audioCtx.currentTime);
+    }
   } catch(_) {}
 }
 
 function renderSoundControls() {
-  // Update engine buttons
-  document.querySelectorAll('.engine-btn').forEach(btn => btn.classList.remove('active'));
-  const activeBtn = document.getElementById('eng-' + AudioState.engineKey);
-  if (activeBtn) activeBtn.classList.add('active');
-  // Update preset dropdown
   const sel = document.getElementById('organ-preset');
-  if (sel) {
-    sel.innerHTML = '';
-    Object.entries(AudioState.engine.presets).forEach(([key, inst]) => {
-      const opt = document.createElement('option');
-      opt.value = key; opt.textContent = inst.label;
+  if (!sel) return;
+  sel.innerHTML = '';
+  Object.entries(ENGINES).forEach(function(entry) {
+    var engineKey = entry[0], engine = entry[1];
+    Object.entries(engine.presets).forEach(function(pe) {
+      var opt = document.createElement('option');
+      opt.value = engineKey + ':' + pe[0];
+      opt.textContent = pe[1].label;
       sel.appendChild(opt);
     });
-    sel.value = AudioState.presetKey;
-  }
+  });
+  sel.value = AudioState.engineKey + ':' + AudioState.presetKey;
 }
 
 // --- Voice management ---
@@ -488,10 +568,9 @@ function _updateMuteBtn() {
     btn.textContent = _soundMuted ? '\uD83D\uDD07' : '\uD83D\uDD0A';
     btn.style.opacity = _soundMuted ? '0.5' : '1';
   }
-  // Dim engine buttons when muted
-  document.querySelectorAll('.engine-btn').forEach(function(b) {
-    b.style.opacity = _soundMuted ? '0.4' : '';
-  });
+  // Dim preset selector when muted
+  var sel = document.getElementById('organ-preset');
+  if (sel) sel.style.opacity = _soundMuted ? '0.4' : '';
 }
 
 function toggleSoundMute() {
@@ -513,31 +592,36 @@ function noteOn(midi, velocity, poly, _retries) {
 
   triggerAutoFilter();
 
+  // Per-voice saturation chain (velocity-driven)
+  var sat = _createVoiceSaturation(velocity);
+
   // Route to sampler engine or WebAudioFont
   let envelope;
   if (AudioState.instrument.sampler) {
-    envelope = _samplerNoteOn(AudioState.instrument.sampler, midi, velocity, masterGain);
+    envelope = _samplerNoteOn(AudioState.instrument.sampler, midi, velocity, sat.input);
   } else {
     envelope = wafPlayer.queueWaveTable(
-      audioCtx, masterGain, AudioState.instrument.data,
+      audioCtx, sat.input, AudioState.instrument.data,
       0, midi, 99999, velocity
     );
   }
   if (!envelope) {
-    // Sample not yet decoded — retry after short delay (up to 3 times)
+    if (sat.cleanup) sat.cleanup();
     _retries = _retries || 0;
     if (_retries < 3) {
       setTimeout(() => noteOn(midi, velocity, poly, _retries + 1), 100);
     }
     return;
   }
-  activeVoices.set(midi, { envelope });
+  activeVoices.set(midi, { envelope, satCleanup: sat.cleanup });
 }
 
 function noteOff(midi) {
   const v = activeVoices.get(midi);
   if (!v) return;
   try { v.envelope.cancel(); } catch(_){}
+  // Cleanup saturation nodes after fadeout
+  if (v.satCleanup) setTimeout(v.satCleanup, 2000);
   activeVoices.delete(midi);
 }
 
@@ -737,7 +821,10 @@ onReady(() => {
     autoFilterEnabled = afToggle.checked;
     afToggle.closest('.ep-knob').classList.toggle('filter-active', autoFilterEnabled);
     // When off, open filter fully
-    if (!autoFilterEnabled) autoFilter.frequency.setValueAtTime(20000, audioCtx.currentTime);
+    if (!autoFilterEnabled) {
+      autoFilter.frequency.setValueAtTime(20000, audioCtx.currentTime);
+      autoFilter2.frequency.setValueAtTime(20000, audioCtx.currentTime);
+    }
     saveSoundSettings();
   });
   if (afDepthSlider && afDepthVal) {
@@ -755,10 +842,48 @@ onReady(() => {
     });
   }
 
-  // Preset selector (populated by renderSoundControls)
-  const presetSel = document.getElementById('organ-preset');
-  if (presetSel) {
-    presetSel.addEventListener('change', () => { setPreset(presetSel.value); saveSoundSettings(); });
+  // Filter Q (resonance) slider
+  const afQSlider = document.getElementById('snd-af-q');
+  const afQVal = document.getElementById('snd-af-q-val');
+  if (afQSlider && afQVal) {
+    afQSlider.addEventListener('input', () => {
+      autoFilterQ = parseFloat(afQSlider.value);
+      afQVal.textContent = parseFloat(afQSlider.value).toFixed(1);
+      saveSoundSettings();
+    });
+  }
+
+  // Filter type (LP/BP) and poles (2P/4P) switches
+  const afTypeBtn = document.getElementById('snd-af-type');
+  if (afTypeBtn) afTypeBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); e.preventDefault();
+    autoFilterType = autoFilterType === 'lowpass' ? 'bandpass' : 'lowpass';
+    autoFilter.type = autoFilterType;
+    autoFilter2.type = autoFilterType;
+    afTypeBtn.textContent = autoFilterType === 'lowpass' ? 'LP' : 'BP';
+    saveSoundSettings();
+  });
+  const afPoleBtn = document.getElementById('snd-af-poles');
+  if (afPoleBtn) afPoleBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); e.preventDefault();
+    autoFilterPoles = autoFilterPoles === 2 ? 4 : 2;
+    afPoleBtn.textContent = autoFilterPoles + 'P';
+    // In 2-pole mode, keep 2nd filter fully open
+    if (autoFilterPoles === 2) {
+      autoFilter2.frequency.setValueAtTime(20000, audioCtx.currentTime);
+    }
+    saveSoundSettings();
+  });
+
+  // Saturation drive slider
+  const driveSlider = document.getElementById('snd-drive');
+  const driveVal = document.getElementById('snd-drive-val');
+  if (driveSlider && driveVal) {
+    driveSlider.addEventListener('input', () => {
+      saturationDrive = parseFloat(driveSlider.value);
+      driveVal.textContent = parseFloat(driveSlider.value).toFixed(2);
+      saveSoundSettings();
+    });
   }
 
   // Velocity sensitivity sliders

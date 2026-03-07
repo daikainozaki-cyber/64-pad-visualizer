@@ -27,6 +27,25 @@ masterReverbGain.connect(masterComp);
 const masterGain = audioCtx.createGain();
 masterGain.gain.setValueAtTime(0.6, 0);
 
+// --- Auto Filter (Envelope Filter / Auto-Wah) ---
+const autoFilter = audioCtx.createBiquadFilter();
+autoFilter.type = 'lowpass';
+autoFilter.frequency.setValueAtTime(20000, 0); // fully open when off
+autoFilter.Q.setValueAtTime(4, 0); // resonance for wah character
+let autoFilterEnabled = false;
+let autoFilterDepth = 0.7;  // 0-1: sweep range
+let autoFilterSpeed = 0.15; // decay time in seconds
+
+function triggerAutoFilter() {
+  if (!autoFilterEnabled) return;
+  const now = audioCtx.currentTime;
+  const hiFreq = 800 + autoFilterDepth * 7200; // 800-8000 Hz
+  const loFreq = 200 + (1 - autoFilterDepth) * 600; // 200-800 Hz
+  autoFilter.frequency.cancelScheduledValues(now);
+  autoFilter.frequency.setValueAtTime(hiFreq, now);
+  autoFilter.frequency.exponentialRampToValueAtTime(loFreq, now + autoFilterSpeed);
+}
+
 // --- Phaser: 4-stage allpass ---
 const phaserFilters = [];
 for (let i = 0; i < 4; i++) {
@@ -48,10 +67,11 @@ phaserLFO.start(0);
 const phaserWet = audioCtx.createGain();
 phaserWet.gain.setValueAtTime(0, 0);
 const phaserMix = audioCtx.createGain();
-masterGain.connect(phaserFilters[0]);
+masterGain.connect(autoFilter);
+autoFilter.connect(phaserFilters[0]);
 phaserFilters[3].connect(phaserWet);
 phaserWet.connect(phaserMix);
-masterGain.connect(phaserMix);
+autoFilter.connect(phaserMix);
 
 // --- Flanger: modulated short delay ---
 const flangerDelay = audioCtx.createDelay(0.02);
@@ -300,6 +320,9 @@ const ENGINES = {
       'Rhodes 3': { data: _tone_0040_Chaos_sf2_file, label: 'Rhodes 3' },
       'FM EP 1':  { data: _tone_0050_FluidR3_GM_sf2_file, label: 'FM EP 1' },
       'FM EP 2':  { data: _tone_0050_GeneralUserGS_sf2_file, label: 'FM EP 2' },
+      // Clavinet (GM program 7)
+      'Clav 1':   { data: _tone_0070_FluidR3_GM_sf2_file, label: 'Clavinet 1' },
+      'Clav 2':   { data: _tone_0070_GeneralUserGS_sf2_file, label: 'Clavinet 2' },
       // Sampler (5 velocity layers, baked loops)
       'jRhodes3c': {
         sampler: typeof _jRhodes3c !== 'undefined' ? _jRhodes3c : null,
@@ -353,7 +376,7 @@ function saveSoundSettings() {
     const s = {};
     s.engine = AudioState.engineKey;
     s.preset = AudioState.presetKey;
-    ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut'].forEach(id => {
+    ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut','snd-af-depth','snd-af-speed'].forEach(id => {
       const el = document.getElementById(id);
       if (el) s[id] = el.value;
     });
@@ -361,6 +384,7 @@ function saveSoundSettings() {
     const hc = document.getElementById('snd-hicut-toggle');
     if (lc) s.loCutEnabled = lc.checked;
     if (hc) s.hiCutEnabled = hc.checked;
+    s.autoFilterEnabled = autoFilterEnabled;
     s.soundMuted = _soundMuted;
     localStorage.setItem('64pad-sound', JSON.stringify(s));
   } catch(_) {}
@@ -412,7 +436,7 @@ function loadSoundSettings() {
       _soundMuted = s.soundMuted !== undefined ? s.soundMuted : true;
       _updateMuteBtn();
     }
-    ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut'].forEach(id => {
+    ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut','snd-af-depth','snd-af-speed'].forEach(id => {
       if (s[id] === undefined) return;
       const el = document.getElementById(id);
       if (!el) return;
@@ -428,6 +452,11 @@ function loadSoundSettings() {
     if (hc && s.hiCutEnabled !== undefined && hc.checked !== s.hiCutEnabled) {
       hc.checked = s.hiCutEnabled;
       hc.dispatchEvent(new Event('change'));
+    }
+    const af = document.getElementById('snd-af-toggle');
+    if (af && s.autoFilterEnabled !== undefined && af.checked !== s.autoFilterEnabled) {
+      af.checked = s.autoFilterEnabled;
+      af.dispatchEvent(new Event('change'));
     }
   } catch(_) {}
 }
@@ -481,6 +510,8 @@ function noteOn(midi, velocity, poly, _retries) {
     try { existing.envelope.cancel(); } catch(_){}
     activeVoices.delete(midi);
   }
+
+  triggerAutoFilter();
 
   // Route to sampler engine or WebAudioFont
   let envelope;
@@ -692,6 +723,34 @@ onReady(() => {
     hiCutSlider.addEventListener('input', () => {
       hiCutVal.textContent = parseInt(hiCutSlider.value);
       hiCutFilter.frequency.setValueAtTime(parseFloat(hiCutSlider.value), audioCtx.currentTime);
+      saveSoundSettings();
+    });
+  }
+
+  // Auto Filter (Envelope Filter) toggle + depth + speed
+  const afToggle = document.getElementById('snd-af-toggle');
+  const afDepthSlider = document.getElementById('snd-af-depth');
+  const afDepthVal = document.getElementById('snd-af-depth-val');
+  const afSpeedSlider = document.getElementById('snd-af-speed');
+  const afSpeedVal = document.getElementById('snd-af-speed-val');
+  if (afToggle) afToggle.addEventListener('change', () => {
+    autoFilterEnabled = afToggle.checked;
+    afToggle.closest('.ep-knob').classList.toggle('filter-active', autoFilterEnabled);
+    // When off, open filter fully
+    if (!autoFilterEnabled) autoFilter.frequency.setValueAtTime(20000, audioCtx.currentTime);
+    saveSoundSettings();
+  });
+  if (afDepthSlider && afDepthVal) {
+    afDepthSlider.addEventListener('input', () => {
+      autoFilterDepth = parseFloat(afDepthSlider.value);
+      afDepthVal.textContent = parseFloat(afDepthSlider.value).toFixed(2);
+      saveSoundSettings();
+    });
+  }
+  if (afSpeedSlider && afSpeedVal) {
+    afSpeedSlider.addEventListener('input', () => {
+      autoFilterSpeed = parseFloat(afSpeedSlider.value);
+      afSpeedVal.textContent = parseFloat(afSpeedSlider.value).toFixed(2);
       saveSoundSettings();
     });
   }

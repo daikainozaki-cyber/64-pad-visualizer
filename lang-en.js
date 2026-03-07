@@ -242,6 +242,7 @@ I18N.addLang('en', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Learn more on the blog \u2192',
     version_history: 'Version History',
+    vh_323: '<b>V3.23</b> \u2014 Text chord input with autocomplete. Press "/" to focus, supports abbreviations (dim, h=m7\u266D5), tension-count sorting',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
     vh_321: '<b>V3.21</b> \u2014 Diatonic triad/tetrad toggle. Guitar/bass positions grouped by root string',
     vh_37: '<b>V3.7</b> \u2014 Voicing position preservation (auto-maintain fingering shape on chromatic movement). Pad grid, staff, and chord detection during playback. <a href="https://youtu.be/mHSMM4GDNkE" target="_blank" style="color:var(--accent);">Video</a>',

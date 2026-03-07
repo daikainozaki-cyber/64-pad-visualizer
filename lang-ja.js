@@ -242,6 +242,7 @@ I18N.addLang('ja', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: '\u30D6\u30ED\u30B0\u3067\u3082\u3063\u3068\u8A73\u3057\u304F \u2192',
     version_history: 'Version History',
+    vh_323: '<b>V3.23</b> \u2014 テキストコード入力。オートコンプリート候補表示、「/」キーでフォーカス、dim・h等の略記法対応、テンションソート',
     vh_322: '<b>V3.22</b> \u2014 五度圏表示。キー選択と連動、ダイアトニックコード・機能表示、マイナースケールモード切替対応',
     vh_321: '<b>V3.21</b> \u2014 ダイアトニック3和音/4和音切替。ギター/ベースポジションのルート弦別グループ表示',
     vh_37: '<b>V3.7</b> \u2014 \u30DC\u30A4\u30B7\u30F3\u30B0\u30DD\u30B8\u30B7\u30E7\u30F3\u4FDD\u6301\uFF08\u534A\u97F3\u79FB\u52D5\u6642\u306B\u30D5\u30A3\u30F3\u30AC\u30EA\u30F3\u30B0\u5F62\u72B6\u3092\u81EA\u52D5\u7DAD\u6301\uFF09\u3002\u518D\u751F\u4E2D\u306B\u30D1\u30C3\u30C9\u30B0\u30EA\u30C3\u30C9\u30FB\u4E94\u7DDA\u8B5C\u30FB\u30B3\u30FC\u30C9\u691C\u51FA\u3092\u8868\u793A\u3002<a href="https://youtu.be/mHSMM4GDNkE" target="_blank" style="color:var(--accent);">\u7D39\u4ECB\u52D5\u753B</a>',

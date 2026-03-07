@@ -240,6 +240,7 @@ I18N.addLang('it', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Scopri di pi\u00F9 sul blog \u2192',
     version_history: 'Cronologia delle versioni',
+    vh_323: '<b>V3.23</b> \u2014 Input testuale accordi con autocompletamento. "/" per attivare, abbreviazioni (dim, h=m7\u266D5), ordinamento per tensioni',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
     vh_321: '<b>V3.21</b> \u2014 Alternanza triade/tetrade diatonica. Posizioni chitarra/basso raggruppate per corda fondamentale',
     vh_37: '<b>V3.7</b> \u2014 Preservazione della posizione di voicing (mantenimento automatico della forma della diteggiatura nei movimenti cromatici). Griglia pad, pentagramma e rilevamento accordi durante la riproduzione. <a href="https://youtu.be/mHSMM4GDNkE" target="_blank" style="color:var(--accent);">Video</a>',

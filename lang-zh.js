@@ -240,6 +240,7 @@ I18N.addLang('zh', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: '在博客上了解更多 \u2192',
     version_history: '\u7248\u672C\u5386\u53F2',
+    vh_323: '<b>V3.23</b> \u2014 文本和弦输入。自动补全候选，按"/"聚焦，支持dim、h=m7\u266D5等缩写，按延伸音数量排序',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
     vh_321: '<b>V3.21</b> \u2014 自然和弦三和弦/四和弦切换。吉他/贝斯位置按根音弦分组',
     vh_37: '<b>V3.7</b> \u2014 \u58F0\u4F4D\u4FDD\u6301\uFF08\u534A\u97F3\u79FB\u52A8\u65F6\u81EA\u52A8\u7EF4\u6301\u6307\u6CD5\u5F62\u72B6\uFF09\u3002\u64AD\u653E\u65F6\u7684\u6253\u51FB\u5757\u7F51\u683C\u3001\u4E94\u7EBF\u8C31\u4E0E\u548C\u5F26\u68C0\u6D4B\u3002 <a href="https://youtu.be/mHSMM4GDNkE" target="_blank" style="color:var(--accent);">\u89C6\u9891</a>',

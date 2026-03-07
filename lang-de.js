@@ -240,6 +240,7 @@ I18N.addLang('de', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Mehr erfahren im Blog \u2192',
     version_history: 'Versionshistorie',
+    vh_323: '<b>V3.23</b> \u2014 Text-Akkordeingabe mit Autovervollst\u00E4ndigung. "/" zum Fokussieren, Abk\u00FCrzungen (dim, h=m7\u266D5), Sortierung nach Tensions',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
     vh_321: '<b>V3.21</b> \u2014 Diatonischer Dreiklang/Vierklang-Umschalter. Gitarren-/Bass-Positionen nach Grundton-Saite gruppiert',
     vh_37: '<b>V3.7</b> \u2014 Voicing-Position beibehalten (Fingersatz-Form bei chromatischer Bewegung automatisch beibehalten). Pad-Raster, Notenzeile und Akkorderkennung w\u00E4hrend der Wiedergabe. <a href="https://youtu.be/mHSMM4GDNkE" target="_blank" style="color:var(--accent);">Video</a>',

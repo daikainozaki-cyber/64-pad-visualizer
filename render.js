@@ -1804,10 +1804,18 @@ function renderCircle() {
 
   const circleKeyIndex = CHROMATIC_TO_CIRCLE[AppState.key];
 
+  // Determine circle selectedType from current scale
+  var circleType = 'major';
+  var circleScaleMode = 'natural';
+  if (AppState.scaleIdx === 5) { circleType = 'minor'; circleScaleMode = 'natural'; }
+  else if (AppState.scaleIdx === 7) { circleType = 'minor'; circleScaleMode = 'harmonic'; }
+  else if (AppState.scaleIdx === 14) { circleType = 'minor'; circleScaleMode = 'melodic'; }
+
   if (!_circleInstance) {
     _circleInstance = padRenderCircleOfFifths(svgEl, {
       selectedKeyIndex: circleKeyIndex,
-      selectedType: 'major',
+      selectedType: circleType,
+      scaleMode: circleScaleMode,
       size: Math.min(DIAGRAM_WIDTH, 400),
       showTitle: true,
       showDegrees: true,
@@ -1818,12 +1826,31 @@ function renderCircle() {
         document.querySelectorAll('.key-btn').forEach(function(btn) {
           btn.classList.toggle('active', parseInt(btn.dataset.key) === chromatic);
         });
+        // Switch scale when major/minor type changes
+        if (type === 'major' && AppState.scaleIdx !== 0) {
+          AppState.scaleIdx = 0; // Major (Ionian)
+          document.getElementById('scale-select').value = 0;
+        } else if (type === 'minor') {
+          if (AppState.scaleIdx !== 5 && AppState.scaleIdx !== 7 && AppState.scaleIdx !== 14) {
+            AppState.scaleIdx = 5; // Natural Minor
+            document.getElementById('scale-select').value = 5;
+          }
+        }
+        render();
+      },
+      onScaleModeChange: function(mode) {
+        if (mode === 'natural') { AppState.scaleIdx = 5; }
+        else if (mode === 'harmonic') { AppState.scaleIdx = 7; }
+        else if (mode === 'melodic') { AppState.scaleIdx = 14; }
+        document.getElementById('scale-select').value = AppState.scaleIdx;
         render();
       }
     });
   } else {
     _circleInstance.update({
       selectedKeyIndex: circleKeyIndex,
+      selectedType: circleType,
+      scaleMode: circleScaleMode,
       size: Math.min(DIAGRAM_WIDTH, 400)
     });
   }

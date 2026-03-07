@@ -100,6 +100,7 @@ I18N.addLang('ko', {
     tap_to_start: '탭하여 소리 활성화',
     load_vst: 'VST/AU 플러그인 불러오기...',
     affiliate_label: '',
+    circle: '5도권',
   },
   label: {
     note_name: '음이름',
@@ -235,6 +236,7 @@ I18N.addLang('ko', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: '\uBE14\uB85C\uADF8\uC5D0\uC11C \uB354 \uC54C\uC544\uBCF4\uAE30 \u2192',
     version_history: '\uBC84\uC804 \uAE30\uB85D',
+    vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
     vh_321: '<b>V3.21</b> \u2014 다이아토닉 3화음/4화음 전환. 기타/베이스 포지션 근음 현별 그룹화',
     vh_37: '<b>V3.7</b> \u2014 \uBCF4\uC774\uC2F1 \uC704\uCE58 \uC720\uC9C0 (\uBC18\uC74C \uC774\uB3D9 \uC2DC \uC6B4\uC9C0 \uD615\uD0DC \uC790\uB3D9 \uC720\uC9C0). \uC7AC\uC0DD \uC911 \uD328\uB4DC \uADF8\uB9AC\uB4DC, \uC624\uC120\uBCF4 \uBC0F \uCF54\uB4DC \uAC10\uC9C0. <a href="https://youtu.be/mHSMM4GDNkE" target="_blank" style="color:var(--accent);">\uB3D9\uC601\uC0C1</a>',
     vh_35: '<b>V3.5</b> \u2014 MIDI \uD30C\uC77C \uC7AC\uC0DD \u2192 \uD328\uB4DC \uC870\uBA85 (\uD0C0\uC784\uB77C\uC778 \uC7AC\uC0DD, \uCF54\uB4DC\uBA85 \uD45C\uC2DC, Play/Pause/Stop/Seek)',

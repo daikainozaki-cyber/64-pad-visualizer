@@ -100,6 +100,7 @@ I18N.addLang('de', {
     tap_to_start: 'Tippen zum Aktivieren',
     load_vst: 'VST/AU-Plugin laden...',
     affiliate_label: '',
+    circle: 'Quintenzirkel',
   },
   label: {
     note_name: 'Note',
@@ -235,6 +236,7 @@ I18N.addLang('de', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Mehr erfahren im Blog \u2192',
     version_history: 'Versionshistorie',
+    vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
     vh_321: '<b>V3.21</b> \u2014 Diatonischer Dreiklang/Vierklang-Umschalter. Gitarren-/Bass-Positionen nach Grundton-Saite gruppiert',
     vh_37: '<b>V3.7</b> \u2014 Voicing-Position beibehalten (Fingersatz-Form bei chromatischer Bewegung automatisch beibehalten). Pad-Raster, Notenzeile und Akkorderkennung w\u00E4hrend der Wiedergabe. <a href="https://youtu.be/mHSMM4GDNkE" target="_blank" style="color:var(--accent);">Video</a>',
     vh_35: '<b>V3.5</b> \u2014 MIDI-Datei-Wiedergabe \u2192 Pad-Beleuchtung (Timeline-Wiedergabe, Akkordname-Anzeige, Play/Pause/Stop/Seek)',

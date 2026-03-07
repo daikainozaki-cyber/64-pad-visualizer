@@ -102,6 +102,7 @@ I18N.addLang('en', {
     tap_to_start: 'Tap to enable sound',
     load_vst: 'Load VST/AU Plugin...',
     affiliate_label: '',
+    circle: 'Circle',
   },
   label: {
     note_name: 'Note',
@@ -237,6 +238,7 @@ I18N.addLang('en', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Learn more on the blog \u2192',
     version_history: 'Version History',
+    vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
     vh_321: '<b>V3.21</b> \u2014 Diatonic triad/tetrad toggle. Guitar/bass positions grouped by root string',
     vh_37: '<b>V3.7</b> \u2014 Voicing position preservation (auto-maintain fingering shape on chromatic movement). Pad grid, staff, and chord detection during playback. <a href="https://youtu.be/mHSMM4GDNkE" target="_blank" style="color:var(--accent);">Video</a>',
     vh_35: '<b>V3.5</b> \u2014 MIDI file playback \u2192 pad lighting (timeline playback, chord name display, Play/Pause/Stop/Seek)',

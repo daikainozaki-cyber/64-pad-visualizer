@@ -100,6 +100,7 @@ I18N.addLang('it', {
     tap_to_start: 'Tocca per attivare il suono',
     load_vst: 'Carica plugin VST/AU...',
     affiliate_label: '',
+    circle: 'Circolo',
   },
   label: {
     note_name: 'Nota',
@@ -235,6 +236,7 @@ I18N.addLang('it', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Scopri di pi\u00F9 sul blog \u2192',
     version_history: 'Cronologia delle versioni',
+    vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
     vh_321: '<b>V3.21</b> \u2014 Alternanza triade/tetrade diatonica. Posizioni chitarra/basso raggruppate per corda fondamentale',
     vh_37: '<b>V3.7</b> \u2014 Preservazione della posizione di voicing (mantenimento automatico della forma della diteggiatura nei movimenti cromatici). Griglia pad, pentagramma e rilevamento accordi durante la riproduzione. <a href="https://youtu.be/mHSMM4GDNkE" target="_blank" style="color:var(--accent);">Video</a>',
     vh_35: '<b>V3.5</b> \u2014 Riproduzione file MIDI \u2192 illuminazione pad (riproduzione timeline, visualizzazione nome accordo, Play/Pause/Stop/Seek)',

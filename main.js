@@ -51,15 +51,19 @@ _landscapeMediaQuery.addEventListener('change', handleLandscapeChange);
   const sel = document.getElementById('scale-select');
   if (sel) sel.value = AppState.scaleIdx;
   // Display toggles
+  // Enforce exclusive theory view (staff / circle)
+  if (showStaff && showCircle) showCircle = false;
   document.getElementById('inst-toggle-guitar').classList.toggle('active', showGuitar);
   document.getElementById('inst-toggle-bass').classList.toggle('active', showBass);
   document.getElementById('inst-toggle-piano').classList.toggle('active', showPiano);
   document.getElementById('inst-toggle-staff').classList.toggle('active', showStaff);
+  document.getElementById('inst-toggle-circle').classList.toggle('active', showCircle);
   document.getElementById('inst-toggle-sound').classList.toggle('active', showSound);
   document.getElementById('guitar-wrap').style.display = showGuitar ? '' : 'none';
   document.getElementById('bass-wrap').style.display = showBass ? '' : 'none';
   document.getElementById('piano-wrap-display').style.display = showPiano ? '' : 'none';
   document.getElementById('staff-area').style.display = showStaff ? '' : 'none';
+  document.getElementById('circle-wrap').style.display = showCircle ? 'flex' : 'none';
   document.getElementById('sound-controls').style.display = showSound ? '' : 'none';
   document.getElementById('guitar-label-btn').style.display = (showGuitar || showBass) ? '' : 'none';
   document.getElementById('guitar-label-btn').textContent = guitarLabelMode === 'name' ? t('label.note_name') : t('label.degree');
@@ -122,6 +126,8 @@ document.addEventListener('keydown', (e) => {
     if (lk === 'g') { toggleInstrument('guitar'); return; }
     if (lk === 'b') { toggleInstrument('bass'); return; }
     if (lk === 'p') { toggleInstrument('piano'); return; }
+    if (lk === 'c') { toggleTheoryView('circle'); return; }
+    if (lk === 's') { toggleTheoryView('staff'); return; }
   }
 
   // Tab / Shift+Tab: Mode cycle (Scale → Chord → Input → Scale)

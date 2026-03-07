@@ -127,6 +127,7 @@ function saveAppSettings() {
       showBass: typeof showBass !== 'undefined' ? showBass : false,
       showPiano: typeof showPiano !== 'undefined' ? showPiano : false,
       showStaff: typeof showStaff !== 'undefined' ? showStaff : true,
+      showCircle: typeof showCircle !== 'undefined' ? showCircle : false,
       showSound: typeof showSound !== 'undefined' ? showSound : true,
       guitarLabelMode: typeof guitarLabelMode !== 'undefined' ? guitarLabelMode : 'name',
       velThreshold: AppState.velThreshold,
@@ -156,6 +157,7 @@ function loadAppSettings() {
     if (s.showBass !== undefined) showBass = s.showBass;
     if (s.showPiano !== undefined) showPiano = s.showPiano;
     if (s.showStaff !== undefined) showStaff = s.showStaff;
+    if (s.showCircle !== undefined) showCircle = s.showCircle;
     if (s.showSound !== undefined) showSound = s.showSound;
     if (s.guitarLabelMode) guitarLabelMode = s.guitarLabelMode;
     if (s.velThreshold !== undefined) AppState.velThreshold = s.velThreshold;

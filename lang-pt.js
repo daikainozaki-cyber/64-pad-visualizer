@@ -100,6 +100,7 @@ I18N.addLang('pt', {
     tap_to_start: 'Toque para ativar o som',
     load_vst: 'Carregar plugin VST/AU...',
     affiliate_label: '',
+    circle: 'Ciclo',
   },
   label: {
     note_name: 'Nota',
@@ -235,6 +236,7 @@ I18N.addLang('pt', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Saiba mais no blog \u2192',
     version_history: 'Hist\u00F3rico de vers\u00F5es',
+    vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
     vh_321: '<b>V3.21</b> \u2014 Altern\u00E2ncia tr\u00EDade/t\u00E9trade diat\u00F3nica. Posi\u00E7\u00F5es de guitarra/baixo agrupadas por corda raiz',
     vh_37: '<b>V3.7</b> \u2014 Preserva\u00E7\u00E3o da posi\u00E7\u00E3o de voicing (manuten\u00E7\u00E3o autom\u00E1tica da forma da digita\u00E7\u00E3o no movimento crom\u00E1tico). Grelha de pads, pauta e dete\u00E7\u00E3o de acordes durante a reprodu\u00E7\u00E3o. <a href="https://youtu.be/mHSMM4GDNkE" target="_blank" style="color:var(--accent);">V\u00EDdeo</a>',
     vh_35: '<b>V3.5</b> \u2014 Reprodu\u00E7\u00E3o de ficheiro MIDI \u2192 ilumina\u00E7\u00E3o de pads (reprodu\u00E7\u00E3o por timeline, visualiza\u00E7\u00E3o do nome do acorde, Play/Pause/Stop/Seek)',

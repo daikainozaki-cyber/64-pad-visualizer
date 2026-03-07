@@ -615,6 +615,7 @@ function render() {
   renderGuitarDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state);
   renderBassDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state);
   renderPianoDisplay(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS);
+  renderCircle();
 
   // Re-apply instrument highlights after SVG rebuild
   if (instrumentInputActive) {
@@ -954,6 +955,7 @@ let showGuitar = false;
 let showPiano = false;
 let showStaff = true;
 let showBass = false;
+let showCircle = false;
 let showSound = true;
 let soundExpanded = false;
 let guitarLabelMode = 'name'; // 'name' or 'degree'
@@ -981,19 +983,33 @@ function toggleInstrument(which) {
   if (which === 'guitar') showGuitar = !showGuitar;
   if (which === 'bass') showBass = !showBass;
   if (which === 'piano') showPiano = !showPiano;
-  if (which === 'staff') showStaff = !showStaff;
   if (which === 'sound') showSound = !showSound;
   document.getElementById('inst-toggle-guitar').classList.toggle('active', showGuitar);
   document.getElementById('inst-toggle-bass').classList.toggle('active', showBass);
   document.getElementById('inst-toggle-piano').classList.toggle('active', showPiano);
-  document.getElementById('inst-toggle-staff').classList.toggle('active', showStaff);
   document.getElementById('inst-toggle-sound').classList.toggle('active', showSound);
   document.getElementById('guitar-wrap').style.display = showGuitar ? '' : 'none';
   document.getElementById('bass-wrap').style.display = showBass ? '' : 'none';
   document.getElementById('piano-wrap-display').style.display = showPiano ? '' : 'none';
-  document.getElementById('staff-area').style.display = showStaff ? '' : 'none';
   document.getElementById('sound-controls').style.display = showSound ? '' : 'none';
   document.getElementById('guitar-label-btn').style.display = (showGuitar || showBass) ? '' : 'none';
+  render();
+  saveAppSettings();
+}
+
+// Staff / Circle exclusive toggle (theory view — right panel)
+function toggleTheoryView(which) {
+  if (which === 'staff') {
+    showStaff = !showStaff;
+    if (showStaff) showCircle = false; // exclusive
+  } else if (which === 'circle') {
+    showCircle = !showCircle;
+    if (showCircle) showStaff = false; // exclusive
+  }
+  document.getElementById('inst-toggle-staff').classList.toggle('active', showStaff);
+  document.getElementById('inst-toggle-circle').classList.toggle('active', showCircle);
+  document.getElementById('staff-area').style.display = showStaff ? '' : 'none';
+  document.getElementById('circle-wrap').style.display = showCircle ? 'flex' : 'none';
   render();
   saveAppSettings();
 }
@@ -1769,6 +1785,47 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
     t.setAttribute('font-size', '8px'); t.setAttribute('fill', '#888');
     t.textContent = 'C' + (startOctave + oct);
     svg.appendChild(t);
+  }
+}
+
+// ========================================
+// CIRCLE OF FIFTHS
+// ========================================
+// Chromatic pitch class → Circle of Fifths index (each step = +7 semitones mod 12)
+const CHROMATIC_TO_CIRCLE = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
+const CIRCLE_TO_CHROMATIC = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
+
+let _circleInstance = null;
+
+function renderCircle() {
+  if (!showCircle) return;
+  const svgEl = document.getElementById('circle-of-fifths');
+  if (!svgEl) return;
+
+  const circleKeyIndex = CHROMATIC_TO_CIRCLE[AppState.key];
+
+  if (!_circleInstance) {
+    _circleInstance = padRenderCircleOfFifths(svgEl, {
+      selectedKeyIndex: circleKeyIndex,
+      selectedType: 'major',
+      size: Math.min(DIAGRAM_WIDTH, 400),
+      showTitle: true,
+      showDegrees: true,
+      showScaleModeButtons: true,
+      onKeySelect: function(circleIdx, type) {
+        const chromatic = CIRCLE_TO_CHROMATIC[circleIdx];
+        AppState.key = chromatic;
+        document.querySelectorAll('.key-btn').forEach(function(btn) {
+          btn.classList.toggle('active', parseInt(btn.dataset.key) === chromatic);
+        });
+        render();
+      }
+    });
+  } else {
+    _circleInstance.update({
+      selectedKeyIndex: circleKeyIndex,
+      size: Math.min(DIAGRAM_WIDTH, 400)
+    });
   }
 }
 

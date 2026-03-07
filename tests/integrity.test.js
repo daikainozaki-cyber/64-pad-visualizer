@@ -26,8 +26,7 @@ describe('Sound engine integrity', () => {
   it('index.html contains sound controls', () => {
     const html = readFileSync(resolve(ROOT, 'index.html'), 'utf-8');
     expect(html).toContain('id="sound-controls"');
-    expect(html).toContain('id="eng-organ"');
-    expect(html).toContain('id="eng-ep"');
+    expect(html).toContain('id="organ-preset"');
   });
 
   it('No Desktop/JUCE references in web code', () => {

@@ -11,6 +11,7 @@ I18N.addLang('zh', {
     chord_step1: '<strong>Step 1: Root</strong> \u2014 在钢琴键盘上选择根音',
     chord_step2: '<strong>Step 2: Quality</strong> \u2014 选择和弦类型（Maj, m, aug, dim, sus 等）',
     chord_step3: '<strong>Step 3: Tension</strong> \u2014 添加延伸音（9, b9, #9, 11, #11, 13, b13 等）。可多选',
+    chord_text: '<strong>文本输入</strong> \u2014 按"/"聚焦。直接输入 Cm7, G7(b9,#11), Am7/G 等。自动显示候选',
     chord_onchord: '<strong>On Chord</strong> \u2014 使用"/"按钮指定分割和弦（和弦/低音）',
     voicing: 'Voicing',
     voicing_omit: '<strong>Omit 5 / Rootless / Omit 3</strong> \u2014 省略音',
@@ -105,6 +106,8 @@ I18N.addLang('zh', {
   label: {
     note_name: '音名',
     degree: '音级',
+    chord_input: '输入和弦',
+    chord_hint: '延伸音用 ( ): C7(b9,#11) | dim, h=m7♭5 可用',
   },
   header: {
     portal: 'HPS Portal',
@@ -173,6 +176,7 @@ I18N.addLang('zh', {
     features: '功能特点',
     feat_sound: '<strong>无需音源</strong> \u2014 声音直接在Chrome中播放。内置4种管风琴 + 7种电钢琴预设。包含效果器（混响、移相器、镶边、颤音、滤波器）',
     feat_input: '<strong>无需打击垫技巧</strong> \u2014 3步构建和弦。显示延伸音。直接点击打击垫输入',
+    feat_text_input: '<strong>文本和弦输入</strong> \u2014 按"/"直接输入Cm7, G7(b9,#11), Am7/G等。自动补全候选。支持dim, h(=m7\u266D5)等缩写',
     feat_detect: '<strong>和弦识别</strong> \u2014 根据点击的音符实时检测和弦名称。支持省略音、分割和弦和多个候选',
     feat_instruments: '<strong>吉他/贝斯/键盘显示</strong> \u2014 在吉他指板、贝斯和钢琴上显示和弦音。吉他指法输入自动反映到打击垫。和弦模式下按根音弦分组显示位置',
     feat_scales: '<strong>音阶显示</strong> \u2014 31种音阶 \u00D7 12个调。自然音阶、和声小调、旋律小调、五声音阶、Bebop等',

@@ -11,6 +11,7 @@ I18N.addLang('es', {
     chord_step1: '<strong>Step 1: Root</strong> \u2014 Selecciona la nota raíz en el teclado de piano',
     chord_step2: '<strong>Step 2: Quality</strong> \u2014 Elige el tipo de acorde (Maj, m, aug, dim, sus, etc.)',
     chord_step3: '<strong>Step 3: Tension</strong> \u2014 Añade tensiones (9, b9, #9, 11, #11, 13, b13, etc.). Selección múltiple OK',
+    chord_text: '<strong>Entrada de texto</strong> \u2014 Pulsa "/" para enfocar. Escribe Cm7, G7(b9,#11), Am7/G etc. directamente. Aparecen sugerencias',
     chord_onchord: '<strong>On Chord</strong> \u2014 Usa el botón "/" para acordes con bajo alterno (acorde sobre nota de bajo)',
     voicing: 'Voicing',
     voicing_omit: '<strong>Omit 5 / Rootless / Omit 3</strong> \u2014 Omitir notas',
@@ -105,6 +106,8 @@ I18N.addLang('es', {
   label: {
     note_name: 'Nota',
     degree: 'Grado',
+    chord_input: 'Introducir acorde',
+    chord_hint: 'Tensiones en ( ): C7(b9,#11) | dim, h=m7♭5 soportados',
   },
   header: {
     portal: 'HPS Portal',
@@ -173,6 +176,7 @@ I18N.addLang('es', {
     features: 'Caracter\u00EDsticas',
     feat_sound: '<strong>Sin fuente de sonido necesaria</strong> \u2014 El sonido se reproduce directamente en Chrome. 4 presets de \u00F3rgano + 7 de piano el\u00E9ctrico integrados. Efectos incluidos (reverb, phaser, flanger, tr\u00E9molo, filtro)',
     feat_input: '<strong>Sin habilidades de pad necesarias</strong> \u2014 Construye acordes en 3 pasos. Tensiones mostradas. Haz clic en los pads para ingresar directamente',
+    feat_text_input: '<strong>Entrada de texto de acordes</strong> \u2014 Pulsa "/" para escribir Cm7, G7(b9,#11), Am7/G etc. directamente. Autocompletado. Abreviaturas como dim, h(=m7\u266D5)',
     feat_detect: '<strong>Detecci\u00F3n de acordes</strong> \u2014 Detecci\u00F3n en tiempo real del nombre del acorde a partir de las notas clicadas. Soporta omit, acordes con bajo alterno y m\u00FAltiples candidatos',
     feat_instruments: '<strong>Visualizaci\u00F3n de Guitar / Bass / Keyboard</strong> \u2014 Muestra las notas del acorde en el diapas\u00F3n de guitarra, bajo y piano. La entrada de digitaci\u00F3n de guitarra se refleja autom\u00E1ticamente en los pads. En modo Chord, las posiciones se agrupan por cuerda ra\u00EDz',
     feat_scales: '<strong>Visualizaci\u00F3n de escalas</strong> \u2014 31 escalas \u00D7 12 tonalidades. Diat\u00F3nica, Menor Arm\u00F3nica, Menor Mel\u00F3dica, Pentat\u00F3nica, Bebop y m\u00E1s',

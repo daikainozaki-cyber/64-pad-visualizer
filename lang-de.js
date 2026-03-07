@@ -11,6 +11,7 @@ I18N.addLang('de', {
     chord_step1: '<strong>Step 1: Root</strong> \u2014 Grundton auf der Klaviertastatur auswählen',
     chord_step2: '<strong>Step 2: Quality</strong> \u2014 Akkordtyp wählen (Maj, m, aug, dim, sus, etc.)',
     chord_step3: '<strong>Step 3: Tension</strong> \u2014 Tensions hinzufügen (9, b9, #9, 11, #11, 13, b13, etc.). Mehrfachauswahl möglich',
+    chord_text: '<strong>Texteingabe</strong> \u2014 "/" drücken zum Fokussieren. Cm7, G7(b9,#11), Am7/G etc. direkt eingeben. Vorschläge erscheinen automatisch',
     chord_onchord: '<strong>On Chord</strong> \u2014 Die "/"-Taste für Slash-Akkorde verwenden (Akkord über Basston)',
     voicing: 'Voicing',
     voicing_omit: '<strong>Omit 5 / Rootless / Omit 3</strong> \u2014 Töne weglassen',
@@ -105,6 +106,8 @@ I18N.addLang('de', {
   label: {
     note_name: 'Note',
     degree: 'Stufe',
+    chord_input: 'Akkord eingeben',
+    chord_hint: 'Tensions in ( ): C7(b9,#11) | dim, h=m7♭5 unterstützt',
   },
   header: {
     portal: 'HPS Portal',
@@ -173,6 +176,7 @@ I18N.addLang('de', {
     features: 'Funktionen',
     feat_sound: '<strong>Keine Klangquelle n\u00F6tig</strong> \u2014 Sound wird direkt in Chrome abgespielt. 4 Orgel- + 7 E-Piano-Presets integriert. Effekte (Reverb, Phaser, Flanger, Tremolo, Filter) inklusive',
     feat_input: '<strong>Keine Pad-Kenntnisse erforderlich</strong> \u2014 Akkorde in 3 Schritten aufbauen. Tensions werden angezeigt. Pads direkt anklicken zur Eingabe',
+    feat_text_input: '<strong>Text-Akkordeingabe</strong> \u2014 "/" drücken um Cm7, G7(b9,#11), Am7/G etc. direkt einzugeben. Autovervollständigung. Abkürzungen wie dim, h(=m7\u266D5)',
     feat_detect: '<strong>Akkorderkennung</strong> \u2014 Echtzeit-Akkorderkennung aus angeklickten T\u00F6nen. Unterst\u00FCtzt Omit, Slash-Akkorde und mehrere Vorschl\u00E4ge',
     feat_instruments: '<strong>Guitar / Bass / Keyboard-Anzeige</strong> \u2014 Zeigt Akkordt\u00F6ne auf Gitarrengriffbrett, Bass und Klavier. Eingabe \u00FCber Gitarrengriffbrett wird automatisch auf Pads \u00FCbertragen. Im Chord-Modus werden Positionen nach Grundton-Saite gruppiert',
     feat_scales: '<strong>Scale-Anzeige</strong> \u2014 31 Skalen \u00D7 12 Tonarten. Diatonisch, harmonisch Moll, melodisch Moll, Pentatonik, Bebop und mehr',

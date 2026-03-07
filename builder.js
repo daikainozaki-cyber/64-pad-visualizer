@@ -351,6 +351,7 @@ function buildPianoKeyboard(containerId, onSelect) {
 
 function highlightPianoKey(containerId, pc) {
   const wrap = document.getElementById(containerId);
+  if (!wrap) return;
   wrap.querySelectorAll('.piano-white-key, .piano-black-key').forEach(k => {
     k.classList.toggle('selected', parseInt(k.dataset.pc) === pc);
   });
@@ -1239,6 +1240,346 @@ function initWebMIDI() {
       connectInputs();
     };
   }).catch(() => {});
+}
+
+// ======== TEXT CHORD INPUT ========
+
+var TextChordState = {
+  candidates: [],
+  selectedIndex: 0,
+  isOpen: false,
+};
+
+function initTextChordInput() {
+  var input = document.getElementById('text-chord-input');
+  if (!input) return;
+
+  input.addEventListener('input', function() {
+    var candidates = generateTextChordCandidates(input.value.trim());
+    TextChordState.candidates = candidates;
+    TextChordState.selectedIndex = 0;
+    renderTextChordDropdown(candidates);
+  });
+
+  input.addEventListener('keydown', handleTextChordKeydown);
+
+  input.addEventListener('focus', function() {
+    if (input.value.trim()) {
+      var candidates = generateTextChordCandidates(input.value.trim());
+      TextChordState.candidates = candidates;
+      TextChordState.selectedIndex = 0;
+      renderTextChordDropdown(candidates);
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.text-chord-container')) {
+      closeTextChordDropdown();
+    }
+  });
+}
+
+function generateTextChordCandidates(input) {
+  if (!input) return [];
+
+  var rootMatch = input.match(/^([A-Ga-g])([#b]?)/);
+  if (!rootMatch) return [];
+
+  var rootWasLower = rootMatch[1] === rootMatch[1].toLowerCase();
+  var rootStr = rootMatch[1].toUpperCase() + rootMatch[2];
+  var qualityInput = input.slice(rootMatch[0].length);
+
+  // Slash chord branch
+  var slashIdx = qualityInput.indexOf('/');
+  if (slashIdx >= 0) {
+    var quality = qualityInput.slice(0, slashIdx);
+    var bassInput = qualityInput.slice(slashIdx + 1);
+    return generateTextChordSlashCandidates(rootStr, quality, bassInput);
+  }
+
+  var candidates = [];
+  var seenIntervals = {};
+  for (var i = 0; i < PAD_QUALITY_KEYS.length; i++) {
+    var qKey = PAD_QUALITY_KEYS[i];
+    if (qKey.indexOf(qualityInput) === 0 || qKey.toLowerCase().indexOf(qualityInput.toLowerCase()) === 0) {
+      var fullName = rootStr + qKey;
+      var parsed = padParseChordName(fullName);
+      if (parsed) {
+        // Dedup by intervals (same voicing = same chord)
+        var dedupKey = parsed.intervals.slice().sort(function(a,b){return a-b;}).join(',') + ':' + (parsed.bass === null ? '' : parsed.bass);
+        if (!seenIntervals[dedupKey]) {
+          seenIntervals[dedupKey] = true;
+          candidates.push({
+            name: parsed.displayName,
+            quality: qKey,
+            exactMatch: qKey === qualityInput || qKey.toLowerCase() === qualityInput.toLowerCase(),
+          });
+        }
+      }
+    }
+  }
+
+  var wantMinor = (rootWasLower && !qualityInput) || (qualityInput.length > 0 && qualityInput[0] === 'm');
+  var wantMajor = qualityInput.length > 0 && qualityInput[0] === 'M';
+
+  // Count tensions: parenthesized items like (b9,#11) = 2 tensions
+  function tensionCount(q) {
+    var m = q.match(/\(([^)]+)\)/);
+    if (!m) {
+      // Check for inline tensions like 7b9, 7#9 (single tension appended without parens)
+      var base = q.replace(/^(m7b5|m7|maj7|dim7|aug7|7|m6|6|dim|aug|m|M7|△7|sus[24]?)/, '');
+      return base.length > 0 ? 1 : 0;
+    }
+    return m[1].split(',').length;
+  }
+
+  candidates.sort(function(a, b) {
+    // 1. Exact match first
+    if (a.exactMatch !== b.exactMatch) return b.exactMatch - a.exactMatch;
+    // 2. Minor/Major preference
+    if (wantMinor) {
+      var aM = a.quality.indexOf('m') === 0 ? 1 : 0;
+      var bM = b.quality.indexOf('m') === 0 ? 1 : 0;
+      if (aM !== bM) return bM - aM;
+    } else if (wantMajor) {
+      var aJ = (a.quality.indexOf('M') === 0 || a.quality.indexOf('maj') === 0) ? 1 : 0;
+      var bJ = (b.quality.indexOf('M') === 0 || b.quality.indexOf('maj') === 0) ? 1 : 0;
+      if (aJ !== bJ) return bJ - aJ;
+    }
+    // 3. Fewer tensions first (base → single → double → triple)
+    var tA = tensionCount(a.quality);
+    var tB = tensionCount(b.quality);
+    if (tA !== tB) return tA - tB;
+    // 4. Shorter quality name within same tension count
+    return a.quality.length - b.quality.length;
+  });
+
+  return candidates.slice(0, 15);
+}
+
+function generateTextChordSlashCandidates(rootStr, quality, bassInput) {
+  var baseCheck = rootStr + quality;
+  if (quality && !padParseChordName(baseCheck)) return [];
+
+  var candidates = [];
+  for (var i = 0; i < NOTE_NAMES_SHARP.length; i++) {
+    var bass = NOTE_NAMES_SHARP[i];
+    if (!bassInput || bass.toLowerCase().indexOf(bassInput.toLowerCase()) === 0) {
+      var fullName = rootStr + quality + '/' + bass;
+      var parsed = padParseChordName(fullName);
+      if (parsed) {
+        candidates.push({ name: parsed.displayName });
+      }
+    }
+  }
+  return candidates.slice(0, 12);
+}
+
+function renderTextChordDropdown(candidates) {
+  var dropdown = document.getElementById('text-chord-dropdown');
+  if (!dropdown) return;
+
+  if (candidates.length === 0) {
+    closeTextChordDropdown();
+    return;
+  }
+
+  dropdown.innerHTML = '';
+  TextChordState.isOpen = true;
+  dropdown.classList.add('active');
+
+  for (var i = 0; i < candidates.length; i++) {
+    var div = document.createElement('div');
+    div.className = 'text-chord-candidate' + (i === TextChordState.selectedIndex ? ' selected' : '');
+    div.textContent = candidates[i].name;
+    div.setAttribute('data-index', i);
+    div.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      var idx = parseInt(this.getAttribute('data-index'));
+      commitTextChord(TextChordState.candidates[idx]);
+    });
+    div.addEventListener('mouseenter', function() {
+      TextChordState.selectedIndex = parseInt(this.getAttribute('data-index'));
+      updateTextChordDropdownSelection();
+    });
+    dropdown.appendChild(div);
+  }
+}
+
+function updateTextChordDropdownSelection() {
+  var dropdown = document.getElementById('text-chord-dropdown');
+  if (!dropdown) return;
+  var items = dropdown.querySelectorAll('.text-chord-candidate');
+  for (var i = 0; i < items.length; i++) {
+    items[i].classList.toggle('selected', i === TextChordState.selectedIndex);
+  }
+}
+
+function closeTextChordDropdown() {
+  var dropdown = document.getElementById('text-chord-dropdown');
+  if (dropdown) {
+    dropdown.innerHTML = '';
+    dropdown.classList.remove('active');
+  }
+  TextChordState.isOpen = false;
+  TextChordState.candidates = [];
+  TextChordState.selectedIndex = 0;
+}
+
+function commitTextChord(candidate) {
+  var input = document.getElementById('text-chord-input');
+  if (!input || !candidate) return;
+
+  var parsed = padParseChordName(candidate.name);
+  if (!parsed) return;
+
+  applyParsedChordToBuilder(parsed);
+
+  input.value = '';
+  closeTextChordDropdown();
+}
+
+function applyParsedChordToBuilder(parsed) {
+  var rootPC = parsed.root;
+
+  // Collect intervals as pitch class set (mod 12)
+  var intervalSet = new Set(parsed.intervals.map(function(iv) { return iv % 12; }));
+
+  // Find best matching BUILDER_QUALITIES (longest PCS subset)
+  var bestQuality = null;
+  var bestQLen = 0;
+  for (var r = 0; r < BUILDER_QUALITIES.length; r++) {
+    for (var c = 0; c < BUILDER_QUALITIES[r].length; c++) {
+      var q = BUILDER_QUALITIES[r][c];
+      if (!q) continue;
+      var allMatch = true;
+      for (var p = 0; p < q.pcs.length; p++) {
+        if (!intervalSet.has(q.pcs[p])) { allMatch = false; break; }
+      }
+      if (allMatch && q.pcs.length > bestQLen) {
+        bestQLen = q.pcs.length;
+        bestQuality = q;
+      }
+    }
+  }
+  if (!bestQuality) return;
+
+  // Find extra intervals → tension
+  var qualitySet = new Set(bestQuality.pcs);
+  var extras = [];
+  intervalSet.forEach(function(iv) {
+    if (!qualitySet.has(iv) && iv !== 0) extras.push(iv);
+  });
+
+  var matchedTension = null;
+  var matchedEl = null;
+  if (extras.length > 0) {
+    var extraSet = new Set(extras);
+    var btns = document.querySelectorAll('#tension-grid .tension-btn');
+    for (var i = 0; i < btns.length; i++) {
+      var btn = btns[i];
+      var t = btn._tension;
+      if (!t) continue;
+      var adds = t.mods.add || [];
+      if (adds.length === extras.length && !t.mods.replace3 && !t.mods.sharp5 && !t.mods.flat5) {
+        var allIn = true;
+        for (var j = 0; j < adds.length; j++) {
+          if (!extraSet.has(adds[j])) { allIn = false; break; }
+        }
+        if (allIn) {
+          matchedTension = t;
+          matchedEl = btn;
+          break;
+        }
+      }
+    }
+  }
+
+  // Set builder state
+  BuilderState.root = rootPC;
+  BuilderState.quality = bestQuality;
+  BuilderState.tension = matchedTension;
+  BuilderState.bass = parsed.bass;
+  BuilderState._fromDiatonic = false;
+  resetVoicingSelection();
+
+  // Update UI
+  updateKeyButtons();
+  highlightQuality(bestQuality);
+  clearTensionSelection();
+  if (matchedTension && matchedEl) matchedEl.classList.add('selected');
+  updateControlsForQuality(bestQuality);
+  if (parsed.bass !== null) highlightPianoKey('onchord-keyboard', parsed.bass);
+  setBuilderStep(2);
+  render();
+  playCurrentChord();
+}
+
+function handleTextChordKeydown(e) {
+  var input = document.getElementById('text-chord-input');
+
+  switch (e.key) {
+    case 'Enter':
+      e.preventDefault();
+      if (TextChordState.isOpen && TextChordState.candidates.length > 0) {
+        var candidate = TextChordState.candidates[TextChordState.selectedIndex] ||
+                        TextChordState.candidates[0];
+        commitTextChord(candidate);
+      } else if (input.value.trim()) {
+        var parsed = padParseChordName(input.value.trim());
+        if (parsed) {
+          applyParsedChordToBuilder(parsed);
+          input.value = '';
+          closeTextChordDropdown();
+        } else {
+          input.classList.add('error');
+          setTimeout(function() { input.classList.remove('error'); }, 400);
+        }
+      }
+      break;
+
+    case 'ArrowDown':
+      if (TextChordState.isOpen) {
+        e.preventDefault();
+        TextChordState.selectedIndex = Math.min(
+          TextChordState.selectedIndex + 1,
+          TextChordState.candidates.length - 1
+        );
+        updateTextChordDropdownSelection();
+      }
+      break;
+
+    case 'ArrowUp':
+      if (TextChordState.isOpen) {
+        e.preventDefault();
+        TextChordState.selectedIndex = Math.max(TextChordState.selectedIndex - 1, 0);
+        updateTextChordDropdownSelection();
+      }
+      break;
+
+    case 'Escape':
+      e.preventDefault();
+      if (TextChordState.isOpen) {
+        closeTextChordDropdown();
+        input.value = '';
+      } else {
+        input.blur();
+      }
+      break;
+
+    case 'Tab':
+      if (TextChordState.isOpen && TextChordState.candidates.length > 0) {
+        e.preventDefault();
+        var selCand = TextChordState.candidates[TextChordState.selectedIndex] ||
+                      TextChordState.candidates[0];
+        input.value = selCand.name;
+        var newCandidates = generateTextChordCandidates(input.value.trim());
+        TextChordState.candidates = newCandidates;
+        TextChordState.selectedIndex = 0;
+        renderTextChordDropdown(newCandidates);
+      }
+      break;
+  }
 }
 
 // Conditional exports for Node.js (Vitest) — ignored in browser

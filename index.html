@@ -739,7 +739,7 @@ if ('serviceWorker' in navigator) {
   var _hadSWController = !!navigator.serviceWorker.controller;
   // Register without ?v= query. updateViaCache:'none' bypasses HTTP cache for SW checks.
   // Version lives inside sw.js (CACHE_NAME). Content change → browser detects update.
-  navigator.serviceWorker.register('sw.js?v=3.25.0', { updateViaCache: 'none' }).then(function(reg) {
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function(reg) {
     reg.addEventListener('updatefound', function() {
       var w = reg.installing;
       if (!w) return;

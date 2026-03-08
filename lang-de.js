@@ -248,7 +248,7 @@ I18N.addLang('de', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Mehr erfahren im Blog \u2192',
     version_history: 'Versionshistorie',
-    vh_32427: '<b>V3.24.27</b> \u2014 Gitarren-Voicing \u2192 Pad-Spiegelung (<kbd>V</kbd>-Taste). Umschalten Gitarren-Stil (1 Note pro Reihe) / Kompakt-Layout. Gitarrenposition "Alle" Filter zuerst',
+    vh_32427: '<b>V3.25.0</b> \u2014 Gitarren-Voicing \u2192 Pad-Spiegelung (<kbd>V</kbd>-Taste). Umschalten Gitarren-Stil (1 Note pro Reihe) / Kompakt-Layout. Gitarrenposition "Alle" Filter zuerst',
     vh_324: '<b>V3.24</b> \u2014 Clavinet-Presets hinzugef\u00FCgt (2 in E.PIANO). Auto Filter (H\u00FCllkurvenfilter / Auto-Wah) Effekt hinzugef\u00FCgt',
     vh_323: '<b>V3.23</b> \u2014 Text-Akkordeingabe mit Autovervollst\u00E4ndigung. "/" zum Fokussieren, Abk\u00FCrzungen (dim, h=m7\u266D5), Sortierung nach Tensions',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',

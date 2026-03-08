@@ -248,7 +248,7 @@ I18N.addLang('pt', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Saiba mais no blog \u2192',
     version_history: 'Hist\u00F3rico de vers\u00F5es',
-    vh_32427: '<b>V3.24.27</b> \u2014 Voicing de guitarra \u2192 refletir no pad (tecla <kbd>V</kbd>). Altern\u00E2ncia layout estilo guitarra (1 nota por linha) / compacto. Filtro "Todos" de posi\u00E7\u00E3o de guitarra em primeiro',
+    vh_32427: '<b>V3.25.0</b> \u2014 Voicing de guitarra \u2192 refletir no pad (tecla <kbd>V</kbd>). Altern\u00E2ncia layout estilo guitarra (1 nota por linha) / compacto. Filtro "Todos" de posi\u00E7\u00E3o de guitarra em primeiro',
     vh_324: '<b>V3.24</b> \u2014 Presets de Clavinet adicionados (2 em E.PIANO). Efeito Auto Filter (filtro envelope / auto-wah) adicionado',
     vh_323: '<b>V3.23</b> \u2014 Entrada de texto de acordes com autocompletar. "/" para focar, abrevia\u00E7\u00F5es (dim, h=m7\u266D5), ordena\u00E7\u00E3o por tens\u00F5es',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',

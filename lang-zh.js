@@ -248,7 +248,7 @@ I18N.addLang('zh', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: '在博客上了解更多 \u2192',
     version_history: '\u7248\u672C\u5386\u53F2',
-    vh_32427: '<b>V3.24.27</b> \u2014 吉他声位\u2192打击垫映射（<kbd>V</kbd>键）。吉他式（每行1音）/ 紧凑式布局切换。吉他把位"全部"筛选器置顶',
+    vh_32427: '<b>V3.25.0</b> \u2014 吉他声位\u2192打击垫映射（<kbd>V</kbd>键）。吉他式（每行1音）/ 紧凑式布局切换。吉他把位"全部"筛选器置顶',
     vh_324: '<b>V3.24</b> \u2014 新增Clavinet音色（E.PIANO中2种）。新增自动滤波器（包络滤波器/Auto-Wah）效果',
     vh_323: '<b>V3.23</b> \u2014 文本和弦输入。自动补全候选，按"/"聚焦，支持dim、h=m7\u266D5等缩写，按延伸音数量排序',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',

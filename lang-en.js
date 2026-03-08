@@ -261,7 +261,7 @@ I18N.addLang('en', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Learn more on the blog \u2192',
     version_history: 'Version History',
-    vh_32427: '<b>V3.24.27</b> \u2014 Guitar voicing \u2192 Pad reflect (<kbd>V</kbd> key). Guitar-like (1 note per row) / Compact layout switch. Guitar position "All" filter first',
+    vh_32427: '<b>V3.25.0</b> \u2014 Guitar voicing \u2192 Pad reflect (<kbd>V</kbd> key). Guitar-like (1 note per row) / Compact layout switch. Guitar position "All" filter first',
     vh_324: '<b>V3.24</b> \u2014 Clavinet presets added (2 in E.PIANO). Auto Filter (envelope filter / auto-wah) effect added',
     vh_323: '<b>V3.23</b> \u2014 Text chord input with autocomplete. Press "/" to focus, supports abbreviations (dim, h=m7\u266D5), tension-count sorting',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',

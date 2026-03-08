@@ -260,16 +260,18 @@ function renderPads(svg, state, grid) {
       const x = margin + col * (padSize + padGap);
       const y = margin + (rows - 1 - row) * (padSize + padGap);
       const interval = ((pc - rootPC) + 12) % 12;
-      const isRoot = pc === rootPC && !omittedPCS.has(pc);
-      const isBass = bassPC !== null && pc === bassPC;
-      const isActive = activePCS.has(pc);
-      const isOmitted = omittedPCS.has(pc);
+      // When instrument input is active, restrict to specific MIDI notes (not all PCS matches)
+      const _instrFilter = !grid && _instrumentMidiSet;
+      const isRoot = pc === rootPC && !omittedPCS.has(pc) && (!_instrFilter || _instrFilter.has(midi));
+      const isBass = bassPC !== null && pc === bassPC && (!_instrFilter || _instrFilter.has(midi));
+      const isActive = _instrFilter ? _instrFilter.has(midi) && activePCS.has(pc) : activePCS.has(pc);
+      const isOmitted = omittedPCS.has(pc) && (!_instrFilter || _instrFilter.has(midi));
       const isChar = AppState.mode === 'scale' && charPCS.has(pc) && !isRoot;
-      const isGuide3 = AppState.mode === 'chord' && guide3PCS.has(pc) && !isRoot && !tensionPCS.has(pc);
-      const isGuide7 = AppState.mode === 'chord' && guide7PCS.has(pc) && !isRoot && !tensionPCS.has(pc);
+      const isGuide3 = AppState.mode === 'chord' && guide3PCS.has(pc) && !isRoot && !tensionPCS.has(pc) && (!_instrFilter || _instrFilter.has(midi));
+      const isGuide7 = AppState.mode === 'chord' && guide7PCS.has(pc) && !isRoot && !tensionPCS.has(pc) && (!_instrFilter || _instrFilter.has(midi));
       const isGuide = isGuide3 || isGuide7;
-      const isTension = AppState.mode === 'chord' && tensionPCS.has(pc) && !isRoot && !isGuide;
-      const isAvoid = AppState.mode === 'chord' && avoidPCS.has(pc) && !isRoot;
+      const isTension = AppState.mode === 'chord' && tensionPCS.has(pc) && !isRoot && !isGuide && (!_instrFilter || _instrFilter.has(midi));
+      const isAvoid = AppState.mode === 'chord' && avoidPCS.has(pc) && !isRoot && (!_instrFilter || _instrFilter.has(midi));
       const isOverlay = !isOmitted && overlayPCS && overlayPCS.has(pc) && !activePCS.has(pc);
 
       // Plain mode: highlight selected notes only
@@ -1888,6 +1890,7 @@ const GUITAR_OPEN_MIDI = [64, 59, 55, 50, 45, 40]; // E4, B3, G3, D3, A2, E2
 let guitarSelectedFrets = [null, null, null, null, null, null];
 let pianoSelectedNotes = new Set(); // MIDI note numbers
 let instrumentInputActive = false;
+var _instrumentMidiSet = null; // When non-null, renderPads only colors these specific MIDI notes
 let padExtNotes = new Set(); // Chord mode: MIDI notes toggled on 64-pad for PS extension
 let lastDetectedNotes = []; // Last detection input notes (for click-to-transfer, V2.10)
 let lastDetectedCandidates = []; // Last detection candidates (for click-to-transfer, V2.10)
@@ -1963,6 +1966,7 @@ function updateInstrumentInput() {
   // Pre-warm audio on first note selection so Play button works instantly
   if (instrumentInputActive) ensureAudioResumed();
   if (instrNotes.length === 0) {
+    _instrumentMidiSet = null; // Clear MIDI filter — show full PCS again
     document.querySelectorAll('.instrument-highlight').forEach(el => el.remove());
     if (AppState.mode === 'input') {
       updatePlainDisplay(); // Plain mode: unified display handles #midi-detect
@@ -1971,6 +1975,7 @@ function updateInstrumentInput() {
       detectEl.innerHTML = '';
     }
     // detectEl always visible (no layout shift)
+    render(); // Re-render pads without MIDI filter
     renderGuitarDiagram(lastRenderRootPC, lastRenderActivePCS);
     renderBassDiagram(lastRenderRootPC, lastRenderActivePCS);
     renderPianoDisplay(lastRenderRootPC, lastRenderActivePCS);
@@ -1996,6 +2001,57 @@ function updateInstrumentInput() {
     renderParentScales();
     return;
   }
+
+  // === Guitar/Bass/Piano → Builder direct update (Chord mode) ===
+  if (AppState.mode === 'chord' && instrNotes.length >= 2) {
+    const directCandidates = detectChord(instrNotes);
+    if (directCandidates.length > 0) {
+      const detectEl = document.getElementById('midi-detect');
+      const noteNames = instrNotes.map(n => NOTE_NAMES_SHARP[n % 12]);
+      lastDetectedNotes = instrNotes;
+      lastDetectedCandidates = directCandidates;
+      const best = directCandidates[0];
+      let html = '<span class="detect-candidate-best" onclick="transferDetectedCandidate(0,this)">' + best.name + '</span>';
+      if (directCandidates.length > 1) {
+        html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:2px;">';
+        directCandidates.slice(1).forEach((c, i) => {
+          html += '<span class="detect-candidate" onclick="transferDetectedCandidate(' + (i + 1) + ',this)">' + c.name + '</span>';
+        });
+        html += '</div>';
+      }
+      html += '<div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">' + t('input.notes_label') + noteNames.join(' ') + '</div>';
+      detectEl.innerHTML = html;
+
+      padExtNotes.clear();
+      applyNotesToBuilder(instrNotes, best.rootPC);
+
+      // Restrict pad display to only these specific MIDI notes
+      _instrumentMidiSet = new Set(instrNotes);
+
+      // Auto-adjust octave so instrument notes are visible on the pad grid
+      const loNote = instrNotes[0]; // already sorted
+      const hiNote = instrNotes[instrNotes.length - 1];
+      const bm = baseMidi();
+      const padHi = bm + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
+      if (loNote < bm || hiNote > padHi) {
+        // Center the instrument notes on the pad grid
+        const mid = Math.round((loNote + hiNote) / 2);
+        const padMid = BASE_MIDI + (ROWS - 1) * ROW_INTERVAL / 2 + (COLS - 1) / 2;
+        const needed = Math.round((mid - padMid) / 12);
+        const clamped = Math.max(-1, Math.min(3, needed));
+        if (clamped !== AppState.octaveShift) {
+          AppState.octaveShift = clamped;
+          updateOctaveLabel();
+        }
+      }
+
+      render();
+      renderParentScales();
+      return;
+    }
+  }
+  // === End guitar/bass/piano → builder ===
+  _instrumentMidiSet = null; // Fallthrough: no MIDI filter (1 note or detection failed)
 
   // Chord/Scale mode: existing logic
   let notesForDetect = instrNotes;
@@ -2091,6 +2147,7 @@ function clearInstrumentInput() {
   padExtNotes.clear();
   instrumentInputActive = false;
   _guitarSyncSource = null;
+  _instrumentMidiSet = null; // Clear MIDI filter — show full PCS again
   GuitarPositionState.enabled = false;
   GuitarPositionState._lastKey = null;
   BassPositionState.enabled = false;

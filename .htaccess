@@ -1,15 +1,14 @@
-# Never cache sw.js or index.html — Cloudflare CDN caches HTML by default,
-# causing stale SW references and version mismatch.
-<FilesMatch "^(sw\.js|index\.html)$">
+# Neutralize Cloudflare CDN for 64PE entirely.
+# Cloudflare caused 10+ incidents / 15-25h debugging time (2026-01 ~ 2026-03).
+# SW Cache API handles offline caching independently — CDN cache is redundant.
+# no-cache on ALL files = Cloudflare becomes pass-through.
+<IfModule mod_headers.c>
     Header set Cache-Control "no-cache, no-store, must-revalidate"
     Header set Pragma "no-cache"
     Header set Expires "0"
-</FilesMatch>
+</IfModule>
 
-# Force browser to clear old Service Worker caches on next visit.
-# The old SW's network-first navigation fetch will receive this header,
-# causing the browser to wipe Cache API (SW caches) + HTTP cache.
-# Safe: does NOT clear localStorage (sound settings preserved).
+# Clear old SW caches on visit. Safe: does NOT clear localStorage.
 <Files "index.html">
     Header set Clear-Site-Data "\"cache\""
 </Files>

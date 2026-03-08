@@ -27,6 +27,12 @@ masterReverbGain.connect(masterComp);
 const masterGain = audioCtx.createGain();
 masterGain.gain.setValueAtTime(0.6, 0);
 
+// Tremolo = separate GainNode in signal chain (NOT modulating masterGain).
+// masterGain(volume) → tremoloNode(tremolo) → autoFilter → ...
+// This prevents Vol=0 + tremolo from leaking sound (additive LFO on gain=0 → ±depth).
+const tremoloNode = audioCtx.createGain();
+tremoloNode.gain.setValueAtTime(1.0, 0); // base=1, LFO adds ±depth
+
 // --- Auto Filter (Envelope Filter / Auto-Wah) ---
 const autoFilter = audioCtx.createBiquadFilter();
 autoFilter.type = 'lowpass';
@@ -93,7 +99,8 @@ phaserLFO.start(0);
 const phaserWet = audioCtx.createGain();
 phaserWet.gain.setValueAtTime(0, 0);
 const phaserMix = audioCtx.createGain();
-masterGain.connect(autoFilter);
+masterGain.connect(tremoloNode);
+tremoloNode.connect(autoFilter);
 autoFilter.connect(autoFilter2);
 autoFilter2.connect(phaserFilters[0]);
 phaserFilters[3].connect(phaserWet);
@@ -162,14 +169,14 @@ function rebuildFilterChain() {
 flangerMix.connect(masterComp);
 flangerMix.connect(masterReverb);
 
-// Rotary speaker / tremolo LFO
+// Rotary speaker / tremolo LFO (tremoloNode created above, near masterGain)
 const tremoloLFO = audioCtx.createOscillator();
 tremoloLFO.type = 'sine';
 tremoloLFO.frequency.setValueAtTime(4.5, 0);
 const tremoloGain = audioCtx.createGain();
 tremoloGain.gain.setValueAtTime(0, 0);
 tremoloLFO.connect(tremoloGain);
-tremoloGain.connect(masterGain.gain);
+tremoloGain.connect(tremoloNode.gain); // modulate tremoloNode, not masterGain
 tremoloLFO.start(0);
 
 let _audioDecoded = false;

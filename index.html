@@ -72,7 +72,7 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
-<link rel="stylesheet" href="style.css?v=3.24.13">
+<link rel="stylesheet" href="style.css?v=3.24.14">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -90,7 +90,7 @@ document.addEventListener('click', function(e) {
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_GeneralUserGS_sf2_file.js"></script>
 <!-- E.Piano: jRhodes3c velocity-layer sampler (5 layers, 1977 Rhodes Mark I) -->
-<script src="jrhodes3c-samples.js?v=3.24.13"></script>
+<script src="jrhodes3c-samples.js?v=3.24.14"></script>
 </head>
 <body>
 
@@ -691,30 +691,50 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.24.13"></script>
-<script src="lang-en.js?v=3.24.13"></script>
-<script src="lang-ja.js?v=3.24.13"></script>
-<script src="lang-zh.js?v=3.24.13"></script>
-<script src="lang-es.js?v=3.24.13"></script>
-<script src="lang-fr.js?v=3.24.13"></script>
-<script src="lang-pt.js?v=3.24.13"></script>
-<script src="lang-de.js?v=3.24.13"></script>
-<script src="lang-ko.js?v=3.24.13"></script>
-<script src="lang-it.js?v=3.24.13"></script>
+<script src="i18n.js?v=3.24.14"></script>
+<script src="lang-en.js?v=3.24.14"></script>
+<script src="lang-ja.js?v=3.24.14"></script>
+<script src="lang-zh.js?v=3.24.14"></script>
+<script src="lang-es.js?v=3.24.14"></script>
+<script src="lang-fr.js?v=3.24.14"></script>
+<script src="lang-pt.js?v=3.24.14"></script>
+<script src="lang-de.js?v=3.24.14"></script>
+<script src="lang-ko.js?v=3.24.14"></script>
+<script src="lang-it.js?v=3.24.14"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=3.24.13"></script>
-<script src="pad-core/theory.js?v=3.24.13"></script>
-<script src="pad-core/render.js?v=3.24.13"></script>
-<script src="pad-core/circle.js?v=3.24.13"></script>
+<script src="pad-core/data.js?v=3.24.14"></script>
+<script src="pad-core/theory.js?v=3.24.14"></script>
+<script src="pad-core/render.js?v=3.24.14"></script>
+<script src="pad-core/circle.js?v=3.24.14"></script>
 <!-- App JS -->
-<script src="data.js?v=3.24.13"></script>
-<script src="audio.js?v=3.24.13"></script>
-<script src="theory.js?v=3.24.13"></script>
-<script src="render.js?v=3.24.13"></script>
-<script src="plain.js?v=3.24.13"></script>
-<script src="perform.js?v=3.24.13"></script>
-<script src="builder.js?v=3.24.13"></script>
-<script src="main.js?v=3.24.13"></script>
-<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=3.24.13');</script>
+<script src="data.js?v=3.24.14"></script>
+<script src="audio.js?v=3.24.14"></script>
+<script src="theory.js?v=3.24.14"></script>
+<script src="render.js?v=3.24.14"></script>
+<script src="plain.js?v=3.24.14"></script>
+<script src="perform.js?v=3.24.14"></script>
+<script src="builder.js?v=3.24.14"></script>
+<script src="main.js?v=3.24.14"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  // Clean up old ?v= registrations (they create zombie SWs)
+  navigator.serviceWorker.getRegistrations().then(function(regs) {
+    regs.forEach(function(r) {
+      if (r.active && r.active.scriptURL.includes('sw.js?v=')) r.unregister();
+    });
+  });
+  // Register without ?v= query. updateViaCache:'none' bypasses HTTP cache for SW checks.
+  // Version lives inside sw.js (CACHE_NAME). Content change → browser detects update.
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function(reg) {
+    reg.addEventListener('updatefound', function() {
+      var w = reg.installing;
+      if (!w) return;
+      w.addEventListener('statechange', function() {
+        if (w.state === 'activated') location.reload();
+      });
+    });
+  });
+}
+</script>
 </body>
 </html>

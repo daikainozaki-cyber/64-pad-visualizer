@@ -101,6 +101,7 @@ I18N.addLang('ja', {
     save_settings: '設定を保存',
     sound_hint: 'ORGAN または E.PIANO を選んで音を有効にしてください',
     tap_to_start: 'タップして音を有効にする',
+    tap_pads: 'パッドをタップして演奏！',
     load_vst: 'VST/AU プラグインを読み込む...',
     affiliate_label: '徳を積みたい方はこちら…',
     circle: '五度圏',

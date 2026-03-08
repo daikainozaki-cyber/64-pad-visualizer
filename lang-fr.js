@@ -99,6 +99,7 @@ I18N.addLang('fr', {
     save_settings: 'Sauvegarder',
     sound_hint: 'Sélectionnez ORGAN ou E.PIANO pour activer le son',
     tap_to_start: 'Appuyez pour activer le son',
+    tap_pads: 'Appuyez sur un pad pour jouer !',
     load_vst: 'Charger un plugin VST/AU...',
     affiliate_label: '',
     circle: 'Cycle',

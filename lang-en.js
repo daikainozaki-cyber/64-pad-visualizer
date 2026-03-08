@@ -101,6 +101,7 @@ I18N.addLang('en', {
     save_settings: 'Save Settings',
     sound_hint: 'Select ORGAN or E.PIANO to enable sound',
     tap_to_start: 'Tap to enable sound',
+    tap_pads: 'Tap any pad to play!',
     load_vst: 'Load VST/AU Plugin...',
     affiliate_label: '',
     circle: 'Circle',

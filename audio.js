@@ -493,7 +493,33 @@ function dismissAudioOverlay() {
   // Auto-select Organ if no engine set yet (first-time user)
   if (_soundMuted) {
     setEngine('organ');
+    // Expand Sound panel so first-time users see presets/volume
+    if (typeof soundExpanded !== 'undefined' && !soundExpanded && typeof toggleSoundExpand === 'function') {
+      toggleSoundExpand();
+    }
+    _showPadHint();
   }
+}
+
+function _showPadHint() {
+  var grid = document.getElementById('pad-grid');
+  if (!grid) return;
+  // Add pulse animation to pads
+  grid.classList.add('pad-hint-pulse');
+  // Show floating hint text
+  var hint = document.createElement('div');
+  hint.id = 'pad-play-hint';
+  hint.textContent = I18N && I18N.t ? I18N.t('ui.tap_pads') : 'Tap any pad to play!';
+  grid.parentNode.insertBefore(hint, grid);
+  // Auto-dismiss after 6 seconds if user hasn't tapped
+  setTimeout(_hidePadHint, 6000);
+}
+
+function _hidePadHint() {
+  var hint = document.getElementById('pad-play-hint');
+  if (hint) hint.remove();
+  var grid = document.getElementById('pad-grid');
+  if (grid) grid.classList.remove('pad-hint-pulse');
 }
 
 function loadSoundSettings() {
@@ -589,6 +615,7 @@ function noteOn(midi, velocity, poly, _retries) {
   velocity = velocity || 0.8;
   if (_soundMuted) return;
   ensureAudioResumed();
+  _hidePadHint();
   // Kill same note if re-triggered
   const existing = activeVoices.get(midi);
   if (existing) {
@@ -725,7 +752,7 @@ function playMidiNotes(midiNotes) {
 }
 
 // Build version — shown in version tag for diagnostics
-const _AUDIO_BUILD = '3.24.17';
+const _AUDIO_BUILD = '3.24.18';
 
 // Slider labels + live parameter update
 onReady(() => {

@@ -99,6 +99,7 @@ I18N.addLang('ko', {
     save_settings: '설정 저장',
     sound_hint: 'ORGAN 또는 E.PIANO를 선택하여 소리를 활성화하세요',
     tap_to_start: '탭하여 소리 활성화',
+    tap_pads: '패드를 탭하여 연주하세요!',
     load_vst: 'VST/AU 플러그인 불러오기...',
     affiliate_label: '',
     circle: '5도권',

@@ -99,6 +99,7 @@ I18N.addLang('de', {
     save_settings: 'Einstellungen speichern',
     sound_hint: 'Wähle ORGAN oder E.PIANO, um den Sound zu aktivieren',
     tap_to_start: 'Tippen zum Aktivieren',
+    tap_pads: 'Tippe auf ein Pad zum Spielen!',
     load_vst: 'VST/AU-Plugin laden...',
     affiliate_label: '',
     circle: 'Quintenzirkel',

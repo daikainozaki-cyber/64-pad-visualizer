@@ -99,6 +99,7 @@ I18N.addLang('zh', {
     save_settings: '保存设置',
     sound_hint: '请选择 ORGAN 或 E.PIANO 以启用声音',
     tap_to_start: '轻触以启用声音',
+    tap_pads: '轻触任意打击垫即可演奏！',
     load_vst: '加载 VST/AU 插件...',
     affiliate_label: '',
     circle: '五度圈',

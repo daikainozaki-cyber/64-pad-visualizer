@@ -110,6 +110,10 @@ function disableStartupTips() {
   saveAppSettings();
   dismissStartupTip();
 }
+function toggleStartupTips(on) {
+  AppState.showTips = on;
+  saveAppSettings();
+}
 showStartupTip();
 
 // ========================================
@@ -258,6 +262,8 @@ document.addEventListener('keydown', (e) => {
   if (key === '?') {
     const helpOverlay = document.getElementById('help-overlay');
     helpOverlay.classList.toggle('active');
+    var tc = document.getElementById('tips-toggle');
+    if (tc) tc.checked = AppState.showTips !== false;
     return;
   }
 

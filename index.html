@@ -72,7 +72,7 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
-<link rel="stylesheet" href="style.css?v=3.24.19">
+<link rel="stylesheet" href="style.css?v=3.24.20">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -90,7 +90,7 @@ document.addEventListener('click', function(e) {
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_GeneralUserGS_sf2_file.js"></script>
 <!-- E.Piano: jRhodes3c velocity-layer sampler (5 layers, 1977 Rhodes Mark I) -->
-<script src="jrhodes3c-samples.js?v=3.24.19"></script>
+<script src="jrhodes3c-samples.js?v=3.24.20"></script>
 </head>
 <body>
 
@@ -109,7 +109,7 @@ document.addEventListener('click', function(e) {
     <option value="it">IT</option>
   </select>
   <button class="help-btn" onclick="saveAppSettings(); showSaveToast();" title="Save Settings" data-i18n-title="ui.save_settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
-  <button class="help-btn" onclick="document.getElementById('help-overlay').classList.add('active')" title="Help">?</button>
+  <button class="help-btn" onclick="document.getElementById('help-overlay').classList.add('active');var tc=document.getElementById('tips-toggle');if(tc)tc.checked=AppState.showTips!==false;" title="Help">?</button>
 </div>
 <div class="header-links" id="header-links">
   <a href="guide.html" data-i18n="header.guide">Guide</a>
@@ -160,7 +160,8 @@ document.addEventListener('click', function(e) {
 
     <h2 data-i18n="help.display">表示</h2>
     <ul>
-      <li data-i18n="help.display_inst"><strong>Guitar / Piano / Staff</strong> — ギターフレットボード、ピアノ鍵盤、五線譜を個別にON/OFF</li>
+      <li data-i18n="help.display_inst"><strong>Guitar / Bass / Piano / Staff</strong> — ギターフレットボード、ベース、ピアノ鍵盤、五線譜を個別にON/OFF</li>
+      <li data-i18n="help.display_circle"><strong>Circle of Fifths</strong> — 五度圏表示。キー選択と連動、ダイアトニックコード・機能表示（T/SD/D）。マイナーモード切替対応</li>
       <li data-i18n="help.display_label"><strong>音名/度数</strong> — ギター・パッド上の表示を音名(C, D, E)と度数(R, 2, 3)で切り替え</li>
       <li data-i18n="help.display_oct"><strong>Octave ▲▼</strong> — パッドの音域をオクターブシフト</li>
     </ul>
@@ -170,7 +171,9 @@ document.addEventListener('click', function(e) {
       <li data-i18n="help.sound_onoff"><strong>&#x1F50A; ON/OFF</strong> — スピーカーアイコンで音のON/OFFを切り替え</li>
       <li data-i18n="help.sound_select"><strong>ORGAN / E.PIANO</strong> — 音色エンジンを選択。&#x25BC;を押すとプリセットやエフェクトの詳細パネルが開く</li>
       <li data-i18n="help.sound_organ"><strong>ORGAN</strong> — 4プリセット（Jazz, Perc, Full, Gospel）</li>
-      <li data-i18n="help.sound_ep"><strong>E.PIANO</strong> — 9プリセット（Rhodes 1-5, FM EP 1-2, jRhodes3c Sampler）</li>
+      <li data-i18n="help.sound_ep"><strong>E.PIANO</strong> — 8プリセット（Rhodes 1-5, FM EP 1-2, Clav Muted, Clav Bright）</li>
+      <li data-i18n="help.sound_autofilter"><strong>Auto-Filter</strong> — エンベロープフィルター（Auto-Wah）。Cry Baby / Mu-Tron / Moog の3タイプ</li>
+      <li data-i18n="help.sound_drive"><strong>Drive</strong> — アナログサチュレーション。温かみのある歪みを追加</li>
       <li data-i18n="help.sound_fx"><strong>エフェクト</strong> — Lo Cut, Hi Cut, Reverb, Phaser, Flanger, Tremolo, Speed, Volume</li>
       <li data-i18n="help.sound_play">パッドをクリック、またはボイシングボックスをクリックで発音</li>
     </ul>
@@ -207,6 +210,7 @@ document.addEventListener('click', function(e) {
       <li data-i18n="help.input_desc2">理論フィルタなし。探索 → 発見 → 理論を後から知る</li>
       <li data-i18n="help.input_desc3">コード検出時にパッド上に度数ラベル（R, 3, 5, b7等）を表示。ギター・ベース・ピアノ・五線譜にも連動</li>
       <li data-i18n="help.input_memory"><strong>Memory</strong> — 16スロットにコードを保存・呼び出し</li>
+      <li data-i18n="help.input_banks"><strong>Banks</strong> — 16スロット×最大16バンク。<kbd>[</kbd> <kbd>]</kbd>で切替。複製・リネーム対応</li>
       <li data-i18n="help.input_export"><strong>MIDI Export</strong> — メモリーのコードをMIDIファイルとして書き出し</li>
     </ul>
 
@@ -284,7 +288,11 @@ document.addEventListener('click', function(e) {
       <li data-i18n="help.vh_10"><b>V1.0</b> — 初回リリース（Scale/Chord/Voicing/MIDI）</li>
     </ul>
 
-    <p style="font-size:0.7rem;color:var(--text-muted);margin-top:12px;text-align:center;" data-i18n="help.footer">
+    <p style="margin-top:12px;text-align:center;">
+      <label style="font-size:0.7rem;color:var(--text-muted);cursor:pointer;"><input type="checkbox" id="tips-toggle" onchange="toggleStartupTips(this.checked)" style="vertical-align:middle;margin-right:4px;"> <span data-i18n="help.tips_toggle">起動時にヒントを表示</span></label>
+    </p>
+
+    <p style="font-size:0.7rem;color:var(--text-muted);margin-top:8px;text-align:center;" data-i18n="help.footer">
       64 Pad Explorer — HPS（Hardcore Pad Style）
     </p>
     <p style="font-size:0.7rem;color:var(--text-muted);text-align:center;">
@@ -691,30 +699,30 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.24.19"></script>
-<script src="lang-en.js?v=3.24.19"></script>
-<script src="lang-ja.js?v=3.24.19"></script>
-<script src="lang-zh.js?v=3.24.19"></script>
-<script src="lang-es.js?v=3.24.19"></script>
-<script src="lang-fr.js?v=3.24.19"></script>
-<script src="lang-pt.js?v=3.24.19"></script>
-<script src="lang-de.js?v=3.24.19"></script>
-<script src="lang-ko.js?v=3.24.19"></script>
-<script src="lang-it.js?v=3.24.19"></script>
+<script src="i18n.js?v=3.24.20"></script>
+<script src="lang-en.js?v=3.24.20"></script>
+<script src="lang-ja.js?v=3.24.20"></script>
+<script src="lang-zh.js?v=3.24.20"></script>
+<script src="lang-es.js?v=3.24.20"></script>
+<script src="lang-fr.js?v=3.24.20"></script>
+<script src="lang-pt.js?v=3.24.20"></script>
+<script src="lang-de.js?v=3.24.20"></script>
+<script src="lang-ko.js?v=3.24.20"></script>
+<script src="lang-it.js?v=3.24.20"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=3.24.19"></script>
-<script src="pad-core/theory.js?v=3.24.19"></script>
-<script src="pad-core/render.js?v=3.24.19"></script>
-<script src="pad-core/circle.js?v=3.24.19"></script>
+<script src="pad-core/data.js?v=3.24.20"></script>
+<script src="pad-core/theory.js?v=3.24.20"></script>
+<script src="pad-core/render.js?v=3.24.20"></script>
+<script src="pad-core/circle.js?v=3.24.20"></script>
 <!-- App JS -->
-<script src="data.js?v=3.24.19"></script>
-<script src="audio.js?v=3.24.19"></script>
-<script src="theory.js?v=3.24.19"></script>
-<script src="render.js?v=3.24.19"></script>
-<script src="plain.js?v=3.24.19"></script>
-<script src="perform.js?v=3.24.19"></script>
-<script src="builder.js?v=3.24.19"></script>
-<script src="main.js?v=3.24.19"></script>
+<script src="data.js?v=3.24.20"></script>
+<script src="audio.js?v=3.24.20"></script>
+<script src="theory.js?v=3.24.20"></script>
+<script src="render.js?v=3.24.20"></script>
+<script src="plain.js?v=3.24.20"></script>
+<script src="perform.js?v=3.24.20"></script>
+<script src="builder.js?v=3.24.20"></script>
+<script src="main.js?v=3.24.20"></script>
 <script>
 if ('serviceWorker' in navigator) {
   // Clean up old ?v= registrations (they create zombie SWs)

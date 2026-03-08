@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync, statSync } from 'fs';
 import { resolve } from 'path';
 
-const ROOT = resolve(__dirname, '..');
+const ROOT = resolve(__dirname, '../..');
 
 describe('Sound engine integrity', () => {
   it('audio.js exists and contains WebAudioFont engine', () => {

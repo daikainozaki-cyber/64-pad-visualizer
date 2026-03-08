@@ -29,23 +29,23 @@ globalThis.location = { pathname: '/apps/64-pad/' };
 globalThis.localStorage = { getItem: () => null, setItem: () => {} };
 
 // Load pad-core modules first (SSOT: theory calculations, data constants, render)
-const padCoreData = require('../../pad-core/data.js');
+const padCoreData = require('../../../pad-core/data.js');
 Object.assign(globalThis, padCoreData);
 
-const padCoreTheory = require('../../pad-core/theory.js');
+const padCoreTheory = require('../../../pad-core/theory.js');
 Object.assign(globalThis, padCoreTheory);
 
-const padCoreRender = require('../../pad-core/render.js');
+const padCoreRender = require('../../../pad-core/render.js');
 Object.assign(globalThis, padCoreRender);
 
 // Load app data.js → inject all exports as globals (theory.js/builder.js depend on them)
-const data = require('../../data.js');
+const data = require('../../../data.js');
 Object.assign(globalThis, data);
 
 // Load app theory.js → inject all exports as globals (builder.js depends on some)
-const theory = require('../../theory.js');
+const theory = require('../../../theory.js');
 Object.assign(globalThis, theory);
 
 // Load builder.js
-const builder = require('../../builder.js');
+const builder = require('../../../builder.js');
 Object.assign(globalThis, builder);

@@ -13,6 +13,8 @@
 DAWの複雑さは圧縮されるべきもの。パッドを叩く体験は圧縮されない。
 ツールは限界まで簡素にして、人間の体験を邪魔しない。
 
+**現在地（2026-03-09）**: サンプラー・シーケンサー・コードビルダー・楽器入力・エフェクト・MIDI I/Oは稼働中。DAWの部品は既に揃いつつある。残りは入力拡張（マイク/Audio）と出力拡張（録音/アプリ間連携）。PADDAWは未来の目標ではなく現在進行形。
+
 三井田くんの川三64パッド（スプレッドシート v2.0.1）を超え、スケール・コード・ボイシング可視化からシーケンス・MIDI書き出しまでをWebアプリで実現する。
 
 ### 公開・ライセンス方針
@@ -347,6 +349,10 @@ fingerings.json に追加
 | Phase 6 | **ダイアグラム描画モジュール化** | 未着手 | ギター/ベース/ピアノ描画を再利用可能な単位に切り出し |
 | Phase 7 | **五度圏アプリにダイアグラム統合** | 未着手 | モジュールを五度圏アプリにインポート |
 | ~~Phase 8~~ | ~~記事からのデータ抽出パイプライン~~ | **廃止** | Phase 5廃止に伴い不要 |
+| Phase A | **Audio Input（マイク→コード判定）** | 未着手 | getUserMedia+AnalyserNode→Chromagram(FFT→12PC)→padDetectChord。ギターユーザー取り込みの入口 |
+| Phase R | **マルチトラック録音** | 未着手 | MediaRecorder+Web Audio。マイク+内部音源の複数トラック→WAV書き出し。デモ録り・レッスン記録品質 |
+| Phase X | **アプリ間連携（PADDAW基盤）** | 未着手 | 同一オリジンlocalStorage+BroadcastChannelで64PE↔MRC↔五度圏を接続。MIDI転送、コード進行共有。各アプリ単独完成品＋組合せでDAW |
+| Phase D | **Desktop/Pluginパイプライン** | 未着手 | Web push→Desktop自動sync→JUCEビルド→DMG/VST3/AU生成。手動sync-webui.shの自動化 |
 | Phase M | **モバイルPlay対応（iPhone限定）** | **設計完了** | View=64パッド(縦持ち)、Play=32パッド(横持ち4×8)。詳細: `docs/mobile-play-design.md` |
 
 **Phase 1〜2はコード表示・スケール表示まで。うりなみさん見積: 約2時間。**

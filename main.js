@@ -12,6 +12,7 @@ updateOctaveLabel();
 initMemorySlots();
 initWebMIDI();
 initPlayControls();
+initTextChordInput();
 I18N.init();
 
 // Mobile responsive init

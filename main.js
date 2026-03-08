@@ -79,6 +79,40 @@ _landscapeMediaQuery.addEventListener('change', handleLandscapeChange);
 })();
 
 // ========================================
+// STARTUP TIPS (returning users)
+// ========================================
+function showStartupTip() {
+  if (AppState.showTips === false) return;
+  // Don't show for first-time users (onboarding overlay handles them)
+  if (!localStorage.getItem('64pad-sound')) return;
+  var lang = I18N.current || 'en';
+  var tips = (I18N.langs[lang] && I18N.langs[lang].tips) || (I18N.langs['en'] && I18N.langs['en'].tips);
+  if (!tips || !tips.length) return;
+  var idx = Math.floor(Math.random() * tips.length);
+  var offLabel = t('tips_off') || "Don't show";
+  var el = document.createElement('div');
+  el.id = 'startup-tip';
+  el.innerHTML = '<span class="tip-text">\uD83D\uDCA1 ' + tips[idx] + '</span>' +
+    '<span class="tip-keys"><kbd>Space</kbd></span>' +
+    '<button class="tip-off-btn" onclick="disableStartupTips()">' + offLabel + '</button>';
+  var grid = document.getElementById('pad-grid');
+  if (grid) grid.parentNode.insertBefore(el, grid);
+  setTimeout(dismissStartupTip, 8000);
+}
+function dismissStartupTip() {
+  var el = document.getElementById('startup-tip');
+  if (!el) return;
+  el.classList.add('tip-fade');
+  setTimeout(function() { if (el.parentNode) el.remove(); }, 300);
+}
+function disableStartupTips() {
+  AppState.showTips = false;
+  saveAppSettings();
+  dismissStartupTip();
+}
+showStartupTip();
+
+// ========================================
 // KEYBOARD SHORTCUTS
 // ========================================
 document.addEventListener('keydown', (e) => {
@@ -209,8 +243,10 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // Space: Play current chord
+  // Space: Dismiss startup tip if visible, otherwise play current chord
   if (key === ' ') {
+    var tipEl = document.getElementById('startup-tip');
+    if (tipEl) { e.preventDefault(); dismissStartupTip(); return; }
     e.preventDefault();
     ensureAudioResumed();
     const notes = getCurrentChordMidiNotes();

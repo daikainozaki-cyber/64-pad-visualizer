@@ -37,6 +37,7 @@ const AppState = {
   velDrive: 0,       // -64 to +64: curve rise (+soft=loud, -need harder touch)
   velCompand: 0,     // -64 to +64: dynamic range compress(+)/expand(-)
   velRange: 127,     // 1-127: max output velocity
+  showTips: true,    // startup tips for returning users
 };
 
 const BuilderState = {
@@ -138,6 +139,7 @@ function saveAppSettings() {
       diatonicMode: AppState.diatonicMode,
       banks: BankState.banks,
       activeBankId: BankState.activeBankId,
+      showTips: AppState.showTips,
     };
     localStorage.setItem('64pad-settings', JSON.stringify(s));
   } catch(_) {}
@@ -166,6 +168,7 @@ function loadAppSettings() {
     if (s.velRange !== undefined) AppState.velRange = s.velRange;
     if (s.semitoneShift !== undefined && s.semitoneShift >= -11 && s.semitoneShift <= 11) AppState.semitoneShift = s.semitoneShift;
     if (s.diatonicMode === 'triad' || s.diatonicMode === 'tetrad') AppState.diatonicMode = s.diatonicMode;
+    if (s.showTips === false) AppState.showTips = false;
     // Migration: banks
     if (Array.isArray(s.banks) && s.banks.length > 0) {
       BankState.banks = s.banks;

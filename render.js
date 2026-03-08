@@ -1945,6 +1945,13 @@ function toggleGuitarFret(stringIdx, fret) {
   _guitarSyncSource = 'manual';
   GuitarPositionState.enabled = false;
   GuitarPositionState._lastKey = null;
+  // Clear auto-positioned bass to prevent phantom notes in getAllInputMidiNotes()
+  if (BassPositionState._lastKey !== null) {
+    bassSelectedFrets = [null, null, null, null];
+    BassPositionState.enabled = false;
+    BassPositionState._lastKey = null;
+    updatePositionBar('bass');
+  }
   updatePositionBar('guitar');
   updateInstrumentInput();
 }

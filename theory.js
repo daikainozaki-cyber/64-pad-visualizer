@@ -481,6 +481,12 @@ function updateBassPositions() {
     updatePositionBar('bass');
     return;
   }
+  if (_guitarSyncSource === 'manual') {
+    BassPositionState.enabled = false;
+    BassPositionState._lastKey = null;
+    updatePositionBar('bass');
+    return;
+  }
 
   var pcs = getBuilderPCS();
   if (!pcs) { BassPositionState.enabled = false; BassPositionState._lastKey = null; updatePositionBar('bass'); return; }

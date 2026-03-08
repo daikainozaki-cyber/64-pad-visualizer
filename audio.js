@@ -636,6 +636,8 @@ function noteOffAll() {
     v.envelope.cancel();
   }
   activeVoices.clear();
+  // Kill any lingering WebAudioFont voices not tracked in activeVoices
+  wafPlayer.cancelQueue(audioCtx);
 }
 
 // --- Velocity curve (Push 3-style 4-parameter) ---

@@ -5,3 +5,11 @@
     Header set Pragma "no-cache"
     Header set Expires "0"
 </FilesMatch>
+
+# Force browser to clear old Service Worker caches on next visit.
+# The old SW's network-first navigation fetch will receive this header,
+# causing the browser to wipe Cache API (SW caches) + HTTP cache.
+# Safe: does NOT clear localStorage (sound settings preserved).
+<Files "index.html">
+    Header set Clear-Site-Data "\"cache\""
+</Files>

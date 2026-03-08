@@ -724,8 +724,14 @@ function playMidiNotes(midiNotes) {
   setTimeout(() => { midiNotes.forEach(m => noteOff(m)); }, 600);
 }
 
+// Build version — shown in version tag for diagnostics
+const _AUDIO_BUILD = '3.24.16';
+
 // Slider labels + live parameter update
 onReady(() => {
+  // Show actual loaded audio version in version tag (cache diagnostic)
+  var _vt = document.querySelector('.version-tag');
+  if (_vt) _vt.textContent = 'V' + _AUDIO_BUILD;
   // Set initial mute button state
   _updateMuteBtn();
   // Hide CHS export on production (reverse-engineered Chordcat format — dev only)

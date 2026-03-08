@@ -2153,7 +2153,6 @@ function clearInstrumentInput() {
   pianoSelectedNotes.clear();
   padExtNotes.clear();
   instrumentInputActive = false;
-  _guitarSyncSource = null;
   _instrumentMidiSet = null; // Clear MIDI filter — show full PCS again
   GuitarPositionState.enabled = false;
   GuitarPositionState._lastKey = null;
@@ -2165,7 +2164,11 @@ function clearInstrumentInput() {
   const detectEl = document.getElementById('midi-detect');
   detectEl.innerHTML = '';
   // Re-render to restore builder chord display on pads + diagrams
+  // Temporarily keep 'manual' to prevent updateGuitarPositions() from
+  // re-auto-positioning frets during this render() call
+  _guitarSyncSource = 'manual';
   render();
+  _guitarSyncSource = null;
 }
 
 function playInstrumentInput() {

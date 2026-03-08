@@ -752,7 +752,7 @@ function playMidiNotes(midiNotes) {
 }
 
 // Build version — shown in version tag for diagnostics
-const _AUDIO_BUILD = '3.24.22';
+const _AUDIO_BUILD = '3.24.23';
 
 // Slider labels + live parameter update
 onReady(() => {

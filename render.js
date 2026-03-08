@@ -260,19 +260,21 @@ function renderPads(svg, state, grid) {
       const x = margin + col * (padSize + padGap);
       const y = margin + (rows - 1 - row) * (padSize + padGap);
       const interval = ((pc - rootPC) + 12) % 12;
-      // When instrument input is active, restrict to specific MIDI notes (not all PCS matches)
-      const _instrFilter = !grid && _instrumentMidiSet;
-      const isRoot = pc === rootPC && !omittedPCS.has(pc) && (!_instrFilter || _instrFilter.has(midi));
-      const isBass = bassPC !== null && pc === bassPC && (!_instrFilter || _instrFilter.has(midi));
-      const isActive = _instrFilter ? _instrFilter.has(midi) && activePCS.has(pc) : activePCS.has(pc);
-      const isOmitted = omittedPCS.has(pc) && (!_instrFilter || _instrFilter.has(midi));
+      // Voicing filter: pad-position filter (deduped, WYSIWYG) > MIDI filter > no filter
+      const _padPosFilter = !grid && _instrumentPadSet;
+      const _instrFilter = !grid && !_padPosFilter && _instrumentMidiSet;
+      const _voicingPass = _padPosFilter ? _padPosFilter.has(row * cols + col) : (_instrFilter ? _instrFilter.has(midi) : true);
+      const isRoot = pc === rootPC && !omittedPCS.has(pc) && _voicingPass;
+      const isBass = bassPC !== null && pc === bassPC && _voicingPass;
+      const isActive = _voicingPass ? activePCS.has(pc) : false;
+      const isOmitted = omittedPCS.has(pc) && _voicingPass;
       const isChar = AppState.mode === 'scale' && charPCS.has(pc) && !isRoot;
-      const isGuide3 = AppState.mode === 'chord' && guide3PCS.has(pc) && !isRoot && !tensionPCS.has(pc) && (!_instrFilter || _instrFilter.has(midi));
-      const isGuide7 = AppState.mode === 'chord' && guide7PCS.has(pc) && !isRoot && !tensionPCS.has(pc) && (!_instrFilter || _instrFilter.has(midi));
+      const isGuide3 = AppState.mode === 'chord' && guide3PCS.has(pc) && !isRoot && !tensionPCS.has(pc) && _voicingPass;
+      const isGuide7 = AppState.mode === 'chord' && guide7PCS.has(pc) && !isRoot && !tensionPCS.has(pc) && _voicingPass;
       const isGuide = isGuide3 || isGuide7;
-      const isTension = AppState.mode === 'chord' && tensionPCS.has(pc) && !isRoot && !isGuide && (!_instrFilter || _instrFilter.has(midi));
-      const isAvoid = AppState.mode === 'chord' && avoidPCS.has(pc) && !isRoot && (!_instrFilter || _instrFilter.has(midi));
-      const isOverlay = !isOmitted && overlayPCS && overlayPCS.has(pc) && !activePCS.has(pc);
+      const isTension = AppState.mode === 'chord' && tensionPCS.has(pc) && !isRoot && !isGuide && _voicingPass;
+      const isAvoid = AppState.mode === 'chord' && avoidPCS.has(pc) && !isRoot && _voicingPass;
+      const isOverlay = !(_padPosFilter || _instrFilter) && !isOmitted && overlayPCS && overlayPCS.has(pc) && !activePCS.has(pc);
 
       // Plain mode: highlight selected notes only
       const isPlainActive = AppState.mode === 'input' && PlainState.activeNotes.has(midi);
@@ -589,9 +591,36 @@ function render() {
   renderDiatonicBar();
   renderParentScales();
 
+  // Guitar/bass positioning BEFORE pads so voicing reflect can filter pad display
+  if (typeof updateGuitarPositions === 'function') updateGuitarPositions();
+  if (typeof updateBassPositions === 'function') updateBassPositions();
+
+  // Voicing reflect: auto-positioned guitar voicing → deduped pad positions (WYSIWYG)
+  if (_voicingReflectMode && _guitarSyncSource === 'position') {
+    var reflectNotes = [];
+    for (var s = 0; s < 6; s++) {
+      if (guitarSelectedFrets[s] !== null) {
+        reflectNotes.push(GUITAR_OPEN_MIDI[s] + guitarSelectedFrets[s]);
+      }
+    }
+    if (reflectNotes.length >= 2) {
+      _instrumentMidiSet = new Set(reflectNotes);
+      var layout = _computeVoicingPadPositions(_instrumentMidiSet);
+      _instrumentPadSet = layout.padSet;
+      _voicingDualCount = layout.dualCount;
+      _voicingLayoutCount = layout.layoutCount;
+      var vrBtn = document.getElementById('voicing-reflect-btn');
+      if (vrBtn) {
+        vrBtn.innerHTML = '<span class="kbd-hint">V</span>' + (_voicingLayoutCount > 1
+          ? t('pos.to_pad') + ' ' + (_voicingAltMode + 1) + '/' + _voicingLayoutCount
+          : t('pos.to_pad'));
+      }
+    }
+  }
+
   const state = computeRenderState();
   renderPads(svg, state);
-  if (AppState.mode !== 'input') {
+  if (AppState.mode !== 'input' && !_voicingReflectMode && _guitarSyncSource !== 'position') {
     renderVoicingBoxes(svg, state);
   }
   renderLegend(state);
@@ -611,9 +640,7 @@ function render() {
   lastRenderRootPC = state.rootPC;
   lastRenderActivePCS = new Set(state.activePCS);
   lastRenderState = state;
-  // Position alternatives (chord mode: auto-calculate before diagram render)
-  if (typeof updateGuitarPositions === 'function') updateGuitarPositions();
-  if (typeof updateBassPositions === 'function') updateBassPositions();
+  // Guitar/bass positions already computed above (before renderPads)
   renderGuitarDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state);
   renderBassDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state);
   renderPianoDisplay(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS);
@@ -1176,8 +1203,9 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS,
       const isAvoid = AppState.mode === 'chord' && _av.has(pc) && !isRoot;
       const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
       const r = f === 0 ? (solo ? 7 : 5) : (solo ? 10 : 7);
-      // Position mode: dim frets not in selected form
+      // Position mode: hide frets not in selected form (show only pressed positions)
       const _posDim = _gPosActive && guitarSelectedFrets[s] !== f;
+      if (_posDim) continue;
       const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       dot.setAttribute('cx', fx); dot.setAttribute('cy', sy);
       dot.setAttribute('r', r);
@@ -1185,32 +1213,32 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS,
       if (isOvl) {
         const isChar = overlayCharPCS && overlayCharPCS.has(pc);
         dot.setAttribute('fill', isChar ? INST_OVERLAY_CHAR_COLOR : INST_OVERLAY_COLOR);
-        dot.setAttribute('opacity', _posDim ? '0.1' : (isChar ? '0.5' : '0.4'));
+        dot.setAttribute('opacity', isChar ? '0.5' : '0.4');
         textColor = INST_OVERLAY_TEXT;
       } else if (isOmitted) {
         dotColor = INST_OMITTED_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.1' : '0.5');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.5');
       } else if (isRoot) {
         dotColor = INST_ROOT_COLOR; textColor = INST_ROOT_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
       } else if (isBass) {
         dotColor = INST_BASS_COLOR; textColor = INST_BASS_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
       } else if (isGuide3) {
         dotColor = INST_GUIDE3_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
       } else if (isGuide7) {
         dotColor = INST_GUIDE7_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
       } else if (isAvoid) {
         dotColor = INST_AVOID_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
       } else if (isTension) {
         dotColor = INST_TENSION_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
       } else {
         dotColor = INST_CHORD_COLOR; textColor = '#000';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _posDim ? '0.15' : '0.9');
+        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
       }
       svg.appendChild(dot);
       // Label inside dot
@@ -1229,10 +1257,48 @@ function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS,
         lt.setAttribute('font-size', fs);
         lt.setAttribute('fill', textColor);
         lt.setAttribute('font-weight', '700');
-        if (_posDim) lt.setAttribute('opacity', '0.15');
         lt.textContent = labelText;
         svg.appendChild(lt);
       }
+    }
+  }
+
+  // Alternative form ghost dots (other voicings in current group)
+  if (_gPosActive && GuitarPositionState.groups.length > 0) {
+    const gGroup = GuitarPositionState.groups[GuitarPositionState.currentGroupIdx];
+    if (gGroup && gGroup.forms.length > 1) {
+      const curFretSet = new Set();
+      for (let gs = 0; gs < 6; gs++) {
+        if (guitarSelectedFrets[gs] !== null) curFretSet.add(gs * 100 + guitarSelectedFrets[gs]);
+      }
+      const altRendered = new Set();
+      gGroup.forms.forEach(function(form, fi) {
+        if (fi === GuitarPositionState.currentAltInGroup) return;
+        for (let gs = 0; gs < 6; gs++) {
+          if (form.frets[gs] === null) continue;
+          const gKey = gs * 100 + form.frets[gs];
+          if (curFretSet.has(gKey) || altRendered.has(gKey)) continue;
+          altRendered.add(gKey);
+          const gf = form.frets[gs];
+          const gsy = topM + gs * strH;
+          const gfx = gf === 0 ? nutX - 2 : nutX + (gf - 0.5) * fretW;
+          const gpc = (strings[gs] % 12 + gf) % 12;
+          const gIsRoot = gpc === rootPC;
+          const gColor = gIsRoot ? INST_ROOT_COLOR
+            : _g3.has(gpc) ? INST_GUIDE3_COLOR
+            : _g7.has(gpc) ? INST_GUIDE7_COLOR
+            : _tp.has(gpc) ? INST_TENSION_COLOR
+            : INST_CHORD_COLOR;
+          const gr = solo ? 7 : 5;
+          const gDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          gDot.setAttribute('cx', gfx);
+          gDot.setAttribute('cy', gsy);
+          gDot.setAttribute('r', gr);
+          gDot.setAttribute('fill', gColor);
+          gDot.setAttribute('opacity', '0.25');
+          svg.appendChild(gDot);
+        }
+      });
     }
   }
 
@@ -1891,6 +1957,152 @@ let guitarSelectedFrets = [null, null, null, null, null, null];
 let pianoSelectedNotes = new Set(); // MIDI note numbers
 let instrumentInputActive = false;
 var _instrumentMidiSet = null; // When non-null, renderPads only colors these specific MIDI notes
+var _voicingReflectMode = false; // Toggle: auto-positioned guitar voicing → pad MIDI filter
+var _instrumentPadSet = null;    // Set of (row * COLS + col) — deduped pad positions for voicing reflect
+var _voicingAltMode = 0;         // 0 = most compact layout, 1+ = alternates sorted by column spread
+var _voicingDualCount = 0;       // Number of MIDI notes with 2 pad positions
+var _voicingLayoutCount = 1;     // Total distinct layouts available
+
+// Compute deduped pad positions: 1 pad per MIDI note (WYSIWYG)
+// Two layout strategies offered:
+//   1. Guitar-like: 1 note per row (= 1 string), diagonal shape
+//   2. Compact: minimize bounding box, easiest to play on pad
+function _computeVoicingPadPositions(midiSet) {
+  var bm = baseMidi();
+  var byMidi = {};
+  midiSet.forEach(function(midi) {
+    byMidi[midi] = [];
+    for (var row = 0; row < ROWS; row++) {
+      var col = midi - bm - row * ROW_INTERVAL;
+      if (col >= 0 && col < COLS) {
+        byMidi[midi].push({row: row, col: col});
+      }
+    }
+  });
+  var fixed = [], duals = [];
+  Object.keys(byMidi).forEach(function(k) {
+    var poses = byMidi[k];
+    if (poses.length === 1) fixed.push(poses[0]);
+    else if (poses.length >= 2) duals.push(poses);
+  });
+  if (duals.length === 0) {
+    var padSet = new Set();
+    fixed.forEach(function(p) { padSet.add(p.row * COLS + p.col); });
+    return { padSet: padSet, dualCount: 0, layoutCount: 1 };
+  }
+  // Enumerate all dual combinations (2^n, typically n≤3)
+  var combos = 1 << duals.length;
+  var allCombos = [];
+  for (var mask = 0; mask < combos; mask++) {
+    var chosen = [];
+    for (var d = 0; d < duals.length; d++) {
+      var idx = (mask >> d) & 1;
+      chosen.push(duals[d][Math.min(idx, duals[d].length - 1)]);
+    }
+    var allPos = fixed.concat(chosen);
+    // Row conflicts (guitar: 1 string = 1 note)
+    var rowUsed = {};
+    var rowConflicts = 0;
+    var rows = [], cols = [];
+    allPos.forEach(function(p) {
+      rowUsed[p.row] = (rowUsed[p.row] || 0) + 1;
+      if (rowUsed[p.row] === 2) rowConflicts++;
+      rows.push(p.row); cols.push(p.col);
+    });
+    var colSpread = Math.max.apply(null, cols) - Math.min.apply(null, cols);
+    var rowSpread = Math.max.apply(null, rows) - Math.min.apply(null, rows);
+    allCombos.push({ chosen: chosen, rowConflicts: rowConflicts, colSpread: colSpread, rowSpread: rowSpread });
+  }
+  // Helper: make padSet key for dedup
+  function comboKey(c) {
+    return c.chosen.map(function(p) { return p.row * COLS + p.col; }).sort().join(',');
+  }
+  // 1. Guitar-like best: min row conflicts, then min col spread
+  var guitarSorted = allCombos.slice().sort(function(a, b) {
+    if (a.rowConflicts !== b.rowConflicts) return a.rowConflicts - b.rowConflicts;
+    return a.colSpread - b.colSpread;
+  });
+  // 2. Compact best: min (rowSpread + colSpread) bounding box, then min row conflicts
+  var compactSorted = allCombos.slice().sort(function(a, b) {
+    var aBox = a.rowSpread + a.colSpread;
+    var bBox = b.rowSpread + b.colSpread;
+    if (aBox !== bBox) return aBox - bBox;
+    return a.rowConflicts - b.rowConflicts;
+  });
+  // Build unique list: guitar-like first, then compact (if different)
+  var unique = [];
+  var seen = {};
+  function addIfNew(combo) {
+    var key = comboKey(combo);
+    if (!seen[key]) { seen[key] = true; unique.push(combo); return true; }
+    return false;
+  }
+  addIfNew(guitarSorted[0]);
+  addIfNew(compactSorted[0]);
+  // Add a few more guitar-like alternatives (within best row conflicts + small spread)
+  var bestRC = guitarSorted[0].rowConflicts;
+  var bestCS = guitarSorted[0].colSpread;
+  for (var gi = 1; gi < guitarSorted.length && unique.length < 4; gi++) {
+    var g = guitarSorted[gi];
+    if (g.rowConflicts > bestRC) break;
+    if (g.colSpread > bestCS + 1) break;
+    addIfNew(g);
+  }
+  var pick = unique[Math.min(_voicingAltMode, unique.length - 1)];
+  var padSet = new Set();
+  fixed.forEach(function(p) { padSet.add(p.row * COLS + p.col); });
+  pick.chosen.forEach(function(p) { padSet.add(p.row * COLS + p.col); });
+  return { padSet: padSet, dualCount: duals.length, layoutCount: unique.length };
+}
+
+function toggleVoicingReflect() {
+  var btn = document.getElementById('voicing-reflect-btn');
+  if (_voicingReflectMode) {
+    // Already ON: cycle alt layout if more layouts exist, otherwise turn off
+    if (_voicingLayoutCount > 1 && _voicingAltMode < _voicingLayoutCount - 1) {
+      _voicingAltMode++;
+    } else {
+      _voicingReflectMode = false;
+      _voicingAltMode = 0;
+      _instrumentMidiSet = null;
+      _instrumentPadSet = null;
+      _voicingDualCount = 0;
+      _voicingLayoutCount = 1;
+      if (btn) {
+        btn.style.background = 'var(--surface)'; btn.style.color = 'var(--text)'; btn.innerHTML = '<span class="kbd-hint">V</span>' + t('pos.to_pad');
+        btn.style.borderColor = 'var(--accent, #f80)';
+        // Hide if position bar also hidden
+        if (!GuitarPositionState.enabled) btn.style.display = 'none';
+      }
+      render();
+      return;
+    }
+  } else {
+    // Turn ON
+    _voicingReflectMode = true;
+    _voicingAltMode = 0;
+    // Always center voicing on pad grid
+    var notes = [];
+    for (var s = 0; s < 6; s++) {
+      if (guitarSelectedFrets[s] !== null) notes.push(GUITAR_OPEN_MIDI[s] + guitarSelectedFrets[s]);
+    }
+    if (notes.length >= 2) {
+      notes.sort(function(a, b) { return a - b; });
+      var mid = Math.round((notes[0] + notes[notes.length - 1]) / 2);
+      var gridRange = (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
+      var padMid = BASE_MIDI + gridRange / 2;
+      var needed = Math.round((mid - padMid) / 12);
+      var clamped = Math.max(-1, Math.min(3, needed));
+      if (clamped !== AppState.octaveShift) {
+        AppState.octaveShift = clamped;
+        updateOctaveLabel();
+      }
+    }
+    if (btn) { btn.style.display = 'inline-block'; btn.style.background = 'var(--accent, #f80)'; btn.style.color = '#000'; btn.style.borderColor = 'var(--accent, #f80)'; }
+  }
+  render();
+}
+
 let padExtNotes = new Set(); // Chord mode: MIDI notes toggled on 64-pad for PS extension
 let lastDetectedNotes = []; // Last detection input notes (for click-to-transfer, V2.10)
 let lastDetectedCandidates = []; // Last detection candidates (for click-to-transfer, V2.10)
@@ -2153,7 +2365,13 @@ function clearInstrumentInput() {
   pianoSelectedNotes.clear();
   padExtNotes.clear();
   instrumentInputActive = false;
-  _instrumentMidiSet = null; // Clear MIDI filter — show full PCS again
+  _instrumentMidiSet = null;
+  _instrumentPadSet = null;
+  _voicingReflectMode = false;
+  _voicingAltMode = 0;
+  _voicingDualCount = 0;
+  var vrBtn = document.getElementById('voicing-reflect-btn');
+  if (vrBtn) { vrBtn.style.background = 'var(--surface)'; vrBtn.style.color = 'var(--text)'; vrBtn.innerHTML = '<span class="kbd-hint">V</span>' + t('pos.to_pad'); vrBtn.style.display = 'none'; vrBtn.style.borderColor = 'var(--accent, #f80)'; }
   GuitarPositionState.enabled = false;
   GuitarPositionState._lastKey = null;
   BassPositionState.enabled = false;

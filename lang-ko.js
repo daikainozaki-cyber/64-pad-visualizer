@@ -70,6 +70,8 @@ I18N.addLang('ko', {
     sc_rootless: '<kbd>r</kbd> \u2014 Rootless 전환',
     sc_shell: '<kbd>s</kbd> \u2014 Shell 순환 (off \u2192 1-3-7 \u2192 1-7-3 \u2192 off)',
     sc_drop: '<kbd>d</kbd> \u2014 Drop 순환 (off \u2192 Drop 2 \u2192 Drop 3 \u2192 off)',
+    sc_voicing_reflect: '<kbd>v</kbd> \u2014 패드에 반영 / 레이아웃 순환 (기타형 \u2194 컴팩트)',
+    sc_guitar_pos: '<kbd>,</kbd> / <kbd>.</kbd> \u2014 기타 포지션 이동 (이전 / 다음)',
     sc_clear: '<kbd>x</kbd> \u2014 코드 초기화 (Chord 모드)',
     sc_pad_explore: '<b>패드 (Chord 모드)</b> \u2014 클릭으로 음표 토글 \u2014 빌더 자동 업데이트',
     shortcut_input: 'Input Mode',
@@ -246,6 +248,7 @@ I18N.addLang('ko', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: '\uBE14\uB85C\uADF8\uC5D0\uC11C \uB354 \uC54C\uC544\uBCF4\uAE30 \u2192',
     version_history: '\uBC84\uC804 \uAE30\uB85D',
+    vh_32427: '<b>V3.24.27</b> \u2014 \uAE30\uD0C0 \uBCF4\uC774\uC2F1 \u2192 \uD328\uB4DC \uBC18\uC601 (<kbd>V</kbd>\uD0A4). \uAE30\uD0C0\uD615 (1\uD589 1\uC74C) / \uCEF4\uD329\uD2B8 \uB808\uC774\uC544\uC6C3 \uC804\uD658. \uAE30\uD0C0 \uD3EC\uC9C0\uC158 "\uBAA8\uB450" \uD544\uD130 \uC120\uB450 \uBC30\uCE58',
     vh_324: '<b>V3.24</b> \u2014 Clavinet \uD504\uB9AC\uC14B \uCD94\uAC00 (E.PIANO\uC5D0 2\uC885). Auto Filter (\uC5D8\uBCA8\uB85C\uD504 \uD544\uD130 / auto-wah) \uC774\uD399\uD2B8 \uCD94\uAC00',
     vh_323: '<b>V3.23</b> \u2014 \uD14D\uC2A4\uD2B8 \uCF54\uB4DC \uC785\uB825 + \uC790\uB3D9 \uC644\uC131. "/"로 포커스, dim·h=m7\u266D5 등 약어 지원, 텐션 수 정렬',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
@@ -272,6 +275,7 @@ I18N.addLang('ko', {
     root_2: '2현R',
     open: '개방현',
     all: '전체',
+    to_pad: '패드에 반영',
   },
   tips: [
     'C 키를 눌러 현재 코드를 Memory에 저장',
@@ -296,4 +300,6 @@ I18N.addLang('ko', {
     'Chord 모드에서 / 를 눌러 코드명 직접 입력 (예: Cm7, G7(b9,#11))',
   ],
   tips_off: '팁 숨기기',
+  whats_new: '새 기능',
+  whats_new_32427: '기타 보이싱 \u2192 패드 반영 (V키). 기타형 / 컴팩트 레이아웃 전환',
 });

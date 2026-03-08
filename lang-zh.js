@@ -70,6 +70,8 @@ I18N.addLang('zh', {
     sc_rootless: '<kbd>r</kbd> \u2014 切换Rootless',
     sc_shell: '<kbd>s</kbd> \u2014 循环Shell（off \u2192 1-3-7 \u2192 1-7-3 \u2192 off）',
     sc_drop: '<kbd>d</kbd> \u2014 循环Drop（off \u2192 Drop 2 \u2192 Drop 3 \u2192 off）',
+    sc_voicing_reflect: '<kbd>v</kbd> \u2014 反映到打击垫 / 切换布局（吉他式 \u2194 紧凑式）',
+    sc_guitar_pos: '<kbd>,</kbd> / <kbd>.</kbd> \u2014 切换吉他把位（上一个 / 下一个）',
     sc_clear: '<kbd>x</kbd> \u2014 清除和弦（Chord模式）',
     sc_pad_explore: '<b>拍垫（Chord模式）</b> \u2014 点击切换音符 \u2014 构建器自动更新',
     shortcut_input: 'Input 模式',
@@ -246,6 +248,7 @@ I18N.addLang('zh', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: '在博客上了解更多 \u2192',
     version_history: '\u7248\u672C\u5386\u53F2',
+    vh_32427: '<b>V3.24.27</b> \u2014 吉他声位\u2192打击垫映射（<kbd>V</kbd>键）。吉他式（每行1音）/ 紧凑式布局切换。吉他把位"全部"筛选器置顶',
     vh_324: '<b>V3.24</b> \u2014 新增Clavinet音色（E.PIANO中2种）。新增自动滤波器（包络滤波器/Auto-Wah）效果',
     vh_323: '<b>V3.23</b> \u2014 文本和弦输入。自动补全候选，按"/"聚焦，支持dim、h=m7\u266D5等缩写，按延伸音数量排序',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
@@ -272,6 +275,7 @@ I18N.addLang('zh', {
     root_2: '2弦R',
     open: '开放弦',
     all: '全部',
+    to_pad: '映射到Pad',
   },
   tips: [
     '按 C 键将当前和弦保存到 Memory',
@@ -296,4 +300,6 @@ I18N.addLang('zh', {
     '在 Chord 模式按 / 直接输入和弦名（如 Cm7, G7(b9,#11)）',
   ],
   tips_off: '不再显示提示',
+  whats_new: '新功能',
+  whats_new_32427: '吉他声位\u2192打击垫映射（V键）。吉他式 / 紧凑式布局切换',
 });

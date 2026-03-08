@@ -395,6 +395,10 @@ function calcShellPositions(rootRow, rootCol, thirdInterval, seventhInterval, sh
 function groupGuitarForms(alternatives, openMidi, rootPC) {
   var numStrings = openMidi.length;
   var groups = [];
+  // All positions first (user preference: most general filter first)
+  if (alternatives.length > 0) {
+    groups.push({ labelKey: 'pos.all', forms: alternatives });
+  }
   // Root string groups (check bottom 3 strings)
   var maxRoot = Math.min(3, numStrings);
   for (var si = numStrings - 1; si >= numStrings - maxRoot; si--) {
@@ -422,10 +426,6 @@ function groupGuitarForms(alternatives, openMidi, rootPC) {
   }
   if (openForms.length > 0) {
     groups.push({ labelKey: 'pos.open', forms: openForms });
-  }
-  // All positions
-  if (alternatives.length > 0) {
-    groups.push({ labelKey: 'pos.all', forms: alternatives });
   }
   return groups;
 }
@@ -604,6 +604,15 @@ function updatePositionBar(which) {
   } else {
     bar.style.display = 'none';
     if (groupsEl) groupsEl.style.display = 'none';
+  }
+  // Show voicing-reflect button independently (guitar only)
+  if (which === 'guitar') {
+    var vrBtn = document.getElementById('voicing-reflect-btn');
+    if (vrBtn) {
+      // Show when position bar is visible OR voicing reflect is active
+      var showReflect = (state.enabled && state.alternatives.length > 0) || _voicingReflectMode;
+      vrBtn.style.display = showReflect ? 'inline-block' : 'none';
+    }
   }
 }
 

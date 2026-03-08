@@ -70,6 +70,8 @@ I18N.addLang('fr', {
     sc_rootless: '<kbd>r</kbd> \u2014 Activer/désactiver Rootless',
     sc_shell: '<kbd>s</kbd> \u2014 Cycler Shell (off \u2192 1-3-7 \u2192 1-7-3 \u2192 off)',
     sc_drop: '<kbd>d</kbd> \u2014 Cycler Drop (off \u2192 Drop 2 \u2192 Drop 3 \u2192 off)',
+    sc_voicing_reflect: '<kbd>v</kbd> \u2014 Refléter sur pad / cycler disposition (style guitare \u2194 compact)',
+    sc_guitar_pos: '<kbd>,</kbd> / <kbd>.</kbd> \u2014 Cycler position de guitare (précédent / suivant)',
     sc_clear: '<kbd>x</kbd> \u2014 Effacer l\'accord (mode Chord)',
     sc_pad_explore: '<b>Pad (mode Chord)</b> \u2014 Clic pour activer/désactiver une note \u2014 constructeur mis à jour',
     shortcut_plain: 'Input Mode',
@@ -246,6 +248,7 @@ I18N.addLang('fr', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'En savoir plus sur le blog \u2192',
     version_history: 'Historique des versions',
+    vh_32427: '<b>V3.24.27</b> \u2014 Voicing guitare \u2192 reflet sur pad (touche <kbd>V</kbd>). Basculement disposition style guitare (1 note par rang\u00E9e) / compact. Filtre "Tous" des positions de guitare en premier',
     vh_324: '<b>V3.24</b> \u2014 Presets Clavinet ajout\u00E9s (2 dans E.PIANO). Effet Auto Filter (filtre enveloppe / auto-wah) ajout\u00E9',
     vh_323: '<b>V3.23</b> \u2014 Saisie texte d\'accords avec auto-compl\u00E9tion. "/" pour activer, abr\u00E9viations (dim, h=m7\u266D5), tri par tensions',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
@@ -272,6 +275,7 @@ I18N.addLang('fr', {
     root_2: '2eR',
     open: 'Ouvert',
     all: 'Toutes',
+    to_pad: 'Vers Pad',
   },
   tips: [
     'Appuyez sur C pour sauvegarder l\'accord actuel dans Memory',
@@ -296,4 +300,6 @@ I18N.addLang('fr', {
     'Appuyez sur / en mode Chord pour saisir des noms d\'accords (ex: Cm7, G7(b9,#11))',
   ],
   tips_off: 'Ne plus afficher',
+  whats_new: 'Nouveautés',
+  whats_new_32427: 'Voicing guitare \u2192 reflet sur pad (touche V). Basculement disposition style guitare / compact',
 });

@@ -70,6 +70,8 @@ I18N.addLang('it', {
     sc_rootless: '<kbd>r</kbd> \u2014 Attivare/disattivare Rootless',
     sc_shell: '<kbd>s</kbd> \u2014 Ciclare Shell (off \u2192 1-3-7 \u2192 1-7-3 \u2192 off)',
     sc_drop: '<kbd>d</kbd> \u2014 Ciclare Drop (off \u2192 Drop 2 \u2192 Drop 3 \u2192 off)',
+    sc_voicing_reflect: '<kbd>v</kbd> \u2014 Rifletti su pad / ciclare layout (stile chitarra \u2194 compatto)',
+    sc_guitar_pos: '<kbd>,</kbd> / <kbd>.</kbd> \u2014 Ciclare posizione chitarra (precedente / successivo)',
     sc_clear: '<kbd>x</kbd> \u2014 Cancella accordo (modalità Chord)',
     sc_pad_explore: '<b>Pad (modo Chord)</b> \u2014 Clic per attivare/disattivare nota \u2014 il costruttore si aggiorna automaticamente',
     shortcut_input: 'Input Mode',
@@ -246,6 +248,7 @@ I18N.addLang('it', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Scopri di pi\u00F9 sul blog \u2192',
     version_history: 'Cronologia delle versioni',
+    vh_32427: '<b>V3.24.27</b> \u2014 Voicing chitarra \u2192 riflesso su pad (tasto <kbd>V</kbd>). Cambio layout stile chitarra (1 nota per riga) / compatto. Filtro "Tutti" posizioni chitarra in primo piano',
     vh_324: '<b>V3.24</b> \u2014 Preset Clavinet aggiunti (2 in E.PIANO). Effetto Auto Filter (filtro inviluppo / auto-wah) aggiunto',
     vh_323: '<b>V3.23</b> \u2014 Input testuale accordi con autocompletamento. "/" per attivare, abbreviazioni (dim, h=m7\u266D5), ordinamento per tensioni',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
@@ -272,6 +275,7 @@ I18N.addLang('it', {
     root_2: '2ªR',
     open: 'Aperta',
     all: 'Tutte',
+    to_pad: 'Su Pad',
   },
   tips: [
     'Premi C per salvare l\'accordo attuale in Memory',
@@ -296,4 +300,6 @@ I18N.addLang('it', {
     'Premi / in modalità Chord per digitare nomi di accordi (es: Cm7, G7(b9,#11))',
   ],
   tips_off: 'Non mostrare suggerimenti',
+  whats_new: 'Novità',
+  whats_new_32427: 'Voicing chitarra \u2192 riflesso su pad (tasto V). Cambio layout stile chitarra / compatto',
 });

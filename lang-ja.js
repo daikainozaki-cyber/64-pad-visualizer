@@ -72,6 +72,8 @@ I18N.addLang('ja', {
     sc_rootless: '<kbd>r</kbd> \u2014 Rootless 切り替え',
     sc_shell: '<kbd>s</kbd> \u2014 Shell循環（off \u2192 1-3-7 \u2192 1-7-3 \u2192 off）',
     sc_drop: '<kbd>d</kbd> \u2014 Drop循環（off \u2192 Drop 2 \u2192 Drop 3 \u2192 off）',
+    sc_voicing_reflect: '<kbd>v</kbd> \u2014 パッドに反映 切り替え / レイアウト循環（ギターライク \u2194 コンパクト）',
+    sc_guitar_pos: '<kbd>,</kbd> / <kbd>.</kbd> \u2014 ギターポジション送り（前 / 次）',
     sc_clear: '<kbd>x</kbd> \u2014 コードクリア（Chordモード）',
     sc_pad_explore: '<b>パッド（Chordモード）</b> \u2014 クリックで音をトグル \u2014 ビルダーが自動更新',
     shortcut_input: 'Input モード',
@@ -259,6 +261,7 @@ I18N.addLang('ja', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: '\u30D6\u30ED\u30B0\u3067\u3082\u3063\u3068\u8A73\u3057\u304F \u2192',
     version_history: 'Version History',
+    vh_32427: '<b>V3.24.27</b> \u2014 ギターボイシング\u2192パッド反映（<kbd>V</kbd>キー）。ギターライク（1行1音）/ コンパクト配置の切替対応。ギターポジション「全て」フィルタ先頭配置',
     vh_324: '<b>V3.24</b> \u2014 クラヴィネット音源追加（E.PIANOに2種）、オートフィルター（エンベロープフィルター/Auto-Wah）追加',
     vh_323: '<b>V3.23</b> \u2014 テキストコード入力。オートコンプリート候補表示、「/」キーでフォーカス、dim・h等の略記法対応、テンションソート',
     vh_322: '<b>V3.22</b> \u2014 五度圏表示。キー選択と連動、ダイアトニックコード・機能表示、マイナースケールモード切替対応',
@@ -285,6 +288,7 @@ I18N.addLang('ja', {
     root_2: '2弦R',
     open: '開放弦あり',
     all: '全て',
+    to_pad: 'パッドに反映',
   },
   tips: [
     'Cキーで今のコードをMemoryに保存できます',
@@ -309,4 +313,6 @@ I18N.addLang('ja', {
     'Chordモードで / キーを押してコード名を直接入力（例: Cm7, G7(b9,#11)）',
   ],
   tips_off: 'ヒントを非表示',
+  whats_new: '新機能',
+  whats_new_32427: 'ギターボイシング→パッド反映（Vキー）。ギターライク / コンパクト配置の切替',
 });

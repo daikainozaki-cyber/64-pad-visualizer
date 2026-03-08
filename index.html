@@ -72,7 +72,7 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
-<link rel="stylesheet" href="style.css?v=3.24.23">
+<link rel="stylesheet" href="style.css?v=3.24.27">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -90,13 +90,13 @@ document.addEventListener('click', function(e) {
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_GeneralUserGS_sf2_file.js"></script>
 <!-- E.Piano: jRhodes3c velocity-layer sampler (5 layers, 1977 Rhodes Mark I) -->
-<script src="jrhodes3c-samples.js?v=3.24.23"></script>
+<script src="jrhodes3c-samples.js?v=3.24.27"></script>
 </head>
 <body>
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V3.24</span>
+  <span class="version-tag">V3.24.27</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -234,6 +234,8 @@ document.addEventListener('click', function(e) {
       <li data-i18n="help.sc_shell"><kbd>s</kbd> — Shell循環（off → 1-3-7 → 1-7-3 → off）</li>
       <li data-i18n="help.sc_drop"><kbd>Shift</kbd>+<kbd>d</kbd> — Drop循環（off → Drop 2 → Drop 3 → off）</li>
       <li data-i18n="help.sc_clear"><kbd>x</kbd> — コードクリア（Chordモード）</li>
+      <li data-i18n="help.sc_voicing_reflect"><kbd>v</kbd> — パッドに反映 切り替え / レイアウト循環（ギターライク ↔ コンパクト）</li>
+      <li data-i18n="help.sc_guitar_pos"><kbd>,</kbd> / <kbd>.</kbd> — ギターポジション送り（前 / 次）</li>
       <li data-i18n="help.sc_pad_explore"></li>
     </ul>
     <h3 data-i18n="help.shortcut_input">Input モード</h3>
@@ -268,6 +270,7 @@ document.addEventListener('click', function(e) {
 
     <h2 data-i18n="help.version_history">Version History</h2>
     <ul style="font-size:0.75rem;color:var(--text-muted);">
+      <li data-i18n="help.vh_32427"><b>V3.24.27</b> — ギターボイシング→パッド反映（<kbd>V</kbd>キー）。ギターライク（1行1音）/ コンパクト配置の切替対応。ギターポジション「全て」フィルタ先頭配置</li>
       <li data-i18n="help.vh_324"><b>V3.24</b> — クラヴィネット音源追加（E.PIANOに2種）、オートフィルター（エンベロープフィルター/Auto-Wah）追加</li>
       <li data-i18n="help.vh_323"><b>V3.23</b> — テキストコード入力（オートコンプリート候補、「/」キーでフォーカス、dim・h等の略記法対応、テンションソート）</li>
       <li data-i18n="help.vh_322"><b>V3.22</b> — 五度圏表示（Circle of Fifths）。キー選択と連動、ダイアトニックコード・機能表示、マイナースケールモード切替対応</li>
@@ -345,6 +348,7 @@ document.addEventListener('click', function(e) {
             <span id="guitar-pos-label">A 1/1</span>
             <button class="pos-nav-btn" onclick="cycleGuitarPosition(1)">&#9654;</button>
           </div>
+          <button id="voicing-reflect-btn" onclick="toggleVoicingReflect()" data-i18n="pos.to_pad" style="display:none;font-size:0.65rem;padding:4px 10px;background:var(--surface);color:var(--text);border:2px solid var(--accent, #f80);border-radius:6px;cursor:pointer;font-weight:700;white-space:nowrap;position:relative;"><span class="kbd-hint">V</span>To Pad</button>
         </div>
         <div id="bass-wrap" style="display:none;align-items:center;gap:4px;">
           <svg id="bass-diagram" style="flex:1;"></svg>
@@ -699,30 +703,30 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.24.23"></script>
-<script src="lang-en.js?v=3.24.23"></script>
-<script src="lang-ja.js?v=3.24.23"></script>
-<script src="lang-zh.js?v=3.24.23"></script>
-<script src="lang-es.js?v=3.24.23"></script>
-<script src="lang-fr.js?v=3.24.23"></script>
-<script src="lang-pt.js?v=3.24.23"></script>
-<script src="lang-de.js?v=3.24.23"></script>
-<script src="lang-ko.js?v=3.24.23"></script>
-<script src="lang-it.js?v=3.24.23"></script>
+<script src="i18n.js?v=3.24.27"></script>
+<script src="lang-en.js?v=3.24.27"></script>
+<script src="lang-ja.js?v=3.24.27"></script>
+<script src="lang-zh.js?v=3.24.27"></script>
+<script src="lang-es.js?v=3.24.27"></script>
+<script src="lang-fr.js?v=3.24.27"></script>
+<script src="lang-pt.js?v=3.24.27"></script>
+<script src="lang-de.js?v=3.24.27"></script>
+<script src="lang-ko.js?v=3.24.27"></script>
+<script src="lang-it.js?v=3.24.27"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=3.24.23"></script>
-<script src="pad-core/theory.js?v=3.24.23"></script>
-<script src="pad-core/render.js?v=3.24.23"></script>
-<script src="pad-core/circle.js?v=3.24.23"></script>
+<script src="pad-core/data.js?v=3.24.27"></script>
+<script src="pad-core/theory.js?v=3.24.27"></script>
+<script src="pad-core/render.js?v=3.24.27"></script>
+<script src="pad-core/circle.js?v=3.24.27"></script>
 <!-- App JS -->
-<script src="data.js?v=3.24.23"></script>
-<script src="audio.js?v=3.24.23"></script>
-<script src="theory.js?v=3.24.23"></script>
-<script src="render.js?v=3.24.23"></script>
-<script src="plain.js?v=3.24.23"></script>
-<script src="perform.js?v=3.24.23"></script>
-<script src="builder.js?v=3.24.23"></script>
-<script src="main.js?v=3.24.23"></script>
+<script src="data.js?v=3.24.27"></script>
+<script src="audio.js?v=3.24.27"></script>
+<script src="theory.js?v=3.24.27"></script>
+<script src="render.js?v=3.24.27"></script>
+<script src="plain.js?v=3.24.27"></script>
+<script src="perform.js?v=3.24.27"></script>
+<script src="builder.js?v=3.24.27"></script>
+<script src="main.js?v=3.24.27"></script>
 <script>
 if ('serviceWorker' in navigator) {
   // Clean up old ?v= registrations (they create zombie SWs)
@@ -731,14 +735,16 @@ if ('serviceWorker' in navigator) {
       if (r.active && r.active.scriptURL.includes('sw.js?v=')) r.unregister();
     });
   });
+  // Only reload on SW UPDATE, not first install (first install reload wipes version notice)
+  var _hadSWController = !!navigator.serviceWorker.controller;
   // Register without ?v= query. updateViaCache:'none' bypasses HTTP cache for SW checks.
   // Version lives inside sw.js (CACHE_NAME). Content change → browser detects update.
-  navigator.serviceWorker.register('sw.js?v=3.24.23', { updateViaCache: 'none' }).then(function(reg) {
+  navigator.serviceWorker.register('sw.js?v=3.24.27', { updateViaCache: 'none' }).then(function(reg) {
     reg.addEventListener('updatefound', function() {
       var w = reg.installing;
       if (!w) return;
       w.addEventListener('statechange', function() {
-        if (w.state === 'activated') location.reload();
+        if (w.state === 'activated' && _hadSWController) location.reload();
       });
     });
   });

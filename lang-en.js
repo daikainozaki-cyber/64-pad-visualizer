@@ -72,6 +72,8 @@ I18N.addLang('en', {
     sc_rootless: '<kbd>r</kbd> \u2014 Toggle Rootless',
     sc_shell: '<kbd>s</kbd> \u2014 Cycle Shell (off \u2192 1-3-7 \u2192 1-7-3 \u2192 off)',
     sc_drop: '<kbd>d</kbd> \u2014 Cycle Drop (off \u2192 Drop 2 \u2192 Drop 3 \u2192 off)',
+    sc_voicing_reflect: '<kbd>v</kbd> \u2014 Reflect to pad / cycle layout (guitar-like \u2194 compact)',
+    sc_guitar_pos: '<kbd>,</kbd> / <kbd>.</kbd> \u2014 Cycle guitar position (prev / next)',
     sc_clear: '<kbd>x</kbd> \u2014 Clear chord (Chord mode)',
     sc_pad_explore: '<b>Pad (Chord mode)</b> \u2014 Click pad to toggle note \u2014 builder updates automatically',
     shortcut_input: 'Input Mode',
@@ -259,6 +261,7 @@ I18N.addLang('en', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Learn more on the blog \u2192',
     version_history: 'Version History',
+    vh_32427: '<b>V3.24.27</b> \u2014 Guitar voicing \u2192 Pad reflect (<kbd>V</kbd> key). Guitar-like (1 note per row) / Compact layout switch. Guitar position "All" filter first',
     vh_324: '<b>V3.24</b> \u2014 Clavinet presets added (2 in E.PIANO). Auto Filter (envelope filter / auto-wah) effect added',
     vh_323: '<b>V3.23</b> \u2014 Text chord input with autocomplete. Press "/" to focus, supports abbreviations (dim, h=m7\u266D5), tension-count sorting',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
@@ -285,6 +288,7 @@ I18N.addLang('en', {
     root_2: '2nd R',
     open: 'Open',
     all: 'All',
+    to_pad: 'To Pad',
   },
   tips: [
     'Press C to save the current chord to Memory',
@@ -309,4 +313,6 @@ I18N.addLang('en', {
     'Press / in Chord mode to type chord names directly (e.g. Cm7, G7(b9,#11))',
   ],
   tips_off: "Don't show tips",
+  whats_new: "What's New",
+  whats_new_32427: 'Guitar voicing \u2192 Pad reflect (V key). Guitar-like / Compact layout switch.',
 });

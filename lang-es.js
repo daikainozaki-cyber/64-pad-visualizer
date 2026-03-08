@@ -70,6 +70,8 @@ I18N.addLang('es', {
     sc_rootless: '<kbd>r</kbd> \u2014 Alternar Rootless',
     sc_shell: '<kbd>s</kbd> \u2014 Ciclar Shell (off \u2192 1-3-7 \u2192 1-7-3 \u2192 off)',
     sc_drop: '<kbd>d</kbd> \u2014 Ciclar Drop (off \u2192 Drop 2 \u2192 Drop 3 \u2192 off)',
+    sc_voicing_reflect: '<kbd>v</kbd> \u2014 Reflejar en pad / ciclar diseño (estilo guitarra \u2194 compacto)',
+    sc_guitar_pos: '<kbd>,</kbd> / <kbd>.</kbd> \u2014 Ciclar posición de guitarra (anterior / siguiente)',
     sc_clear: '<kbd>x</kbd> \u2014 Borrar acorde (Chord Mode)',
     sc_pad_explore: '<b>Pad (modo Chord)</b> \u2014 Clic para activar/desactivar nota \u2014 constructor actualizado automáticamente',
     shortcut_input: 'Input Mode',
@@ -246,6 +248,7 @@ I18N.addLang('es', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'M\u00E1s informaci\u00F3n en el blog \u2192',
     version_history: 'Historial de versiones',
+    vh_32427: '<b>V3.24.27</b> \u2014 Voicing de guitarra \u2192 reflejar en pad (tecla <kbd>V</kbd>). Cambio de dise\u00F1o estilo guitarra (1 nota por fila) / compacto. Filtro "Todos" de posici\u00F3n de guitarra al inicio',
     vh_324: '<b>V3.24</b> \u2014 Presets de Clavinet a\u00F1adidos (2 en E.PIANO). Efecto Auto Filter (filtro envolvente / auto-wah) a\u00F1adido',
     vh_323: '<b>V3.23</b> \u2014 Entrada de texto de acordes con autocompletado. "/" para enfocar, abreviaturas (dim, h=m7\u266D5), ordenaci\u00F3n por tensiones',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
@@ -272,6 +275,7 @@ I18N.addLang('es', {
     root_2: '2ªR',
     open: 'Abierta',
     all: 'Todas',
+    to_pad: 'Al Pad',
   },
   tips: [
     'Pulsa C para guardar el acorde actual en Memory',
@@ -296,4 +300,6 @@ I18N.addLang('es', {
     'Pulsa / en modo Chord para escribir nombres de acordes (ej: Cm7, G7(b9,#11))',
   ],
   tips_off: 'No mostrar consejos',
+  whats_new: 'Novedades',
+  whats_new_32427: 'Voicing de guitarra \u2192 reflejar en pad (tecla V). Cambio de diseño estilo guitarra / compacto',
 });

@@ -79,9 +79,35 @@ _landscapeMediaQuery.addEventListener('change', handleLandscapeChange);
 })();
 
 // ========================================
+// VERSION UPDATE NOTIFICATION
+// ========================================
+var _versionNoticeShown = (function showVersionNotice() {
+  var ver = document.querySelector('.version-tag');
+  if (!ver) return false;
+  var current = ver.textContent.replace(/^V/, '');
+  var lastSeen = localStorage.getItem('64pad-lastVersion');
+  localStorage.setItem('64pad-lastVersion', current);
+  if (!lastSeen || lastSeen === current) return false;
+  // Version changed — show What's New (takes priority over startup tip)
+  var whatsNew = t('whats_new') || "What's New";
+  var msg = t('whats_new_32427') || 'Guitar voicing \u2192 Pad reflect (V key). Guitar-like / Compact layout switch.';
+  var el = document.createElement('div');
+  el.id = 'startup-tip';
+  el.innerHTML = '<span class="tip-text">\u2728 <b>' + whatsNew + ' (' + current + ')</b> \u2014 ' + msg + '</span>' +
+    '<span class="tip-keys"><kbd>Space</kbd></span>';
+  var grid = document.getElementById('pad-grid');
+  if (grid) grid.parentNode.insertBefore(el, grid);
+  setTimeout(function() {
+    if (el.parentNode) { el.classList.add('tip-fade'); setTimeout(function() { if (el.parentNode) el.remove(); }, 300); }
+  }, 12000);
+  return true;
+})();
+
+// ========================================
 // STARTUP TIPS (returning users)
 // ========================================
 function showStartupTip() {
+  if (_versionNoticeShown) return; // Version notice takes priority
   if (AppState.showTips === false) return;
   // Don't show for first-time users (onboarding overlay handles them)
   if (!localStorage.getItem('64pad-sound')) return;
@@ -360,6 +386,14 @@ document.addEventListener('keydown', (e) => {
     const idx = lk.charCodeAt(0) - 97; // a=0, b=1, ...
     if (idx < VoicingState.lastBoxes.length) {
       selectVoicingBox(idx);
+    }
+    return;
+  }
+
+  // v: Toggle Voicing Reflect (guitar → pad layout)
+  if (lk === 'v') {
+    if (AppState.mode === 'chord' && typeof toggleVoicingReflect === 'function') {
+      toggleVoicingReflect();
     }
     return;
   }

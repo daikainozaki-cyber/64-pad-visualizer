@@ -70,6 +70,8 @@ I18N.addLang('de', {
     sc_rootless: '<kbd>r</kbd> \u2014 Rootless umschalten',
     sc_shell: '<kbd>s</kbd> \u2014 Shell durchschalten (off \u2192 1-3-7 \u2192 1-7-3 \u2192 off)',
     sc_drop: '<kbd>d</kbd> \u2014 Drop durchschalten (off \u2192 Drop 2 \u2192 Drop 3 \u2192 off)',
+    sc_voicing_reflect: '<kbd>v</kbd> \u2014 Auf Pad spiegeln / Layout durchschalten (Gitarren-Stil \u2194 Kompakt)',
+    sc_guitar_pos: '<kbd>,</kbd> / <kbd>.</kbd> \u2014 Gitarrenposition wechseln (zurück / vor)',
     sc_clear: '<kbd>x</kbd> \u2014 Akkord löschen (Chord-Modus)',
     sc_pad_explore: '<b>Pad (Chord-Modus)</b> \u2014 Klicken zum Ein-/Ausschalten \u2014 Builder wird automatisch aktualisiert',
     shortcut_input: 'Input Mode',
@@ -246,6 +248,7 @@ I18N.addLang('de', {
     footer_version: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
     blog_more: 'Mehr erfahren im Blog \u2192',
     version_history: 'Versionshistorie',
+    vh_32427: '<b>V3.24.27</b> \u2014 Gitarren-Voicing \u2192 Pad-Spiegelung (<kbd>V</kbd>-Taste). Umschalten Gitarren-Stil (1 Note pro Reihe) / Kompakt-Layout. Gitarrenposition "Alle" Filter zuerst',
     vh_324: '<b>V3.24</b> \u2014 Clavinet-Presets hinzugef\u00FCgt (2 in E.PIANO). Auto Filter (H\u00FCllkurvenfilter / Auto-Wah) Effekt hinzugef\u00FCgt',
     vh_323: '<b>V3.23</b> \u2014 Text-Akkordeingabe mit Autovervollst\u00E4ndigung. "/" zum Fokussieren, Abk\u00FCrzungen (dim, h=m7\u266D5), Sortierung nach Tensions',
     vh_322: '<b>V3.22</b> \u2014 Circle of Fifths display. Syncs with key selection, shows diatonic chords & harmonic function, minor scale mode toggle',
@@ -272,6 +275,7 @@ I18N.addLang('de', {
     root_2: '2.S R',
     open: 'Offen',
     all: 'Alle',
+    to_pad: 'Auf Pad',
   },
   tips: [
     'Drücke C um den aktuellen Akkord im Memory zu speichern',
@@ -296,4 +300,6 @@ I18N.addLang('de', {
     'Drücke / im Chord-Modus um Akkordnamen einzugeben (z.B. Cm7, G7(b9,#11))',
   ],
   tips_off: 'Tipps ausblenden',
+  whats_new: 'Neuheiten',
+  whats_new_32427: 'Gitarren-Voicing \u2192 Pad-Spiegelung (V-Taste). Umschalten Gitarren-Stil / Kompakt-Layout',
 });

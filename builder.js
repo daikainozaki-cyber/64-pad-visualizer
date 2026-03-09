@@ -752,28 +752,29 @@ var TextChordState = {
   candidates: [],
   selectedIndex: 0,
   isOpen: false,
+  dropdownHandle: null,
 };
 
 function initTextChordInput() {
   var input = document.getElementById('text-chord-input');
-  if (!input) return;
+  var dropdown = document.getElementById('text-chord-dropdown');
+  if (!input || !dropdown) return;
 
-  input.addEventListener('input', function() {
-    var candidates = generateTextChordCandidates(input.value.trim());
+  function updateCandidates() {
+    var candidates = padGenerateCandidates(input.value.trim(), null);
     TextChordState.candidates = candidates;
     TextChordState.selectedIndex = 0;
-    renderTextChordDropdown(candidates);
-  });
+    TextChordState.isOpen = candidates.length > 0;
+    TextChordState.dropdownHandle = padRenderDropdown(
+      dropdown, candidates, 0,
+      function(c) { commitTextChord(c); }
+    );
+  }
 
+  input.addEventListener('input', updateCandidates);
   input.addEventListener('keydown', handleTextChordKeydown);
-
   input.addEventListener('focus', function() {
-    if (input.value.trim()) {
-      var candidates = generateTextChordCandidates(input.value.trim());
-      TextChordState.candidates = candidates;
-      TextChordState.selectedIndex = 0;
-      renderTextChordDropdown(candidates);
-    }
+    if (input.value.trim()) updateCandidates();
   });
 
   document.addEventListener('click', function(e) {
@@ -783,151 +784,12 @@ function initTextChordInput() {
   });
 }
 
-function generateTextChordCandidates(input) {
-  if (!input) return [];
-
-  var rootMatch = input.match(/^([A-Ga-g])([#b]?)/);
-  if (!rootMatch) return [];
-
-  var rootWasLower = rootMatch[1] === rootMatch[1].toLowerCase();
-  var rootStr = rootMatch[1].toUpperCase() + rootMatch[2];
-  var qualityInput = input.slice(rootMatch[0].length);
-
-  // Slash chord branch
-  var slashIdx = qualityInput.indexOf('/');
-  if (slashIdx >= 0) {
-    var quality = qualityInput.slice(0, slashIdx);
-    var bassInput = qualityInput.slice(slashIdx + 1);
-    return generateTextChordSlashCandidates(rootStr, quality, bassInput);
-  }
-
-  var candidates = [];
-  var seenIntervals = {};
-  for (var i = 0; i < PAD_QUALITY_KEYS.length; i++) {
-    var qKey = PAD_QUALITY_KEYS[i];
-    if (qKey.indexOf(qualityInput) === 0 || qKey.toLowerCase().indexOf(qualityInput.toLowerCase()) === 0) {
-      var fullName = rootStr + qKey;
-      var parsed = padParseChordName(fullName);
-      if (parsed) {
-        // Dedup by intervals (same voicing = same chord)
-        var dedupKey = parsed.intervals.slice().sort(function(a,b){return a-b;}).join(',') + ':' + (parsed.bass === null ? '' : parsed.bass);
-        if (!seenIntervals[dedupKey]) {
-          seenIntervals[dedupKey] = true;
-          candidates.push({
-            name: parsed.displayName,
-            quality: qKey,
-            exactMatch: qKey === qualityInput || qKey.toLowerCase() === qualityInput.toLowerCase(),
-          });
-        }
-      }
-    }
-  }
-
-  var wantMinor = (rootWasLower && !qualityInput) || (qualityInput.length > 0 && qualityInput[0] === 'm');
-  var wantMajor = qualityInput.length > 0 && qualityInput[0] === 'M';
-
-  // Count tensions: parenthesized items like (b9,#11) = 2 tensions
-  function tensionCount(q) {
-    var m = q.match(/\(([^)]+)\)/);
-    if (!m) {
-      // Check for inline tensions like 7b9, 7#9 (single tension appended without parens)
-      var base = q.replace(/^(m7b5|m7|maj7|dim7|aug7|7|m6|6|dim|aug|m|M7|△7|sus[24]?)/, '');
-      return base.length > 0 ? 1 : 0;
-    }
-    return m[1].split(',').length;
-  }
-
-  candidates.sort(function(a, b) {
-    // 1. Exact match first
-    if (a.exactMatch !== b.exactMatch) return b.exactMatch - a.exactMatch;
-    // 2. Minor/Major preference
-    if (wantMinor) {
-      var aM = a.quality.indexOf('m') === 0 ? 1 : 0;
-      var bM = b.quality.indexOf('m') === 0 ? 1 : 0;
-      if (aM !== bM) return bM - aM;
-    } else if (wantMajor) {
-      var aJ = (a.quality.indexOf('M') === 0 || a.quality.indexOf('maj') === 0) ? 1 : 0;
-      var bJ = (b.quality.indexOf('M') === 0 || b.quality.indexOf('maj') === 0) ? 1 : 0;
-      if (aJ !== bJ) return bJ - aJ;
-    }
-    // 3. Fewer tensions first (base → single → double → triple)
-    var tA = tensionCount(a.quality);
-    var tB = tensionCount(b.quality);
-    if (tA !== tB) return tA - tB;
-    // 4. Shorter quality name within same tension count
-    return a.quality.length - b.quality.length;
-  });
-
-  return candidates.slice(0, 15);
-}
-
-function generateTextChordSlashCandidates(rootStr, quality, bassInput) {
-  var baseCheck = rootStr + quality;
-  if (quality && !padParseChordName(baseCheck)) return [];
-
-  var candidates = [];
-  for (var i = 0; i < NOTE_NAMES_SHARP.length; i++) {
-    var bass = NOTE_NAMES_SHARP[i];
-    if (!bassInput || bass.toLowerCase().indexOf(bassInput.toLowerCase()) === 0) {
-      var fullName = rootStr + quality + '/' + bass;
-      var parsed = padParseChordName(fullName);
-      if (parsed) {
-        candidates.push({ name: parsed.displayName });
-      }
-    }
-  }
-  return candidates.slice(0, 12);
-}
-
-function renderTextChordDropdown(candidates) {
-  var dropdown = document.getElementById('text-chord-dropdown');
-  if (!dropdown) return;
-
-  if (candidates.length === 0) {
-    closeTextChordDropdown();
-    return;
-  }
-
-  dropdown.innerHTML = '';
-  TextChordState.isOpen = true;
-  dropdown.classList.add('active');
-
-  for (var i = 0; i < candidates.length; i++) {
-    var div = document.createElement('div');
-    div.className = 'text-chord-candidate' + (i === TextChordState.selectedIndex ? ' selected' : '');
-    div.textContent = candidates[i].name;
-    div.setAttribute('data-index', i);
-    div.addEventListener('mousedown', function(e) {
-      e.preventDefault();
-      var idx = parseInt(this.getAttribute('data-index'));
-      commitTextChord(TextChordState.candidates[idx]);
-    });
-    div.addEventListener('mouseenter', function() {
-      TextChordState.selectedIndex = parseInt(this.getAttribute('data-index'));
-      updateTextChordDropdownSelection();
-    });
-    dropdown.appendChild(div);
-  }
-}
-
-function updateTextChordDropdownSelection() {
-  var dropdown = document.getElementById('text-chord-dropdown');
-  if (!dropdown) return;
-  var items = dropdown.querySelectorAll('.text-chord-candidate');
-  for (var i = 0; i < items.length; i++) {
-    items[i].classList.toggle('selected', i === TextChordState.selectedIndex);
-  }
-}
-
 function closeTextChordDropdown() {
-  var dropdown = document.getElementById('text-chord-dropdown');
-  if (dropdown) {
-    dropdown.innerHTML = '';
-    dropdown.classList.remove('active');
-  }
+  if (TextChordState.dropdownHandle) TextChordState.dropdownHandle.close();
   TextChordState.isOpen = false;
   TextChordState.candidates = [];
   TextChordState.selectedIndex = 0;
+  TextChordState.dropdownHandle = null;
 }
 
 function commitTextChord(candidate) {
@@ -1021,6 +883,7 @@ function applyParsedChordToBuilder(parsed) {
 
 function handleTextChordKeydown(e) {
   var input = document.getElementById('text-chord-input');
+  var dropdown = document.getElementById('text-chord-dropdown');
 
   switch (e.key) {
     case 'Enter':
@@ -1049,7 +912,7 @@ function handleTextChordKeydown(e) {
           TextChordState.selectedIndex + 1,
           TextChordState.candidates.length - 1
         );
-        updateTextChordDropdownSelection();
+        if (TextChordState.dropdownHandle) TextChordState.dropdownHandle.updateSelection(TextChordState.selectedIndex);
       }
       break;
 
@@ -1057,7 +920,7 @@ function handleTextChordKeydown(e) {
       if (TextChordState.isOpen) {
         e.preventDefault();
         TextChordState.selectedIndex = Math.max(TextChordState.selectedIndex - 1, 0);
-        updateTextChordDropdownSelection();
+        if (TextChordState.dropdownHandle) TextChordState.dropdownHandle.updateSelection(TextChordState.selectedIndex);
       }
       break;
 
@@ -1077,10 +940,13 @@ function handleTextChordKeydown(e) {
         var selCand = TextChordState.candidates[TextChordState.selectedIndex] ||
                       TextChordState.candidates[0];
         input.value = selCand.name;
-        var newCandidates = generateTextChordCandidates(input.value.trim());
+        var newCandidates = padGenerateCandidates(input.value.trim(), null);
         TextChordState.candidates = newCandidates;
         TextChordState.selectedIndex = 0;
-        renderTextChordDropdown(newCandidates);
+        TextChordState.dropdownHandle = padRenderDropdown(
+          dropdown, newCandidates, 0,
+          function(c) { commitTextChord(c); }
+        );
       }
       break;
   }

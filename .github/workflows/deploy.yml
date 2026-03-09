@@ -45,3 +45,15 @@ jobs:
           remote_port: 10022
           remote_user: xs071284
           remote_key: ${{ secrets.XSERVER_SSH_KEY }}
+
+  trigger-desktop:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Desktop build
+        run: |
+          curl -fsSL -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.DESKTOP_DISPATCH_TOKEN }}" \
+            https://api.github.com/repos/daikainozaki-cyber/64-pad-explorer-desktop/dispatches \
+            -d '{"event_type":"web-updated"}'

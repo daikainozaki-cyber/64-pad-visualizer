@@ -1,6 +1,12 @@
 // ========================================
 // MODE & UI CONTROLS
 // ========================================
+
+// pad-core builder-ui module references (set during init)
+var _rootPianoUI = null;    // padBuildPianoKeyboard return
+var _onchordPianoUI = null; // padBuildPianoKeyboard return (on-chord bass)
+var _qualityUI = null;      // padBuildQualityGrid return
+var _tensionUI = null;      // padBuildTensionGrid return
 function setMode(mode) {
   // Plain → Chord: transfer detected chord to builder
   if (mode === 'chord' && AppState.mode === 'input' && PlainState.activeNotes.size >= 2) {
@@ -302,104 +308,38 @@ function selectBass(pc) {
   render();
 }
 
-// ======== PIANO KEYBOARD ========
-function buildPianoKeyboard(containerId, onSelect) {
-  const wrap = document.getElementById(containerId);
-  wrap.innerHTML = '';
-
-  // White keys
-  const whites = [{pc:0,name:'C'},{pc:2,name:'D'},{pc:4,name:'E'},{pc:5,name:'F'},{pc:7,name:'G'},{pc:9,name:'A'},{pc:11,name:'B'}];
-  const whiteDiv = document.createElement('div');
-  whiteDiv.className = 'piano-white';
-  whites.forEach(w => {
-    const key = document.createElement('div');
-    key.className = 'piano-white-key';
-    key.dataset.pc = w.pc;
-    key.textContent = w.name;
-    key.onclick = () => onSelect(w.pc);
-    whiteDiv.appendChild(key);
-  });
-  wrap.appendChild(whiteDiv);
-
-  // Black keys - positioned relative to white keys
-  const blackDiv = document.createElement('div');
-  blackDiv.className = 'piano-black-keys';
-  // Pattern: C#(between C-D), D#(between D-E), gap, F#(between F-G), G#(between G-A), A#(between A-B)
-  const blacks = [
-    {pc:1, name:'C#', pos:0},
-    {pc:3, name:'D#', pos:1},
-    {pc:6, name:'F#', pos:3},
-    {pc:8, name:'G#', pos:4},
-    {pc:10, name:'A#', pos:5},
-  ];
-
-  // Create spacers and black keys
-  // Each white key takes 1/7 of the width. Black keys sit between them.
-  // We use absolute positioning via percentage
-  blacks.forEach(b => {
-    const key = document.createElement('div');
-    key.className = 'piano-black-key';
-    key.dataset.pc = b.pc;
-    key.textContent = b.name;
-    key.style.position = 'absolute';
-    key.style.left = `calc(${(b.pos + 1) / 7 * 100}% - 18px)`;
-    key.onclick = (e) => { e.stopPropagation(); onSelect(b.pc); };
-    blackDiv.appendChild(key);
-  });
-  wrap.appendChild(blackDiv);
-}
-
+// ======== PIANO KEYBOARD (delegated to pad-core/builder-ui.js) ========
+// Backward-compatible wrapper: plain.js etc. still call highlightPianoKey()
 function highlightPianoKey(containerId, pc) {
-  const wrap = document.getElementById(containerId);
-  if (!wrap) return;
-  wrap.querySelectorAll('.piano-white-key, .piano-black-key').forEach(k => {
-    k.classList.toggle('selected', parseInt(k.dataset.pc) === pc);
-  });
+  if (containerId === 'onchord-keyboard' && _onchordPianoUI) {
+    _onchordPianoUI.highlight(pc);
+  }
 }
 
-function clearPianoSelection(containerId) {
-  const wrap = document.getElementById(containerId);
-  if (!wrap) return;
-  wrap.querySelectorAll('.selected').forEach(k => k.classList.remove('selected'));
-}
-
-// ======== QUALITY GRID ========
+// ======== QUALITY GRID (delegated to pad-core/builder-ui.js) ========
 function initQualityGrid() {
-  const grid = document.getElementById('quality-grid');
-  grid.innerHTML = '';
-  BUILDER_QUALITIES.forEach((row, ri) => {
-    row.forEach((q, ci) => {
-      const btn = document.createElement('button');
-      btn.className = 'quality-btn' + (!q ? ' empty' : '');
-      if (q) {
-        btn.textContent = q.label;
-        btn.onclick = () => selectQuality(q);
-      }
-      grid.appendChild(btn);
-    });
-  });
+  _qualityUI = padBuildQualityGrid(document.getElementById('quality-grid'), selectQuality);
 }
 
 function highlightQuality(q) {
-  document.querySelectorAll('.quality-btn').forEach(btn => {
-    btn.classList.toggle('selected', btn.textContent === q.label);
-  });
+  if (_qualityUI) _qualityUI.highlight(q);
 }
 function clearQualitySelection() {
-  document.querySelectorAll('.quality-btn.selected').forEach(b => b.classList.remove('selected'));
+  if (_qualityUI) _qualityUI.clear();
 }
 
 // ======== QUALITY-DEPENDENT CONTROL VISIBILITY ========
+// Tension visibility logic delegated to pad-core/builder-ui.js (padUpdateTensionVisibility).
+// App-specific: VoicingState reset (Category A) + Triad promote bar.
 function updateControlsForQuality(quality) {
   if (!quality) return;
-  const isTriad = quality.pcs.length <= 3;
+  var isTriad = quality.pcs.length <= 3;
 
-  // === Category A: Voicing controls ===
+  // === Category A: Voicing controls (app-specific state) ===
   document.getElementById('shell-bar').classList.toggle('hidden', isTriad);
   document.getElementById('btn-inv3').classList.toggle('hidden', isTriad);
   document.getElementById('drop-bar').classList.toggle('hidden', isTriad);
 
-  // Triad switch: reset Shell/Drop/3rd Inv if they were active
   if (isTriad) {
     if (VoicingState.shell) {
       VoicingState.shell = null;
@@ -411,265 +351,34 @@ function updateControlsForQuality(quality) {
     updateVoicingButtons();
   }
 
-  // === Category D: Theory-based tension restrictions ===
-  const btns = document.querySelectorAll('#tension-grid .tension-btn');
-  const has7th = quality.pcs.includes(10) || quality.pcs.includes(11) ||
-                 (quality.pcs.includes(9) && quality.pcs.includes(6));
-  // 6th chord = has 6th (pc=9) as chord tone, but not as dim7th
-  const has6th = quality.pcs.includes(9) && !has7th;
-
-  // Reset all quality-hidden and tension-uncommon first
-  btns.forEach(btn => { btn.classList.remove('quality-hidden'); btn.classList.remove('tension-uncommon'); });
-
-  // D: Without 7th, no altered tensions
-  // sus4: allowed for triads (Cat D2 handles Maj/m vs dim/aug), hidden for non-7th tetrads (6, m6)
-  // b13/b6 (pc=8) allowed: valid on triads (Cm(b6), Cmaj(add b6), Cdim(b13))
-  // Natural 13 (pc=9) uses '6' label for non-7th → hide '13' labels but allow 'b13' labels
-  if (!has7th) {
-    btns.forEach(btn => {
-      if (!btn._tension) return;
-      const m = btn._tension.mods;
-      if (m.replace3 !== undefined && !isTriad) { btn.classList.add('quality-hidden'); return; }
-      if (m.sharp5 || m.flat5) { btn.classList.add('quality-hidden'); return; }
-      if (m.add) {
-        for (const pc of m.add) {
-          if (pc === 1 || pc === 3) { btn.classList.add('quality-hidden'); return; } // b9, #9
-        }
+  // === Categories B-H: Tension visibility (delegated to pad-core) ===
+  var btns = document.querySelectorAll('#tension-grid .tension-btn');
+  padUpdateTensionVisibility(btns, quality, padApplyTension, {
+    onTriad: function(isTriadNoExt) {
+      if (isTriadNoExt) {
+        showTriadPromoteBar(quality);
+      } else {
+        hideTriadPromoteBar();
       }
-      const label = btn._tension.label;
-      if (label.includes('13') && !label.includes('b13')) { btn.classList.add('quality-hidden'); return; }
-    });
-  }
-
-  // E: With 7th, hide "6" labels (use "13" instead)
-  if (has7th) {
-    const sixLabels = new Set(['6', '6/9', '6/9\n(#11)']);
-    btns.forEach(btn => {
-      if (btn._tension && sixLabels.has(btn._tension.label)) {
-        btn.classList.add('quality-hidden');
-      }
-    });
-  }
-
-  // F: sus4 only for dominant 7 (C7sus4 is standard; Cmaj7sus4, Cm7sus4 etc. are not)
-  if (has7th) {
-    const isDominant7 = quality.pcs.includes(4) && quality.pcs.includes(10) && !quality.pcs.includes(11);
-    if (!isDominant7) {
-      btns.forEach(btn => {
-        if (btn._tension && btn._tension.mods.replace3 !== undefined) {
-          btn.classList.add('quality-hidden');
-        }
-      });
-    }
-  }
-
-  // === Category B+C: PCS-based no-op and duplicate detection ===
-  const basePCS = [...quality.pcs].sort((a, b) => a - b);
-  const baseKey = basePCS.join(',');
-
-  // Pass 1: compute result for each non-hidden tension
-  const entries = [];
-  btns.forEach(btn => {
-    if (!btn._tension || btn.classList.contains('quality-hidden')) { entries.push(null); return; }
-    const result = applyTension([...quality.pcs], btn._tension.mods);
-    const resultKey = result.join(',');
-    const m = btn._tension.mods;
-    let complexity = 0;
-    if (m.add) complexity += m.add.length;
-    if (m.sharp5) complexity++;
-    if (m.flat5) complexity++;
-    if (m.replace3 !== undefined) complexity++;
-    if (m.omit5) complexity++;
-    if (m.omit3) complexity++;
-    if (m.rootless) complexity++;
-    entries.push({ btn, resultKey, complexity, isNoOp: resultKey === baseKey });
+    },
   });
-
-  // Pass 2: group by result → find min complexity per group
-  const groups = new Map();
-  entries.forEach(e => {
-    if (!e || e.isNoOp) return;
-    if (!groups.has(e.resultKey)) groups.set(e.resultKey, []);
-    groups.get(e.resultKey).push(e.complexity);
-  });
-
-  // Pass 3: show/hide
-  entries.forEach(e => {
-    if (!e) return;
-    if (e.isNoOp) {
-      e.btn.classList.add('quality-hidden');
-      return;
-    }
-    const group = groups.get(e.resultKey);
-    const minComplexity = Math.min(...group);
-    if (group.length > 1 && e.complexity > minComplexity) {
-      e.btn.classList.add('quality-hidden');
-    }
-  });
-
-  // === Category G: Dim uncommon tensions for non-dominant 7th chords ===
-  // Dominant 7 = altered tensions are standard (no dimming)
-  // Other 7th chords = b9, #9, b13, aug, b5 are rarely used → dim (visible but faded)
-  // Minor quality (m7, m△7) additionally dims #11 (only Dorian #4/HM uses it — extremely rare)
-  // Maj7 keeps #11 fully visible (Lydian = jazz standard)
-  if (has7th) {
-    const isDom7 = quality.pcs.includes(4) && quality.pcs.includes(10) && !quality.pcs.includes(11);
-    if (isDom7) {
-      // Dominant 7: natural 11th (pc=5) is the ONLY avoid — clashes with 3rd (half step)
-      // sus4 (replace3) is OK — it replaces 3rd, not adds alongside it
-      // All other tensions (9, b9, #9, 13, b13, #11, aug, b5) are standard on dom7
-      btns.forEach(btn => {
-        if (!btn._tension || btn.classList.contains('quality-hidden')) return;
-        const m = btn._tension.mods;
-        if (m.replace3 !== undefined) return; // sus4 replaces 3rd, OK
-        if (m.add && m.add.includes(5)) btn.classList.add('quality-hidden');
-      });
-    } else {
-      const isMinor = quality.pcs.includes(3);
-      // dim7: b13 is standard (Whole-Half Dim scale). m7(b5): b13 is avoid (keep dimmed)
-      const isDim7 = isMinor && quality.pcs.includes(6) && quality.pcs.includes(9) && !quality.pcs.includes(10);
-      // mM7: #11 doesn't exist (melodic/harmonic minor both have natural 4th only)
-      const isMM7 = isMinor && quality.pcs.includes(11);
-      btns.forEach(btn => {
-        if (!btn._tension || btn.classList.contains('quality-hidden')) return;
-        const m = btn._tension.mods;
-        if (m.replace3 !== undefined) return; // sus4 already handled by Cat F
-        if (m.sharp5 || m.flat5) { btn.classList.add('tension-uncommon'); return; }
-        if (m.add) {
-          // Priority 1: mM7 + #11 → hide (must check before dim to avoid order-dependent bugs)
-          if (isMM7 && m.add.includes(6)) { btn.classList.add('quality-hidden'); return; }
-          for (const pc of m.add) {
-            if (pc === 1 || pc === 3) { btn.classList.add('tension-uncommon'); return; }
-            if (pc === 8 && !isDim7) { btn.classList.add('tension-uncommon'); return; }
-            if (pc === 6 && isMinor) { btn.classList.add('tension-uncommon'); return; }
-          }
-        }
-      });
-    }
-  }
-
-  // === Category G2: 11th avoid on all chords with major 3rd ===
-  // 11th (pc=5) clashes with major 3rd (pc=4) — half step apart
-  // Applies to: triads (Cmaj), 6th (C6), maj7 (C△7), dom7 (redundant w/ Cat G)
-  // Minor chords are OK — m3 (pc=3) and 11 (pc=5) are a whole step apart
-  if (quality.pcs.includes(4)) {
-    btns.forEach(btn => {
-      if (!btn._tension || btn.classList.contains('quality-hidden')) return;
-      const m = btn._tension.mods;
-      if (m.replace3 !== undefined) return; // sus4 replaces 3rd, no clash
-      if (m.add && m.add.includes(5)) btn.classList.add('quality-hidden');
-    });
-  }
-
-  // === Category G3: Minor non-7th + #11 restrictions ===
-  // #11 on minor is very rare (only Dorian #4 / 4th mode of HM)
-  // When combined with 6th (pc=9 in add), implies melodic minor → #11 doesn't exist → hide
-  // Standalone #11 on minor triad → dim (tension-uncommon)
-  if (quality.pcs.includes(3) && !has7th) {
-    btns.forEach(btn => {
-      if (!btn._tension || btn.classList.contains('quality-hidden')) return;
-      const m = btn._tension.mods;
-      if (m.add && m.add.includes(6)) { // has #11
-        if (m.add.includes(9) || has6th) {
-          // Combined with 6th (in tension mods or in base quality) → hide
-          // m6 implies melodic minor → #11 doesn't exist
-          btn.classList.add('quality-hidden');
-        } else {
-          // Standalone #11 on minor triad (no 6th) → very rare (Dorian #4), dim it
-          btn.classList.add('tension-uncommon');
-        }
-      }
-    });
-  }
-
-  // === Category G4: b13 on 6th chords → hide ===
-  // 6 (pc=9, A) and b13 (pc=8, Ab) are a semitone apart — contradictory
-  if (has6th) {
-    btns.forEach(btn => {
-      if (!btn._tension || btn.classList.contains('quality-hidden')) return;
-      const m = btn._tension.mods;
-      if (m.add && m.add.includes(8)) btn.classList.add('quality-hidden');
-    });
-  }
-
-  // === Category H: add9 vs 9 — context-dependent label ===
-  // With 7th or 6th: "add9" is wrong. Use "9" (e.g. Cmaj9, C6/9). Hide add9.
-  // Without 7th/6th: "9" implies 7th present. Use "add9" (e.g. Cadd9). Hide 9.
-  if (has7th || has6th) {
-    btns.forEach(btn => {
-      if (btn._tension && btn._tension.label === 'add9') btn.classList.add('quality-hidden');
-    });
-  } else {
-    btns.forEach(btn => {
-      if (btn._tension && btn._tension.label === '9') btn.classList.add('quality-hidden');
-    });
-  }
-
-  // === Category D2: Triad-specific tension whitelist ===
-  // Triads without 7th/6th: only allow add9, 6, 6/9, sus4
-  // dim: no 6 (=dim7 enharmonic), no sus4, no 6/9
-  // aug: no 6, no sus4, no 6/9
-  // "Maj or m" = has perfect 5th (pc=7) — distinguishes from dim/aug
-  if (isTriad && !has7th && !has6th) {
-    const isMajOrMin = quality.pcs.includes(7);
-    // Whitelist: add9 always; 6 and 6/9 for Maj/m only
-    const allowedLabels = new Set(['add9']);
-    if (isMajOrMin) { allowedLabels.add('6'); allowedLabels.add('6/9'); }
-
-    btns.forEach(btn => {
-      if (!btn._tension || btn.classList.contains('quality-hidden')) return;
-      const m = btn._tension.mods;
-      // sus4 (replace3) allowed for Maj and m only
-      if (m.replace3 !== undefined) {
-        if (!isMajOrMin) btn.classList.add('quality-hidden');
-        return;
-      }
-      if (!allowedLabels.has(btn._tension.label)) {
-        btn.classList.add('quality-hidden');
-      }
-    });
-  }
-
-  // === Triad promotion bar ===
-  if (isTriad && !has7th && !has6th) {
-    showTriadPromoteBar(quality);
-  } else {
-    hideTriadPromoteBar();
-  }
 }
 
-// ======== TENSION GRID ========
+// ======== TENSION GRID (delegated to pad-core/builder-ui.js) ========
 function initTensionGrid() {
-  const grid = document.getElementById('tension-grid');
-  grid.innerHTML = '';
-  // Determine max columns
-  const maxCols = Math.max(...TENSION_ROWS.map(r => r.length));
-  grid.style.gridTemplateColumns = `repeat(${maxCols}, 1fr)`;
-
-  TENSION_ROWS.forEach((row) => {
-    // Pad row to maxCols
-    for (let i = 0; i < maxCols; i++) {
-      const t = row[i] || null;
-      const btn = document.createElement('button');
-      btn.className = 'tension-btn' + (!t ? ' empty' : '');
-      btn._tension = t || null;
-      if (t) {
-        btn.textContent = t.label;
-        btn.onclick = function() { selectTension(t, this); };
-      }
-      grid.appendChild(btn);
-    }
+  _tensionUI = padBuildTensionGrid(document.getElementById('tension-grid'), function(tension, btn) {
+    selectTension(tension, btn);
   });
 }
 
 function clearTensionSelection() {
-  document.querySelectorAll('.tension-btn.selected').forEach(b => b.classList.remove('selected'));
+  if (_tensionUI) _tensionUI.clear();
 }
 
 // ======== ON-CHORD KEYBOARD ========
 function initOnChordKeyboard() {
-  buildPianoKeyboard('onchord-keyboard', selectBass);
-  if (BuilderState.bass !== null) highlightPianoKey('onchord-keyboard', BuilderState.bass);
+  _onchordPianoUI = padBuildPianoKeyboard(document.getElementById('onchord-keyboard'), selectBass);
+  if (BuilderState.bass !== null) _onchordPianoUI.highlight(BuilderState.bass);
 }
 
 // ========================================

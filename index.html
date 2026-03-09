@@ -72,7 +72,7 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
-<link rel="stylesheet" href="style.css?v=3.26.0">
+<link rel="stylesheet" href="style.css?v=3.27.0">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -90,13 +90,13 @@ document.addEventListener('click', function(e) {
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_GeneralUserGS_sf2_file.js"></script>
 <!-- E.Piano: jRhodes3c velocity-layer sampler (5 layers, 1977 Rhodes Mark I) -->
-<script src="jrhodes3c-samples.js?v=3.26.0"></script>
+<script src="jrhodes3c-samples.js?v=3.27.0"></script>
 </head>
 <body>
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V3.26.0</span>
+  <span class="version-tag">V3.27.0</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -270,7 +270,7 @@ document.addEventListener('click', function(e) {
 
     <h2 data-i18n="help.version_history">Version History</h2>
     <ul style="font-size:0.75rem;color:var(--text-muted);">
-      <li data-i18n="help.vh_32427"><b>V3.26.0</b> — ギターボイシング→パッド反映（<kbd>V</kbd>キー）。ギターライク（1行1音）/ コンパクト配置の切替対応。ギターポジション「全て」フィルタ先頭配置</li>
+      <li data-i18n="help.vh_32427"><b>V3.27.0</b> — ギターボイシング→パッド反映（<kbd>V</kbd>キー）。ギターライク（1行1音）/ コンパクト配置の切替対応。ギターポジション「全て」フィルタ先頭配置</li>
       <li data-i18n="help.vh_324"><b>V3.24</b> — クラヴィネット音源追加（E.PIANOに2種）、オートフィルター（エンベロープフィルター/Auto-Wah）追加</li>
       <li data-i18n="help.vh_323"><b>V3.23</b> — テキストコード入力（オートコンプリート候補、「/」キーでフォーカス、dim・h等の略記法対応、テンションソート）</li>
       <li data-i18n="help.vh_322"><b>V3.22</b> — 五度圏表示（Circle of Fifths）。キー選択と連動、ダイアトニックコード・機能表示、マイナースケールモード切替対応</li>
@@ -703,30 +703,32 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.26.0"></script>
-<script src="lang-en.js?v=3.26.0"></script>
-<script src="lang-ja.js?v=3.26.0"></script>
-<script src="lang-zh.js?v=3.26.0"></script>
-<script src="lang-es.js?v=3.26.0"></script>
-<script src="lang-fr.js?v=3.26.0"></script>
-<script src="lang-pt.js?v=3.26.0"></script>
-<script src="lang-de.js?v=3.26.0"></script>
-<script src="lang-ko.js?v=3.26.0"></script>
-<script src="lang-it.js?v=3.26.0"></script>
+<script src="i18n.js?v=3.27.0"></script>
+<script src="lang-en.js?v=3.27.0"></script>
+<script src="lang-ja.js?v=3.27.0"></script>
+<script src="lang-zh.js?v=3.27.0"></script>
+<script src="lang-es.js?v=3.27.0"></script>
+<script src="lang-fr.js?v=3.27.0"></script>
+<script src="lang-pt.js?v=3.27.0"></script>
+<script src="lang-de.js?v=3.27.0"></script>
+<script src="lang-ko.js?v=3.27.0"></script>
+<script src="lang-it.js?v=3.27.0"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=3.26.0"></script>
-<script src="pad-core/theory.js?v=3.26.0"></script>
-<script src="pad-core/render.js?v=3.26.0"></script>
-<script src="pad-core/circle.js?v=3.26.0"></script>
+<script src="pad-core/data.js?v=3.27.0"></script>
+<script src="pad-core/theory.js?v=3.27.0"></script>
+<script src="pad-core/render.js?v=3.27.0"></script>
+<script src="pad-core/circle.js?v=3.27.0"></script>
+<script src="pad-core/builder-ui.js?v=3.27.0"></script>
+<script src="pad-core/incremental.js?v=3.27.0"></script>
 <!-- App JS -->
-<script src="data.js?v=3.26.0"></script>
-<script src="audio.js?v=3.26.0"></script>
-<script src="theory.js?v=3.26.0"></script>
-<script src="render.js?v=3.26.0"></script>
-<script src="plain.js?v=3.26.0"></script>
-<script src="perform.js?v=3.26.0"></script>
-<script src="builder.js?v=3.26.0"></script>
-<script src="main.js?v=3.26.0"></script>
+<script src="data.js?v=3.27.0"></script>
+<script src="audio.js?v=3.27.0"></script>
+<script src="theory.js?v=3.27.0"></script>
+<script src="render.js?v=3.27.0"></script>
+<script src="plain.js?v=3.27.0"></script>
+<script src="perform.js?v=3.27.0"></script>
+<script src="builder.js?v=3.27.0"></script>
+<script src="main.js?v=3.27.0"></script>
 <script>
 if ('serviceWorker' in navigator) {
   // Clean up old ?v= registrations (they create zombie SWs)

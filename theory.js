@@ -47,9 +47,9 @@ function updateOctaveLabel() {
   if (semiUp) semiUp.disabled = (AppState.semitoneShift >= 11);
 }
 
-function toggleOmit5() { VoicingState.omit5 = !VoicingState.omit5; VoicingState.shell = null; updateVoicingButtons(); render(); playCurrentChord(); }
-function toggleRootless() { VoicingState.rootless = !VoicingState.rootless; VoicingState.shell = null; updateVoicingButtons(); render(); playCurrentChord(); }
-function toggleOmit3() { VoicingState.omit3 = !VoicingState.omit3; VoicingState.shell = null; updateVoicingButtons(); render(); playCurrentChord(); }
+function toggleOmit5() { VoicingState.omit5 = !VoicingState.omit5; VoicingState.shell = null; updateVoicingButtons(); updateChordDisplay(); render(); playCurrentChord(); }
+function toggleRootless() { VoicingState.rootless = !VoicingState.rootless; VoicingState.shell = null; updateVoicingButtons(); updateChordDisplay(); render(); playCurrentChord(); }
+function toggleOmit3() { VoicingState.omit3 = !VoicingState.omit3; VoicingState.shell = null; updateVoicingButtons(); updateChordDisplay(); render(); playCurrentChord(); }
 function setShell(mode) {
   VoicingState.shell = mode;
   if (mode) {
@@ -66,7 +66,7 @@ function setShellExtension(n) {
   VoicingState.shellExtension = (VoicingState.shellExtension === n) ? 0 : n;
   if (VoicingState.shellExtension > 0 && !VoicingState.shell) VoicingState.shell = '137'; // auto-enable shell
   resetVoicingSelection();
-  updateVoicingButtons(); render();
+  updateVoicingButtons(); updateChordDisplay(); render();
   playCurrentChord();
 }
 function setInversion(inv) {

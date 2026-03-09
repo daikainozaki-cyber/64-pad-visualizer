@@ -409,10 +409,12 @@ document.addEventListener('click', function(e) {
 
       <!-- Chord Display -->
       <div class="chord-display">
-        <span class="chord-name" id="chord-name"></span>
+        <div class="chord-name-wrap">
+          <span class="chord-name" id="chord-name"></span>
+          <span class="chord-voicing-info" id="chord-voicing-info"></span>
+        </div>
         <span class="chord-slash" id="chord-slash-btn" onclick="startOnChord()" title="On Chord (Slash)">/</span>
         <span class="chord-bass" id="chord-bass"></span>
-        <span class="chord-voicing-info" id="chord-voicing-info"></span>
         <div class="builder-nav">
           <button onclick="builderClear()" style="position:relative;"><span class="kbd-hint">X</span>Clear</button>
           <button onclick="builderBack()" style="position:relative;"><span class="kbd-hint">⌫</span>Back</button>

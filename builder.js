@@ -196,8 +196,7 @@ function updateChordDisplay() {
   // Voicing info label (inversion only — shell/drop/omit shown on voicing buttons)
   var invLabel = '';
   if (BuilderState.root !== null && BuilderState.quality && !VoicingState.shell && VoicingState.inversion > 0) {
-    var invNames = ['', '1st Inv', '2nd Inv', '3rd Inv'];
-    invLabel = invNames[VoicingState.inversion];
+    invLabel = t('help.inv_' + VoicingState.inversion);
   }
   document.getElementById('chord-voicing-info').textContent = invLabel;
 }

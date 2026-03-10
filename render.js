@@ -620,7 +620,7 @@ function render() {
 
   const state = computeRenderState();
   renderPads(svg, state);
-  if (AppState.mode !== 'input' && !_voicingReflectMode && _guitarSyncSource !== 'position') {
+  if (AppState.mode !== 'input' && !(_voicingReflectMode && _guitarSyncSource === 'position')) {
     renderVoicingBoxes(svg, state);
   }
   renderLegend(state);

@@ -193,8 +193,22 @@ function computeRenderState() {
     }
   }
 
+  // TASTY Voicing: override activePCS with voicing pitch classes + build MIDI set
+  let tastyMidiSet = null;
+  if (AppState.mode === 'chord' && TastyState.enabled && TastyState.midiNotes.length > 0) {
+    tastyMidiSet = new Set(TastyState.midiNotes);
+    activePCS = new Set(TastyState.midiNotes.map(m => m % 12));
+    guide3PCS = new Set(); guide7PCS = new Set(); tensionPCS = new Set();
+    omittedPCS = new Set();
+    [3,4].forEach(iv => { const pc = (rootPC + iv) % 12; if (activePCS.has(pc)) guide3PCS.add(pc); });
+    [10,11].forEach(iv => { const pc = (rootPC + iv) % 12; if (activePCS.has(pc)) guide7PCS.add(pc); });
+    if (activePCS.has((rootPC + 9) % 12) && !activePCS.has((rootPC + 10) % 12) && !activePCS.has((rootPC + 11) % 12)) {
+      guide7PCS.add((rootPC + 9) % 12);
+    }
+  }
+
   // padExtNotes override: when user toggled pad notes in chord mode, override the chord display
-  if (AppState.mode === 'chord' && padExtNotes.size > 0) {
+  if (AppState.mode === 'chord' && !tastyMidiSet && padExtNotes.size > 0) {
     const extMidi = [...padExtNotes].sort((a, b) => a - b);
     activePCS = new Set(extMidi.map(n => n % 12));
     const detected = detectChord(extMidi);
@@ -240,7 +254,7 @@ function computeRenderState() {
     }
   }
 
-  return { activePCS, activeIvPCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS };
+  return { activePCS, activeIvPCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS, tastyMidiSet };
 }
 
 function renderPads(svg, state, grid) {
@@ -249,7 +263,7 @@ function renderPads(svg, state, grid) {
   var padSize = grid ? grid.PAD_SIZE : PAD_SIZE;
   var padGap = grid ? grid.PAD_GAP : PAD_GAP;
   var margin = grid ? grid.MARGIN : MARGIN;
-  const { activePCS, activeIvPCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS } = state;
+  const { activePCS, activeIvPCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS, tastyMidiSet } = state;
   // Build position set for selected voicing box (for dimming non-selected pads)
   const selBox = !grid && VoicingState.selectedBoxIdx !== null ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx] : null;
   const selMidi = selBox ? new Set(selBox.midiNotes) : null;
@@ -305,6 +319,13 @@ function renderPads(svg, state, grid) {
         } else {
           fill = 'var(--pad-overlay)';
         }
+        textColor = 'var(--text-muted)';
+      }
+
+      // TASTY voicing: only highlight pads with exact MIDI match
+      const _isTastyMiss = tastyMidiSet && tastyMidiSet.size > 0 && !tastyMidiSet.has(midi);
+      if (_isTastyMiss) {
+        fill = 'var(--pad-off)';
         textColor = 'var(--text-muted)';
       }
 
@@ -395,7 +416,7 @@ function renderPads(svg, state, grid) {
       if (isTastyDimmed) rect.setAttribute('opacity', '0.05');
       svg.appendChild(rect);
 
-      const showDegree = rootPC !== null && (isActive || isRoot || isBass || isOmitted || isChar || isGuide || isAvoid || isOverlay);
+      const showDegree = rootPC !== null && !_isTastyMiss && (isActive || isRoot || isBass || isOmitted || isChar || isGuide || isAvoid || isOverlay);
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('class', 'pad-label');
       text.setAttribute('x', x + padSize / 2);
@@ -651,8 +672,12 @@ function render() {
     const plainNotes = [...PlainState.activeNotes].sort((a, b) => a - b);
     renderStaff('input', state.rootPC, state.activePCS, state.omittedPCS, null, plainNotes.length > 0 ? plainNotes : [], null);
   } else {
-    const boxMidi = (VoicingState.selectedBoxIdx !== null && VoicingState.lastBoxes[VoicingState.selectedBoxIdx])
+    let boxMidi = (VoicingState.selectedBoxIdx !== null && VoicingState.lastBoxes[VoicingState.selectedBoxIdx])
       ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx].midiNotes : null;
+    // TASTY voicing: show voicing notes on staff
+    if (state.tastyMidiSet && state.tastyMidiSet.size > 0) {
+      boxMidi = TastyState.midiNotes;
+    }
     renderStaff(AppState.mode, state.rootPC, state.activePCS, state.omittedPCS, state.qualityPCS, boxMidi, state.bassPC, state.activeIvPCS);
   }
 

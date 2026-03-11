@@ -100,11 +100,14 @@ const TastyState = {
   hpsUnlocked: false,    // URL parameter check
   enabled: false,        // TASTY mode active
   recipes: null,         // loaded from tasty-recipes.json
+  voicings: null,        // loaded from tasty-voicings.json (129 recipes)
   currentCategory: null, // 'major' | 'dominant' | 'minor'
-  currentMatches: [],    // recipes matching current base quality
-  currentIndex: -1,      // which recipe is active (-1 = none)
+  currentMatches: [],    // voicing entries matching current category
+  currentIndex: -1,      // which voicing is active (-1 = none)
   originalQuality: null, // BuilderState.quality before TASTY
   originalTension: null, // BuilderState.tension before TASTY
+  midiNotes: [],         // current voicing MIDI notes
+  outOfRange: [],        // MIDI notes outside pad range
 };
 
 // ======== BANK STATE (v2.50) ========

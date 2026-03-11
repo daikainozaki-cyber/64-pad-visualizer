@@ -129,6 +129,10 @@ function undoMemory() {
 
 // Get current chord MIDI notes from any mode (for cross-mode slot save)
 function getCurrentChordMidiNotes() {
+  // TASTY voicing: return voicing MIDI notes directly
+  if (TastyState.enabled && TastyState.midiNotes.length > 0) {
+    return [...TastyState.midiNotes];
+  }
   if (AppState.mode === 'input') {
     let notes = [...PlainState.activeNotes];
     if (instrumentInputActive) {
@@ -183,6 +187,14 @@ function getCurrentChordMidiNotes() {
 
 // Get chord name for current state (cross-mode)
 function getCurrentChordName() {
+  // TASTY voicing: return recipe name with root
+  if (TastyState.enabled && TastyState.currentIndex >= 0) {
+    var recipe = TastyState.currentMatches[TastyState.currentIndex];
+    if (recipe) {
+      var rootName = pcName(BuilderState.root);
+      return rootName + ' ' + recipe.name;
+    }
+  }
   if (AppState.mode === 'input') {
     const notes = getCurrentChordMidiNotes();
     if (!notes || notes.length === 0) return '?';

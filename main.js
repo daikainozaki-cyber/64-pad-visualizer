@@ -11,6 +11,11 @@ if (TastyState.hpsUnlocked) {
     TastyState.recipes = data;
     updateTastyUI();
   }).catch(function() {});
+  // Load voicings (129 degree-based recipes for TASTY Voicing Engine)
+  fetch('data/tasty-voicings.json').then(function(r) { return r.json(); }).then(function(data) {
+    TastyState.voicings = data;
+    updateTastyUI();
+  }).catch(function() {});
 }
 
 initKeyButtons();

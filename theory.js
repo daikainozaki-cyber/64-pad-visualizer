@@ -857,6 +857,63 @@ function onDiatonicClick(tetrad) {
 }
 
 // ========================================
+// TASTY VOICING ENGINE — degree → MIDI conversion
+// ========================================
+
+var TASTY_DEGREE_MAP = {
+  '1':0, 'b9':1, '9':2, '#9':3, 'b3':3, '3':4,
+  '11':5, '#11':6, 'b5':6, '5':7, '#5':8, 'b13':8,
+  '6':9, '13':9, 'b7':10, '7':11
+};
+
+// Build MIDI note array from degree array (bottom to top, each note above previous)
+function buildTastyVoicing(rootMidi, degrees) {
+  var result = [];
+  var first = TASTY_DEGREE_MAP[degrees[0]];
+  if (first === undefined) return result;
+  result.push(rootMidi + first);
+  for (var i = 1; i < degrees.length; i++) {
+    var semitone = TASTY_DEGREE_MAP[degrees[i]];
+    if (semitone === undefined) continue;
+    var prev = result[result.length - 1];
+    var note = rootMidi + semitone;
+    while (note <= prev) note += 12;
+    result.push(note);
+  }
+  return result;
+}
+
+// Detect Rootless / Omit3 / Omit5 from degree array
+function getTastyLabels(degrees) {
+  var labels = [];
+  var has1 = false, has3 = false, has5 = false;
+  for (var i = 0; i < degrees.length; i++) {
+    if (degrees[i] === '1') has1 = true;
+    if (degrees[i] === '3' || degrees[i] === 'b3') has3 = true;
+    if (degrees[i] === '5') has5 = true;
+  }
+  if (!has1) labels.push('Rootless');
+  if (!has3) labels.push('Omit3');
+  if (!has5) labels.push('Omit5');
+  return labels;
+}
+
+// Split MIDI notes into pad-range and out-of-range
+function splitByPadRange(midiNotes) {
+  var lo = baseMidi();
+  var hi = lo + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
+  var inRange = [], outOfRange = [];
+  for (var i = 0; i < midiNotes.length; i++) {
+    if (midiNotes[i] >= lo && midiNotes[i] <= hi) {
+      inRange.push(midiNotes[i]);
+    } else {
+      outOfRange.push(midiNotes[i]);
+    }
+  }
+  return { inRange: inRange, outOfRange: outOfRange };
+}
+
+// ========================================
 // TASTY MODE — Chord Cookbook Cycling
 // ========================================
 
@@ -889,7 +946,14 @@ function findQualityByName(name) {
 function updateTastyMatches() {
   var cat = getTastyCategory(TastyState.originalQuality);
   TastyState.currentCategory = cat;
-  TastyState.currentMatches = cat ? (TastyState.recipes[cat] || []) : [];
+  // Use voicings JSON (129 degree-based recipes) when available
+  if (TastyState.voicings && cat) {
+    TastyState.currentMatches = TastyState.voicings.filter(function(v) {
+      return v.cat === cat;
+    });
+  } else {
+    TastyState.currentMatches = [];
+  }
   TastyState.currentIndex = -1;
 }
 
@@ -945,33 +1009,30 @@ function cycleTasty() {
   TastyState.currentIndex = (TastyState.currentIndex + 1) % TastyState.currentMatches.length;
   var recipe = TastyState.currentMatches[TastyState.currentIndex];
 
-  var targetQ = findQualityByName(recipe.quality);
-  if (targetQ) {
-    BuilderState.quality = targetQ;
-    if (recipe.mods && Object.keys(recipe.mods).length > 0) {
-      var label = findTensionLabel(recipe.mods, targetQ);
-      BuilderState.tension = { label: label, mods: recipe.mods };
-    } else {
-      BuilderState.tension = null;
-    }
-  }
+  // Build voicing from degree array → MIDI notes
+  var rootPC = BuilderState.root;
+  var octOff = AppState.octaveShift * 12;
+  var rootMidi = 48 + rootPC + octOff;
+  var midiNotes = buildTastyVoicing(rootMidi, recipe.v);
 
-  highlightQuality(BuilderState.quality);
-  updateControlsForQuality(BuilderState.quality);
-  updateChordDisplay();
+  // Split by pad range
+  var split = splitByPadRange(midiNotes);
+  TastyState.midiNotes = midiNotes;
+  TastyState.outOfRange = split.outOfRange;
+
   updateTastyUI();
   render();
-  playCurrentChord();
+  playMidiNotes(midiNotes);
 }
 
 function toggleTasty() {
-  if (!TastyState.hpsUnlocked || !TastyState.recipes) return;
+  if (!TastyState.hpsUnlocked || !TastyState.voicings) return;
   if (AppState.mode !== 'chord' || BuilderState.root === null || !BuilderState.quality) return;
 
   if (TastyState.enabled) {
     disableTasty();
   } else {
-    // Enable: save original, find matches, apply first recipe
+    // Enable: save original, find matches, apply first voicing
     TastyState.originalQuality = BuilderState.quality;
     TastyState.originalTension = BuilderState.tension;
     TastyState.enabled = true;
@@ -987,14 +1048,11 @@ function toggleTasty() {
 
 function disableTasty() {
   if (!TastyState.enabled) return;
-  BuilderState.quality = TastyState.originalQuality;
-  BuilderState.tension = TastyState.originalTension;
   TastyState.enabled = false;
   TastyState.currentIndex = -1;
+  TastyState.midiNotes = [];
+  TastyState.outOfRange = [];
 
-  highlightQuality(BuilderState.quality);
-  updateControlsForQuality(BuilderState.quality);
-  updateChordDisplay();
   updateTastyUI();
   render();
   playCurrentChord();
@@ -1005,28 +1063,17 @@ function getTastyDiffText() {
   var recipe = TastyState.currentMatches[TastyState.currentIndex];
   if (!recipe) return '';
 
-  var origName = '';
-  if (TastyState.originalQuality) {
-    origName = (TastyState.originalQuality.name || 'Maj');
-    if (TastyState.originalTension) origName += '(' + TastyState.originalTension.label.replace(/\n/g, ',') + ')';
+  var text = recipe.name;
+  var labels = getTastyLabels(recipe.v);
+  if (labels.length > 0) text += ' [' + labels.join(', ') + ']';
+
+  // Show out-of-range notes
+  if (TastyState.outOfRange.length > 0) {
+    var names = TastyState.outOfRange.map(function(m) { return noteName(m); });
+    text += ' (+' + names.join(',') + ': out of range)';
   }
 
-  // Build diff description from mods
-  var changes = [];
-  if (recipe.mods.add) {
-    recipe.mods.add.forEach(function(pc) {
-      var name = PC_TO_TENSION_NAME[pc];
-      if (name) changes.push('+' + name);
-    });
-  }
-  if (recipe.mods.replace3) changes.push('sus' + (recipe.mods.replace3 === 5 ? '4' : '2'));
-  if (recipe.mods.sharp5) changes.push('#5');
-  if (recipe.mods.flat5) changes.push('b5');
-  if (recipe.mods.omit3) changes.push('-3rd');
-  if (recipe.mods.omit5) changes.push('-5th');
-
-  var diffStr = changes.length > 0 ? ' (' + changes.join(', ') + ')' : '';
-  return origName + ' \u2192 ' + recipe.name + diffStr;
+  return text;
 }
 
 function updateTastyUI() {
@@ -1059,5 +1106,6 @@ if (typeof module !== 'undefined') module.exports = {
   findParentScales, fifthsDistance, noteNameForKey,
   getTastyCategory, findQualityByName, toggleTasty, cycleTasty,
   disableTasty, updateTastyMatches, getTastyDiffText, updateTastyUI,
+  buildTastyVoicing, getTastyLabels, splitByPadRange, TASTY_DEGREE_MAP,
 };
 

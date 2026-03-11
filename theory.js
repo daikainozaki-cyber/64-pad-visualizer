@@ -1093,10 +1093,11 @@ function getTastyDiffText() {
   var labels = getTastyLabels(recipe.v);
   if (labels.length > 0) text += ' [' + labels.join(', ') + ']';
 
-  // Show out-of-range notes
+  // Show out-of-range notes with action hint
   if (TastyState.outOfRange.length > 0) {
     var names = TastyState.outOfRange.map(function(m) { return noteName(m); });
-    text += ' (+' + names.join(',') + ': out of range)';
+    text += ' (+' + names.join(',') + ': パッド外)';
+    text += ' — Opt+キーで保存 / Tで次へ';
   }
 
   return text;

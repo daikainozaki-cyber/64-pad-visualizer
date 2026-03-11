@@ -1090,6 +1090,8 @@ function getTastyDiffText() {
   if (!recipe) return '';
 
   var text = recipe.name;
+  // Degree array display (e.g. "1-9-5-7-1")
+  text += ' (' + recipe.v.join('-') + ')';
   var labels = getTastyLabels(recipe.v);
   if (labels.length > 0) text += ' [' + labels.join(', ') + ']';
 

@@ -913,6 +913,32 @@ function splitByPadRange(midiNotes) {
   return { inRange: inRange, outOfRange: outOfRange };
 }
 
+// Find best octave position: maximize notes within pad range
+function findBestPosition(rootMidi, degrees) {
+  var lo = baseMidi();
+  var hi = lo + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
+  var bestRoot = rootMidi, bestCount = -1, bestNotes = [];
+  // Try octave shifts from +2 to -4 (wide range to cover extreme cases)
+  for (var shift = 2; shift >= -4; shift--) {
+    var r = rootMidi + shift * 12;
+    if (r < 0) continue;
+    var notes = buildTastyVoicing(r, degrees);
+    if (notes.length === 0) continue;
+    var count = 0;
+    for (var i = 0; i < notes.length; i++) {
+      if (notes[i] >= lo && notes[i] <= hi) count++;
+    }
+    if (count > bestCount) {
+      bestCount = count;
+      bestRoot = r;
+      bestNotes = notes;
+    }
+    // All notes fit — no need to search further
+    if (count === notes.length) break;
+  }
+  return bestNotes;
+}
+
 // ========================================
 // TASTY MODE — Chord Cookbook Cycling
 // ========================================
@@ -1009,11 +1035,11 @@ function cycleTasty() {
   TastyState.currentIndex = (TastyState.currentIndex + 1) % TastyState.currentMatches.length;
   var recipe = TastyState.currentMatches[TastyState.currentIndex];
 
-  // Build voicing from degree array → MIDI notes
+  // Build voicing from degree array → MIDI notes (auto-find best octave position)
   var rootPC = BuilderState.root;
   var octOff = AppState.octaveShift * 12;
   var rootMidi = 48 + rootPC + octOff;
-  var midiNotes = buildTastyVoicing(rootMidi, recipe.v);
+  var midiNotes = findBestPosition(rootMidi, recipe.v);
 
   // Split by pad range
   var split = splitByPadRange(midiNotes);
@@ -1106,6 +1132,6 @@ if (typeof module !== 'undefined') module.exports = {
   findParentScales, fifthsDistance, noteNameForKey,
   getTastyCategory, findQualityByName, toggleTasty, cycleTasty,
   disableTasty, updateTastyMatches, getTastyDiffText, updateTastyUI,
-  buildTastyVoicing, getTastyLabels, splitByPadRange, TASTY_DEGREE_MAP,
+  buildTastyVoicing, getTastyLabels, splitByPadRange, findBestPosition, TASTY_DEGREE_MAP,
 };
 

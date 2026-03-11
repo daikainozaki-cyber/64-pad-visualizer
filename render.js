@@ -195,15 +195,24 @@ function computeRenderState() {
 
   // TASTY Voicing: override activePCS with voicing pitch classes + build MIDI set
   let tastyMidiSet = null;
+  let tastyDegreeMap = null;
+  let tastyTopMidi = null;
   if (AppState.mode === 'chord' && TastyState.enabled && TastyState.midiNotes.length > 0) {
     tastyMidiSet = new Set(TastyState.midiNotes);
+    tastyDegreeMap = TastyState.degreeMap || {};
+    tastyTopMidi = TastyState.topNote;
     activePCS = new Set(TastyState.midiNotes.map(m => m % 12));
     guide3PCS = new Set(); guide7PCS = new Set(); tensionPCS = new Set();
     omittedPCS = new Set();
-    [3,4].forEach(iv => { const pc = (rootPC + iv) % 12; if (activePCS.has(pc)) guide3PCS.add(pc); });
-    [10,11].forEach(iv => { const pc = (rootPC + iv) % 12; if (activePCS.has(pc)) guide7PCS.add(pc); });
-    if (activePCS.has((rootPC + 9) % 12) && !activePCS.has((rootPC + 10) % 12) && !activePCS.has((rootPC + 11) % 12)) {
-      guide7PCS.add((rootPC + 9) % 12);
+    // Classify by TASTY degree (not by interval from root)
+    for (var _ti = 0; _ti < TastyState.midiNotes.length; _ti++) {
+      var _tm = TastyState.midiNotes[_ti];
+      var _td = tastyDegreeMap[_tm];
+      var _tpc = _tm % 12;
+      if (!_td) continue;
+      if (_td === '3' || _td === 'b3') guide3PCS.add(_tpc);
+      else if (_td === '7' || _td === 'b7' || _td === '6') guide7PCS.add(_tpc);
+      else if (_td !== '1' && _td !== '5' && _td !== 'b5' && _td !== '#5') tensionPCS.add(_tpc);
     }
   }
 
@@ -254,7 +263,7 @@ function computeRenderState() {
     }
   }
 
-  return { activePCS, activeIvPCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS, tastyMidiSet };
+  return { activePCS, activeIvPCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS, tastyMidiSet, tastyDegreeMap, tastyTopMidi };
 }
 
 function renderPads(svg, state, grid) {
@@ -263,7 +272,7 @@ function renderPads(svg, state, grid) {
   var padSize = grid ? grid.PAD_SIZE : PAD_SIZE;
   var padGap = grid ? grid.PAD_GAP : PAD_GAP;
   var margin = grid ? grid.MARGIN : MARGIN;
-  const { activePCS, activeIvPCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS, tastyMidiSet } = state;
+  const { activePCS, activeIvPCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS, tastyMidiSet, tastyDegreeMap, tastyTopMidi } = state;
   // Build position set for selected voicing box (for dimming non-selected pads)
   const selBox = !grid && VoicingState.selectedBoxIdx !== null ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx] : null;
   const selMidi = selBox ? new Set(selBox.midiNotes) : null;
@@ -278,7 +287,9 @@ function renderPads(svg, state, grid) {
       // Voicing filter: pad-position filter (deduped, WYSIWYG) > MIDI filter > no filter
       const _padPosFilter = !grid && _instrumentPadSet;
       const _instrFilter = !grid && !_padPosFilter && _instrumentMidiSet;
-      const _voicingPass = _padPosFilter ? _padPosFilter.has(row * cols + col) : (_instrFilter ? _instrFilter.has(midi) : true);
+      const _voicingPass = (tastyMidiSet && tastyMidiSet.size > 0)
+        ? true  // TASTY mode: bypass instrument filters entirely (_isTastyMiss handles dimming)
+        : (_padPosFilter ? _padPosFilter.has(row * cols + col) : (_instrFilter ? _instrFilter.has(midi) : true));
       const isRoot = pc === rootPC && !omittedPCS.has(pc) && _voicingPass;
       const isBass = bassPC !== null && pc === bassPC && _voicingPass;
       const isActive = _voicingPass ? activePCS.has(pc) : false;
@@ -411,9 +422,14 @@ function renderPads(svg, state, grid) {
         }
         rect.setAttribute('stroke', 'none');
       }
-      // TASTY mode: fade off pads so chord tones pop
+      // TASTY mode: fade off pads so chord tones pop; top note gets glow border
       const isTastyDimmed = TastyState.enabled && fill === 'var(--pad-off)';
       if (isTastyDimmed) rect.setAttribute('opacity', '0.05');
+      const isTastyTop = tastyTopMidi !== null && midi === tastyTopMidi && tastyMidiSet && tastyMidiSet.has(midi);
+      if (isTastyTop) {
+        rect.setAttribute('stroke', '#fff');
+        rect.setAttribute('stroke-width', 2.5);
+      }
       svg.appendChild(rect);
 
       const showDegree = rootPC !== null && !_isTastyMiss && (isActive || isRoot || isBass || isOmitted || isChar || isGuide || isAvoid || isOverlay);
@@ -432,7 +448,10 @@ function renderPads(svg, state, grid) {
 
       if (showDegree) {
         let degName;
-        if (isOverlay) {
+        // TASTY mode: use recipe degree (e.g. "b7", "#11") instead of computed interval name
+        if (tastyDegreeMap && tastyMidiSet && tastyMidiSet.has(midi) && tastyDegreeMap[midi]) {
+          degName = tastyDegreeMap[midi];
+        } else if (isOverlay) {
           // Overlay notes use scale degree names (not chord degree names)
           degName = SCALE_DEGREE_NAMES[interval];
         } else if (AppState.mode === 'scale') {
@@ -440,7 +459,7 @@ function renderPads(svg, state, grid) {
         } else {
           degName = chordDegreeName(interval, qualityPCS, activeIvPCS);
         }
-        if ((isTension || isAvoid) && AppState.mode === 'chord') {
+        if (!tastyDegreeMap && (isTension || isAvoid) && AppState.mode === 'chord') {
           degName = '(' + degName + ')';
         }
         const degText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -454,6 +473,7 @@ function renderPads(svg, state, grid) {
         degText.textContent = degName;
         if (isDimmed) degText.setAttribute('opacity', isDimChordTone ? '0' : '0.4');
         svg.appendChild(degText);
+        // TASTY top note: white border is the visual hint (text label removed — bar shows TOP info)
       }
 
       const octText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -471,6 +491,8 @@ function renderPads(svg, state, grid) {
 
 function renderVoicingBoxes(svg, state) {
   const { activePCS, rootPC, qualityPCS } = state;
+  // TASTY mode: skip voicing boxes (TASTY has its own MIDI set, boxes would show chord builder data)
+  if (TastyState.enabled && TastyState.midiNotes.length > 0) return;
   // Reset computed boxes (will be populated if any chord bounding boxes are drawn)
   const hasChordNotes = AppState.mode === 'chord' && activePCS instanceof Set && activePCS.size > 0;
   if (!hasChordNotes) {

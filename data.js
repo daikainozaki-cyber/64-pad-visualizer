@@ -108,6 +108,8 @@ const TastyState = {
   originalTension: null, // BuilderState.tension before TASTY
   midiNotes: [],         // current voicing MIDI notes
   outOfRange: [],        // MIDI notes outside pad range
+  degreeMap: {},         // {midiNote: degreeString} — recipe degree per note
+  topNote: null,         // highest MIDI note in current voicing
 };
 
 // ======== BANK STATE (v2.50) ========

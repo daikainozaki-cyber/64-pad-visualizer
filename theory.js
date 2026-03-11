@@ -898,6 +898,20 @@ function getTastyLabels(degrees) {
   return labels;
 }
 
+// Build degree map: MIDI note → recipe degree string (e.g. {36:"1", 39:"b3"})
+function buildTastyDegreeMap(midiNotes, degrees) {
+  var map = {};
+  var idx = 0;
+  for (var i = 0; i < degrees.length; i++) {
+    if (TASTY_DEGREE_MAP[degrees[i]] === undefined) continue;
+    if (idx < midiNotes.length) {
+      map[midiNotes[idx]] = degrees[i];
+      idx++;
+    }
+  }
+  return map;
+}
+
 // Split MIDI notes into pad-range and out-of-range
 function splitByPadRange(midiNotes) {
   var lo = baseMidi();
@@ -1045,6 +1059,8 @@ function cycleTasty() {
   var split = splitByPadRange(midiNotes);
   TastyState.midiNotes = midiNotes;
   TastyState.outOfRange = split.outOfRange;
+  TastyState.degreeMap = buildTastyDegreeMap(midiNotes, recipe.v);
+  TastyState.topNote = midiNotes.length > 0 ? Math.max.apply(null, midiNotes) : null;
 
   updateTastyUI();
   render();
@@ -1078,6 +1094,8 @@ function disableTasty() {
   TastyState.currentIndex = -1;
   TastyState.midiNotes = [];
   TastyState.outOfRange = [];
+  TastyState.degreeMap = {};
+  TastyState.topNote = null;
 
   updateTastyUI();
   render();
@@ -1089,9 +1107,14 @@ function getTastyDiffText() {
   var recipe = TastyState.currentMatches[TastyState.currentIndex];
   if (!recipe) return '';
 
+  // Simplified: concept name + TOP (degree + note name) + labels
+  // Degree array removed — read from pads (cognitive flow: bar=overview, pads=detail)
   var text = recipe.name;
-  // Degree array display (e.g. "1-9-5-7-1")
-  text += ' (' + recipe.v.join('-') + ')';
+  // Top note: degree + note name for chord solo / harmonization
+  if (TastyState.topNote !== null && TastyState.degreeMap[TastyState.topNote]) {
+    var topPC = TastyState.topNote % 12;
+    text += '  Top: ' + TastyState.degreeMap[TastyState.topNote] + ' (' + pcName(topPC) + ')';
+  }
   var labels = getTastyLabels(recipe.v);
   if (labels.length > 0) text += ' [' + labels.join(', ') + ']';
 
@@ -1103,6 +1126,62 @@ function getTastyDiffText() {
   }
 
   return text;
+}
+
+// Degree → color category (matches pad colors)
+function getTastyDegreeCategory(deg) {
+  if (deg === '1') return 'root';
+  if (deg === '3' || deg === 'b3') return 'guide3';
+  if (deg === '7' || deg === 'b7') return 'guide7';
+  if (deg === '5' || deg === 'b5' || deg === '#5') return 'chord';
+  if (deg === '6') return 'guide7'; // 6th = guide role in 6 chords
+  return 'tension'; // 9, b9, #9, 11, #11, 13, b13
+}
+
+// Render TASTY degree badges (near TASTY bar — proximity principle)
+function renderTastyDegreeBadges() {
+  var el = document.getElementById('tasty-degrees-row');
+  if (!el) return;
+  if (!TastyState.enabled || TastyState.currentIndex < 0) {
+    el.innerHTML = '';
+    el.style.display = 'none';
+    return;
+  }
+  var recipe = TastyState.currentMatches[TastyState.currentIndex];
+  if (!recipe) { el.innerHTML = ''; el.style.display = 'none'; return; }
+  el.style.display = '';
+
+  var rootPC = BuilderState.root;
+  var outSet = {};
+  for (var o = 0; o < TastyState.outOfRange.length; o++) {
+    outSet[TastyState.outOfRange[o]] = true;
+  }
+
+  var html = '<div class="tasty-degrees">';
+  html += '<span class="tasty-degrees-label">' + recipe.name + '</span>';
+
+  var noteIdx = 0;
+  for (var i = 0; i < recipe.v.length; i++) {
+    var deg = recipe.v[i];
+    if (TASTY_DEGREE_MAP[deg] === undefined) continue;
+    var semitone = TASTY_DEGREE_MAP[deg];
+    var pc = (rootPC + semitone) % 12;
+    var cat = getTastyDegreeCategory(deg);
+    var isTop = (noteIdx < TastyState.midiNotes.length && TastyState.midiNotes[noteIdx] === TastyState.topNote);
+    var isOut = (noteIdx < TastyState.midiNotes.length && outSet[TastyState.midiNotes[noteIdx]]);
+    var cls = 'tasty-degree tasty-degree--' + cat;
+    if (isTop) cls += ' tasty-degree--top';
+    if (isOut) cls += ' tasty-degree--out';
+
+    html += '<span class="' + cls + '">';
+    html += deg;
+    html += '<span class="tasty-degree-note">' + pcName(pc) + '</span>';
+    if (isTop) html += '<span class="tasty-degree-top">TOP</span>';
+    html += '</span>';
+    noteIdx++;
+  }
+  html += '</div>';
+  el.innerHTML = html;
 }
 
 function updateTastyUI() {
@@ -1123,6 +1202,10 @@ function updateTastyUI() {
     if (counter) counter.textContent = '';
     if (info) info.textContent = '';
   }
+
+  // Degree badges disabled — degree info is on pads (cognitive flow: bar=concept, pads=degrees)
+  var degRow = document.getElementById('tasty-degrees-row');
+  if (degRow) { degRow.innerHTML = ''; degRow.style.display = 'none'; }
 }
 
 // Conditional exports for Node.js (Vitest) — ignored in browser
@@ -1135,6 +1218,7 @@ if (typeof module !== 'undefined') module.exports = {
   findParentScales, fifthsDistance, noteNameForKey,
   getTastyCategory, findQualityByName, toggleTasty, cycleTasty,
   disableTasty, updateTastyMatches, getTastyDiffText, updateTastyUI,
-  buildTastyVoicing, getTastyLabels, splitByPadRange, findBestPosition, TASTY_DEGREE_MAP,
+  buildTastyVoicing, buildTastyDegreeMap, getTastyLabels, splitByPadRange, findBestPosition, TASTY_DEGREE_MAP,
+  getTastyDegreeCategory, renderTastyDegreeBadges,
 };
 

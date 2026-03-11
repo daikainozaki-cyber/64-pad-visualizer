@@ -1,8 +1,8 @@
 # 64 Pad Explorer - CLAUDE.md
 
-**最終更新**: 2026-03-02
-**担当人格**: 蔵人（実装）、継次（設計）、フロ男（テンション・ボイシング設計）
-**バージョン**: V3.7（2026-03-02）
+**最終更新**: 2026-03-11
+**担当人格**: 蔵人（実装）、継次（設計・レビュー）、フロ男（テンション・ボイシング設計）、マケ子（UI/UX外部視点）
+**バージョン**: V3.30.13（2026-03-11）
 
 ---
 
@@ -905,7 +905,48 @@ z x c v   → slot 13-16
 
 **修正ファイル**: builder.js, index.html
 
-### 次の実装目標（2026-02-20更新）
+### 次の実装目標（2026-03-11更新）
+
+#### TASTY エンジン実装（次セッション、継次↔蔵人ペア）
+
+**現状 (V3.30.13)**:
+- UIシェル完成: TASTYボタン（Tキー）、カウンター、情報表示欄
+- データ完成: `data/tasty-recipes.json`（129レシピ、major/dominant/minor）
+- 認証完成: `?hps` パラメータで表示/非表示
+- `TastyState` オブジェクト、`toggleTasty()`, `cycleTasty()` のスケルトン実装済み
+
+**次に実装するもの**:
+1. **レシピ→コード変換エンジン**: recipe.quality + recipe.mods → BuilderState.quality + BuilderState.tension に変換
+2. **`findQualityByName(name)`**: recipe.qualityをBUILDER_QUALITIESから検索
+3. **`updateTastyMatches()`**: 現在のqualityカテゴリ（major/dominant/minor）に合うレシピを絞り込み
+4. **差分表示**: 「Cm7 → Cm9: +9th」のような教育的テキスト
+5. **Escape で元に戻る**: originalQuality/originalTension の復元
+
+**設計判断（確定済み）**:
+- TASTY = パッドで弾けるもののみ（ピアノ専用ボイシングはStock Voicingで別管理）
+- Shell/Inv/Drop はTASTY適用後も使用可能（TASTY→quality+tension設定→既存ボイシングツールが動く）
+- 計画ファイル: `.claude/plans/dazzling-wobbling-lagoon.md`
+
+**ペアプロ体制**: 継次（設計・レビュー）↔ 蔵人（実装）。`/dev` モードで。
+
+#### TASTY 表示バグ修正 (V3.31.3, 2026-03-11)
+
+**認知フロー（うりなみさん確定）**:
+1. TASTYを押す（かっこよくしたい） → 2. 聴く（かっこよくなった） → 3. TASTYバーを見る →「m11として考えてるんだ」+ TOPノート確認 → 4. パッドに視線移動 → ボトムから上へ度数構造を読む
+
+**発見されたバグと修正**:
+
+| # | 問題 | 原因 | 修正 |
+|---|------|------|------|
+| 1 | 6音中3音しかパッドに表示されない（致命的） | `_voicingPass`がTASTYモードでもinstrument filter(`_instrumentMidiSet`)を適用。TASTY MIDIノートとinstrument voicingが不一致 → パッド非表示 | TASTY有効時は`_voicingPass`をバイパス。`_isTastyMiss`がdimmingを担当 |
+| 2 | tension色分けなし | L205で`tensionPCS = new Set()`にリセット後、TASTY degreeMapからtension PCを再分類していない | TASTY midiNotesのdegreeからguide3/guide7/tensionPCSに分類 |
+| 3 | TASTYバーの度数配列が冗長 | テキスト+バッジに度数配列が重複。パッドで読むべき情報がバーにある | バーは「コンセプト名 + TOP(度数+音名) + ラベル」のみ。度数バッジ削除 |
+| 4 | TASTY時ABCDボックスがコードビルダー基準 | ボックスがTASTYの音ではなくビルダーの音で計算される | Phase 1: TASTY時はボックス非表示 |
+| 5 | パッドのTOPテキストラベル冗長 | バー+白ボーダー+テキストの3重表示 | テキスト削除、白ボーダーのみ残す |
+
+**教訓**: instrument filterとTASTYは独立したモード。TASTYが独自のMIDIセットを持つ場合、既存のinstrument filterは邪魔になる。モード間のフィルタ干渉に注意。
+
+#### 既存の目標（旧）
 
 | Ver | 機能 | 内容 | 重さ |
 |-----|------|------|------|

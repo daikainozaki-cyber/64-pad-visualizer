@@ -913,13 +913,13 @@ function splitByPadRange(midiNotes) {
   return { inRange: inRange, outOfRange: outOfRange };
 }
 
-// Find best octave position: maximize notes within pad range
+// Find best octave position: maximize notes within pad range, prefer lowest
 function findBestPosition(rootMidi, degrees) {
   var lo = baseMidi();
   var hi = lo + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
   var bestRoot = rootMidi, bestCount = -1, bestNotes = [];
-  // Try octave shifts from +2 to -4 (wide range to cover extreme cases)
-  for (var shift = 2; shift >= -4; shift--) {
+  // Search LOW to HIGH — prefer lowest position where most notes fit
+  for (var shift = -4; shift <= 2; shift++) {
     var r = rootMidi + shift * 12;
     if (r < 0) continue;
     var notes = buildTastyVoicing(r, degrees);
@@ -933,7 +933,7 @@ function findBestPosition(rootMidi, degrees) {
       bestRoot = r;
       bestNotes = notes;
     }
-    // All notes fit — no need to search further
+    // All notes fit at lowest possible position — done
     if (count === notes.length) break;
   }
   return bestNotes;

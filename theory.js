@@ -1036,9 +1036,9 @@ function cycleTasty() {
   var recipe = TastyState.currentMatches[TastyState.currentIndex];
 
   // Build voicing from degree array → MIDI notes (auto-find best octave position)
+  // rootMidi fixed at C3 register (48) — octaveShift only affects pad range, not voicing register
   var rootPC = BuilderState.root;
-  var octOff = AppState.octaveShift * 12;
-  var rootMidi = 48 + rootPC + octOff;
+  var rootMidi = 48 + rootPC;
   var midiNotes = findBestPosition(rootMidi, recipe.v);
 
   // Split by pad range

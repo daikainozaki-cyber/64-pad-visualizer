@@ -250,9 +250,10 @@ function renderPads(svg, state, grid) {
   var padGap = grid ? grid.PAD_GAP : PAD_GAP;
   var margin = grid ? grid.MARGIN : MARGIN;
   const { activePCS, activeIvPCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS } = state;
-  // Build MIDI set for selected voicing box (for dimming non-selected pads)
+  // Build position set for selected voicing box (for dimming non-selected pads)
   const selBox = !grid && VoicingState.selectedBoxIdx !== null ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx] : null;
   const selMidi = selBox ? new Set(selBox.midiNotes) : null;
+  const selPos = selBox ? new Set(selBox.alternatives[selBox.currentAlt].positions.map(p => p.row + ',' + p.col)) : null;
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const midi = midiNote(row, col);
@@ -363,7 +364,10 @@ function renderPads(svg, state, grid) {
           }
         });
       })(midi, rect);
-      if (isOmitted) {
+      if (selMidi) {
+        // Voicing box selected: no individual pad strokes (dashed box is the boundary)
+        rect.setAttribute('stroke', 'none');
+      } else if (isOmitted) {
         rect.setAttribute('stroke', 'rgba(255,255,255,0.2)');
         rect.setAttribute('stroke-width', 1); rect.setAttribute('stroke-dasharray', '4 2');
       } else {
@@ -371,9 +375,24 @@ function renderPads(svg, state, grid) {
         rect.setAttribute('stroke', hasStroke ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.05)');
         rect.setAttribute('stroke-width', hasStroke ? 1.5 : 0.5);
       }
-      // Dim non-selected pads when a voicing box is selected
-      const isDimmed = selMidi && !selMidi.has(midi) && fill !== 'var(--pad-off)';
-      if (isDimmed) rect.setAttribute('opacity', '0.3');
+      // Dim non-selected pads when a voicing box is selected (match by grid position, not MIDI)
+      const isDimmed = selPos && !selPos.has(row + ',' + col);
+      const isDimChordTone = isDimmed && (isActive || isRoot || isBass || isGuide);
+      if (isDimmed) {
+        if (isDimChordTone) {
+          // Chord tones outside voicing box = invisible (noise reduction)
+          rect.setAttribute('fill', 'var(--bg)');
+          rect.setAttribute('opacity', '0');
+        } else {
+          // Non-chord-tone pads = grid reference (like guitar inlays)
+          rect.setAttribute('fill', 'var(--pad-off)');
+          rect.setAttribute('opacity', '0.7');
+        }
+        rect.setAttribute('stroke', 'none');
+      }
+      // TASTY mode: fade off pads so chord tones pop
+      const isTastyDimmed = TastyState.enabled && fill === 'var(--pad-off)';
+      if (isTastyDimmed) rect.setAttribute('opacity', '0.05');
       svg.appendChild(rect);
 
       const showDegree = rootPC !== null && (isActive || isRoot || isBass || isOmitted || isChar || isGuide || isAvoid || isOverlay);
@@ -386,7 +405,8 @@ function renderPads(svg, state, grid) {
       text.setAttribute('font-size', padSize < 50 ? '8px' : (showDegree ? '10px' : '9px'));
       text.setAttribute('font-weight', showDegree ? '600' : '400');
       text.textContent = pcName(pc);
-      if (isDimmed) text.setAttribute('opacity', '0.3');
+      if (isDimmed) text.setAttribute('opacity', isDimChordTone ? '0' : '0.4');
+      if (isTastyDimmed) text.setAttribute('opacity', '0.05');
       svg.appendChild(text);
 
       if (showDegree) {
@@ -411,7 +431,7 @@ function renderPads(svg, state, grid) {
         degText.setAttribute('font-size', padSize < 50 ? '10px' : '13px'); degText.setAttribute('font-weight', '700');
         if (isOmitted) degText.setAttribute('text-decoration', 'line-through');
         degText.textContent = degName;
-        if (isDimmed) degText.setAttribute('opacity', '0.3');
+        if (isDimmed) degText.setAttribute('opacity', isDimChordTone ? '0' : '0.4');
         svg.appendChild(degText);
       }
 
@@ -421,7 +441,7 @@ function renderPads(svg, state, grid) {
       octText.setAttribute('y', showDegree ? y + padSize * 0.82 : y + padSize / 2 + 12);
       octText.setAttribute('text-anchor', 'middle'); octText.setAttribute('dominant-baseline', 'middle');
       octText.setAttribute('fill', textColor);
-      octText.setAttribute('font-size', padSize < 50 ? '6px' : '8px'); octText.setAttribute('opacity', isDimmed ? '0.15' : '0.6');
+      octText.setAttribute('font-size', padSize < 50 ? '6px' : '8px'); octText.setAttribute('opacity', isDimmed ? (isDimChordTone ? '0' : '0.3') : '0.6');
       octText.textContent = noteName(midi);
       svg.appendChild(octText);
     }
@@ -2363,6 +2383,8 @@ function updateInstrumentInput() {
 
 function highlightInstrumentPads(midiNotes) {
   document.querySelectorAll('.instrument-highlight').forEach(el => el.remove());
+  // Hide instrument highlights when a voicing box is selected (only dashed box + chord tones visible)
+  if (VoicingState.selectedBoxIdx !== null) return;
   const svg = document.getElementById('pad-grid');
   const bm = baseMidi();
   const noteSet = new Set(midiNotes);

@@ -202,6 +202,7 @@ function updateChordDisplay() {
 }
 
 function builderClear() {
+  if (TastyState.enabled) { TastyState.enabled = false; TastyState.currentIndex = -1; updateTastyUI(); }
   BuilderState.root = null; BuilderState.quality = null; BuilderState.tension = null; BuilderState.bass = null;
   BuilderState.bassInputMode = false;
   BuilderState._fromDiatonic = false;
@@ -245,6 +246,7 @@ function builderNext() {
 }
 
 function selectRoot(pc) {
+  if (TastyState.enabled) disableTasty();
   if (BuilderState.bassInputMode) {
     // In bass input mode, set bass note instead of root
     BuilderState.bass = pc;
@@ -268,6 +270,7 @@ function selectRoot(pc) {
 }
 
 function selectQuality(q) {
+  if (TastyState.enabled) disableTasty();
   BuilderState.quality = q;
   BuilderState.tension = null;
   resetVoicingSelection();
@@ -279,6 +282,7 @@ function selectQuality(q) {
 }
 
 function selectTension(t, el) {
+  if (TastyState.enabled) disableTasty();
   if (BuilderState.tension && BuilderState.tension.label === t.label) {
     BuilderState.tension = null;
     clearTensionSelection();

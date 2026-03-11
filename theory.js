@@ -706,19 +706,7 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
       boxRect.appendChild(anim);
     }
     svg.appendChild(boxRect);
-    // Individual pad frames for selected box
-    if (sel) {
-      vp.positions.forEach(pos => {
-        const px = MARGIN + pos.col * (PAD_SIZE + PAD_GAP) - 2;
-        const py = MARGIN + (ROWS - 1 - pos.row) * (PAD_SIZE + PAD_GAP) - 2;
-        const padRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        padRect.setAttribute('x', px); padRect.setAttribute('y', py);
-        padRect.setAttribute('width', PAD_SIZE + 4); padRect.setAttribute('height', PAD_SIZE + 4);
-        padRect.setAttribute('rx', 6); padRect.setAttribute('fill', 'none');
-        padRect.setAttribute('stroke', '#fff'); padRect.setAttribute('stroke-width', 2.5);
-        svg.appendChild(padRect);
-      });
-    }
+    // (Individual pad frames removed — dashed bounding box is sufficient)
     // Badge
     const bassPos = vp.positions[0];
     const bsz = isCycleable ? 28 : 20;
@@ -868,6 +856,199 @@ function onDiatonicClick(tetrad) {
   render();
 }
 
+// ========================================
+// TASTY MODE — Chord Cookbook Cycling
+// ========================================
+
+function getTastyCategory(quality) {
+  if (!quality) return null;
+  var pcs = quality.pcs;
+  // Dominant: major 3rd + minor 7th (must check before generic major)
+  if (pcs.includes(4) && pcs.includes(10)) return 'dominant';
+  // Major 7th
+  if (pcs.includes(4) && pcs.includes(11)) return 'major';
+  // 6 chord (major 3rd + 6th, no 7th)
+  if (pcs.includes(4) && pcs.includes(9) && !pcs.includes(10) && !pcs.includes(11)) return 'major';
+  // Major triad (no 7th)
+  if (pcs.includes(4) && !pcs.includes(3)) return 'major';
+  // Minor: has minor 3rd
+  if (pcs.includes(3)) return 'minor';
+  return null;
+}
+
+function findQualityByName(name) {
+  for (var r = 0; r < BUILDER_QUALITIES.length; r++) {
+    for (var c = 0; c < BUILDER_QUALITIES[r].length; c++) {
+      var q = BUILDER_QUALITIES[r][c];
+      if (q && q.name === name) return q;
+    }
+  }
+  return null;
+}
+
+function updateTastyMatches() {
+  var cat = getTastyCategory(TastyState.originalQuality);
+  TastyState.currentCategory = cat;
+  TastyState.currentMatches = cat ? (TastyState.recipes[cat] || []) : [];
+  TastyState.currentIndex = -1;
+}
+
+function findTensionLabel(mods, quality) {
+  // When quality has a 7th, skip "6"-prefixed labels (e.g. "6", "6/9", "6/9\n(#11)")
+  // because PC 9 = 13th (not 6th) in 7th-chord context
+  var has7th = quality && (
+    quality.pcs.includes(10) || quality.pcs.includes(11) ||
+    (quality.pcs.includes(9) && quality.pcs.includes(6))
+  );
+  // Search TENSION_ROWS for matching mods
+  for (var r = 0; r < TENSION_ROWS.length; r++) {
+    for (var c = 0; c < (TENSION_ROWS[r] ? TENSION_ROWS[r].length : 0); c++) {
+      var t = TENSION_ROWS[r][c];
+      if (!t) continue;
+      // Skip 6-prefixed labels for 7th chords (6→13, 6/9→9+13, etc.)
+      if (has7th && /^6/.test(t.label)) continue;
+      // Skip add9 label for 7th chords (add9 is for triads, 9 is for 7th)
+      if (has7th && t.label === 'add9') continue;
+      var tm = t.mods;
+      // Compare mods
+      var match = true;
+      var addA = (mods.add || []).slice().sort().join(',');
+      var addB = (tm.add || []).slice().sort().join(',');
+      if (addA !== addB) match = false;
+      if ((mods.replace3 || null) !== (tm.replace3 || null)) match = false;
+      if ((mods.sharp5 || false) !== (tm.sharp5 || false)) match = false;
+      if ((mods.flat5 || false) !== (tm.flat5 || false)) match = false;
+      if ((mods.omit3 || false) !== (tm.omit3 || false)) match = false;
+      if ((mods.omit5 || false) !== (tm.omit5 || false)) match = false;
+      if (match) return t.label;
+    }
+  }
+  // Build label from mods
+  var parts = [];
+  if (mods.replace3 === 5) parts.push('sus4');
+  else if (mods.replace3 === 2) parts.push('sus2');
+  if (mods.sharp5) parts.push('aug');
+  if (mods.flat5) parts.push('b5');
+  if (mods.omit3) parts.push('omit3');
+  if (mods.omit5) parts.push('omit5');
+  if (mods.add) {
+    mods.add.forEach(function(pc) {
+      var name = PC_TO_TENSION_NAME[pc];
+      if (name) parts.push(name);
+    });
+  }
+  return parts.length > 0 ? '(' + parts.join(',') + ')' : '';
+}
+
+function cycleTasty() {
+  if (!TastyState.enabled || TastyState.currentMatches.length === 0) return;
+  TastyState.currentIndex = (TastyState.currentIndex + 1) % TastyState.currentMatches.length;
+  var recipe = TastyState.currentMatches[TastyState.currentIndex];
+
+  var targetQ = findQualityByName(recipe.quality);
+  if (targetQ) {
+    BuilderState.quality = targetQ;
+    if (recipe.mods && Object.keys(recipe.mods).length > 0) {
+      var label = findTensionLabel(recipe.mods, targetQ);
+      BuilderState.tension = { label: label, mods: recipe.mods };
+    } else {
+      BuilderState.tension = null;
+    }
+  }
+
+  highlightQuality(BuilderState.quality);
+  updateControlsForQuality(BuilderState.quality);
+  updateChordDisplay();
+  updateTastyUI();
+  render();
+  playCurrentChord();
+}
+
+function toggleTasty() {
+  if (!TastyState.hpsUnlocked || !TastyState.recipes) return;
+  if (AppState.mode !== 'chord' || BuilderState.root === null || !BuilderState.quality) return;
+
+  if (TastyState.enabled) {
+    disableTasty();
+  } else {
+    // Enable: save original, find matches, apply first recipe
+    TastyState.originalQuality = BuilderState.quality;
+    TastyState.originalTension = BuilderState.tension;
+    TastyState.enabled = true;
+    updateTastyMatches();
+    if (TastyState.currentMatches.length > 0) {
+      cycleTasty();
+    } else {
+      TastyState.enabled = false;
+      updateTastyUI();
+    }
+  }
+}
+
+function disableTasty() {
+  if (!TastyState.enabled) return;
+  BuilderState.quality = TastyState.originalQuality;
+  BuilderState.tension = TastyState.originalTension;
+  TastyState.enabled = false;
+  TastyState.currentIndex = -1;
+
+  highlightQuality(BuilderState.quality);
+  updateControlsForQuality(BuilderState.quality);
+  updateChordDisplay();
+  updateTastyUI();
+  render();
+  playCurrentChord();
+}
+
+function getTastyDiffText() {
+  if (!TastyState.enabled || TastyState.currentIndex < 0) return '';
+  var recipe = TastyState.currentMatches[TastyState.currentIndex];
+  if (!recipe) return '';
+
+  var origName = '';
+  if (TastyState.originalQuality) {
+    origName = (TastyState.originalQuality.name || 'Maj');
+    if (TastyState.originalTension) origName += '(' + TastyState.originalTension.label.replace(/\n/g, ',') + ')';
+  }
+
+  // Build diff description from mods
+  var changes = [];
+  if (recipe.mods.add) {
+    recipe.mods.add.forEach(function(pc) {
+      var name = PC_TO_TENSION_NAME[pc];
+      if (name) changes.push('+' + name);
+    });
+  }
+  if (recipe.mods.replace3) changes.push('sus' + (recipe.mods.replace3 === 5 ? '4' : '2'));
+  if (recipe.mods.sharp5) changes.push('#5');
+  if (recipe.mods.flat5) changes.push('b5');
+  if (recipe.mods.omit3) changes.push('-3rd');
+  if (recipe.mods.omit5) changes.push('-5th');
+
+  var diffStr = changes.length > 0 ? ' (' + changes.join(', ') + ')' : '';
+  return origName + ' \u2192 ' + recipe.name + diffStr;
+}
+
+function updateTastyUI() {
+  var bar = document.getElementById('tasty-bar');
+  if (!bar) return;
+  bar.style.display = TastyState.hpsUnlocked ? '' : 'none';
+
+  var btn = document.getElementById('btn-tasty');
+  if (btn) btn.classList.toggle('active', TastyState.enabled);
+
+  var counter = document.getElementById('tasty-counter');
+  var info = document.getElementById('tasty-info');
+
+  if (TastyState.enabled && TastyState.currentIndex >= 0) {
+    if (counter) counter.textContent = (TastyState.currentIndex + 1) + '/' + TastyState.currentMatches.length;
+    if (info) info.textContent = getTastyDiffText();
+  } else {
+    if (counter) counter.textContent = '';
+    if (info) info.textContent = '';
+  }
+}
+
 // Conditional exports for Node.js (Vitest) — ignored in browser
 if (typeof module !== 'undefined') module.exports = {
   baseMidi, pitchClass, noteName, midiNote,
@@ -876,5 +1057,7 @@ if (typeof module !== 'undefined') module.exports = {
   getShellIntervals, applyTension, getBuilderPCS,
   chordDegreeName, getDiatonicTetrads, getBuilderChordName,
   findParentScales, fifthsDistance, noteNameForKey,
+  getTastyCategory, findQualityByName, toggleTasty, cycleTasty,
+  disableTasty, updateTastyMatches, getTastyDiffText, updateTastyUI,
 };
 

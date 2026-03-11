@@ -4,6 +4,15 @@
 // Load saved settings BEFORE UI init (so AppState has restored values)
 loadAppSettings();
 
+// TASTY Mode: HPS auth + data loading
+TastyState.hpsUnlocked = new URLSearchParams(window.location.search).has('hps');
+if (TastyState.hpsUnlocked) {
+  fetch('data/tasty-recipes.json').then(function(r) { return r.json(); }).then(function(data) {
+    TastyState.recipes = data;
+    updateTastyUI();
+  }).catch(function() {});
+}
+
 initKeyButtons();
 initScaleSelect();
 initQualityGrid();
@@ -251,6 +260,8 @@ document.addEventListener('keydown', (e) => {
     } else if (PlainState.currentSlot !== null) {
       PlainState.currentSlot = null;
       updateMemorySlotUI();
+    } else if (TastyState.enabled) {
+      disableTasty();
     } else if (VoicingState.selectedBoxIdx !== null) {
       VoicingState.selectedBoxIdx = null;
       render();
@@ -376,6 +387,18 @@ document.addEventListener('keydown', (e) => {
       const tetrads = getDiatonicTetrads(scale.pcs, AppState.key);
       if (num - 1 < tetrads.length) {
         onDiatonicClick(tetrads[num - 1]);
+      }
+    }
+    return;
+  }
+
+  // t: TASTY mode (toggle/cycle)
+  if (lk === 't') {
+    if (AppState.mode === 'chord' && TastyState.hpsUnlocked) {
+      if (TastyState.enabled) {
+        cycleTasty();
+      } else {
+        toggleTasty();
       }
     }
     return;

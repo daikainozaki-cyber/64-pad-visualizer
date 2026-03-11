@@ -262,10 +262,7 @@ function _findSamplerZone(instrument, midi, velocity127) {
   return best;
 }
 
-// Visual debug for sampler noteOn (shows in version tag)
 function _dbgSampler(msg) {
-  var tag = document.querySelector('.version-tag');
-  if (tag) tag.textContent = 'V3.3 ' + msg;
   console.log('[sampler] ' + msg);
 }
 
@@ -752,13 +749,8 @@ function playMidiNotes(midiNotes) {
 }
 
 // Build version — shown in version tag for diagnostics
-const _AUDIO_BUILD = '3.25.2';
-
 // Slider labels + live parameter update
 onReady(() => {
-  // Show actual loaded audio version in version tag (cache diagnostic)
-  var _vt = document.querySelector('.version-tag');
-  if (_vt) _vt.textContent = 'V' + _AUDIO_BUILD;
   // Set initial mute button state
   _updateMuteBtn();
   // Hide CHS export on production (reverse-engineered Chordcat format — dev only)

@@ -95,6 +95,18 @@ const BassPositionState = {
   currentAltInGroup: 0,
 };
 
+// ======== TASTY STATE (HPS exclusive) ========
+const TastyState = {
+  hpsUnlocked: false,    // URL parameter check
+  enabled: false,        // TASTY mode active
+  recipes: null,         // loaded from tasty-recipes.json
+  currentCategory: null, // 'major' | 'dominant' | 'minor'
+  currentMatches: [],    // recipes matching current base quality
+  currentIndex: -1,      // which recipe is active (-1 = none)
+  originalQuality: null, // BuilderState.quality before TASTY
+  originalTension: null, // BuilderState.tension before TASTY
+};
+
 // ======== BANK STATE (v2.50) ========
 const BankState = {
   banks: [],         // [{id, name, memory: Array(16)}]
@@ -205,7 +217,7 @@ if (typeof module !== 'undefined') module.exports = {
   BUILDER_QUALITIES, TENSION_ROWS, SCALE_AVAIL_TENSIONS,
   GRID, ROWS, COLS, BASE_MIDI, ROW_INTERVAL, COL_INTERVAL, PAD_SIZE, PAD_GAP, MARGIN,
   SCALE_DEGREE_NAMES, PC_TO_TENSION_NAME, TENSION_NAME_TO_PC,
-  AppState, BuilderState, VoicingState, PlainState, PerformState, BankState,
+  AppState, BuilderState, VoicingState, PlainState, PerformState, TastyState, BankState,
   GuitarPositionState, BassPositionState,
   resetVoicingSelection, getParentMajorKey, pcName, onReady, IS_DEV,
   getActiveBank, syncMemoryToActiveBank, loadBankMemory,

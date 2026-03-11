@@ -197,10 +197,15 @@ function computeRenderState() {
   let tastyMidiSet = null;
   let tastyDegreeMap = null;
   let tastyTopMidi = null;
-  if (AppState.mode === 'chord' && TastyState.enabled && TastyState.midiNotes.length > 0 && VoicingState.selectedBoxIdx !== null) {
-    tastyMidiSet = new Set(TastyState.midiNotes);
+  if (AppState.mode === 'chord' && TastyState.enabled && TastyState.midiNotes.length > 0) {
+    // Always use degree map for color classification
     tastyDegreeMap = TastyState.degreeMap || {};
-    tastyTopMidi = TastyState.topNote;
+    // Only use exact-MIDI filtering when a voicing box is selected
+    // When no box selected, show TASTY pitch classes across all octaves
+    if (VoicingState.selectedBoxIdx !== null) {
+      tastyMidiSet = new Set(TastyState.midiNotes);
+      tastyTopMidi = TastyState.topNote;
+    }
     activePCS = new Set(TastyState.midiNotes.map(m => m % 12));
     guide3PCS = new Set(); guide7PCS = new Set(); tensionPCS = new Set();
     omittedPCS = new Set();

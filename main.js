@@ -265,6 +265,10 @@ document.addEventListener('keydown', (e) => {
     } else if (PlainState.currentSlot !== null) {
       PlainState.currentSlot = null;
       updateMemorySlotUI();
+    } else if (TastyState.enabled && VoicingState.selectedBoxIdx !== null) {
+      // TASTY ON + box selected: deselect box only, keep TASTY
+      VoicingState.selectedBoxIdx = null;
+      render();
     } else if (TastyState.enabled) {
       disableTasty();
     } else if (VoicingState.selectedBoxIdx !== null) {

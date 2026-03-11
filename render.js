@@ -197,7 +197,7 @@ function computeRenderState() {
   let tastyMidiSet = null;
   let tastyDegreeMap = null;
   let tastyTopMidi = null;
-  if (AppState.mode === 'chord' && TastyState.enabled && TastyState.midiNotes.length > 0) {
+  if (AppState.mode === 'chord' && TastyState.enabled && TastyState.midiNotes.length > 0 && VoicingState.selectedBoxIdx !== null) {
     tastyMidiSet = new Set(TastyState.midiNotes);
     tastyDegreeMap = TastyState.degreeMap || {};
     tastyTopMidi = TastyState.topNote;
@@ -423,9 +423,14 @@ function renderPads(svg, state, grid) {
         rect.setAttribute('stroke', 'none');
       }
       // TASTY mode: fade off pads so chord tones pop; top note gets glow border
-      const isTastyDimmed = TastyState.enabled && fill === 'var(--pad-off)';
+      const isTastyActive = tastyMidiSet && tastyMidiSet.size > 0;
+      const isTastyDimmed = isTastyActive && fill === 'var(--pad-off)';
+      if (isTastyActive) {
+        // TASTY mode: remove all strokes (color coding + TOP border only)
+        rect.setAttribute('stroke', 'none');
+      }
       if (isTastyDimmed) rect.setAttribute('opacity', '0.05');
-      const isTastyTop = tastyTopMidi !== null && midi === tastyTopMidi && tastyMidiSet && tastyMidiSet.has(midi);
+      const isTastyTop = tastyTopMidi !== null && midi === tastyTopMidi && isTastyActive && tastyMidiSet.has(midi);
       if (isTastyTop) {
         rect.setAttribute('stroke', '#fff');
         rect.setAttribute('stroke-width', 2.5);
@@ -491,8 +496,17 @@ function renderPads(svg, state, grid) {
 
 function renderVoicingBoxes(svg, state) {
   const { activePCS, rootPC, qualityPCS } = state;
-  // TASTY mode: skip voicing boxes (TASTY has its own MIDI set, boxes would show chord builder data)
-  if (TastyState.enabled && TastyState.midiNotes.length > 0) return;
+  // TASTY mode: voicing boxes anchored to lowest MIDI note
+  if (TastyState.enabled && TastyState.midiNotes.length > 0) {
+    var tastyNotes = TastyState.midiNotes.slice().sort(function(a, b) { return a - b; });
+    var lowestMidi = tastyNotes[0];
+    var lowestPC = lowestMidi % 12;
+    var tastyOffsets = tastyNotes.map(function(n) { return n - lowestMidi; });
+    var maxRS = tastyNotes.length <= 3 ? 4 : 5;
+    var maxCS = tastyNotes.length <= 3 ? 5 : 6;
+    computeAndDrawVoicingBoxes(svg, tastyOffsets, lowestPC, '#fff', '#fff', maxRS, maxCS);
+    return;
+  }
   // Reset computed boxes (will be populated if any chord bounding boxes are drawn)
   const hasChordNotes = AppState.mode === 'chord' && activePCS instanceof Set && activePCS.size > 0;
   if (!hasChordNotes) {

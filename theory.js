@@ -150,12 +150,34 @@ function selectVoicingBox(idx) {
   if (!wasSelected) {
     // Case 1: Not selected -> select it
     VoicingState.selectedBoxIdx = idx;
+    // TASTY mode: update voicing to this box's position
+    if (TastyState.enabled && box) {
+      TastyState.midiNotes = box.midiNotes;
+      TastyState.topNote = Math.max.apply(null, box.midiNotes);
+      TastyState.degreeMap = buildTastyDegreeMap(box.midiNotes,
+        TastyState.currentMatches[TastyState.currentIndex].v);
+      updateTastyUI();
+    }
     render();
     playVoicingBoxAudio(idx);
   } else if (hasCycle) {
     // Case 2: Already selected + has alternatives -> cycle to next
     const nextAlt = (box.currentAlt + 1) % box.alternatives.length;
     VoicingState.cycleIndices[idx] = nextAlt;
+    // Recompute box midiNotes for the new alternative
+    var bm = baseMidi();
+    box.currentAlt = nextAlt;
+    box.midiNotes = box.alternatives[nextAlt].positions
+      .map(function(p) { return bm + p.row * ROW_INTERVAL + p.col; })
+      .sort(function(a, b) { return a - b; });
+    // TASTY mode: update to cycled alternative
+    if (TastyState.enabled) {
+      TastyState.midiNotes = box.midiNotes;
+      TastyState.topNote = Math.max.apply(null, box.midiNotes);
+      TastyState.degreeMap = buildTastyDegreeMap(box.midiNotes,
+        TastyState.currentMatches[TastyState.currentIndex].v);
+      updateTastyUI();
+    }
     render();
     playVoicingBoxAudio(idx);
   } else {
@@ -706,7 +728,6 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
       boxRect.appendChild(anim);
     }
     svg.appendChild(boxRect);
-    // (Individual pad frames removed — dashed bounding box is sufficient)
     // Badge
     const bassPos = vp.positions[0];
     const bsz = isCycleable ? 28 : 20;
@@ -1044,9 +1065,12 @@ function findTensionLabel(mods, quality) {
   return parts.length > 0 ? '(' + parts.join(',') + ')' : '';
 }
 
-function cycleTasty() {
+function cycleTasty(reverse) {
   if (!TastyState.enabled || TastyState.currentMatches.length === 0) return;
-  TastyState.currentIndex = (TastyState.currentIndex + 1) % TastyState.currentMatches.length;
+  var len = TastyState.currentMatches.length;
+  TastyState.currentIndex = reverse
+    ? (TastyState.currentIndex - 1 + len) % len
+    : (TastyState.currentIndex + 1) % len;
   var recipe = TastyState.currentMatches[TastyState.currentIndex];
 
   // Build voicing from degree array → MIDI notes (auto-find best octave position)
@@ -1102,27 +1126,82 @@ function disableTasty() {
   playCurrentChord();
 }
 
+// Base chord tones for each quality (used to determine added tensions)
+var QUALITY_BASE_DEGREES = {
+  '': ['1','3','5'],
+  'm': ['1','b3','5'],
+  '7': ['1','3','5','b7'],
+  'm7': ['1','b3','5','b7'],
+  '\u25B37': ['1','3','5','7'],
+  'm\u25B37': ['1','b3','5','7'],
+  'dim': ['1','b3','b5'],
+  'dim7': ['1','b3','b5','6'],
+  'aug': ['1','3','#5'],
+  '6': ['1','3','5','6'],
+  'm6': ['1','b3','5','6'],
+  'm7(b5)': ['1','b3','b5','b7']
+};
+
 function getTastyDiffText() {
   if (!TastyState.enabled || TastyState.currentIndex < 0) return '';
   var recipe = TastyState.currentMatches[TastyState.currentIndex];
   if (!recipe) return '';
 
-  // Simplified: concept name + TOP (degree + note name) + labels
-  // Degree array removed — read from pads (cognitive flow: bar=overview, pads=detail)
-  var text = recipe.name;
-  // Top note: degree + note name for chord solo / harmonization
+  // Build chord name: Root + OriginalQuality + (added tensions)
+  // e.g. Cm7(9,11) — builder-style notation, showing what's added to the original
+  var rootName = pcName(BuilderState.root);
+  var qualName = TastyState.originalQuality ? TastyState.originalQuality.name : '';
+  var base = QUALITY_BASE_DEGREES[qualName] || ['1','3','5'];
+
+  // Find unique degrees in recipe, determine which are tensions (not in base)
+  var seen = {};
+  var tensions = [];
+  // Tension display order by semitone value
+  var TENSION_ORDER = ['b9','9','#9','11','#11','b13','13'];
+  var tensionSet = {};
+  for (var i = 0; i < recipe.v.length; i++) {
+    var d = recipe.v[i];
+    if (!seen[d]) {
+      seen[d] = true;
+      if (base.indexOf(d) === -1 && d !== '1' && d !== '3' && d !== 'b3' && d !== '5' && d !== 'b5' && d !== '#5') {
+        tensionSet[d] = true;
+      }
+    }
+  }
+  // Sort tensions in standard order
+  for (var t = 0; t < TENSION_ORDER.length; t++) {
+    if (tensionSet[TENSION_ORDER[t]]) tensions.push(TENSION_ORDER[t]);
+  }
+  // Check for sus4 (has 11 but no 3/b3)
+  if (seen['11'] && !seen['3'] && !seen['b3'] && base.indexOf('3') !== -1) {
+    qualName = qualName.replace(/^(m?)/, '$1') + 'sus4';
+    // Remove 11 from tensions since it's the sus
+    tensions = tensions.filter(function(t) { return t !== '11'; });
+  }
+
+  var chordName = rootName + qualName;
+  if (tensions.length > 0) chordName += '(' + tensions.join(',') + ')';
+
+  // Voicing degrees: bottom to top (the actual voicing structure)
+  var voicingStr = recipe.v.join('-');
+
+  // Top note info
+  var topStr = '';
   if (TastyState.topNote !== null && TastyState.degreeMap[TastyState.topNote]) {
     var topPC = TastyState.topNote % 12;
-    text += '  Top: ' + TastyState.degreeMap[TastyState.topNote] + ' (' + pcName(topPC) + ')';
+    topStr = 'Top: ' + TastyState.degreeMap[TastyState.topNote] + '(' + pcName(topPC) + ')';
   }
-  var labels = getTastyLabels(recipe.v);
-  if (labels.length > 0) text += ' [' + labels.join(', ') + ']';
 
-  // Show out-of-range notes with action hint
+  // Labels (Rootless, Omit3, Omit5)
+  var labels = getTastyLabels(recipe.v);
+  var labelStr = labels.length > 0 ? ' [' + labels.join(', ') + ']' : '';
+
+  var text = chordName + '  ' + voicingStr + '  ' + topStr + labelStr;
+
+  // Out-of-range notes
   if (TastyState.outOfRange.length > 0) {
     var names = TastyState.outOfRange.map(function(m) { return noteName(m); });
     text += ' (+' + names.join(',') + ': パッド外)';
-    text += ' — Opt+キーで保存 / Tで次へ';
   }
 
   return text;
@@ -1195,12 +1274,19 @@ function updateTastyUI() {
   var counter = document.getElementById('tasty-counter');
   var info = document.getElementById('tasty-info');
 
+  var prevBtn = document.getElementById('btn-tasty-prev');
+  var nextBtn = document.getElementById('btn-tasty-next');
+
   if (TastyState.enabled && TastyState.currentIndex >= 0) {
     if (counter) counter.textContent = (TastyState.currentIndex + 1) + '/' + TastyState.currentMatches.length;
     if (info) info.textContent = getTastyDiffText();
+    if (prevBtn) prevBtn.style.display = '';
+    if (nextBtn) nextBtn.style.display = '';
   } else {
     if (counter) counter.textContent = '';
     if (info) info.textContent = '';
+    if (prevBtn) prevBtn.style.display = 'none';
+    if (nextBtn) nextBtn.style.display = 'none';
   }
 
   // Degree badges disabled — degree info is on pads (cognitive flow: bar=concept, pads=degrees)

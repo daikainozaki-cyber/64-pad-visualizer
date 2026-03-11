@@ -397,11 +397,11 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // t: TASTY mode (toggle/cycle)
+  // t: TASTY mode (toggle/cycle), Shift+T: cycle reverse
   if (lk === 't') {
     if (AppState.mode === 'chord' && TastyState.hpsUnlocked) {
       if (TastyState.enabled) {
-        cycleTasty();
+        cycleTasty(e.shiftKey);
       } else {
         toggleTasty();
       }

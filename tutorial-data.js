@@ -497,6 +497,7 @@ TutorialRegistry.add('tasty', {
   titleKey: 'tut.tasty_title',
   descKey: 'tut.tasty_desc',
   category: 'advanced',
+  requireEl: '#tasty-bar',
   steps: [
     {
       type: 'info',
@@ -547,6 +548,7 @@ TutorialRegistry.add('stock', {
   titleKey: 'tut.stock_title',
   descKey: 'tut.stock_desc',
   category: 'advanced',
+  requireEl: '#stock-bar',
   steps: [
     {
       type: 'info',

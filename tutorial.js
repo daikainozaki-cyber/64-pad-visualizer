@@ -68,6 +68,7 @@ var TutorialEngine = {
   },
 
   complete: function() {
+    var wasOnboarding = this._currentTutorialId === 'onboarding';
     this.active = false;
     this._removeCard();
     this._removeHighlight();
@@ -79,6 +80,10 @@ var TutorialEngine = {
     var presetSel = document.getElementById('organ-preset');
     if (presetSel && this._boundOnPresetChange) {
       presetSel.removeEventListener('change', this._boundOnPresetChange);
+    }
+    // Collapse Sound details after onboarding (avoid overwhelming new users)
+    if (wasOnboarding && typeof soundExpanded !== 'undefined' && soundExpanded && typeof toggleSoundExpand === 'function') {
+      toggleSoundExpand();
     }
     this._currentTutorialId = null;
     this._currentSteps = null;
@@ -284,6 +289,11 @@ var TutorialEngine = {
 
       for (var ti = 0; ti < tuts.length; ti++) {
         var tut = tuts[ti];
+        // Hide tutorials whose required element is not visible (e.g. HPS-only features)
+        if (tut.requireEl) {
+          var reqEl = document.querySelector(tut.requireEl);
+          if (!reqEl || reqEl.offsetParent === null) continue;
+        }
         var done = TutorialRegistry.isComplete(tut.id);
         var title = t(tut.titleKey);
         if (title === tut.titleKey) title = tut.id;

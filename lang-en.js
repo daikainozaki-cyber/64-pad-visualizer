@@ -115,6 +115,7 @@ I18N.addLang('en', {
     sound_hint: 'Select ORGAN or E.PIANO to enable sound',
     tap_to_start: 'Tap to enable sound',
     tap_pads: 'Tap any pad to play!',
+    input_keys_disabled: 'Key selection is not used in Input mode',
     load_vst: 'Load VST/AU Plugin...',
     affiliate_label: '',
     circle: 'Circle',
@@ -346,7 +347,7 @@ I18N.addLang('en', {
   // Legacy tutorial keys (backward compat for old lang files)
   tutorial: {
     sound_title: 'Sound Preset',
-    sound_msg: 'Choose a sound preset and tap a pad to hear it.\nORGAN, E.PIANO, CLAV — each has multiple presets.',
+    sound_msg: 'Change the preset and tap a pad to hear it.\nORGAN, E.PIANO, CLAV — each has multiple presets.',
     sound_done: 'Sounds good! Press Next to continue.',
     midi_title: 'MIDI Controller',
     midi_msg: 'A MIDI controller has been detected. Select your device from the dropdown.\nVelocity sensitivity can be adjusted in the Sound panel.',
@@ -388,7 +389,7 @@ I18N.addLang('en', {
     onboarding_desc: 'Learn the basics of 64 Pad Explorer',
     onboarding: {
       sound_title: 'Sound Preset',
-      sound_msg: 'Choose a sound preset and tap a pad to hear it.\nORGAN, E.PIANO, CLAV — each has multiple presets.',
+      sound_msg: 'Change the preset and tap a pad to hear it.\nORGAN, E.PIANO, CLAV — each has multiple presets.',
       sound_done: 'Sounds good! Press Next to continue.',
       midi_title: 'MIDI Controller',
       midi_msg: 'A MIDI controller has been detected. Select your device from the dropdown.\nVelocity sensitivity can be adjusted in the Sound panel.',

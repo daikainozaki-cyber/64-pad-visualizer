@@ -907,27 +907,16 @@ z x c v   → slot 13-16
 
 ### 次の実装目標（2026-03-11更新）
 
-#### TASTY エンジン実装（次セッション、継次↔蔵人ペア）
+#### TASTY エンジン — **完了** (V3.31.5, 2026-03-12)
 
-**現状 (V3.30.13)**:
-- UIシェル完成: TASTYボタン（Tキー）、カウンター、情報表示欄
-- データ完成: `data/tasty-recipes.json`（129レシピ、major/dominant/minor）
-- 認証完成: `?hps` パラメータで表示/非表示
-- `TastyState` オブジェクト、`toggleTasty()`, `cycleTasty()` のスケルトン実装済み
+- レシピ→コード変換（129レシピ）、TASTY Voicing Engine（128度数ベースボイシング）
+- ボイシングボックスA/B/C/D + 選択→exact-MIDI表示、未選択→全オクターブpitch class表示
+- Escape: TASTY+box→boxのみ解除（TASTYは維持）、TASTY only→TASTY解除
+- UIバー: ビルダー表記 + 構成音 + TOP + ◀▶循環
+- 五線譜: TASTY対応済み。ギター/ピアノ: pitch classレベルで反映（十分）
+- `?hps` パラメータで表示/非表示
 
-**次に実装するもの**:
-1. **レシピ→コード変換エンジン**: recipe.quality + recipe.mods → BuilderState.quality + BuilderState.tension に変換
-2. **`findQualityByName(name)`**: recipe.qualityをBUILDER_QUALITIESから検索
-3. **`updateTastyMatches()`**: 現在のqualityカテゴリ（major/dominant/minor）に合うレシピを絞り込み
-4. **差分表示**: 「Cm7 → Cm9: +9th」のような教育的テキスト
-5. **Escape で元に戻る**: originalQuality/originalTension の復元
-
-**設計判断（確定済み）**:
-- TASTY = パッドで弾けるもののみ（ピアノ専用ボイシングはStock Voicingで別管理）
-- Shell/Inv/Drop はTASTY適用後も使用可能（TASTY→quality+tension設定→既存ボイシングツールが動く）
-- 計画ファイル: `.claude/plans/dazzling-wobbling-lagoon.md`
-
-**ペアプロ体制**: 継次（設計・レビュー）↔ 蔵人（実装）。`/dev` モードで。
+**設計判断**: TASTY = パッドで弾けるもののみ。ピアノ専用ボイシングはStock Voicingで別管理
 
 #### TASTY 表示バグ修正 (V3.31.3→V3.31.4, 2026-03-11)
 

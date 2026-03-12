@@ -18,6 +18,15 @@ if (TastyState.hpsUnlocked) {
   }).catch(function() {});
 }
 
+// Stock Voicing: same HPS gate
+StockState.hpsUnlocked = new URLSearchParams(window.location.search).has('hps');
+if (StockState.hpsUnlocked) {
+  fetch('data/stock-voicings.json').then(function(r) { return r.json(); }).then(function(data) {
+    StockState.data = data;
+    updateStockUI();
+  }).catch(function() {});
+}
+
 initKeyButtons();
 initScaleSelect();
 initQualityGrid();
@@ -269,6 +278,8 @@ document.addEventListener('keydown', (e) => {
       // TASTY ON + box selected: deselect box only, keep TASTY
       VoicingState.selectedBoxIdx = null;
       render();
+    } else if (StockState.enabled) {
+      disableStock();
     } else if (TastyState.enabled) {
       disableTasty();
     } else if (VoicingState.selectedBoxIdx !== null) {
@@ -408,6 +419,18 @@ document.addEventListener('keydown', (e) => {
         cycleTasty(e.shiftKey);
       } else {
         toggleTasty();
+      }
+    }
+    return;
+  }
+
+  // k: STOCK voicing (toggle/cycle), Shift+K: cycle reverse
+  if (lk === 'k') {
+    if (AppState.mode === 'chord' && StockState.hpsUnlocked) {
+      if (StockState.enabled) {
+        cycleStock(e.shiftKey);
+      } else {
+        toggleStock();
       }
     }
     return;

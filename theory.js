@@ -884,7 +884,7 @@ function onDiatonicClick(tetrad) {
 var TASTY_DEGREE_MAP = {
   '1':0, 'b9':1, '9':2, '#9':3, 'b3':3, '3':4,
   '11':5, '#11':6, 'b5':6, '5':7, '#5':8, 'b13':8,
-  '6':9, '13':9, 'b7':10, '7':11
+  '6':9, '13':9, 'bb7':9, 'b7':10, '7':11
 };
 
 // Build MIDI note array from degree array (bottom to top, each note above previous)
@@ -1292,6 +1292,200 @@ function updateTastyUI() {
   // Degree badges disabled — degree info is on pads (cognitive flow: bar=concept, pads=degrees)
   var degRow = document.getElementById('tasty-degrees-row');
   if (degRow) { degRow.innerHTML = ''; degRow.style.display = 'none'; }
+}
+
+// ========================================
+// STOCK VOICING ENGINE
+// ========================================
+
+// Map builder quality name → stock JSON category + subtype
+function getStockMapping(quality) {
+  if (!quality) return null;
+  var n = quality.name;
+  // Major family
+  if (n === '' || n === 'Maj') return { cat: 'major', sub: 'Maj7' };
+  if (n === '\u25B37') return { cat: 'major', sub: 'Maj7' };
+  if (n === '6') return { cat: 'major', sub: 'Maj6' };
+  // Minor family
+  if (n === 'm') return { cat: 'minor', sub: 'Min7' };
+  if (n === 'm7') return { cat: 'minor', sub: 'Min7' };
+  if (n === 'm\u25B37') return { cat: 'minor', sub: 'MinMaj7' };
+  if (n === 'm6') return { cat: 'minor', sub: 'Min6' };
+  // Dominant family
+  if (n === '7') return { cat: 'dominant', sub: 'Dom7' };
+  // Half-diminished
+  if (n === 'm7(b5)') return { cat: 'halfDiminished', sub: 'Min7b5' };
+  // Diminished
+  if (n === 'dim' || n === 'dim7') return { cat: 'diminished', sub: 'Dim7' };
+  // Aug
+  if (n === 'aug') return { cat: 'dominant', sub: 'Aug7' };
+  return null;
+}
+
+function updateStockMatches() {
+  if (!StockState.data || !BuilderState.quality) {
+    StockState.currentMatches = [];
+    StockState.currentIndex = -1;
+    return;
+  }
+  var mapping = getStockMapping(BuilderState.quality);
+  if (!mapping) {
+    StockState.currentMatches = [];
+    StockState.currentIndex = -1;
+    return;
+  }
+  StockState.currentCategory = mapping.cat;
+  StockState.currentSubtype = mapping.sub;
+  var catData = StockState.data[mapping.cat];
+  if (!catData) { StockState.currentMatches = []; StockState.currentIndex = -1; return; }
+
+  // Collect all voicings from matching subtype
+  var matches = [];
+  // Primary subtype
+  if (catData[mapping.sub]) {
+    matches = matches.concat(catData[mapping.sub]);
+  }
+  // Also check tension-extended subtypes (e.g. Min9, Min11 for Min7)
+  var keys = Object.keys(catData);
+  for (var i = 0; i < keys.length; i++) {
+    if (keys[i] !== mapping.sub && catData[keys[i]]) {
+      matches = matches.concat(catData[keys[i]]);
+    }
+  }
+  // Also add rootless and spread voicings if they have applicable entries
+  if (mapping.cat === 'major' || mapping.cat === 'minor' || mapping.cat === 'dominant') {
+    var rootless = StockState.data.rootless;
+    var spread = StockState.data.spread;
+    if (rootless) {
+      var typeA = rootless.TypeA || [];
+      var typeB = rootless.TypeB || [];
+      var all = typeA.concat(typeB);
+      for (var j = 0; j < all.length; j++) {
+        // Match by category keyword in name
+        var nm = all[j].name.toLowerCase();
+        if (mapping.cat === 'minor' && nm.indexOf('min') >= 0) matches.push(all[j]);
+        else if (mapping.cat === 'dominant' && nm.indexOf('dom') >= 0) matches.push(all[j]);
+        else if (mapping.cat === 'major' && nm.indexOf('maj') >= 0) matches.push(all[j]);
+      }
+    }
+  }
+  // Filter out note-only entries (empty LH+RH)
+  StockState.currentMatches = matches.filter(function(v) {
+    return (v.LH && v.LH.length > 0) || (v.RH && v.RH.length > 0);
+  });
+  StockState.currentIndex = -1;
+}
+
+function stockDegreesToMidi(rootMidi, degrees) {
+  // Convert degree array to MIDI notes, each note above previous (same as buildTastyVoicing)
+  return buildTastyVoicing(rootMidi, degrees);
+}
+
+function cycleStock(reverse) {
+  if (!StockState.enabled || StockState.currentMatches.length === 0) return;
+  var len = StockState.currentMatches.length;
+  StockState.currentIndex = reverse
+    ? (StockState.currentIndex - 1 + len) % len
+    : (StockState.currentIndex + 1) % len;
+  var entry = StockState.currentMatches[StockState.currentIndex];
+
+  // Convert LH/RH degrees to MIDI notes
+  // LH starts from root C2 (36), RH from root C3 (48)
+  var rootPC = BuilderState.root;
+  var lhRoot = 36 + rootPC;
+  var rhRoot = 48 + rootPC;
+  StockState.lhMidi = entry.LH && entry.LH.length > 0 ? stockDegreesToMidi(lhRoot, entry.LH) : [];
+  StockState.rhMidi = entry.RH && entry.RH.length > 0 ? stockDegreesToMidi(rhRoot, entry.RH) : [];
+
+  // Build degree map for all notes
+  var degMap = {};
+  if (entry.LH) {
+    for (var i = 0; i < entry.LH.length && i < StockState.lhMidi.length; i++) {
+      degMap[StockState.lhMidi[i]] = entry.LH[i];
+    }
+  }
+  if (entry.RH) {
+    for (var j = 0; j < entry.RH.length && j < StockState.rhMidi.length; j++) {
+      degMap[StockState.rhMidi[j]] = entry.RH[j];
+    }
+  }
+  StockState.degreeMap = degMap;
+
+  updateStockUI();
+  render();
+  // Play all notes
+  var allNotes = StockState.lhMidi.concat(StockState.rhMidi);
+  playMidiNotes(allNotes);
+}
+
+function toggleStock() {
+  if (!StockState.hpsUnlocked || !StockState.data) return;
+  if (AppState.mode !== 'chord' || BuilderState.root === null || !BuilderState.quality) return;
+
+  if (StockState.enabled) {
+    disableStock();
+  } else {
+    // Disable TASTY if active (mutually exclusive)
+    if (TastyState.enabled) disableTasty();
+    StockState.enabled = true;
+    updateStockMatches();
+    if (StockState.currentMatches.length > 0) {
+      cycleStock();
+    } else {
+      StockState.enabled = false;
+      updateStockUI();
+    }
+  }
+}
+
+function disableStock() {
+  if (!StockState.enabled) return;
+  StockState.enabled = false;
+  StockState.currentIndex = -1;
+  StockState.lhMidi = [];
+  StockState.rhMidi = [];
+  StockState.degreeMap = {};
+  updateStockUI();
+  render();
+}
+
+function getStockInfoText() {
+  if (!StockState.enabled || StockState.currentIndex < 0) return '';
+  var entry = StockState.currentMatches[StockState.currentIndex];
+  if (!entry) return '';
+  var parts = [entry.name];
+  if (entry.label) parts.push(entry.label);
+  // Show LH/RH degrees
+  var lhStr = entry.LH && entry.LH.length > 0 ? 'LH:' + entry.LH.join('-') : '';
+  var rhStr = entry.RH && entry.RH.length > 0 ? 'RH:' + entry.RH.join('-') : '';
+  if (lhStr || rhStr) parts.push([lhStr, rhStr].filter(Boolean).join(' '));
+  return parts.join(' ');
+}
+
+function updateStockUI() {
+  var bar = document.getElementById('stock-bar');
+  if (!bar) return;
+  bar.style.display = StockState.hpsUnlocked ? '' : 'none';
+
+  var btn = document.getElementById('btn-stock');
+  if (btn) btn.classList.toggle('active', StockState.enabled);
+
+  var counter = document.getElementById('stock-counter');
+  var info = document.getElementById('stock-info');
+  var prevBtn = document.getElementById('btn-stock-prev');
+  var nextBtn = document.getElementById('btn-stock-next');
+
+  if (StockState.enabled && StockState.currentIndex >= 0) {
+    if (counter) counter.textContent = (StockState.currentIndex + 1) + '/' + StockState.currentMatches.length;
+    if (info) info.textContent = getStockInfoText();
+    if (prevBtn) prevBtn.style.display = '';
+    if (nextBtn) nextBtn.style.display = '';
+  } else {
+    if (counter) counter.textContent = '';
+    if (info) info.textContent = '';
+    if (prevBtn) prevBtn.style.display = 'none';
+    if (nextBtn) nextBtn.style.display = 'none';
+  }
 }
 
 // Conditional exports for Node.js (Vitest) — ignored in browser

@@ -247,6 +247,7 @@ function builderNext() {
 
 function selectRoot(pc) {
   if (TastyState.enabled) disableTasty();
+  if (StockState.enabled) disableStock();
   if (BuilderState.bassInputMode) {
     // In bass input mode, set bass note instead of root
     BuilderState.bass = pc;
@@ -271,6 +272,7 @@ function selectRoot(pc) {
 
 function selectQuality(q) {
   if (TastyState.enabled) disableTasty();
+  if (StockState.enabled) disableStock();
   BuilderState.quality = q;
   BuilderState.tension = null;
   resetVoicingSelection();
@@ -283,6 +285,7 @@ function selectQuality(q) {
 
 function selectTension(t, el) {
   if (TastyState.enabled) disableTasty();
+  if (StockState.enabled) disableStock();
   if (BuilderState.tension && BuilderState.tension.label === t.label) {
     BuilderState.tension = null;
     clearTensionSelection();

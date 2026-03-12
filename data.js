@@ -112,6 +112,20 @@ const TastyState = {
   topNote: null,         // highest MIDI note in current voicing
 };
 
+// ======== STOCK VOICING STATE ========
+const StockState = {
+  hpsUnlocked: false,    // same gate as TASTY (?hps)
+  enabled: false,        // STOCK mode active
+  data: null,            // loaded from stock-voicings.json
+  currentCategory: null, // 'major' | 'dominant' | 'minor' | 'halfDiminished' | 'diminished' | 'suspended'
+  currentSubtype: null,  // e.g. 'Maj7', 'Min7', 'Dom7'
+  currentMatches: [],    // voicing entries matching current chord type
+  currentIndex: -1,      // which voicing is active (-1 = none)
+  lhMidi: [],            // left hand MIDI notes
+  rhMidi: [],            // right hand MIDI notes
+  degreeMap: {},         // {midiNote: degreeString}
+};
+
 // ======== BANK STATE (v2.50) ========
 const BankState = {
   banks: [],         // [{id, name, memory: Array(16)}]
@@ -222,7 +236,7 @@ if (typeof module !== 'undefined') module.exports = {
   BUILDER_QUALITIES, TENSION_ROWS, SCALE_AVAIL_TENSIONS,
   GRID, ROWS, COLS, BASE_MIDI, ROW_INTERVAL, COL_INTERVAL, PAD_SIZE, PAD_GAP, MARGIN,
   SCALE_DEGREE_NAMES, PC_TO_TENSION_NAME, TENSION_NAME_TO_PC,
-  AppState, BuilderState, VoicingState, PlainState, PerformState, TastyState, BankState,
+  AppState, BuilderState, VoicingState, PlainState, PerformState, TastyState, StockState, BankState,
   GuitarPositionState, BassPositionState,
   resetVoicingSelection, getParentMajorKey, pcName, onReady, IS_DEV,
   getActiveBank, syncMemoryToActiveBank, loadBankMemory,

@@ -468,6 +468,13 @@ document.addEventListener('click', function(e) {
         <span id="tasty-info" class="tasty-info"></span>
       </div>
       <div id="tasty-degrees-row" style="display:none;"></div>
+      <div class="voicing-bar" id="stock-bar" style="display:none;">
+        <button class="voicing-btn" id="btn-stock" onclick="toggleStock()"><span class="kbd-hint">K</span>STOCK</button>
+        <button class="tasty-nav-btn" id="btn-stock-prev" onclick="cycleStock(true)" title="Shift+K">◀</button>
+        <span id="stock-counter" class="tasty-counter"></span>
+        <button class="tasty-nav-btn" id="btn-stock-next" onclick="cycleStock(false)" title="K">▶</button>
+        <span id="stock-info" class="tasty-info"></span>
+      </div>
     </div>
 
     <!-- Plain Mode -->

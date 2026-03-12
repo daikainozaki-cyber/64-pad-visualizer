@@ -1390,10 +1390,10 @@ function cycleStock(reverse) {
   var entry = StockState.currentMatches[StockState.currentIndex];
 
   // Convert LH/RH degrees to MIDI notes
-  // LH starts from root C2 (36), RH from root C3 (48)
+  // LH starts from root C1 (24), RH from root C2 (36) — fixed positions for piano display
   var rootPC = BuilderState.root;
-  var lhRoot = 36 + rootPC;
-  var rhRoot = 48 + rootPC;
+  var lhRoot = 24 + rootPC;
+  var rhRoot = 36 + rootPC;
   StockState.lhMidi = entry.LH && entry.LH.length > 0 ? stockDegreesToMidi(lhRoot, entry.LH) : [];
   StockState.rhMidi = entry.RH && entry.RH.length > 0 ? stockDegreesToMidi(rhRoot, entry.RH) : [];
 
@@ -1445,6 +1445,14 @@ function disableStock() {
   StockState.lhMidi = [];
   StockState.rhMidi = [];
   StockState.degreeMap = {};
+  // Clean up Stock reflect
+  if (typeof _stockReflectMode !== 'undefined' && _stockReflectMode) {
+    _stockReflectMode = false;
+    _voicingAltMode = 0;
+    _instrumentMidiSet = null;
+    _instrumentPadSet = null;
+    _voicingLayoutCount = 1;
+  }
   updateStockUI();
   render();
 }
@@ -1472,16 +1480,19 @@ function updateStockUI() {
   var prevBtn = document.getElementById('btn-stock-prev');
   var nextBtn = document.getElementById('btn-stock-next');
 
+  var reflectBtn = document.getElementById('stock-reflect-btn');
   if (StockState.enabled && StockState.currentIndex >= 0) {
     if (counter) counter.textContent = (StockState.currentIndex + 1) + '/' + StockState.currentMatches.length;
     if (info) info.textContent = getStockInfoText();
     if (prevBtn) prevBtn.style.display = '';
     if (nextBtn) nextBtn.style.display = '';
+    if (reflectBtn) reflectBtn.style.display = 'inline-block';
   } else {
     if (counter) counter.textContent = '';
     if (info) info.textContent = '';
     if (prevBtn) prevBtn.style.display = 'none';
     if (nextBtn) nextBtn.style.display = 'none';
+    if (reflectBtn) reflectBtn.style.display = 'none';
   }
 }
 

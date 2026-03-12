@@ -700,9 +700,27 @@ function render() {
     }
   }
 
+  // Stock voicing reflect: Stock MIDI → deduped pad positions
+  if (_stockReflectMode && StockState.enabled) {
+    var stockNotes = StockState.lhMidi.concat(StockState.rhMidi);
+    if (stockNotes.length >= 2) {
+      _instrumentMidiSet = new Set(stockNotes);
+      var layout = _computeVoicingPadPositions(_instrumentMidiSet);
+      _instrumentPadSet = layout.padSet;
+      _voicingDualCount = layout.dualCount;
+      _voicingLayoutCount = layout.layoutCount;
+      var srBtn = document.getElementById('stock-reflect-btn');
+      if (srBtn) {
+        srBtn.innerHTML = _voicingLayoutCount > 1
+          ? t('pos.to_pad') + ' ' + (_voicingAltMode + 1) + '/' + _voicingLayoutCount
+          : t('pos.to_pad');
+      }
+    }
+  }
+
   const state = computeRenderState();
   renderPads(svg, state);
-  if (AppState.mode !== 'input' && !(_voicingReflectMode && _guitarSyncSource === 'position')) {
+  if (AppState.mode !== 'input' && !(_voicingReflectMode && _guitarSyncSource === 'position') && !_stockReflectMode) {
     renderVoicingBoxes(svg, state);
   }
   renderLegend(state);
@@ -1823,10 +1841,11 @@ function renderPianoDisplay(state) {
   svg.innerHTML = '';
 
   const solo = showPiano && !showGuitar;
-  const numOctaves = 4;
+  const stockPinned = StockState.enabled && StockState.lhMidi && StockState.rhMidi;
+  const numOctaves = stockPinned ? 5 : 4;
   const pianoBaseMidi = baseMidi();
-  const startOctave = Math.floor(pianoBaseMidi / 12) - 2;
-  const pianoMidiBase = (startOctave + 2) * 12;
+  const startOctave = stockPinned ? 0 : Math.floor(pianoBaseMidi / 12) - 2;
+  const pianoMidiBase = stockPinned ? 24 : (startOctave + 2) * 12;
   const whiteH = solo ? 80 : 50, blackH = solo ? 52 : 32;
   const numWhites = numOctaves * 7;
   const W = DIAGRAM_WIDTH;
@@ -1847,12 +1866,23 @@ function renderPianoDisplay(state) {
   const blackNotes = [1,3,6,8,10];
   const blackPositions = [0, 1, 3, 4, 5];
 
+  // Stock MIDI-specific rendering
+  var stockActive = StockState.enabled && StockState.lhMidi && StockState.rhMidi;
+  var stockMidiSet = null;
+  if (stockActive) {
+    stockMidiSet = new Set(StockState.lhMidi.concat(StockState.rhMidi));
+  }
+
   // Degree label helper
   var pianoUseDegreee = rootPC >= 0;
   var pianoIvPcsSet = pianoUseDegreee && AppState.mode === 'chord' && pcsSet.size > 0
     ? new Set([...pcsSet].map(function(p) { return ((p - rootPC) % 12 + 12) % 12; }))
     : null;
-  function pianoDegreeLabel(pc) {
+  function pianoDegreeLabel(pc, midi) {
+    // Stock mode: use degree from degreeMap
+    if (stockActive && stockMidiSet && stockMidiSet.has(midi)) {
+      return StockState.degreeMap[midi] || pcName(pc);
+    }
     if (!pianoUseDegreee) return pcName(pc);
     var iv = ((pc - rootPC) % 12 + 12) % 12;
     if (AppState.mode === 'chord' && BuilderState.quality) {
@@ -1862,7 +1892,20 @@ function renderPianoDisplay(state) {
   }
 
   // Color logic matching pad exactly (same priority order as pad rendering)
-  function pianoKeyColor(pc, isWhite) {
+  function pianoKeyColor(pc, isWhite, midi) {
+    // Stock mode: MIDI-specific rendering — only color keys in the voicing
+    if (stockActive && stockMidiSet) {
+      var baseOff = isWhite ? '#eee' : '#222';
+      if (!stockMidiSet.has(midi)) return { fill: baseOff, textColor: null, opacity: 1, showLabel: false };
+      var deg = StockState.degreeMap[midi];
+      var fill, textColor;
+      if (deg === '1')                                          { fill = INST_ROOT_COLOR; textColor = '#fff'; }
+      else if (deg === '3' || deg === 'b3')                     { fill = '#CC79A7'; textColor = '#fff'; }
+      else if (deg === '7' || deg === 'b7' || deg === 'bb7')    { fill = '#009E73'; textColor = '#fff'; }
+      else if (deg === '5' || deg === 'b5' || deg === '#5')     { fill = isWhite ? '#90CAF9' : '#4A90D9'; textColor = isWhite ? '#333' : '#fff'; }
+      else                                                       { fill = '#0072B2'; textColor = '#fff'; } // tensions
+      return { fill: fill, textColor: textColor, opacity: 1, showLabel: true };
+    }
     var isActive = pcsSet.has(pc);
     var isRoot = pc === rootPC;
     var isBass = bassPC !== undefined && bassPC !== null && pc === bassPC && !isRoot;
@@ -1899,7 +1942,8 @@ function renderPianoDisplay(state) {
   for (let oct = 0; oct < numOctaves; oct++) {
     for (let i = 0; i < 7; i++) {
       const pc = whiteNotes[i];
-      const k = pianoKeyColor(pc, true);
+      const midi = pianoMidiBase + oct * 12 + pc;
+      const k = pianoKeyColor(pc, true, midi);
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', wx); rect.setAttribute('y', startY);
       rect.setAttribute('width', whiteW - 1); rect.setAttribute('height', whiteH);
@@ -1914,7 +1958,7 @@ function renderPianoDisplay(state) {
         label.setAttribute('font-size', '10px');
         label.setAttribute('fill', k.textColor || '#333');
         label.setAttribute('font-weight', '700');
-        label.textContent = pianoDegreeLabel(pc);
+        label.textContent = pianoDegreeLabel(pc, midi);
         svg.appendChild(label);
       }
       wx += whiteW;
@@ -1925,7 +1969,8 @@ function renderPianoDisplay(state) {
   for (let oct = 0; oct < numOctaves; oct++) {
     for (let i = 0; i < 5; i++) {
       const pc = blackNotes[i];
-      const k = pianoKeyColor(pc, false);
+      const midi = pianoMidiBase + oct * 12 + pc;
+      const k = pianoKeyColor(pc, false, midi);
       const whiteIdx = blackPositions[i] + oct * 7;
       const bx = startX + (whiteIdx + 1) * whiteW - blackW / 2;
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -1942,7 +1987,7 @@ function renderPianoDisplay(state) {
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('font-size', '8px'); label.setAttribute('fill', k.textColor || '#fff');
         label.setAttribute('font-weight', '700');
-        label.textContent = pianoDegreeLabel(pc);
+        label.textContent = pianoDegreeLabel(pc, midi);
         svg.appendChild(label);
       }
     }
@@ -2127,6 +2172,7 @@ let pianoSelectedNotes = new Set(); // MIDI note numbers
 let instrumentInputActive = false;
 var _instrumentMidiSet = null; // When non-null, renderPads only colors these specific MIDI notes
 var _voicingReflectMode = false; // Toggle: auto-positioned guitar voicing → pad MIDI filter
+var _stockReflectMode = false;   // Toggle: Stock voicing → pad MIDI filter
 var _instrumentPadSet = null;    // Set of (row * COLS + col) — deduped pad positions for voicing reflect
 var _voicingAltMode = 0;         // 0 = most compact layout, 1+ = alternates sorted by column spread
 var _voicingDualCount = 0;       // Number of MIDI notes with 2 pad positions
@@ -2247,7 +2293,12 @@ function toggleVoicingReflect() {
       return;
     }
   } else {
-    // Turn ON
+    // Turn ON — disable Stock reflect if active
+    if (_stockReflectMode) {
+      _stockReflectMode = false;
+      var srBtn = document.getElementById('stock-reflect-btn');
+      if (srBtn) { srBtn.style.background = 'var(--surface)'; srBtn.style.color = 'var(--text)'; srBtn.style.borderColor = 'var(--accent, #f80)'; }
+    }
     _voicingReflectMode = true;
     _voicingAltMode = 0;
     // Always center voicing on pad grid
@@ -2268,6 +2319,50 @@ function toggleVoicingReflect() {
       }
     }
     if (btn) { btn.style.display = 'inline-block'; btn.style.background = 'var(--accent, #f80)'; btn.style.color = '#000'; btn.style.borderColor = 'var(--accent, #f80)'; }
+  }
+  render();
+}
+
+function toggleStockReflect() {
+  var btn = document.getElementById('stock-reflect-btn');
+  if (_stockReflectMode) {
+    // Cycle layout or turn off
+    if (_voicingLayoutCount > 1 && _voicingAltMode < _voicingLayoutCount - 1) {
+      _voicingAltMode++;
+    } else {
+      _stockReflectMode = false;
+      _voicingAltMode = 0;
+      _instrumentMidiSet = null;
+      _instrumentPadSet = null;
+      _voicingLayoutCount = 1;
+      if (btn) { btn.style.background = 'var(--surface)'; btn.style.color = 'var(--text)'; btn.style.borderColor = 'var(--accent, #f80)'; }
+      render();
+      return;
+    }
+  } else {
+    // Turn on — disable guitar reflect if active
+    if (_voicingReflectMode) {
+      _voicingReflectMode = false;
+      var vrBtn = document.getElementById('voicing-reflect-btn');
+      if (vrBtn) { vrBtn.style.background = 'var(--surface)'; vrBtn.style.color = 'var(--text)'; vrBtn.style.borderColor = 'var(--accent, #f80)'; }
+    }
+    _stockReflectMode = true;
+    _voicingAltMode = 0;
+    // Center pad on Stock voicing
+    var notes = StockState.lhMidi.concat(StockState.rhMidi);
+    if (notes.length >= 2) {
+      notes.sort(function(a, b) { return a - b; });
+      var mid = Math.round((notes[0] + notes[notes.length - 1]) / 2);
+      var gridRange = (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
+      var padMid = BASE_MIDI + gridRange / 2;
+      var needed = Math.round((mid - padMid) / 12);
+      var clamped = Math.max(-1, Math.min(3, needed));
+      if (clamped !== AppState.octaveShift) {
+        AppState.octaveShift = clamped;
+        updateOctaveLabel();
+      }
+    }
+    if (btn) { btn.style.background = 'var(--accent, #f80)'; btn.style.color = '#000'; btn.style.borderColor = 'var(--accent, #f80)'; }
   }
   render();
 }
@@ -2539,10 +2634,13 @@ function clearInstrumentInput() {
   _instrumentMidiSet = null;
   _instrumentPadSet = null;
   _voicingReflectMode = false;
+  _stockReflectMode = false;
   _voicingAltMode = 0;
   _voicingDualCount = 0;
   var vrBtn = document.getElementById('voicing-reflect-btn');
   if (vrBtn) { vrBtn.style.background = 'var(--surface)'; vrBtn.style.color = 'var(--text)'; vrBtn.innerHTML = '<span class="kbd-hint">V</span>' + t('pos.to_pad'); vrBtn.style.display = 'none'; vrBtn.style.borderColor = 'var(--accent, #f80)'; }
+  var srBtn = document.getElementById('stock-reflect-btn');
+  if (srBtn) { srBtn.style.background = 'var(--surface)'; srBtn.style.color = 'var(--text)'; srBtn.style.display = 'none'; srBtn.style.borderColor = 'var(--accent, #f80)'; }
   GuitarPositionState.enabled = false;
   GuitarPositionState._lastKey = null;
   BassPositionState.enabled = false;

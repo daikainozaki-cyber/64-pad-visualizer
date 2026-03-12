@@ -242,6 +242,11 @@ var TutorialEngine = {
   // ---- Selector Modal ----
 
   showSelector: function() {
+    // Stop pulse on first click
+    var tutBtn = document.getElementById('tut-btn');
+    if (tutBtn) tutBtn.classList.remove('tut-pulse');
+    localStorage.setItem('64pad-tut-noticed', '1');
+
     // Close help modal if open
     var helpOv = document.getElementById('help-overlay');
     if (helpOv) helpOv.classList.remove('active');
@@ -335,4 +340,11 @@ var TutorialEngine = {
       setTimeout(function() { TutorialEngine.start(true); }, 800);
     }
   };
+})();
+
+// Pulse the tutorial button if user hasn't noticed it yet
+(function pulseTutorialBtn() {
+  if (localStorage.getItem('64pad-tut-noticed')) return;
+  var btn = document.getElementById('tut-btn');
+  if (btn) btn.classList.add('tut-pulse');
 })();

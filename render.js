@@ -102,173 +102,44 @@ function setLandscapeTab(tab) {
 // ========================================
 
 function computeRenderState() {
-  let activePCS, activeLabel, rootPC, bassPC = null;
-  let charPCS = new Set();
-  let omittedPCS = new Set();
-  let guide3PCS = new Set();
-  let guide7PCS = new Set();
-  let tensionPCS = new Set();
-  let qualityPCS = null;
-  let avoidPCS = new Set();
+  var inputNotes = AppState.mode === 'input'
+    ? [...PlainState.activeNotes].sort(function(a, b) { return a - b; }) : [];
+  var instrumentNotes = AppState.mode === 'input' && instrumentInputActive
+    ? getAllInputMidiNotes() : [];
+  var builderPCS = AppState.mode === 'chord' ? getBuilderPCS() : null;
+  var chordNameVal = AppState.mode === 'chord' && builderPCS ? getBuilderChordName() : '';
+  var extNotesArr = AppState.mode === 'chord' && padExtNotes.size > 0
+    ? [...padExtNotes].sort(function(a, b) { return a - b; }) : [];
 
-  if (AppState.mode === 'input') {
-    let notes = [...PlainState.activeNotes].sort((a, b) => a - b);
-    activePCS = new Set(notes.map(n => n % 12));
-    // Merge instrument input notes for unified chord detection
-    if (instrumentInputActive) {
-      const instrNotes = getAllInputMidiNotes();
-      const merged = new Set([...instrNotes, ...notes]);
-      notes = [...merged].sort((a, b) => a - b);
-      instrNotes.forEach(n => activePCS.add(n % 12));
-    }
-    // Detect chord → rootPC for instrument diagrams, staff, and pad root highlight
-    // Pad degree labels remain hidden (guarded by AppState.mode !== 'input')
-    rootPC = null;
-    if (notes.length >= 2) {
-      const candidates = detectChord(notes);
-      if (candidates.length > 0) {
-        rootPC = candidates[0].rootPC;
-      }
-    }
-    activeLabel = '';
-    return { activePCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS };
-  } else if (AppState.mode === 'scale') {
-    const scale = SCALES[AppState.scaleIdx];
-    activePCS = new Set(scale.pcs.map(pc => (pc + AppState.key) % 12));
-    rootPC = AppState.key;
-    activeLabel = pcName(AppState.key) + ' ' + scale.name;
-    if (scale.cn && scale.cn.length > 0) {
-      charPCS = new Set(scale.cn.map(pc => (pc + AppState.key) % 12));
-    }
-  } else {
-    const pcs = getBuilderPCS();
-    rootPC = BuilderState.root !== null ? BuilderState.root : 0;
-    qualityPCS = BuilderState.quality ? BuilderState.quality.pcs : null;
-    if (pcs) {
-      activePCS = new Set(pcs.map(pc => (pc + rootPC) % 12));
-      // Track tension notes (compound intervals >= 12)
-      pcs.filter(pc => pc >= 12).forEach(pc => tensionPCS.add((pc + rootPC) % 12));
-      activeLabel = getBuilderChordName();
-      if (BuilderState.bass !== null) bassPC = BuilderState.bass;
-      // Apply voicing toggles
-      const p5 = (rootPC + 7) % 12;
-      const p3maj = (rootPC + 4) % 12;
-      const p3min = (rootPC + 3) % 12;
-      if (VoicingState.omit5 && activePCS.has(p5)) {
-        activePCS.delete(p5); omittedPCS.add(p5);
-      }
-      if (VoicingState.rootless && activePCS.has(rootPC)) {
-        activePCS.delete(rootPC); omittedPCS.add(rootPC);
-      }
-      if (VoicingState.omit3) {
-        if (activePCS.has(p3maj)) { activePCS.delete(p3maj); omittedPCS.add(p3maj); }
-        if (activePCS.has(p3min)) { activePCS.delete(p3min); omittedPCS.add(p3min); }
-      }
-      // Shell voicing: keep only R, 3rd, 7th
-      if (VoicingState.shell) {
-        const shellIntervals = new Set([0]); // always root
-        [3,4].forEach(iv => shellIntervals.add(iv));   // 3rd (b3 or 3)
-        [10,11].forEach(iv => shellIntervals.add(iv));  // 7th (b7 or △7)
-        // Also keep 6th for 6th chords (no 7th)
-        if (qualityPCS && qualityPCS.includes(9) && !qualityPCS.includes(10) && !qualityPCS.includes(11)) {
-          shellIntervals.add(9);
-        }
-        for (const pc of [...activePCS]) {
-          const iv = ((pc - rootPC) + 12) % 12;
-          if (!shellIntervals.has(iv) && !tensionPCS.has(pc)) {
-            activePCS.delete(pc); omittedPCS.add(pc);
-          }
-        }
-      }
-      // Guide tones: 3rd and 7th separately
-      [3,4].forEach(iv => { const pc = (rootPC + iv) % 12; if (activePCS.has(pc)) guide3PCS.add(pc); });
-      [10,11].forEach(iv => { const pc = (rootPC + iv) % 12; if (activePCS.has(pc)) guide7PCS.add(pc); });
-      // 6th chords: treat 6th as guide tone (replaces 7th role)
-      if (qualityPCS && qualityPCS.includes(9) && !qualityPCS.includes(10) && !qualityPCS.includes(11)) {
-        const pc = (rootPC + 9) % 12; if (activePCS.has(pc)) guide7PCS.add(pc);
-      }
-    } else {
-      activePCS = new Set();
-      activeLabel = BuilderState.root !== null ? pcName(BuilderState.root) + '...' : t('builder.select_root');
-    }
-  }
-
-  // TASTY Voicing: override activePCS with voicing pitch classes + build MIDI set
-  let tastyMidiSet = null;
-  let tastyDegreeMap = null;
-  let tastyTopMidi = null;
-  if (AppState.mode === 'chord' && TastyState.enabled && TastyState.midiNotes.length > 0) {
-    // Always use degree map for color classification
-    tastyDegreeMap = TastyState.degreeMap || {};
-    // Only use exact-MIDI filtering when a voicing box is selected
-    // When no box selected, show TASTY pitch classes across all octaves
-    if (VoicingState.selectedBoxIdx !== null) {
-      tastyMidiSet = new Set(TastyState.midiNotes);
-      tastyTopMidi = TastyState.topNote;
-    }
-    activePCS = new Set(TastyState.midiNotes.map(m => m % 12));
-    guide3PCS = new Set(); guide7PCS = new Set(); tensionPCS = new Set();
-    omittedPCS = new Set();
-    // Classify by TASTY degree (not by interval from root)
-    for (var _ti = 0; _ti < TastyState.midiNotes.length; _ti++) {
-      var _tm = TastyState.midiNotes[_ti];
-      var _td = tastyDegreeMap[_tm];
-      var _tpc = _tm % 12;
-      if (!_td) continue;
-      if (_td === '3' || _td === 'b3') guide3PCS.add(_tpc);
-      else if (_td === '7' || _td === 'b7' || _td === '6') guide7PCS.add(_tpc);
-      else if (_td !== '1' && _td !== '5' && _td !== 'b5' && _td !== '#5') tensionPCS.add(_tpc);
-    }
-  }
-
-  // padExtNotes override: when user toggled pad notes in chord mode, override the chord display
-  if (AppState.mode === 'chord' && !tastyMidiSet && padExtNotes.size > 0) {
-    const extMidi = [...padExtNotes].sort((a, b) => a - b);
-    activePCS = new Set(extMidi.map(n => n % 12));
-    const detected = detectChord(extMidi);
-    if (detected.length > 0) {
-      rootPC = detected[0].rootPC;
-      activeLabel = detected[0].name;
-    } else if (extMidi.length > 0) {
-      rootPC = extMidi[0] % 12;
-      activeLabel = [...activePCS].map(pc => NOTE_NAMES_SHARP[pc]).join(' ');
-    }
-    // Recompute guide tones from detected chord
-    guide3PCS = new Set(); guide7PCS = new Set(); tensionPCS = new Set();
-    omittedPCS = new Set(); charPCS = new Set();
-    [3,4].forEach(iv => { const pc = (rootPC + iv) % 12; if (activePCS.has(pc)) guide3PCS.add(pc); });
-    [10,11].forEach(iv => { const pc = (rootPC + iv) % 12; if (activePCS.has(pc)) guide7PCS.add(pc); });
-  }
-
-  // Avoid notes: tension notes that are a half step above a non-tension chord tone
-  avoidPCS = new Set();
-  if (AppState.mode === 'chord' && tensionPCS.size > 0) {
-    const baseTones = new Set([...activePCS].filter(pc => !tensionPCS.has(pc)));
-    omittedPCS.forEach(pc => baseTones.add(pc));
-    for (const tpc of tensionPCS) {
-      const below = (tpc - 1 + 12) % 12;
-      if (baseTones.has(below)) {
-        avoidPCS.add(tpc);
-      }
-    }
-  }
-
-  // Interval-based PCS for chordDegreeName (expects intervals, not absolute pitch classes)
-  const activeIvPCS = (AppState.mode === 'chord' && activePCS.size > 0)
-    ? new Set([...activePCS].map(pc => ((pc - rootPC) % 12 + 12) % 12))
-    : null;
-
-  // Scale overlay: when a Parent Scale is selected in chord mode, show its non-chord tones
-  let overlayPCS = null, overlayCharPCS = new Set();
-  if (AppState.mode === 'chord' && _selectedPS) {
-    const scale = SCALES[_selectedPS.scaleIdx];
-    overlayPCS = new Set(scale.pcs.map(iv => (iv + rootPC) % 12));
-    if (scale.cn && scale.cn.length > 0) {
-      overlayCharPCS = new Set(scale.cn.map(iv => (iv + rootPC) % 12));
-    }
-  }
-
-  return { activePCS, activeIvPCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS, tastyMidiSet, tastyDegreeMap, tastyTopMidi };
+  return padComputeRenderState({
+    mode: AppState.mode,
+    key: AppState.key,
+    scaleIdx: AppState.scaleIdx,
+    builderRoot: BuilderState.root,
+    qualityPCS: BuilderState.quality ? BuilderState.quality.pcs : null,
+    builderPCS: builderPCS,
+    chordName: chordNameVal,
+    builderBass: BuilderState.bass,
+    inputNotes: inputNotes,
+    instrumentNotes: instrumentNotes,
+    detectChordFn: typeof detectChord === 'function' ? detectChord : null,
+    voicing: {
+      omit5: VoicingState.omit5,
+      rootless: VoicingState.rootless,
+      omit3: VoicingState.omit3,
+      shell: VoicingState.shell
+    },
+    tasty: {
+      enabled: TastyState.enabled,
+      midiNotes: TastyState.midiNotes,
+      degreeMap: TastyState.degreeMap,
+      topNote: TastyState.topNote,
+      boxSelected: VoicingState.selectedBoxIdx !== null
+    },
+    extNotes: extNotesArr,
+    selectedPS: _selectedPS || null,
+    noRootLabel: t('builder.select_root')
+  });
 }
 
 function renderPads(svg, state, grid) {
@@ -775,315 +646,98 @@ function render() {
 }
 
 // ========================================
-// STAFF NOTATION
+// STAFF NOTATION — adapter to pad-core padRenderStaff
 // ========================================
 function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMidiNotes, bassPC, activeIvPCS) {
-  const staffSvg = document.getElementById('staff-notation');
-  let midiNotes;
+  var staffSvg = document.getElementById('staff-notation');
+  var midiNotes;
+
   if (overrideMidiNotes && overrideMidiNotes.length > 0) {
-    // Deduplicate by pitch class (keep lowest octave) — staff shows chord structure, not octave doublings
-    const seen = new Set();
-    midiNotes = [...overrideMidiNotes].sort((a, b) => a - b).filter(m => {
-      const pc = m % 12;
+    var seen = new Set();
+    midiNotes = [...overrideMidiNotes].sort(function(a, b) { return a - b; }).filter(function(m) {
+      var pc = m % 12;
       if (seen.has(pc)) return false;
       seen.add(pc);
       return true;
     });
   } else if (Array.isArray(overrideMidiNotes)) {
-    // Empty array (Plain mode with no notes selected): show empty staff lines
     midiNotes = [];
   } else if (mode === 'scale') {
     if (activePCS.size === 0) {
       staffSvg.style.display = 'none'; staffSvg.setAttribute('height', 0); return;
     }
-    // Scale mode: render scale notes ascending from root over 1 octave
-    const pcsArr = [...activePCS].map(pc => (pc - rootPC + 12) % 12).sort((a, b) => a - b);
-    const staffBase = 60 + rootPC; // C4 octave (fixed — shows pitch classes, not position)
-    midiNotes = pcsArr.map(iv => staffBase + iv);
+    var pcsArr = [...activePCS].map(function(pc) { return (pc - rootPC + 12) % 12; }).sort(function(a, b) { return a - b; });
+    var staffBase = 60 + rootPC;
+    midiNotes = pcsArr.map(function(iv) { return staffBase + iv; });
   } else {
-    // Chord mode
-    const chordPCS = getBuilderPCS();
+    var chordPCS = getBuilderPCS();
     if (!chordPCS || chordPCS.length < 1) {
-      // No quality selected yet — show root or activePCS
       if (activePCS.size > 0) {
-        const pcsArr = [...activePCS].map(pc => (pc - rootPC + 12) % 12).sort((a, b) => a - b);
-        const staffBase = 48 + rootPC; // C3 octave (fixed)
-        midiNotes = pcsArr.map(iv => staffBase + iv);
+        var pcsArr2 = [...activePCS].map(function(pc) { return (pc - rootPC + 12) % 12; }).sort(function(a, b) { return a - b; });
+        var staffBase2 = 48 + rootPC;
+        midiNotes = pcsArr2.map(function(iv) { return staffBase2 + iv; });
       } else if (rootPC !== null && rootPC !== undefined) {
-        // Root only selected, activePCS is empty but we know the root
         midiNotes = [48 + rootPC];
       } else {
         staffSvg.style.display = 'none'; staffSvg.setAttribute('height', 0); return;
       }
     } else {
-    // Staff always shows all chord tones (voicing is a performance choice, not theory)
-    const allIntervals = [...chordPCS].sort((a, b) => a - b);
-    if (overrideMidiNotes) {
-      midiNotes = overrideMidiNotes;
-    } else {
-      const staffBase = 48 + rootPC; // C3 octave (fixed)
-      midiNotes = allIntervals.map(iv => staffBase + iv);
-      // Add on-chord bass note below the chord
-      if (bassPC !== undefined && bassPC !== null) {
-        let bassMidi = 36 + bassPC;
-        const lowest = Math.min(...midiNotes);
-        while (bassMidi >= lowest) bassMidi -= 12;
-        midiNotes.unshift(bassMidi);
+      var allIntervals = [...chordPCS].sort(function(a, b) { return a - b; });
+      if (overrideMidiNotes) {
+        midiNotes = overrideMidiNotes;
+      } else {
+        var staffBase3 = 48 + rootPC;
+        midiNotes = allIntervals.map(function(iv) { return staffBase3 + iv; });
+        if (bassPC !== undefined && bassPC !== null) {
+          var bassMidi = 36 + bassPC;
+          var lowest = Math.min.apply(null, midiNotes);
+          while (bassMidi >= lowest) bassMidi -= 12;
+          midiNotes.unshift(bassMidi);
+        }
       }
     }
-    }
   }
 
-  // Staff config
-  const W = DIAGRAM_WIDTH, staffLineGap = 8;
-  const trebleTop = 20; // top line of treble staff (F5)
-  const bassTop = trebleTop + 4 * staffLineGap + 30; // top line of bass staff (A3)
-  const totalH = bassTop + 4 * staffLineGap + 30;
-  staffSvg.style.display = '';
-  staffSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + totalH);
-  if (_isMobile || _isLandscape) {
-    staffSvg.removeAttribute('width'); staffSvg.removeAttribute('height');
-    staffSvg.style.width = '100%'; staffSvg.style.height = 'auto';
-  } else {
-    staffSvg.setAttribute('width', W);
-    staffSvg.setAttribute('height', totalH);
-    staffSvg.style.width = ''; staffSvg.style.height = '';
-  }
-  staffSvg.innerHTML = '';
+  var defaultFlats = FLAT_MAJOR_KEYS.has(getParentMajorKey(AppState.scaleIdx, AppState.key));
 
-  // Draw staff lines
-  const staffLeft = 40, staffRight = W - 20;
-  for (let i = 0; i < 5; i++) {
-    // Treble
-    const ty = trebleTop + i * staffLineGap;
-    const tl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    tl.setAttribute('x1', staffLeft); tl.setAttribute('y1', ty);
-    tl.setAttribute('x2', staffRight); tl.setAttribute('y2', ty);
-    tl.setAttribute('stroke', '#666'); tl.setAttribute('stroke-width', 1);
-    staffSvg.appendChild(tl);
-    // Bass
-    const by = bassTop + i * staffLineGap;
-    const bl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    bl.setAttribute('x1', staffLeft); bl.setAttribute('y1', by);
-    bl.setAttribute('x2', staffRight); bl.setAttribute('y2', by);
-    bl.setAttribute('stroke', '#666'); bl.setAttribute('stroke-width', 1);
-    staffSvg.appendChild(bl);
-  }
-
-  // Clef labels
-  const trebleClef = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  trebleClef.setAttribute('x', 14); trebleClef.setAttribute('y', trebleTop + 28);
-  trebleClef.setAttribute('font-size', '36px'); trebleClef.setAttribute('fill', '#999');
-  trebleClef.textContent = '𝄞';
-  staffSvg.appendChild(trebleClef);
-  const bassClef = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  bassClef.setAttribute('x', 14); bassClef.setAttribute('y', bassTop + 16);
-  bassClef.setAttribute('font-size', '24px'); bassClef.setAttribute('fill', '#999');
-  bassClef.textContent = '𝄢';
-  staffSvg.appendChild(bassClef);
-
-  // MIDI to staff Y position
-  // Treble: bottom line = E4(64), top line = F5(77). Each semitone = half step but staff uses diatonic.
-  // Map: use note position in C major scale-like mapping
-  // Staff position: 0 = middle C (C4=60). Each +1 = one diatonic step up (line or space)
-  function midiToStaffPos(midi, flats) {
-    const octave = Math.floor(midi / 12) - 1; // C4 = octave 4
-    const pc = midi % 12;
-    if (flats) {
-      //             C  Db  D  Eb  E   F  Gb  G  Ab  A  Bb  B
-      const p =     [0,  1, 1,  2, 2,  3,  4, 4,  5, 5,  6, 6];
-      const isFlat = [0, 1, 0,  1, 0,  0,  1, 0,  1, 0,  1, 0][pc];
-      return { pos: (octave - 4) * 7 + p[pc], accidental: isFlat ? 'flat' : null };
-    }
-    // Pitch class to diatonic position within octave: C=0,D=1,E=2,F=3,G=4,A=5,B=6
-    const pcToPos = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
-    const isSharp = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0][pc];
-    return { pos: (octave - 4) * 7 + pcToPos[pc], accidental: isSharp ? 'sharp' : null };
-  }
-
-  // Degree-aware staff positioning (chord mode only)
-  // Uses degree name to determine correct diatonic line and accidental
-  // e.g., Db7 b7 = Cb (C line + flat), not B natural
-  var DIATONIC_SEMITONES = [0, 2, 4, 5, 7, 9, 11]; // C D E F G A B
-  var LETTER_NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-  var PC_TO_DIA_SHARP = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
-  var PC_TO_DIA_FLAT  = [0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6];
-
-  function degreeToDiatonicOffset(degName) {
-    if (degName === 'R') return 0;
-    if (degName === 'b9' || degName === '9' || degName === '2' || degName === '#9') return 1;
-    if (degName === 'm3' || degName === '3') return 2;
-    if (degName === '4' || degName === '11' || degName === '#11') return 3;
-    if (degName === 'b5' || degName === '5' || degName === '#5') return 4;
-    if (degName === 'b13' || degName === '6' || degName === '13') return 5;
-    if (degName === 'b7' || degName === '\u25B37') return 6; // △7
-    return null;
-  }
-
-  function degreeAwareStaffPos(midi, rootPC, degName, defaultFlats) {
-    var diaOffset = degreeToDiatonicOffset(degName);
-    if (diaOffset === null) return midiToStaffPos(midi, defaultFlats);
-    var rootDia = defaultFlats ? PC_TO_DIA_FLAT[rootPC] : PC_TO_DIA_SHARP[rootPC];
-    var targetDia = (rootDia + diaOffset) % 7;
-    var targetSemitone = DIATONIC_SEMITONES[targetDia];
-    // Find the octave where this diatonic note is closest to the MIDI pitch
-    var midiOctave = Math.floor(midi / 12) - 1;
-    var bestOctave = midiOctave, minDiff = Infinity;
-    for (var o = midiOctave - 1; o <= midiOctave + 1; o++) {
-      var diff = Math.abs(midi - ((o + 1) * 12 + targetSemitone));
-      if (diff < minDiff) { minDiff = diff; bestOctave = o; }
-    }
-    var pos = (bestOctave - 4) * 7 + targetDia;
-    var accVal = midi - ((bestOctave + 1) * 12 + targetSemitone);
-    // Double sharp/flat: fallback to midiToStaffPos
-    if (accVal > 1 || accVal < -1) return midiToStaffPos(midi, defaultFlats);
-    var accStr = accVal === 1 ? 'sharp' : accVal === -1 ? 'flat' : null;
-    var noteName = LETTER_NAMES[targetDia] + (accVal === 1 ? '#' : accVal === -1 ? 'b' : '');
-    return { pos: pos, accidental: accStr, noteName: noteName };
-  }
-
-  // Staff pos 0 = C4 (middle C). Treble staff bottom line (E4) = pos 2. Y coords:
-  // Middle C (pos 0): trebleTop + 5 * staffLineGap (one ledger line below treble)
-  const middleCY = trebleTop + 5 * staffLineGap;
-  function posToY(pos) {
-    return middleCY - pos * (staffLineGap / 2);
-  }
-
-  // Draw notes
-  const noteX = staffLeft + 80;
-  const noteSpacing = 50;
-  const defaultFlats = FLAT_MAJOR_KEYS.has(getParentMajorKey(AppState.scaleIdx, AppState.key));
-  midiNotes.forEach((midi, idx) => {
-    const pc = midi % 12;
-    const interval = ((pc - rootPC) % 12 + 12) % 12;
-
-    // In chord mode, determine flat/sharp per note based on degree context
-    // b7 → Bb (not A#), #11 → F# (not Gb), etc.
-    let useFlats = defaultFlats;
-    let degName = SCALE_DEGREE_NAMES[interval];
-    let staffResult;
-    let degreeNoteName = null;
-    if (mode === 'chord' && qualityPCS) {
-      degName = chordDegreeName(interval, qualityPCS, activeIvPCS || null);
-      staffResult = degreeAwareStaffPos(midi, rootPC, degName, defaultFlats);
-      degreeNoteName = staffResult.noteName || null;
-    } else if (mode === 'input' && typeof lastDetectedCandidates !== 'undefined' && lastDetectedCandidates.length > 0) {
-      // Input mode with chord detection: use degree-aware spelling
-      var detRootPC = lastDetectedCandidates[0].rootPC;
+  // Build noteInfoFn based on mode
+  var noteInfoFn = null;
+  if (mode === 'chord' && qualityPCS) {
+    noteInfoFn = function(midi, pc, interval) {
+      var degName = chordDegreeName(interval, qualityPCS, activeIvPCS || null);
+      return { degName: degName, staffRootPC: rootPC };
+    };
+  } else if (mode === 'input' && typeof lastDetectedCandidates !== 'undefined' && lastDetectedCandidates.length > 0) {
+    var detRootPC = lastDetectedCandidates[0].rootPC;
+    noteInfoFn = function(midi, pc, interval) {
       var detIv = ((pc - detRootPC) + 12) % 12;
-      degName = SCALE_DEGREE_NAMES[detIv];
-      staffResult = degreeAwareStaffPos(midi, detRootPC, degName, defaultFlats);
-      degreeNoteName = staffResult.noteName || null;
-    } else {
-      if (mode === 'chord') {
-        if (degName.startsWith('b') || degName === 'm3') useFlats = true;
-        else if (degName.startsWith('#') || degName.startsWith('△')) useFlats = false;
-      }
-      staffResult = midiToStaffPos(midi, useFlats);
-    }
+      var degName = SCALE_DEGREE_NAMES[detIv];
+      return { degName: degName, staffRootPC: detRootPC };
+    };
+  } else if (mode === 'chord') {
+    noteInfoFn = function(midi, pc, interval) {
+      var degName = SCALE_DEGREE_NAMES[interval];
+      var useFlats = defaultFlats;
+      if (degName.startsWith('b') || degName === 'm3') useFlats = true;
+      else if (degName.startsWith('#') || degName.startsWith('\u25B3')) useFlats = false;
+      return { degName: degName, useFlats: useFlats };
+    };
+  }
 
-    const { pos, accidental } = staffResult;
-    const ny = posToY(pos);
-    const nx = noteX + idx * noteSpacing;
-
-    // Ledger lines
-    // Middle C ledger (between staves): pos 0
-    if (pos <= 0) {
-      // Below treble: ledger lines at pos 0, -2, -4, ...
-      for (let lp = 0; lp >= pos; lp -= 2) {
-        const ly = posToY(lp);
-        // Only draw if below treble staff (pos < 2) or above bass staff
-        if (ly > trebleTop + 4 * staffLineGap && ly < bassTop) {
-          const ll = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          ll.setAttribute('x1', nx - 10); ll.setAttribute('y1', ly);
-          ll.setAttribute('x2', nx + 10); ll.setAttribute('y2', ly);
-          ll.setAttribute('stroke', '#666'); ll.setAttribute('stroke-width', 1);
-          staffSvg.appendChild(ll);
-        }
-      }
-    }
-    if (pos >= 12) {
-      // Above treble: ledger lines at pos 12, 14, ...
-      for (let lp = 12; lp <= pos; lp += 2) {
-        const ly = posToY(lp);
-        if (ly < trebleTop) {
-          const ll = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          ll.setAttribute('x1', nx - 10); ll.setAttribute('y1', ly);
-          ll.setAttribute('x2', nx + 10); ll.setAttribute('y2', ly);
-          ll.setAttribute('stroke', '#666'); ll.setAttribute('stroke-width', 1);
-          staffSvg.appendChild(ll);
-        }
-      }
-    }
-    // Below bass staff: bass bottom line = B2 (pos = -5)
-    if (pos <= -7) {
-      for (let lp = -7; lp >= pos; lp -= 2) {
-        const ly = posToY(lp);
-        if (ly > bassTop + 4 * staffLineGap) {
-          const ll = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          ll.setAttribute('x1', nx - 10); ll.setAttribute('y1', ly);
-          ll.setAttribute('x2', nx + 10); ll.setAttribute('y2', ly);
-          ll.setAttribute('stroke', '#666'); ll.setAttribute('stroke-width', 1);
-          staffSvg.appendChild(ll);
-        }
-      }
-    }
-
-    // Note head
-    const note = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
-    note.setAttribute('cx', nx); note.setAttribute('cy', ny);
-    note.setAttribute('rx', 5); note.setAttribute('ry', 3.5);
-    note.setAttribute('fill', '#fff');
-    note.setAttribute('transform', 'rotate(-15 ' + nx + ' ' + ny + ')');
-    staffSvg.appendChild(note);
-
-    // Accidental (sharp or flat)
-    if (accidental) {
-      const sh = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      sh.setAttribute('x', nx - 12); sh.setAttribute('y', ny + 4);
-      sh.setAttribute('font-size', '12px'); sh.setAttribute('fill', '#ff9800');
-      sh.textContent = accidental === 'sharp' ? '♯' : '♭';
-      staffSvg.appendChild(sh);
-    }
-
-    // Degree label above note
-    const deg = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    deg.setAttribute('x', nx); deg.setAttribute('y', ny - 10);
-    deg.setAttribute('text-anchor', 'middle');
-    deg.setAttribute('font-size', '9px'); deg.setAttribute('font-weight', '600');
-    deg.setAttribute('fill', interval === 0 ? '#E69F00' : '#aaa');
-    deg.textContent = degName;
-    staffSvg.appendChild(deg);
-
-    // Note name label below
-    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('x', nx); label.setAttribute('y', totalH - 4);
-    label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('font-size', '9px'); label.setAttribute('fill', '#999');
-    label.textContent = degreeNoteName || (useFlats ? NOTE_NAMES_FLAT[pc] : NOTE_NAMES_SHARP[pc]);
-    staffSvg.appendChild(label);
+  padRenderStaff(staffSvg, {
+    midiNotes: midiNotes,
+    rootPC: rootPC,
+    defaultFlats: defaultFlats,
+    width: DIAGRAM_WIDTH,
+    isMobile: _isMobile,
+    isLandscape: _isLandscape,
+    noteInfoFn: noteInfoFn,
   });
 }
 
 // ========================================
 // GUITAR DIAGRAM
 // ========================================
-// Colors: white/black clean style
-const INST_ROOT_COLOR = '#E69F00';       // amber (matches --pad-root)
-const INST_ACTIVE_COLOR = '#666';       // medium gray (active notes)
-const INST_ROOT_TEXT = '#000';
-const INST_ACTIVE_TEXT = '#fff';
-const INST_BASS_COLOR = '#ff9800';     // orange (matches pad bass color)
-const INST_BASS_TEXT = '#000';
-const INST_GUIDE3_COLOR = '#CC79A7';   // pink (matches --pad-guide3)
-const INST_GUIDE7_COLOR = '#009E73';   // green (matches --pad-guide7)
-const INST_TENSION_COLOR = '#0072B2';  // blue (matches --pad-tension)
-const INST_AVOID_COLOR = '#D55E00';    // red-orange (matches --pad-avoid)
-const INST_OMITTED_COLOR = '#555';     // dim gray (matches --pad-omitted)
-const INST_CHORD_COLOR = '#56B4E9';    // sky blue (matches --pad-chord)
-const INST_OVERLAY_COLOR = '#56B4E9';   // Okabe-Ito sky blue (scale overlay)
-const INST_OVERLAY_CHAR_COLOR = '#F0E442'; // Okabe-Ito yellow (char note overlay)
-const INST_OVERLAY_TEXT = '#aaa';
 const DIAGRAM_WIDTH = 564;              // shared width for pad, guitar & piano (matches pad grid)
 let showGuitar = false;
 let showPiano = false;
@@ -1158,351 +812,64 @@ function toggleGuitarLabelMode() {
 function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, extraState) {
   const svg = document.getElementById('guitar-diagram');
   if (!pcsSet) pcsSet = new Set();
-  // Interval-based PCS for chordDegreeName
   const ivPcsSet = pcsSet.size > 0
     ? new Set([...pcsSet].map(pc => ((pc - rootPC) % 12 + 12) % 12))
     : null;
-
-  svg.innerHTML = '';
-
-  const solo = showGuitar && !showPiano;
-  const numFrets = 21;
-  const leftM = 16;
-  const topM = solo ? 10 : 6;
-  const fretW = Math.floor((DIAGRAM_WIDTH - leftM - 12) / numFrets);
-  const strH = solo ? 22 : 14;
-  const nutX = leftM;
-  const W = DIAGRAM_WIDTH;
-  const H = topM + 5 * strH + (solo ? 30 : 22);
-  const vbX = GuitarPositionState.enabled ? -3 : 0;
-  svg.setAttribute('viewBox', vbX + ' 0 ' + (W - vbX) + ' ' + H);
-  if (_isMobile || _isLandscape) {
-    svg.removeAttribute('width'); svg.removeAttribute('height');
-    svg.style.width = '100%'; svg.style.height = 'auto';
-  } else {
-    svg.setAttribute('width', W); svg.setAttribute('height', H);
-    svg.style.width = ''; svg.style.height = '';
-  }
-
-  const strings = [64, 59, 55, 50, 45, 40];
-  const strNames = ['E', 'B', 'G', 'D', 'A', 'E'];
-
-  // Nut (thick black line)
-  const nutLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  nutLine.setAttribute('x1', nutX); nutLine.setAttribute('y1', topM);
-  nutLine.setAttribute('x2', nutX); nutLine.setAttribute('y2', topM + 5 * strH);
-  nutLine.setAttribute('stroke', '#ccc'); nutLine.setAttribute('stroke-width', 4);
-  svg.appendChild(nutLine);
-
-  // Fret lines
-  for (let f = 1; f <= numFrets; f++) {
-    const fx = nutX + f * fretW;
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', fx); line.setAttribute('y1', topM);
-    line.setAttribute('x2', fx); line.setAttribute('y2', topM + 5 * strH);
-    line.setAttribute('stroke', '#555'); line.setAttribute('stroke-width', 1);
-    svg.appendChild(line);
-  }
-
-  // String lines
-  for (let s = 0; s < 6; s++) {
-    const sy = topM + s * strH;
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', nutX); line.setAttribute('y1', sy);
-    line.setAttribute('x2', nutX + numFrets * fretW); line.setAttribute('y2', sy);
-    line.setAttribute('stroke', '#888'); line.setAttribute('stroke-width', s >= 4 ? 2 : 1);
-    svg.appendChild(line);
-  }
-
-  // Fret markers
-  const markerFrets = [3, 5, 7, 9, 15, 17, 19, 21];
-  const doubleMarker = [12];
-  const markerY = topM + 2.5 * strH;
-  markerFrets.forEach(f => {
-    const mx = nutX + (f - 0.5) * fretW;
-    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    dot.setAttribute('cx', mx); dot.setAttribute('cy', markerY);
-    dot.setAttribute('r', 2.5); dot.setAttribute('fill', '#444');
-    svg.appendChild(dot);
-  });
-  doubleMarker.forEach(f => {
-    const mx = nutX + (f - 0.5) * fretW;
-    [topM + 1.5 * strH, topM + 3.5 * strH].forEach(dy => {
-      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dot.setAttribute('cx', mx); dot.setAttribute('cy', dy);
-      dot.setAttribute('r', 2.5); dot.setAttribute('fill', '#444');
-      svg.appendChild(dot);
-    });
-  });
-
-  // Color sets (moved up for string name open-string indicator)
   const st = extraState || lastRenderState || {};
-  const _g3 = st.guide3PCS || new Set();
-  const _g7 = st.guide7PCS || new Set();
-  const _tp = st.tensionPCS || new Set();
-  const _av = st.avoidPCS || new Set();
-  const _om = st.omittedPCS || new Set();
-  const _gPosActive = GuitarPositionState.enabled;
-
-  // String names (with open-string colored circle indicator)
-  for (let s = 0; s < 6; s++) {
-    const sy = topM + s * strH;
-    const isOpen = _gPosActive && guitarSelectedFrets[s] === 0;
-    if (isOpen) {
-      const pc = strings[s] % 12;
-      const dotColor = pc === rootPC ? INST_ROOT_COLOR
-        : _g3.has(pc) ? INST_GUIDE3_COLOR
-        : _g7.has(pc) ? INST_GUIDE7_COLOR
-        : _tp.has(pc) ? INST_TENSION_COLOR
-        : INST_CHORD_COLOR;
-      const circ = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circ.setAttribute('cx', nutX - 9); circ.setAttribute('cy', sy);
-      circ.setAttribute('r', solo ? 9 : 7);
-      circ.setAttribute('fill', dotColor);
-      svg.appendChild(circ);
-    }
-    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t.setAttribute('x', nutX - 9); t.setAttribute('y', sy + 4);
-    t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('font-size', '10px');
-    t.setAttribute('fill', isOpen ? '#fff' : '#aaa');
-    t.setAttribute('font-weight', '700');
-    t.textContent = strNames[s];
-    svg.appendChild(t);
-  }
-
-  // Fret numbers
-  for (let f = 1; f <= numFrets; f++) {
-    const fx = nutX + (f - 0.5) * fretW;
-    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t.setAttribute('x', fx); t.setAttribute('y', topM + 5 * strH + 14);
-    t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('font-size', '8px'); t.setAttribute('fill', '#888');
-    t.textContent = f;
-    svg.appendChild(t);
-  }
-
-  // Pad range highlight (show which frets fall within 64-pad MIDI range)
   const padLo = baseMidi();
   const padHi = padLo + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
-  for (let s = 0; s < 6; s++) {
-    const sy = topM + s * strH;
-    let minF = null, maxF = null;
-    for (let f = 0; f <= numFrets; f++) {
-      const midi = strings[s] + f;
-      if (midi >= padLo && midi <= padHi) {
-        if (minF === null) minF = f;
-        maxF = f;
-      }
-    }
-    if (minF !== null) {
-      const x1 = minF === 0 ? 0 : nutX + (minF - 1) * fretW;
-      const x2 = nutX + maxF * fretW;
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', x1);
-      rect.setAttribute('y', sy - strH / 2);
-      rect.setAttribute('width', x2 - x1);
-      rect.setAttribute('height', strH);
-      rect.setAttribute('fill', '#56B4E9');
-      rect.setAttribute('opacity', '0.1');
-      svg.appendChild(rect);
-    }
-  }
 
-  // Note dots (scale/chord tones + overlay) with labels — pad-style colors
-  for (let s = 0; s < 6; s++) {
-    const openPC = strings[s] % 12;
-    const sy = topM + s * strH;
-    for (let f = 0; f <= numFrets; f++) {
-      const pc = (openPC + f) % 12;
-      const isBass = bassPC !== undefined && bassPC !== null && pc === bassPC;
-      const isOvl = !pcsSet.has(pc) && !isBass && overlayPCS && overlayPCS.has(pc);
-      if (!pcsSet.has(pc) && !isBass && !isOvl && !_om.has(pc)) continue;
-      const isRoot = pc === rootPC && !_om.has(pc);
-      const isOmitted = _om.has(pc);
-      const isGuide3 = AppState.mode === 'chord' && _g3.has(pc) && !isRoot && !_tp.has(pc);
-      const isGuide7 = AppState.mode === 'chord' && _g7.has(pc) && !isRoot && !_tp.has(pc);
-      const isTension = AppState.mode === 'chord' && _tp.has(pc) && !isRoot && !isGuide3 && !isGuide7;
-      const isAvoid = AppState.mode === 'chord' && _av.has(pc) && !isRoot;
-      const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
-      const r = f === 0 ? (solo ? 7 : 5) : (solo ? 10 : 7);
-      // Position mode: hide frets not in selected form (show only pressed positions)
-      const _posDim = _gPosActive && guitarSelectedFrets[s] !== f;
-      if (_posDim) continue;
-      // Position mode: skip fret-0 dot — string name indicator replaces it
-      if (_gPosActive && f === 0 && guitarSelectedFrets[s] === 0) continue;
-      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dot.setAttribute('cx', fx); dot.setAttribute('cy', sy);
-      dot.setAttribute('r', r);
-      let dotColor, textColor;
-      if (isOvl) {
-        const isChar = overlayCharPCS && overlayCharPCS.has(pc);
-        dot.setAttribute('fill', isChar ? INST_OVERLAY_CHAR_COLOR : INST_OVERLAY_COLOR);
-        dot.setAttribute('opacity', isChar ? '0.5' : '0.4');
-        textColor = INST_OVERLAY_TEXT;
-      } else if (isOmitted) {
-        dotColor = INST_OMITTED_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.5');
-      } else if (isRoot) {
-        dotColor = INST_ROOT_COLOR; textColor = INST_ROOT_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      } else if (isBass) {
-        dotColor = INST_BASS_COLOR; textColor = INST_BASS_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      } else if (isGuide3) {
-        dotColor = INST_GUIDE3_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      } else if (isGuide7) {
-        dotColor = INST_GUIDE7_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      } else if (isAvoid) {
-        dotColor = INST_AVOID_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      } else if (isTension) {
-        dotColor = INST_TENSION_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      } else {
-        dotColor = INST_CHORD_COLOR; textColor = '#000';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      }
-      svg.appendChild(dot);
-      // Label inside dot
-      if (f > 0) {
-        const iv = ((pc - rootPC) + 12) % 12;
-        let labelText;
-        if (isOvl) {
-          labelText = guitarLabelMode === 'degree' ? SCALE_DEGREE_NAMES[iv] : pcName(pc);
-        } else {
-          labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
-        }
-        const lt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        lt.setAttribute('x', fx); lt.setAttribute('y', sy + (solo ? 4 : 3));
-        lt.setAttribute('text-anchor', 'middle');
-        const fs = solo ? (labelText.length > 2 ? '7px' : '9px') : (labelText.length > 2 ? '5px' : '6px');
-        lt.setAttribute('font-size', fs);
-        lt.setAttribute('fill', textColor);
-        lt.setAttribute('font-weight', '700');
-        lt.textContent = labelText;
-        svg.appendChild(lt);
-      }
-    }
-  }
-
-  // Alternative form ghost dots (other voicings in current group)
-  if (_gPosActive && GuitarPositionState.groups.length > 0) {
+  // Build ghost forms from guitar position groups
+  let ghostForms = null;
+  let curFretSet = null;
+  if (GuitarPositionState.enabled && GuitarPositionState.groups.length > 0) {
     const gGroup = GuitarPositionState.groups[GuitarPositionState.currentGroupIdx];
     if (gGroup && gGroup.forms.length > 1) {
-      const curFretSet = new Set();
+      curFretSet = new Set();
       for (let gs = 0; gs < 6; gs++) {
         if (guitarSelectedFrets[gs] !== null) curFretSet.add(gs * 100 + guitarSelectedFrets[gs]);
       }
-      const altRendered = new Set();
-      gGroup.forms.forEach(function(form, fi) {
-        if (fi === GuitarPositionState.currentAltInGroup) return;
-        for (let gs = 0; gs < 6; gs++) {
-          if (form.frets[gs] === null) continue;
-          const gKey = gs * 100 + form.frets[gs];
-          if (curFretSet.has(gKey) || altRendered.has(gKey)) continue;
-          altRendered.add(gKey);
-          const gf = form.frets[gs];
-          const gsy = topM + gs * strH;
-          const gfx = gf === 0 ? nutX - 2 : nutX + (gf - 0.5) * fretW;
-          const gpc = (strings[gs] % 12 + gf) % 12;
-          const gIsRoot = gpc === rootPC;
-          const gColor = gIsRoot ? INST_ROOT_COLOR
-            : _g3.has(gpc) ? INST_GUIDE3_COLOR
-            : _g7.has(gpc) ? INST_GUIDE7_COLOR
-            : _tp.has(gpc) ? INST_TENSION_COLOR
-            : INST_CHORD_COLOR;
-          const gr = solo ? 7 : 5;
-          const gDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-          gDot.setAttribute('cx', gfx);
-          gDot.setAttribute('cy', gsy);
-          gDot.setAttribute('r', gr);
-          gDot.setAttribute('fill', gColor);
-          gDot.setAttribute('opacity', '0.25');
-          svg.appendChild(gDot);
-        }
-      });
+      ghostForms = gGroup.forms.filter((_, fi) => fi !== GuitarPositionState.currentAltInGroup);
     }
   }
 
-  // Guitar input: selected fret markers (orange ring)
-  for (let s = 0; s < 6; s++) {
-    if (guitarSelectedFrets[s] !== null) {
-      const f = guitarSelectedFrets[s];
-      if (f === 0 && _gPosActive) continue; // open string handled by string name indicator
-      const sy = topM + s * strH;
-      const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
-      const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      ring.setAttribute('cx', fx); ring.setAttribute('cy', sy);
-      ring.setAttribute('r', solo ? 12 : 9);
-      ring.setAttribute('fill', '#fff'); ring.setAttribute('opacity', '0.95');
-      ring.setAttribute('stroke', '#333'); ring.setAttribute('stroke-width', 2);
-      svg.appendChild(ring);
-      // Label inside (respects guitar label mode)
-      const pc = (strings[s] % 12 + f) % 12;
-      const iv = ((pc - rootPC) + 12) % 12;
-      const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
-      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', fx); label.setAttribute('y', sy + (solo ? 5 : 4));
-      label.setAttribute('text-anchor', 'middle');
-      const selFs = solo ? (labelText.length > 2 ? '8px' : '10px') : (labelText.length > 2 ? '6px' : '8px');
-      label.setAttribute('font-size', selFs); label.setAttribute('fill', '#333');
-      label.setAttribute('font-weight', '700');
-      label.textContent = labelText;
-      svg.appendChild(label);
+  // Label function: maps global state to pure function call
+  const labelFn = function(pc, iv) {
+    if (guitarLabelMode === 'degree') {
+      return (AppState.mode === 'chord' && BuilderState.quality)
+        ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet)
+        : SCALE_DEGREE_NAMES[iv];
     }
-  }
+    return pcName(pc);
+  };
 
-  // Position mode: mute X marks + open string label styling
-  if (_gPosActive && GuitarPositionState.alternatives.length > 0) {
-    const form = GuitarPositionState.alternatives[GuitarPositionState.currentAlt];
-    for (let s = 0; s < 6; s++) {
-      const sy = topM + s * strH;
-      if (form.frets[s] === null) {
-        // X mark for muted string — placed at 1st fret center for visibility
-        const mx = nutX + fretW * 0.5;
-        const sz = solo ? 6 : 4.5;
-        const xl1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        xl1.setAttribute('x1', mx - sz); xl1.setAttribute('y1', sy - sz);
-        xl1.setAttribute('x2', mx + sz); xl1.setAttribute('y2', sy + sz);
-        xl1.setAttribute('stroke', '#D55E00'); xl1.setAttribute('stroke-width', 3);
-        svg.appendChild(xl1);
-        const xl2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        xl2.setAttribute('x1', mx + sz); xl2.setAttribute('y1', sy - sz);
-        xl2.setAttribute('x2', mx - sz); xl2.setAttribute('y2', sy + sz);
-        xl2.setAttribute('stroke', '#D55E00'); xl2.setAttribute('stroke-width', 3);
-        svg.appendChild(xl2);
-      }
-    }
-  }
-
-  // Clickable hit areas for each string×fret (transparent rects)
-  for (let s = 0; s < 6; s++) {
-    const sy = topM + s * strH - strH / 2;
-    for (let f = 0; f <= numFrets; f++) {
-      const fx = f === 0 ? 0 : nutX + (f - 1) * fretW;
-      const fw = f === 0 ? nutX : fretW;
-      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      hit.setAttribute('x', fx); hit.setAttribute('y', sy);
-      hit.setAttribute('width', fw); hit.setAttribute('height', strH);
-      hit.setAttribute('fill', 'transparent');
-      hit.setAttribute('cursor', 'pointer');
-      hit.dataset.string = s;
-      hit.dataset.fret = f;
-      hit.addEventListener('click', function() {
-        toggleGuitarFret(parseInt(this.dataset.string), parseInt(this.dataset.fret));
-      });
-      svg.appendChild(hit);
-    }
-  }
+  padRenderFretboard(svg, {
+    tuning: PAD_GUITAR_TUNING,
+    stringNames: PAD_GUITAR_NAMES,
+    rootPC: rootPC,
+    pcsSet: pcsSet,
+    bassPC: bassPC,
+    overlayPCS: overlayPCS,
+    overlayCharPCS: overlayCharPCS,
+    renderState: st,
+    positionState: GuitarPositionState,
+    selectedFrets: guitarSelectedFrets,
+    labelFn: labelFn,
+    chordMode: AppState.mode === 'chord',
+    solo: showGuitar && !showPiano,
+    width: DIAGRAM_WIDTH,
+    isMobile: _isMobile,
+    isLandscape: _isLandscape,
+    padRange: { lo: padLo, hi: padHi },
+    onFretClick: toggleGuitarFret,
+    ghostForms: ghostForms,
+    currentFretSet: curFretSet,
+  });
 }
 
 // ========================================
 // BASS DIAGRAM
 // ========================================
-const BASS_OPEN_MIDI = [43, 38, 33, 28]; // G2, D2, A1, E1
 let bassSelectedFrets = [null, null, null, null];
 
 function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, extraState) {
@@ -1512,297 +879,39 @@ function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, e
   const ivPcsSet = pcsSet.size > 0
     ? new Set([...pcsSet].map(pc => ((pc - rootPC) % 12 + 12) % 12))
     : null;
-  svg.innerHTML = '';
-  const solo = showBass && !showGuitar && !showPiano;
-  const numFrets = 21;
-  const leftM = 16;
-  const topM = solo ? 10 : 6;
-  const fretW = Math.floor((DIAGRAM_WIDTH - leftM - 12) / numFrets);
-  const strH = solo ? 28 : 14;
-  const nutX = leftM;
-  const W = DIAGRAM_WIDTH;
-  const H = topM + 3 * strH + (solo ? 30 : 22);
-  const vbX = BassPositionState.enabled ? -3 : 0;
-  svg.setAttribute('viewBox', vbX + ' 0 ' + (W - vbX) + ' ' + H);
-  if (_isMobile || _isLandscape) {
-    svg.removeAttribute('width'); svg.removeAttribute('height');
-    svg.style.width = '100%'; svg.style.height = 'auto';
-  } else {
-    svg.setAttribute('width', W); svg.setAttribute('height', H);
-    svg.style.width = ''; svg.style.height = '';
-  }
-  const strings = BASS_OPEN_MIDI;
-  const strNames = ['G', 'D', 'A', 'E'];
-
-  // Nut
-  const nutLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  nutLine.setAttribute('x1', nutX); nutLine.setAttribute('y1', topM);
-  nutLine.setAttribute('x2', nutX); nutLine.setAttribute('y2', topM + 3 * strH);
-  nutLine.setAttribute('stroke', '#ccc'); nutLine.setAttribute('stroke-width', 4);
-  svg.appendChild(nutLine);
-
-  // Fret lines
-  for (let f = 1; f <= numFrets; f++) {
-    const fx = nutX + f * fretW;
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', fx); line.setAttribute('y1', topM);
-    line.setAttribute('x2', fx); line.setAttribute('y2', topM + 3 * strH);
-    line.setAttribute('stroke', '#555'); line.setAttribute('stroke-width', 1);
-    svg.appendChild(line);
-  }
-
-  // String lines
-  for (let s = 0; s < 4; s++) {
-    const sy = topM + s * strH;
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', nutX); line.setAttribute('y1', sy);
-    line.setAttribute('x2', nutX + numFrets * fretW); line.setAttribute('y2', sy);
-    line.setAttribute('stroke', '#888'); line.setAttribute('stroke-width', s >= 2 ? 2 : 1.5);
-    svg.appendChild(line);
-  }
-
-  // Fret markers
-  const markerFrets = [3, 5, 7, 9, 15, 17, 19, 21];
-  const doubleMarker = [12];
-  const markerY = topM + 1.5 * strH;
-  markerFrets.forEach(f => {
-    const mx = nutX + (f - 0.5) * fretW;
-    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    dot.setAttribute('cx', mx); dot.setAttribute('cy', markerY);
-    dot.setAttribute('r', 2.5); dot.setAttribute('fill', '#444');
-    svg.appendChild(dot);
-  });
-  doubleMarker.forEach(f => {
-    const mx = nutX + (f - 0.5) * fretW;
-    [topM + 0.5 * strH, topM + 2.5 * strH].forEach(dy => {
-      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dot.setAttribute('cx', mx); dot.setAttribute('cy', dy);
-      dot.setAttribute('r', 2.5); dot.setAttribute('fill', '#444');
-      svg.appendChild(dot);
-    });
-  });
-
-  // Color sets (moved up for string name open-string indicator)
   const bSt = extraState || lastRenderState || {};
-  const _bg3 = bSt.guide3PCS || new Set();
-  const _bg7 = bSt.guide7PCS || new Set();
-  const _btp = bSt.tensionPCS || new Set();
-  const _bav = bSt.avoidPCS || new Set();
-  const _bom = bSt.omittedPCS || new Set();
-  const _bPosActive = BassPositionState.enabled;
-
-  // String names (with open-string colored circle indicator)
-  for (let s = 0; s < 4; s++) {
-    const sy = topM + s * strH;
-    const isOpen = _bPosActive && bassSelectedFrets[s] === 0;
-    if (isOpen) {
-      const pc = strings[s] % 12;
-      const dotColor = pc === rootPC ? INST_ROOT_COLOR
-        : _bg3.has(pc) ? INST_GUIDE3_COLOR
-        : _bg7.has(pc) ? INST_GUIDE7_COLOR
-        : _btp.has(pc) ? INST_TENSION_COLOR
-        : INST_CHORD_COLOR;
-      const circ = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circ.setAttribute('cx', nutX - 9); circ.setAttribute('cy', sy);
-      circ.setAttribute('r', solo ? 9 : 7);
-      circ.setAttribute('fill', dotColor);
-      svg.appendChild(circ);
-    }
-    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t.setAttribute('x', nutX - 9); t.setAttribute('y', sy + 4);
-    t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('font-size', '10px');
-    t.setAttribute('fill', isOpen ? '#fff' : '#aaa');
-    t.setAttribute('font-weight', '700');
-    t.textContent = strNames[s];
-    svg.appendChild(t);
-  }
-
-  // Fret numbers
-  for (let f = 1; f <= numFrets; f++) {
-    const fx = nutX + (f - 0.5) * fretW;
-    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t.setAttribute('x', fx); t.setAttribute('y', topM + 3 * strH + 14);
-    t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('font-size', '8px'); t.setAttribute('fill', '#888');
-    t.textContent = f;
-    svg.appendChild(t);
-  }
-
-  // Pad range highlight (show which frets fall within 64-pad MIDI range)
   const bPadLo = baseMidi();
   const bPadHi = bPadLo + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
-  for (let s = 0; s < 4; s++) {
-    const sy = topM + s * strH;
-    let minF = null, maxF = null;
-    for (let f = 0; f <= numFrets; f++) {
-      const midi = strings[s] + f;
-      if (midi >= bPadLo && midi <= bPadHi) {
-        if (minF === null) minF = f;
-        maxF = f;
-      }
-    }
-    if (minF !== null) {
-      const x1 = minF === 0 ? 0 : nutX + (minF - 1) * fretW;
-      const x2 = nutX + maxF * fretW;
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', x1);
-      rect.setAttribute('y', sy - strH / 2);
-      rect.setAttribute('width', x2 - x1);
-      rect.setAttribute('height', strH);
-      rect.setAttribute('fill', '#56B4E9');
-      rect.setAttribute('opacity', '0.1');
-      svg.appendChild(rect);
-    }
-  }
 
-  // Note dots (chord tones + overlay) — pad-style colors
-  for (let s = 0; s < 4; s++) {
-    const openPC = strings[s] % 12;
-    const sy = topM + s * strH;
-    for (let f = 0; f <= numFrets; f++) {
-      const pc = (openPC + f) % 12;
-      const isBassNote = bassPC !== undefined && bassPC !== null && pc === bassPC;
-      const isOvl = !pcsSet.has(pc) && !isBassNote && overlayPCS && overlayPCS.has(pc);
-      if (!pcsSet.has(pc) && !isBassNote && !isOvl && !_bom.has(pc)) continue;
-      const isRoot = pc === rootPC && !_bom.has(pc);
-      const isOmitted = _bom.has(pc);
-      const isGuide3 = AppState.mode === 'chord' && _bg3.has(pc) && !isRoot && !_btp.has(pc);
-      const isGuide7 = AppState.mode === 'chord' && _bg7.has(pc) && !isRoot && !_btp.has(pc);
-      const isTension = AppState.mode === 'chord' && _btp.has(pc) && !isRoot && !isGuide3 && !isGuide7;
-      const isAvoid = AppState.mode === 'chord' && _bav.has(pc) && !isRoot;
-      const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
-      const r = f === 0 ? (solo ? 7 : 5) : (solo ? 10 : 7);
-      const _bPosDim = _bPosActive && bassSelectedFrets[s] !== f;
-      if (_bPosDim) continue;
-      // Position mode: skip fret-0 dot — string name indicator replaces it
-      if (_bPosActive && f === 0 && bassSelectedFrets[s] === 0) continue;
-      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dot.setAttribute('cx', fx); dot.setAttribute('cy', sy);
-      dot.setAttribute('r', r);
-      let dotColor, textColor;
-      if (isOvl) {
-        const isChar = overlayCharPCS && overlayCharPCS.has(pc);
-        dot.setAttribute('fill', isChar ? INST_OVERLAY_CHAR_COLOR : INST_OVERLAY_COLOR);
-        dot.setAttribute('opacity', _bPosDim ? '0.1' : (isChar ? '0.5' : '0.4'));
-        textColor = INST_OVERLAY_TEXT;
-      } else if (isOmitted) {
-        dotColor = INST_OMITTED_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.1' : '0.5');
-      } else if (isRoot) {
-        dotColor = INST_ROOT_COLOR; textColor = INST_ROOT_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      } else if (isBassNote) {
-        dotColor = INST_BASS_COLOR; textColor = INST_BASS_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      } else if (isGuide3) {
-        dotColor = INST_GUIDE3_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      } else if (isGuide7) {
-        dotColor = INST_GUIDE7_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      } else if (isAvoid) {
-        dotColor = INST_AVOID_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      } else if (isTension) {
-        dotColor = INST_TENSION_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      } else {
-        dotColor = INST_CHORD_COLOR; textColor = '#000';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      }
-      svg.appendChild(dot);
-      if (f > 0) {
-        const iv = ((pc - rootPC) + 12) % 12;
-        let labelText;
-        if (isOvl) {
-          labelText = guitarLabelMode === 'degree' ? SCALE_DEGREE_NAMES[iv] : pcName(pc);
-        } else {
-          labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
-        }
-        const lt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        lt.setAttribute('x', fx); lt.setAttribute('y', sy + (solo ? 4 : 3));
-        lt.setAttribute('text-anchor', 'middle');
-        const fs = solo ? (labelText.length > 2 ? '7px' : '9px') : (labelText.length > 2 ? '5px' : '6px');
-        lt.setAttribute('font-size', fs);
-        lt.setAttribute('fill', textColor);
-        lt.setAttribute('font-weight', '700');
-        if (_bPosDim) lt.setAttribute('opacity', '0.15');
-        lt.textContent = labelText;
-        svg.appendChild(lt);
-      }
+  const labelFn = function(pc, iv) {
+    if (guitarLabelMode === 'degree') {
+      return (AppState.mode === 'chord' && BuilderState.quality)
+        ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet)
+        : SCALE_DEGREE_NAMES[iv];
     }
-  }
+    return pcName(pc);
+  };
 
-  // Selected fret markers
-  for (let s = 0; s < 4; s++) {
-    if (bassSelectedFrets[s] !== null) {
-      const f = bassSelectedFrets[s];
-      if (f === 0 && _bPosActive) continue; // open string handled by string name indicator
-      const sy = topM + s * strH;
-      const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
-      const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      ring.setAttribute('cx', fx); ring.setAttribute('cy', sy);
-      ring.setAttribute('r', solo ? 12 : 9);
-      ring.setAttribute('fill', '#fff'); ring.setAttribute('opacity', '0.95');
-      ring.setAttribute('stroke', '#333'); ring.setAttribute('stroke-width', 2);
-      svg.appendChild(ring);
-      const pc = (strings[s] % 12 + f) % 12;
-      const iv = ((pc - rootPC) + 12) % 12;
-      const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
-      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', fx); label.setAttribute('y', sy + (solo ? 5 : 4));
-      label.setAttribute('text-anchor', 'middle');
-      const selFs = solo ? (labelText.length > 2 ? '8px' : '10px') : (labelText.length > 2 ? '6px' : '8px');
-      label.setAttribute('font-size', selFs); label.setAttribute('fill', '#333');
-      label.setAttribute('font-weight', '700');
-      label.textContent = labelText;
-      svg.appendChild(label);
-    }
-  }
-
-  // Position mode: X/O marks at nut for muted/open strings
-  if (_bPosActive && BassPositionState.alternatives.length > 0) {
-    const form = BassPositionState.alternatives[BassPositionState.currentAlt];
-    for (let s = 0; s < 4; s++) {
-      const sy = topM + s * strH;
-      if (form.frets[s] === null) {
-        // X mark for muted string — placed at 1st fret center for visibility
-        const mx = nutX + fretW * 0.5;
-        const sz = solo ? 6 : 4.5;
-        const xl1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        xl1.setAttribute('x1', mx - sz); xl1.setAttribute('y1', sy - sz);
-        xl1.setAttribute('x2', mx + sz); xl1.setAttribute('y2', sy + sz);
-        xl1.setAttribute('stroke', '#D55E00'); xl1.setAttribute('stroke-width', 3);
-        svg.appendChild(xl1);
-        const xl2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        xl2.setAttribute('x1', mx + sz); xl2.setAttribute('y1', sy - sz);
-        xl2.setAttribute('x2', mx - sz); xl2.setAttribute('y2', sy + sz);
-        xl2.setAttribute('stroke', '#D55E00'); xl2.setAttribute('stroke-width', 3);
-        svg.appendChild(xl2);
-      }
-    }
-  }
-
-  // Clickable hit areas
-  for (let s = 0; s < 4; s++) {
-    const sy = topM + s * strH - strH / 2;
-    for (let f = 0; f <= numFrets; f++) {
-      const fx = f === 0 ? 0 : nutX + (f - 1) * fretW;
-      const fw = f === 0 ? nutX : fretW;
-      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      hit.setAttribute('x', fx); hit.setAttribute('y', sy);
-      hit.setAttribute('width', fw); hit.setAttribute('height', strH);
-      hit.setAttribute('fill', 'transparent');
-      hit.setAttribute('cursor', 'pointer');
-      hit.dataset.string = s;
-      hit.dataset.fret = f;
-      hit.addEventListener('click', function() {
-        toggleBassFret(parseInt(this.dataset.string), parseInt(this.dataset.fret));
-      });
-      svg.appendChild(hit);
-    }
-  }
+  padRenderFretboard(svg, {
+    tuning: PAD_BASS_TUNING,
+    stringNames: PAD_BASS_NAMES,
+    rootPC: rootPC,
+    pcsSet: pcsSet,
+    bassPC: bassPC,
+    overlayPCS: overlayPCS,
+    overlayCharPCS: overlayCharPCS,
+    renderState: bSt,
+    positionState: BassPositionState,
+    selectedFrets: bassSelectedFrets,
+    labelFn: labelFn,
+    chordMode: AppState.mode === 'chord',
+    solo: showBass && !showGuitar && !showPiano,
+    width: DIAGRAM_WIDTH,
+    isMobile: _isMobile,
+    isLandscape: _isLandscape,
+    padRange: { lo: bPadLo, hi: bPadHi },
+    onFretClick: toggleBassFret,
+  });
 }
 
 function toggleBassFret(stringIdx, fret) {
@@ -1826,249 +935,65 @@ function renderPianoDisplay(state) {
   if (!pcsSet) pcsSet = new Set();
   var rootPC = state ? state.rootPC : -1;
   var bassPC = state ? state.bassPC : null;
-  var overlayPCS = state ? state.overlayPCS : null;
-  var overlayCharPCS = state ? state.overlayCharPCS : null;
-  var charPCS = state ? state.charPCS : new Set();
-  var guide3PCS = state ? state.guide3PCS : new Set();
-  var guide7PCS = state ? state.guide7PCS : new Set();
-  var tensionPCS = state ? state.tensionPCS : new Set();
-  var avoidPCS = state ? state.avoidPCS : new Set();
 
-  // Piano has its own position system (black/white pattern) — only show root when chord/scale tones exist
-  if (pcsSet.size === 0) {
-    rootPC = -1;
-  }
-
-  svg.innerHTML = '';
-
-  const solo = showPiano && !showGuitar;
   const stockPinned = StockState.enabled && StockState.lhMidi && StockState.rhMidi;
-  const numOctaves = stockPinned ? 5 : 4;
   const pianoBaseMidi = baseMidi();
-  const startOctave = stockPinned ? 0 : Math.floor(pianoBaseMidi / 12) - 2;
-  const pianoMidiBase = stockPinned ? 24 : (startOctave + 2) * 12;
-  const whiteH = solo ? 80 : 50, blackH = solo ? 52 : 32;
-  const numWhites = numOctaves * 7;
-  const W = DIAGRAM_WIDTH;
-  const startX = 8, startY = 2;
-  const whiteW = (W - startX - 15) / numWhites;
-  const blackW = whiteW * 0.7;
-  const H = whiteH + (solo ? 22 : 16);
-  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-  if (_isMobile || _isLandscape) {
-    svg.removeAttribute('width'); svg.removeAttribute('height');
-    svg.style.width = '100%'; svg.style.height = 'auto';
-  } else {
-    svg.setAttribute('width', W); svg.setAttribute('height', H);
-    svg.style.width = ''; svg.style.height = '';
-  }
+  const pianoMidiBase = stockPinned ? 24 : (Math.floor(pianoBaseMidi / 12) - 2 + 2) * 12;
 
-  const whiteNotes = [0,2,4,5,7,9,11];
-  const blackNotes = [1,3,6,8,10];
-  const blackPositions = [0, 1, 3, 4, 5];
-
-  // Stock MIDI-specific rendering
-  var stockActive = StockState.enabled && StockState.lhMidi && StockState.rhMidi;
+  // Stock mode: build keyColorFn override
   var stockMidiSet = null;
-  if (stockActive) {
+  var keyColorFn = null;
+  if (stockPinned) {
     stockMidiSet = new Set(StockState.lhMidi.concat(StockState.rhMidi));
+    keyColorFn = function(pc, isWhite, midi) {
+      var baseOff = isWhite ? '#eee' : '#222';
+      if (!stockMidiSet.has(midi)) return { fill: baseOff, textColor: null, opacity: 1, showLabel: false };
+      var deg = StockState.degreeMap[midi];
+      var fill, textColor;
+      if (deg === '1')                                       { fill = PAD_INST_COLORS.root; textColor = '#fff'; }
+      else if (deg === '3' || deg === 'b3')                  { fill = PAD_INST_COLORS.guide3; textColor = '#fff'; }
+      else if (deg === '7' || deg === 'b7' || deg === 'bb7') { fill = PAD_INST_COLORS.guide7; textColor = '#fff'; }
+      else if (deg === '5' || deg === 'b5' || deg === '#5')  { fill = isWhite ? PAD_INST_COLORS.pianoChordWhite : PAD_INST_COLORS.pianoChordBlack; textColor = isWhite ? '#333' : '#fff'; }
+      else                                                    { fill = PAD_INST_COLORS.tension; textColor = '#fff'; }
+      return { fill: fill, textColor: textColor, opacity: 1, showLabel: true };
+    };
   }
 
-  // Degree label helper
-  var pianoUseDegreee = rootPC >= 0;
-  var pianoIvPcsSet = pianoUseDegreee && AppState.mode === 'chord' && pcsSet.size > 0
+  // Label function: maps global state
+  var pianoIvPcsSet = rootPC >= 0 && AppState.mode === 'chord' && pcsSet.size > 0
     ? new Set([...pcsSet].map(function(p) { return ((p - rootPC) % 12 + 12) % 12; }))
     : null;
-  function pianoDegreeLabel(pc, midi) {
-    // Stock mode: use degree from degreeMap
-    if (stockActive && stockMidiSet && stockMidiSet.has(midi)) {
+  const labelFn = function(pc, midi) {
+    if (stockPinned && stockMidiSet && stockMidiSet.has(midi)) {
       return StockState.degreeMap[midi] || pcName(pc);
     }
-    if (!pianoUseDegreee) return pcName(pc);
+    if (rootPC < 0) return pcName(pc);
     var iv = ((pc - rootPC) % 12 + 12) % 12;
     if (AppState.mode === 'chord' && BuilderState.quality) {
       return chordDegreeName(iv, BuilderState.quality.pcs, pianoIvPcsSet);
     }
     return SCALE_DEGREE_NAMES[iv];
-  }
+  };
 
-  // Color logic matching pad exactly (same priority order as pad rendering)
-  function pianoKeyColor(pc, isWhite, midi) {
-    // Stock mode: MIDI-specific rendering — only color keys in the voicing
-    if (stockActive && stockMidiSet) {
-      var baseOff = isWhite ? '#eee' : '#222';
-      if (!stockMidiSet.has(midi)) return { fill: baseOff, textColor: null, opacity: 1, showLabel: false };
-      var deg = StockState.degreeMap[midi];
-      var fill, textColor;
-      if (deg === '1')                                          { fill = INST_ROOT_COLOR; textColor = '#fff'; }
-      else if (deg === '3' || deg === 'b3')                     { fill = '#CC79A7'; textColor = '#fff'; }
-      else if (deg === '7' || deg === 'b7' || deg === 'bb7')    { fill = '#009E73'; textColor = '#fff'; }
-      else if (deg === '5' || deg === 'b5' || deg === '#5')     { fill = isWhite ? '#90CAF9' : '#4A90D9'; textColor = isWhite ? '#333' : '#fff'; }
-      else                                                       { fill = '#0072B2'; textColor = '#fff'; } // tensions
-      return { fill: fill, textColor: textColor, opacity: 1, showLabel: true };
-    }
-    var isActive = pcsSet.has(pc);
-    var isRoot = pc === rootPC;
-    var isBass = bassPC !== undefined && bassPC !== null && pc === bassPC && !isRoot;
-    var isChar = AppState.mode === 'scale' && charPCS && charPCS.has(pc) && !isRoot;
-    var isGuide3 = AppState.mode === 'chord' && guide3PCS && guide3PCS.has(pc) && !isRoot && !(tensionPCS && tensionPCS.has(pc));
-    var isGuide7 = AppState.mode === 'chord' && guide7PCS && guide7PCS.has(pc) && !isRoot && !(tensionPCS && tensionPCS.has(pc));
-    var isTension = AppState.mode === 'chord' && tensionPCS && tensionPCS.has(pc) && !isRoot && !isGuide3 && !isGuide7;
-    var isAvoid = AppState.mode === 'chord' && avoidPCS && avoidPCS.has(pc) && !isRoot;
-    var isOvl = AppState.mode === 'scale' && !isActive && !isRoot && !isBass && overlayPCS && overlayPCS.has(pc);
-    var isOvlChar = isOvl && overlayCharPCS && overlayCharPCS.has(pc);
-    var baseOff = isWhite ? '#eee' : '#222';
-    // Same priority as pad: root > bass > guide3 > guide7 > char > avoid > tension > active > overlay > off
-    var fill, textColor, opacity = 1;
-    if (isRoot)          { fill = INST_ROOT_COLOR; textColor = '#fff'; }
-    else if (isBass)     { fill = INST_BASS_COLOR; textColor = '#000'; }
-    else if (isGuide3)   { fill = '#CC79A7'; textColor = '#fff'; }   // --pad-guide3
-    else if (isGuide7)   { fill = '#009E73'; textColor = '#fff'; }   // --pad-guide7
-    else if (isChar)     { fill = '#F0E442'; textColor = '#000'; }   // --pad-char
-    else if (isAvoid)    { fill = '#D55E00'; textColor = '#fff'; }   // --pad-avoid
-    else if (isTension)  { fill = '#0072B2'; textColor = '#fff'; }   // --pad-tension
-    else if (isActive)   {
-      fill = isWhite ? '#90CAF9' : '#4A90D9';                        // --pad-chord/scale
-      textColor = isWhite ? '#333' : '#fff';
-    }
-    else if (isOvlChar)  { fill = isWhite ? '#e8dfa0' : INST_OVERLAY_CHAR_COLOR; textColor = '#666'; opacity = isWhite ? 1 : 0.6; }
-    else if (isOvl)      { fill = isWhite ? '#b8d8ec' : INST_OVERLAY_COLOR; textColor = '#666'; opacity = isWhite ? 1 : 0.5; }
-    else                 { fill = baseOff; textColor = null; }
-    var showLabel = isActive || isRoot || isBass || isOvl;
-    return { fill: fill, textColor: textColor, opacity: opacity, showLabel: showLabel };
-  }
-
-  // White keys
-  let wx = startX;
-  for (let oct = 0; oct < numOctaves; oct++) {
-    for (let i = 0; i < 7; i++) {
-      const pc = whiteNotes[i];
-      const midi = pianoMidiBase + oct * 12 + pc;
-      const k = pianoKeyColor(pc, true, midi);
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', wx); rect.setAttribute('y', startY);
-      rect.setAttribute('width', whiteW - 1); rect.setAttribute('height', whiteH);
-      rect.setAttribute('rx', 1);
-      rect.setAttribute('fill', k.fill);
-      rect.setAttribute('stroke', '#bbb'); rect.setAttribute('stroke-width', 0.5);
-      svg.appendChild(rect);
-      if (k.showLabel) {
-        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        label.setAttribute('x', wx + (whiteW - 1) / 2); label.setAttribute('y', startY + whiteH - 6);
-        label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('font-size', '10px');
-        label.setAttribute('fill', k.textColor || '#333');
-        label.setAttribute('font-weight', '700');
-        label.textContent = pianoDegreeLabel(pc, midi);
-        svg.appendChild(label);
-      }
-      wx += whiteW;
-    }
-  }
-
-  // Black keys
-  for (let oct = 0; oct < numOctaves; oct++) {
-    for (let i = 0; i < 5; i++) {
-      const pc = blackNotes[i];
-      const midi = pianoMidiBase + oct * 12 + pc;
-      const k = pianoKeyColor(pc, false, midi);
-      const whiteIdx = blackPositions[i] + oct * 7;
-      const bx = startX + (whiteIdx + 1) * whiteW - blackW / 2;
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', bx); rect.setAttribute('y', startY);
-      rect.setAttribute('width', blackW); rect.setAttribute('height', blackH);
-      rect.setAttribute('rx', 1);
-      rect.setAttribute('fill', k.fill);
-      rect.setAttribute('stroke', '#000'); rect.setAttribute('stroke-width', 0.5);
-      if (k.opacity < 1) rect.setAttribute('opacity', k.opacity);
-      svg.appendChild(rect);
-      if (k.showLabel) {
-        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        label.setAttribute('x', bx + blackW / 2); label.setAttribute('y', startY + blackH - 3);
-        label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('font-size', '8px'); label.setAttribute('fill', k.textColor || '#fff');
-        label.setAttribute('font-weight', '700');
-        label.textContent = pianoDegreeLabel(pc, midi);
-        svg.appendChild(label);
-      }
-    }
-  }
-
-  // Piano selected note markers (white circles)
-  for (let oct = 0; oct < numOctaves; oct++) {
-    for (let i = 0; i < 12; i++) {
-      const midi = pianoMidiBase + oct * 12 + i;
-      if (!pianoSelectedNotes.has(midi)) continue;
-      const isWhite = [0,2,4,5,7,9,11].includes(i);
-      let cx, cy;
-      if (isWhite) {
-        const whiteIdx = [0,0,1,1,2,3,3,4,4,5,5,6][i];
-        cx = startX + (oct * 7 + whiteIdx) * whiteW + (whiteW - 1) / 2;
-        cy = startY + whiteH - 12;
-      } else {
-        const blackIdx = [0,0,1,0,0,0,2,0,3,0,4,0][i];
-        const blackPos = [0, 1, 3, 4, 5];
-        const whiteOff = blackPos[blackIdx] + oct * 7;
-        cx = startX + (whiteOff + 1) * whiteW;
-        cy = startY + blackH - 10;
-      }
-      const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      marker.setAttribute('cx', cx); marker.setAttribute('cy', cy);
-      marker.setAttribute('r', 5);
-      marker.setAttribute('fill', '#fff');
-      marker.setAttribute('stroke', '#333'); marker.setAttribute('stroke-width', 1.5);
-      svg.appendChild(marker);
-      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', cx); label.setAttribute('y', cy + 3);
-      label.setAttribute('text-anchor', 'middle');
-      label.setAttribute('font-size', '6px'); label.setAttribute('fill', '#333');
-      label.setAttribute('font-weight', '700');
-      label.textContent = pcName(i);
-      svg.appendChild(label);
-    }
-  }
-
-  // Piano click handlers (white keys)
-  for (let oct = 0; oct < numOctaves; oct++) {
-    for (let i = 0; i < 7; i++) {
-      const pc = whiteNotes[i];
-      const midi = pianoMidiBase + oct * 12 + pc;
-      const kx = startX + (oct * 7 + i) * whiteW;
-      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      hit.setAttribute('x', kx); hit.setAttribute('y', startY + blackH);
-      hit.setAttribute('width', whiteW); hit.setAttribute('height', whiteH - blackH);
-      hit.setAttribute('fill', 'transparent'); hit.setAttribute('cursor', 'pointer');
-      hit.dataset.midi = midi;
-      hit.addEventListener('click', function() { togglePianoNote(parseInt(this.dataset.midi)); });
-      svg.appendChild(hit);
-    }
-  }
-  // Piano click handlers (black keys - on top)
-  for (let oct = 0; oct < numOctaves; oct++) {
-    for (let i = 0; i < 5; i++) {
-      const pc = blackNotes[i];
-      const midi = pianoMidiBase + oct * 12 + pc;
-      const whiteIdx = blackPositions[i] + oct * 7;
-      const bx = startX + (whiteIdx + 1) * whiteW - blackW / 2;
-      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      hit.setAttribute('x', bx); hit.setAttribute('y', startY);
-      hit.setAttribute('width', blackW); hit.setAttribute('height', blackH);
-      hit.setAttribute('fill', 'transparent'); hit.setAttribute('cursor', 'pointer');
-      hit.dataset.midi = midi;
-      hit.addEventListener('click', function() { togglePianoNote(parseInt(this.dataset.midi)); });
-      svg.appendChild(hit);
-    }
-  }
-
-  // Octave labels
-  for (let oct = 0; oct < numOctaves; oct++) {
-    const ox = startX + oct * 7 * whiteW;
-    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t.setAttribute('x', ox + 2); t.setAttribute('y', startY + whiteH + 11);
-    t.setAttribute('font-size', '8px'); t.setAttribute('fill', '#888');
-    t.textContent = 'C' + (startOctave + oct);
-    svg.appendChild(t);
-  }
+  padRenderPiano(svg, {
+    rootPC: rootPC,
+    pcsSet: pcsSet,
+    bassPC: bassPC,
+    renderState: state || {},
+    overlayPCS: state ? state.overlayPCS : null,
+    overlayCharPCS: state ? state.overlayCharPCS : null,
+    chordMode: AppState.mode === 'chord',
+    numOctaves: stockPinned ? 5 : 4,
+    startMidi: pianoMidiBase,
+    selectedNotes: pianoSelectedNotes,
+    solo: showPiano && !showGuitar,
+    width: DIAGRAM_WIDTH,
+    isMobile: _isMobile,
+    isLandscape: _isLandscape,
+    labelFn: labelFn,
+    keyColorFn: keyColorFn,
+    onKeyClick: togglePianoNote,
+  });
 }
 
 // ========================================
@@ -2403,7 +1328,7 @@ function getAllInputMidiNotes() {
   }
   for (let s = 0; s < 4; s++) {
     if (bassSelectedFrets[s] !== null) {
-      const m = BASS_OPEN_MIDI[s] + bassSelectedFrets[s];
+      const m = PAD_BASS_TUNING[s] + bassSelectedFrets[s];
       if (!notes.includes(m)) notes.push(m);
     }
   }

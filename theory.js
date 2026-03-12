@@ -516,8 +516,8 @@ function updateBassPositions() {
   var key = BuilderState.root + ':' + pcs.join(',');
   if (key !== BassPositionState._lastKey) {
     BassPositionState._lastKey = key;
-    BassPositionState.alternatives = padEnumGuitarChordForms(pcs, BuilderState.root, BASS_OPEN_MIDI, 21, 4, { maxResults: 30 });
-    BassPositionState.groups = groupGuitarForms(BassPositionState.alternatives, BASS_OPEN_MIDI, BuilderState.root);
+    BassPositionState.alternatives = padEnumGuitarChordForms(pcs, BuilderState.root, PAD_BASS_TUNING, 21, 4, { maxResults: 30 });
+    BassPositionState.groups = groupGuitarForms(BassPositionState.alternatives, PAD_BASS_TUNING, BuilderState.root);
     _resetPositionState(BassPositionState);
     BassPositionState.enabled = BassPositionState.alternatives.length > 0;
     if (BassPositionState.enabled) {

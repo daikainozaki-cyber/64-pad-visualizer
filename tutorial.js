@@ -337,17 +337,60 @@ var TutorialEngine = {
     var ov = document.getElementById('tut-selector-overlay');
     if (ov) ov.remove();
     this.showSelector();
+  },
+
+  _showOnboardingDialog: function() {
+    var dialog = document.createElement('div');
+    dialog.id = 'tut-onboarding-dialog';
+    dialog.className = 'tutorial-card';
+    dialog.style.cssText = 'max-width:360px;margin:16px auto;text-align:center;';
+
+    var title = t('tut.onboarding_ask_title');
+    if (title === 'tut.onboarding_ask_title') title = 'Tutorial';
+    var msg = t('tut.onboarding_ask_msg');
+    if (msg === 'tut.onboarding_ask_msg') msg = 'Would you like a quick tour of the app?';
+    var yesLabel = t('tut.onboarding_yes');
+    if (yesLabel === 'tut.onboarding_yes') yesLabel = 'Yes, show me!';
+    var noLabel = t('tut.onboarding_no');
+    if (noLabel === 'tut.onboarding_no') noLabel = 'Skip';
+
+    dialog.innerHTML =
+      '<div class="tutorial-title">' + title + '</div>' +
+      '<div class="tutorial-msg" style="margin:8px 0 12px;">' + msg + '</div>' +
+      '<div class="tutorial-actions">' +
+        '<button class="tutorial-next-btn" onclick="TutorialEngine._onboardingAccept()">' + yesLabel + '</button>' +
+        '<button class="tutorial-skip-all-btn" onclick="TutorialEngine._onboardingDecline()">' + noLabel + '</button>' +
+      '</div>';
+
+    var insertTarget = document.getElementById('pad-grid');
+    if (insertTarget) {
+      insertTarget.parentNode.insertBefore(dialog, insertTarget);
+    } else {
+      document.body.appendChild(dialog);
+    }
+  },
+
+  _onboardingAccept: function() {
+    var dialog = document.getElementById('tut-onboarding-dialog');
+    if (dialog) dialog.remove();
+    this.start(true);
+  },
+
+  _onboardingDecline: function() {
+    var dialog = document.getElementById('tut-onboarding-dialog');
+    if (dialog) dialog.remove();
+    localStorage.setItem('64pad-tutorial-complete', '1');
   }
 };
 
-// Hook: Start onboarding after audio overlay is dismissed (for first-time users)
+// Hook: Show tutorial opt-in dialog after audio overlay is dismissed (for first-time users)
 (function hookTutorialStart() {
   var origDismiss = window.dismissAudioOverlay;
   window.dismissAudioOverlay = function() {
     var startTutorial = TutorialEngine.shouldStart();
     if (typeof origDismiss === 'function') origDismiss();
     if (startTutorial) {
-      setTimeout(function() { TutorialEngine.start(true); }, 800);
+      setTimeout(function() { TutorialEngine._showOnboardingDialog(); }, 800);
     }
   };
 })();
@@ -356,7 +399,13 @@ var TutorialEngine = {
 (function pulseTutorialBtn() {
   if (localStorage.getItem('64pad-tut-noticed')) return;
   var btn = document.getElementById('tut-btn');
-  if (btn) btn.classList.add('tut-pulse');
+  if (btn) {
+    btn.classList.add('tut-pulse');
+    btn.style.position = 'relative';
+    var label = typeof t === 'function' ? t('tut.btn_label') : 'Tutorials';
+    if (label === 'tut.btn_label') label = 'Tutorials';
+    btn.setAttribute('data-tut-label', label);
+  }
 })();
 
 // ========================================

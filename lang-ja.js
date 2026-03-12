@@ -378,12 +378,19 @@ I18N.addLang('ja', {
     close_selector: '閉じる',
     hint_available: 'チュートリアルあります',
     hint_try: 'やってみる',
+    // ボタンラベル
+    btn_label: 'チュートリアル',
     // 共通アクション
     next: '次へ',
     skip_step: 'スキップ',
     skip_all: 'チュートリアルをスキップ',
     open_guide: 'ガイドを開く',
     close: '完了',
+    // オンボーディング確認ダイアログ
+    onboarding_ask_title: 'チュートリアル',
+    onboarding_ask_msg: 'はじめてですか？ アプリの使い方を簡単にご案内します。',
+    onboarding_yes: 'はい、案内して！',
+    onboarding_no: 'スキップ',
     // オンボーディング
     onboarding_title: 'はじめの一歩',
     onboarding_desc: '64 Pad Explorerの基本を学ぶ',

@@ -378,12 +378,19 @@ I18N.addLang('en', {
     close_selector: 'Close',
     hint_available: 'Tutorial available',
     hint_try: 'Try it',
+    // Button label
+    btn_label: 'Tutorials',
     // Shared action labels
     next: 'Next',
     skip_step: 'Skip',
     skip_all: 'Skip tutorial',
     open_guide: 'Open Guide',
     close: 'Done',
+    // Onboarding ask dialog
+    onboarding_ask_title: 'Tutorial',
+    onboarding_ask_msg: 'First time here? Want a quick tour of the app?',
+    onboarding_yes: 'Yes, show me!',
+    onboarding_no: 'Skip',
     // Onboarding
     onboarding_title: 'First Steps',
     onboarding_desc: 'Learn the basics of 64 Pad Explorer',

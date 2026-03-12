@@ -1158,351 +1158,64 @@ function toggleGuitarLabelMode() {
 function renderGuitarDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, extraState) {
   const svg = document.getElementById('guitar-diagram');
   if (!pcsSet) pcsSet = new Set();
-  // Interval-based PCS for chordDegreeName
   const ivPcsSet = pcsSet.size > 0
     ? new Set([...pcsSet].map(pc => ((pc - rootPC) % 12 + 12) % 12))
     : null;
-
-  svg.innerHTML = '';
-
-  const solo = showGuitar && !showPiano;
-  const numFrets = 21;
-  const leftM = 16;
-  const topM = solo ? 10 : 6;
-  const fretW = Math.floor((DIAGRAM_WIDTH - leftM - 12) / numFrets);
-  const strH = solo ? 22 : 14;
-  const nutX = leftM;
-  const W = DIAGRAM_WIDTH;
-  const H = topM + 5 * strH + (solo ? 30 : 22);
-  const vbX = GuitarPositionState.enabled ? -3 : 0;
-  svg.setAttribute('viewBox', vbX + ' 0 ' + (W - vbX) + ' ' + H);
-  if (_isMobile || _isLandscape) {
-    svg.removeAttribute('width'); svg.removeAttribute('height');
-    svg.style.width = '100%'; svg.style.height = 'auto';
-  } else {
-    svg.setAttribute('width', W); svg.setAttribute('height', H);
-    svg.style.width = ''; svg.style.height = '';
-  }
-
-  const strings = [64, 59, 55, 50, 45, 40];
-  const strNames = ['E', 'B', 'G', 'D', 'A', 'E'];
-
-  // Nut (thick black line)
-  const nutLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  nutLine.setAttribute('x1', nutX); nutLine.setAttribute('y1', topM);
-  nutLine.setAttribute('x2', nutX); nutLine.setAttribute('y2', topM + 5 * strH);
-  nutLine.setAttribute('stroke', '#ccc'); nutLine.setAttribute('stroke-width', 4);
-  svg.appendChild(nutLine);
-
-  // Fret lines
-  for (let f = 1; f <= numFrets; f++) {
-    const fx = nutX + f * fretW;
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', fx); line.setAttribute('y1', topM);
-    line.setAttribute('x2', fx); line.setAttribute('y2', topM + 5 * strH);
-    line.setAttribute('stroke', '#555'); line.setAttribute('stroke-width', 1);
-    svg.appendChild(line);
-  }
-
-  // String lines
-  for (let s = 0; s < 6; s++) {
-    const sy = topM + s * strH;
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', nutX); line.setAttribute('y1', sy);
-    line.setAttribute('x2', nutX + numFrets * fretW); line.setAttribute('y2', sy);
-    line.setAttribute('stroke', '#888'); line.setAttribute('stroke-width', s >= 4 ? 2 : 1);
-    svg.appendChild(line);
-  }
-
-  // Fret markers
-  const markerFrets = [3, 5, 7, 9, 15, 17, 19, 21];
-  const doubleMarker = [12];
-  const markerY = topM + 2.5 * strH;
-  markerFrets.forEach(f => {
-    const mx = nutX + (f - 0.5) * fretW;
-    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    dot.setAttribute('cx', mx); dot.setAttribute('cy', markerY);
-    dot.setAttribute('r', 2.5); dot.setAttribute('fill', '#444');
-    svg.appendChild(dot);
-  });
-  doubleMarker.forEach(f => {
-    const mx = nutX + (f - 0.5) * fretW;
-    [topM + 1.5 * strH, topM + 3.5 * strH].forEach(dy => {
-      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dot.setAttribute('cx', mx); dot.setAttribute('cy', dy);
-      dot.setAttribute('r', 2.5); dot.setAttribute('fill', '#444');
-      svg.appendChild(dot);
-    });
-  });
-
-  // Color sets (moved up for string name open-string indicator)
   const st = extraState || lastRenderState || {};
-  const _g3 = st.guide3PCS || new Set();
-  const _g7 = st.guide7PCS || new Set();
-  const _tp = st.tensionPCS || new Set();
-  const _av = st.avoidPCS || new Set();
-  const _om = st.omittedPCS || new Set();
-  const _gPosActive = GuitarPositionState.enabled;
-
-  // String names (with open-string colored circle indicator)
-  for (let s = 0; s < 6; s++) {
-    const sy = topM + s * strH;
-    const isOpen = _gPosActive && guitarSelectedFrets[s] === 0;
-    if (isOpen) {
-      const pc = strings[s] % 12;
-      const dotColor = pc === rootPC ? INST_ROOT_COLOR
-        : _g3.has(pc) ? INST_GUIDE3_COLOR
-        : _g7.has(pc) ? INST_GUIDE7_COLOR
-        : _tp.has(pc) ? INST_TENSION_COLOR
-        : INST_CHORD_COLOR;
-      const circ = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circ.setAttribute('cx', nutX - 9); circ.setAttribute('cy', sy);
-      circ.setAttribute('r', solo ? 9 : 7);
-      circ.setAttribute('fill', dotColor);
-      svg.appendChild(circ);
-    }
-    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t.setAttribute('x', nutX - 9); t.setAttribute('y', sy + 4);
-    t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('font-size', '10px');
-    t.setAttribute('fill', isOpen ? '#fff' : '#aaa');
-    t.setAttribute('font-weight', '700');
-    t.textContent = strNames[s];
-    svg.appendChild(t);
-  }
-
-  // Fret numbers
-  for (let f = 1; f <= numFrets; f++) {
-    const fx = nutX + (f - 0.5) * fretW;
-    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t.setAttribute('x', fx); t.setAttribute('y', topM + 5 * strH + 14);
-    t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('font-size', '8px'); t.setAttribute('fill', '#888');
-    t.textContent = f;
-    svg.appendChild(t);
-  }
-
-  // Pad range highlight (show which frets fall within 64-pad MIDI range)
   const padLo = baseMidi();
   const padHi = padLo + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
-  for (let s = 0; s < 6; s++) {
-    const sy = topM + s * strH;
-    let minF = null, maxF = null;
-    for (let f = 0; f <= numFrets; f++) {
-      const midi = strings[s] + f;
-      if (midi >= padLo && midi <= padHi) {
-        if (minF === null) minF = f;
-        maxF = f;
-      }
-    }
-    if (minF !== null) {
-      const x1 = minF === 0 ? 0 : nutX + (minF - 1) * fretW;
-      const x2 = nutX + maxF * fretW;
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', x1);
-      rect.setAttribute('y', sy - strH / 2);
-      rect.setAttribute('width', x2 - x1);
-      rect.setAttribute('height', strH);
-      rect.setAttribute('fill', '#56B4E9');
-      rect.setAttribute('opacity', '0.1');
-      svg.appendChild(rect);
-    }
-  }
 
-  // Note dots (scale/chord tones + overlay) with labels — pad-style colors
-  for (let s = 0; s < 6; s++) {
-    const openPC = strings[s] % 12;
-    const sy = topM + s * strH;
-    for (let f = 0; f <= numFrets; f++) {
-      const pc = (openPC + f) % 12;
-      const isBass = bassPC !== undefined && bassPC !== null && pc === bassPC;
-      const isOvl = !pcsSet.has(pc) && !isBass && overlayPCS && overlayPCS.has(pc);
-      if (!pcsSet.has(pc) && !isBass && !isOvl && !_om.has(pc)) continue;
-      const isRoot = pc === rootPC && !_om.has(pc);
-      const isOmitted = _om.has(pc);
-      const isGuide3 = AppState.mode === 'chord' && _g3.has(pc) && !isRoot && !_tp.has(pc);
-      const isGuide7 = AppState.mode === 'chord' && _g7.has(pc) && !isRoot && !_tp.has(pc);
-      const isTension = AppState.mode === 'chord' && _tp.has(pc) && !isRoot && !isGuide3 && !isGuide7;
-      const isAvoid = AppState.mode === 'chord' && _av.has(pc) && !isRoot;
-      const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
-      const r = f === 0 ? (solo ? 7 : 5) : (solo ? 10 : 7);
-      // Position mode: hide frets not in selected form (show only pressed positions)
-      const _posDim = _gPosActive && guitarSelectedFrets[s] !== f;
-      if (_posDim) continue;
-      // Position mode: skip fret-0 dot — string name indicator replaces it
-      if (_gPosActive && f === 0 && guitarSelectedFrets[s] === 0) continue;
-      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dot.setAttribute('cx', fx); dot.setAttribute('cy', sy);
-      dot.setAttribute('r', r);
-      let dotColor, textColor;
-      if (isOvl) {
-        const isChar = overlayCharPCS && overlayCharPCS.has(pc);
-        dot.setAttribute('fill', isChar ? INST_OVERLAY_CHAR_COLOR : INST_OVERLAY_COLOR);
-        dot.setAttribute('opacity', isChar ? '0.5' : '0.4');
-        textColor = INST_OVERLAY_TEXT;
-      } else if (isOmitted) {
-        dotColor = INST_OMITTED_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.5');
-      } else if (isRoot) {
-        dotColor = INST_ROOT_COLOR; textColor = INST_ROOT_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      } else if (isBass) {
-        dotColor = INST_BASS_COLOR; textColor = INST_BASS_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      } else if (isGuide3) {
-        dotColor = INST_GUIDE3_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      } else if (isGuide7) {
-        dotColor = INST_GUIDE7_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      } else if (isAvoid) {
-        dotColor = INST_AVOID_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      } else if (isTension) {
-        dotColor = INST_TENSION_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      } else {
-        dotColor = INST_CHORD_COLOR; textColor = '#000';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', '0.9');
-      }
-      svg.appendChild(dot);
-      // Label inside dot
-      if (f > 0) {
-        const iv = ((pc - rootPC) + 12) % 12;
-        let labelText;
-        if (isOvl) {
-          labelText = guitarLabelMode === 'degree' ? SCALE_DEGREE_NAMES[iv] : pcName(pc);
-        } else {
-          labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
-        }
-        const lt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        lt.setAttribute('x', fx); lt.setAttribute('y', sy + (solo ? 4 : 3));
-        lt.setAttribute('text-anchor', 'middle');
-        const fs = solo ? (labelText.length > 2 ? '7px' : '9px') : (labelText.length > 2 ? '5px' : '6px');
-        lt.setAttribute('font-size', fs);
-        lt.setAttribute('fill', textColor);
-        lt.setAttribute('font-weight', '700');
-        lt.textContent = labelText;
-        svg.appendChild(lt);
-      }
-    }
-  }
-
-  // Alternative form ghost dots (other voicings in current group)
-  if (_gPosActive && GuitarPositionState.groups.length > 0) {
+  // Build ghost forms from guitar position groups
+  let ghostForms = null;
+  let curFretSet = null;
+  if (GuitarPositionState.enabled && GuitarPositionState.groups.length > 0) {
     const gGroup = GuitarPositionState.groups[GuitarPositionState.currentGroupIdx];
     if (gGroup && gGroup.forms.length > 1) {
-      const curFretSet = new Set();
+      curFretSet = new Set();
       for (let gs = 0; gs < 6; gs++) {
         if (guitarSelectedFrets[gs] !== null) curFretSet.add(gs * 100 + guitarSelectedFrets[gs]);
       }
-      const altRendered = new Set();
-      gGroup.forms.forEach(function(form, fi) {
-        if (fi === GuitarPositionState.currentAltInGroup) return;
-        for (let gs = 0; gs < 6; gs++) {
-          if (form.frets[gs] === null) continue;
-          const gKey = gs * 100 + form.frets[gs];
-          if (curFretSet.has(gKey) || altRendered.has(gKey)) continue;
-          altRendered.add(gKey);
-          const gf = form.frets[gs];
-          const gsy = topM + gs * strH;
-          const gfx = gf === 0 ? nutX - 2 : nutX + (gf - 0.5) * fretW;
-          const gpc = (strings[gs] % 12 + gf) % 12;
-          const gIsRoot = gpc === rootPC;
-          const gColor = gIsRoot ? INST_ROOT_COLOR
-            : _g3.has(gpc) ? INST_GUIDE3_COLOR
-            : _g7.has(gpc) ? INST_GUIDE7_COLOR
-            : _tp.has(gpc) ? INST_TENSION_COLOR
-            : INST_CHORD_COLOR;
-          const gr = solo ? 7 : 5;
-          const gDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-          gDot.setAttribute('cx', gfx);
-          gDot.setAttribute('cy', gsy);
-          gDot.setAttribute('r', gr);
-          gDot.setAttribute('fill', gColor);
-          gDot.setAttribute('opacity', '0.25');
-          svg.appendChild(gDot);
-        }
-      });
+      ghostForms = gGroup.forms.filter((_, fi) => fi !== GuitarPositionState.currentAltInGroup);
     }
   }
 
-  // Guitar input: selected fret markers (orange ring)
-  for (let s = 0; s < 6; s++) {
-    if (guitarSelectedFrets[s] !== null) {
-      const f = guitarSelectedFrets[s];
-      if (f === 0 && _gPosActive) continue; // open string handled by string name indicator
-      const sy = topM + s * strH;
-      const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
-      const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      ring.setAttribute('cx', fx); ring.setAttribute('cy', sy);
-      ring.setAttribute('r', solo ? 12 : 9);
-      ring.setAttribute('fill', '#fff'); ring.setAttribute('opacity', '0.95');
-      ring.setAttribute('stroke', '#333'); ring.setAttribute('stroke-width', 2);
-      svg.appendChild(ring);
-      // Label inside (respects guitar label mode)
-      const pc = (strings[s] % 12 + f) % 12;
-      const iv = ((pc - rootPC) + 12) % 12;
-      const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
-      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', fx); label.setAttribute('y', sy + (solo ? 5 : 4));
-      label.setAttribute('text-anchor', 'middle');
-      const selFs = solo ? (labelText.length > 2 ? '8px' : '10px') : (labelText.length > 2 ? '6px' : '8px');
-      label.setAttribute('font-size', selFs); label.setAttribute('fill', '#333');
-      label.setAttribute('font-weight', '700');
-      label.textContent = labelText;
-      svg.appendChild(label);
+  // Label function: maps global state to pure function call
+  const labelFn = function(pc, iv) {
+    if (guitarLabelMode === 'degree') {
+      return (AppState.mode === 'chord' && BuilderState.quality)
+        ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet)
+        : SCALE_DEGREE_NAMES[iv];
     }
-  }
+    return pcName(pc);
+  };
 
-  // Position mode: mute X marks + open string label styling
-  if (_gPosActive && GuitarPositionState.alternatives.length > 0) {
-    const form = GuitarPositionState.alternatives[GuitarPositionState.currentAlt];
-    for (let s = 0; s < 6; s++) {
-      const sy = topM + s * strH;
-      if (form.frets[s] === null) {
-        // X mark for muted string — placed at 1st fret center for visibility
-        const mx = nutX + fretW * 0.5;
-        const sz = solo ? 6 : 4.5;
-        const xl1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        xl1.setAttribute('x1', mx - sz); xl1.setAttribute('y1', sy - sz);
-        xl1.setAttribute('x2', mx + sz); xl1.setAttribute('y2', sy + sz);
-        xl1.setAttribute('stroke', '#D55E00'); xl1.setAttribute('stroke-width', 3);
-        svg.appendChild(xl1);
-        const xl2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        xl2.setAttribute('x1', mx + sz); xl2.setAttribute('y1', sy - sz);
-        xl2.setAttribute('x2', mx - sz); xl2.setAttribute('y2', sy + sz);
-        xl2.setAttribute('stroke', '#D55E00'); xl2.setAttribute('stroke-width', 3);
-        svg.appendChild(xl2);
-      }
-    }
-  }
-
-  // Clickable hit areas for each string×fret (transparent rects)
-  for (let s = 0; s < 6; s++) {
-    const sy = topM + s * strH - strH / 2;
-    for (let f = 0; f <= numFrets; f++) {
-      const fx = f === 0 ? 0 : nutX + (f - 1) * fretW;
-      const fw = f === 0 ? nutX : fretW;
-      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      hit.setAttribute('x', fx); hit.setAttribute('y', sy);
-      hit.setAttribute('width', fw); hit.setAttribute('height', strH);
-      hit.setAttribute('fill', 'transparent');
-      hit.setAttribute('cursor', 'pointer');
-      hit.dataset.string = s;
-      hit.dataset.fret = f;
-      hit.addEventListener('click', function() {
-        toggleGuitarFret(parseInt(this.dataset.string), parseInt(this.dataset.fret));
-      });
-      svg.appendChild(hit);
-    }
-  }
+  padRenderFretboard(svg, {
+    tuning: PAD_GUITAR_TUNING,
+    stringNames: PAD_GUITAR_NAMES,
+    rootPC: rootPC,
+    pcsSet: pcsSet,
+    bassPC: bassPC,
+    overlayPCS: overlayPCS,
+    overlayCharPCS: overlayCharPCS,
+    renderState: st,
+    positionState: GuitarPositionState,
+    selectedFrets: guitarSelectedFrets,
+    labelFn: labelFn,
+    chordMode: AppState.mode === 'chord',
+    solo: showGuitar && !showPiano,
+    width: DIAGRAM_WIDTH,
+    isMobile: _isMobile,
+    isLandscape: _isLandscape,
+    padRange: { lo: padLo, hi: padHi },
+    onFretClick: toggleGuitarFret,
+    ghostForms: ghostForms,
+    currentFretSet: curFretSet,
+  });
 }
 
 // ========================================
 // BASS DIAGRAM
 // ========================================
-const BASS_OPEN_MIDI = [43, 38, 33, 28]; // G2, D2, A1, E1
 let bassSelectedFrets = [null, null, null, null];
 
 function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, extraState) {
@@ -1512,297 +1225,39 @@ function renderBassDiagram(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, e
   const ivPcsSet = pcsSet.size > 0
     ? new Set([...pcsSet].map(pc => ((pc - rootPC) % 12 + 12) % 12))
     : null;
-  svg.innerHTML = '';
-  const solo = showBass && !showGuitar && !showPiano;
-  const numFrets = 21;
-  const leftM = 16;
-  const topM = solo ? 10 : 6;
-  const fretW = Math.floor((DIAGRAM_WIDTH - leftM - 12) / numFrets);
-  const strH = solo ? 28 : 14;
-  const nutX = leftM;
-  const W = DIAGRAM_WIDTH;
-  const H = topM + 3 * strH + (solo ? 30 : 22);
-  const vbX = BassPositionState.enabled ? -3 : 0;
-  svg.setAttribute('viewBox', vbX + ' 0 ' + (W - vbX) + ' ' + H);
-  if (_isMobile || _isLandscape) {
-    svg.removeAttribute('width'); svg.removeAttribute('height');
-    svg.style.width = '100%'; svg.style.height = 'auto';
-  } else {
-    svg.setAttribute('width', W); svg.setAttribute('height', H);
-    svg.style.width = ''; svg.style.height = '';
-  }
-  const strings = BASS_OPEN_MIDI;
-  const strNames = ['G', 'D', 'A', 'E'];
-
-  // Nut
-  const nutLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  nutLine.setAttribute('x1', nutX); nutLine.setAttribute('y1', topM);
-  nutLine.setAttribute('x2', nutX); nutLine.setAttribute('y2', topM + 3 * strH);
-  nutLine.setAttribute('stroke', '#ccc'); nutLine.setAttribute('stroke-width', 4);
-  svg.appendChild(nutLine);
-
-  // Fret lines
-  for (let f = 1; f <= numFrets; f++) {
-    const fx = nutX + f * fretW;
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', fx); line.setAttribute('y1', topM);
-    line.setAttribute('x2', fx); line.setAttribute('y2', topM + 3 * strH);
-    line.setAttribute('stroke', '#555'); line.setAttribute('stroke-width', 1);
-    svg.appendChild(line);
-  }
-
-  // String lines
-  for (let s = 0; s < 4; s++) {
-    const sy = topM + s * strH;
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', nutX); line.setAttribute('y1', sy);
-    line.setAttribute('x2', nutX + numFrets * fretW); line.setAttribute('y2', sy);
-    line.setAttribute('stroke', '#888'); line.setAttribute('stroke-width', s >= 2 ? 2 : 1.5);
-    svg.appendChild(line);
-  }
-
-  // Fret markers
-  const markerFrets = [3, 5, 7, 9, 15, 17, 19, 21];
-  const doubleMarker = [12];
-  const markerY = topM + 1.5 * strH;
-  markerFrets.forEach(f => {
-    const mx = nutX + (f - 0.5) * fretW;
-    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    dot.setAttribute('cx', mx); dot.setAttribute('cy', markerY);
-    dot.setAttribute('r', 2.5); dot.setAttribute('fill', '#444');
-    svg.appendChild(dot);
-  });
-  doubleMarker.forEach(f => {
-    const mx = nutX + (f - 0.5) * fretW;
-    [topM + 0.5 * strH, topM + 2.5 * strH].forEach(dy => {
-      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dot.setAttribute('cx', mx); dot.setAttribute('cy', dy);
-      dot.setAttribute('r', 2.5); dot.setAttribute('fill', '#444');
-      svg.appendChild(dot);
-    });
-  });
-
-  // Color sets (moved up for string name open-string indicator)
   const bSt = extraState || lastRenderState || {};
-  const _bg3 = bSt.guide3PCS || new Set();
-  const _bg7 = bSt.guide7PCS || new Set();
-  const _btp = bSt.tensionPCS || new Set();
-  const _bav = bSt.avoidPCS || new Set();
-  const _bom = bSt.omittedPCS || new Set();
-  const _bPosActive = BassPositionState.enabled;
-
-  // String names (with open-string colored circle indicator)
-  for (let s = 0; s < 4; s++) {
-    const sy = topM + s * strH;
-    const isOpen = _bPosActive && bassSelectedFrets[s] === 0;
-    if (isOpen) {
-      const pc = strings[s] % 12;
-      const dotColor = pc === rootPC ? INST_ROOT_COLOR
-        : _bg3.has(pc) ? INST_GUIDE3_COLOR
-        : _bg7.has(pc) ? INST_GUIDE7_COLOR
-        : _btp.has(pc) ? INST_TENSION_COLOR
-        : INST_CHORD_COLOR;
-      const circ = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circ.setAttribute('cx', nutX - 9); circ.setAttribute('cy', sy);
-      circ.setAttribute('r', solo ? 9 : 7);
-      circ.setAttribute('fill', dotColor);
-      svg.appendChild(circ);
-    }
-    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t.setAttribute('x', nutX - 9); t.setAttribute('y', sy + 4);
-    t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('font-size', '10px');
-    t.setAttribute('fill', isOpen ? '#fff' : '#aaa');
-    t.setAttribute('font-weight', '700');
-    t.textContent = strNames[s];
-    svg.appendChild(t);
-  }
-
-  // Fret numbers
-  for (let f = 1; f <= numFrets; f++) {
-    const fx = nutX + (f - 0.5) * fretW;
-    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t.setAttribute('x', fx); t.setAttribute('y', topM + 3 * strH + 14);
-    t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('font-size', '8px'); t.setAttribute('fill', '#888');
-    t.textContent = f;
-    svg.appendChild(t);
-  }
-
-  // Pad range highlight (show which frets fall within 64-pad MIDI range)
   const bPadLo = baseMidi();
   const bPadHi = bPadLo + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
-  for (let s = 0; s < 4; s++) {
-    const sy = topM + s * strH;
-    let minF = null, maxF = null;
-    for (let f = 0; f <= numFrets; f++) {
-      const midi = strings[s] + f;
-      if (midi >= bPadLo && midi <= bPadHi) {
-        if (minF === null) minF = f;
-        maxF = f;
-      }
-    }
-    if (minF !== null) {
-      const x1 = minF === 0 ? 0 : nutX + (minF - 1) * fretW;
-      const x2 = nutX + maxF * fretW;
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', x1);
-      rect.setAttribute('y', sy - strH / 2);
-      rect.setAttribute('width', x2 - x1);
-      rect.setAttribute('height', strH);
-      rect.setAttribute('fill', '#56B4E9');
-      rect.setAttribute('opacity', '0.1');
-      svg.appendChild(rect);
-    }
-  }
 
-  // Note dots (chord tones + overlay) — pad-style colors
-  for (let s = 0; s < 4; s++) {
-    const openPC = strings[s] % 12;
-    const sy = topM + s * strH;
-    for (let f = 0; f <= numFrets; f++) {
-      const pc = (openPC + f) % 12;
-      const isBassNote = bassPC !== undefined && bassPC !== null && pc === bassPC;
-      const isOvl = !pcsSet.has(pc) && !isBassNote && overlayPCS && overlayPCS.has(pc);
-      if (!pcsSet.has(pc) && !isBassNote && !isOvl && !_bom.has(pc)) continue;
-      const isRoot = pc === rootPC && !_bom.has(pc);
-      const isOmitted = _bom.has(pc);
-      const isGuide3 = AppState.mode === 'chord' && _bg3.has(pc) && !isRoot && !_btp.has(pc);
-      const isGuide7 = AppState.mode === 'chord' && _bg7.has(pc) && !isRoot && !_btp.has(pc);
-      const isTension = AppState.mode === 'chord' && _btp.has(pc) && !isRoot && !isGuide3 && !isGuide7;
-      const isAvoid = AppState.mode === 'chord' && _bav.has(pc) && !isRoot;
-      const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
-      const r = f === 0 ? (solo ? 7 : 5) : (solo ? 10 : 7);
-      const _bPosDim = _bPosActive && bassSelectedFrets[s] !== f;
-      if (_bPosDim) continue;
-      // Position mode: skip fret-0 dot — string name indicator replaces it
-      if (_bPosActive && f === 0 && bassSelectedFrets[s] === 0) continue;
-      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dot.setAttribute('cx', fx); dot.setAttribute('cy', sy);
-      dot.setAttribute('r', r);
-      let dotColor, textColor;
-      if (isOvl) {
-        const isChar = overlayCharPCS && overlayCharPCS.has(pc);
-        dot.setAttribute('fill', isChar ? INST_OVERLAY_CHAR_COLOR : INST_OVERLAY_COLOR);
-        dot.setAttribute('opacity', _bPosDim ? '0.1' : (isChar ? '0.5' : '0.4'));
-        textColor = INST_OVERLAY_TEXT;
-      } else if (isOmitted) {
-        dotColor = INST_OMITTED_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.1' : '0.5');
-      } else if (isRoot) {
-        dotColor = INST_ROOT_COLOR; textColor = INST_ROOT_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      } else if (isBassNote) {
-        dotColor = INST_BASS_COLOR; textColor = INST_BASS_TEXT;
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      } else if (isGuide3) {
-        dotColor = INST_GUIDE3_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      } else if (isGuide7) {
-        dotColor = INST_GUIDE7_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      } else if (isAvoid) {
-        dotColor = INST_AVOID_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      } else if (isTension) {
-        dotColor = INST_TENSION_COLOR; textColor = '#fff';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      } else {
-        dotColor = INST_CHORD_COLOR; textColor = '#000';
-        dot.setAttribute('fill', dotColor); dot.setAttribute('opacity', _bPosDim ? '0.15' : '0.9');
-      }
-      svg.appendChild(dot);
-      if (f > 0) {
-        const iv = ((pc - rootPC) + 12) % 12;
-        let labelText;
-        if (isOvl) {
-          labelText = guitarLabelMode === 'degree' ? SCALE_DEGREE_NAMES[iv] : pcName(pc);
-        } else {
-          labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
-        }
-        const lt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        lt.setAttribute('x', fx); lt.setAttribute('y', sy + (solo ? 4 : 3));
-        lt.setAttribute('text-anchor', 'middle');
-        const fs = solo ? (labelText.length > 2 ? '7px' : '9px') : (labelText.length > 2 ? '5px' : '6px');
-        lt.setAttribute('font-size', fs);
-        lt.setAttribute('fill', textColor);
-        lt.setAttribute('font-weight', '700');
-        if (_bPosDim) lt.setAttribute('opacity', '0.15');
-        lt.textContent = labelText;
-        svg.appendChild(lt);
-      }
+  const labelFn = function(pc, iv) {
+    if (guitarLabelMode === 'degree') {
+      return (AppState.mode === 'chord' && BuilderState.quality)
+        ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet)
+        : SCALE_DEGREE_NAMES[iv];
     }
-  }
+    return pcName(pc);
+  };
 
-  // Selected fret markers
-  for (let s = 0; s < 4; s++) {
-    if (bassSelectedFrets[s] !== null) {
-      const f = bassSelectedFrets[s];
-      if (f === 0 && _bPosActive) continue; // open string handled by string name indicator
-      const sy = topM + s * strH;
-      const fx = f === 0 ? nutX - 2 : nutX + (f - 0.5) * fretW;
-      const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      ring.setAttribute('cx', fx); ring.setAttribute('cy', sy);
-      ring.setAttribute('r', solo ? 12 : 9);
-      ring.setAttribute('fill', '#fff'); ring.setAttribute('opacity', '0.95');
-      ring.setAttribute('stroke', '#333'); ring.setAttribute('stroke-width', 2);
-      svg.appendChild(ring);
-      const pc = (strings[s] % 12 + f) % 12;
-      const iv = ((pc - rootPC) + 12) % 12;
-      const labelText = guitarLabelMode === 'degree' ? (AppState.mode === 'chord' && BuilderState.quality ? chordDegreeName(iv, BuilderState.quality.pcs, ivPcsSet) : SCALE_DEGREE_NAMES[iv]) : pcName(pc);
-      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', fx); label.setAttribute('y', sy + (solo ? 5 : 4));
-      label.setAttribute('text-anchor', 'middle');
-      const selFs = solo ? (labelText.length > 2 ? '8px' : '10px') : (labelText.length > 2 ? '6px' : '8px');
-      label.setAttribute('font-size', selFs); label.setAttribute('fill', '#333');
-      label.setAttribute('font-weight', '700');
-      label.textContent = labelText;
-      svg.appendChild(label);
-    }
-  }
-
-  // Position mode: X/O marks at nut for muted/open strings
-  if (_bPosActive && BassPositionState.alternatives.length > 0) {
-    const form = BassPositionState.alternatives[BassPositionState.currentAlt];
-    for (let s = 0; s < 4; s++) {
-      const sy = topM + s * strH;
-      if (form.frets[s] === null) {
-        // X mark for muted string — placed at 1st fret center for visibility
-        const mx = nutX + fretW * 0.5;
-        const sz = solo ? 6 : 4.5;
-        const xl1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        xl1.setAttribute('x1', mx - sz); xl1.setAttribute('y1', sy - sz);
-        xl1.setAttribute('x2', mx + sz); xl1.setAttribute('y2', sy + sz);
-        xl1.setAttribute('stroke', '#D55E00'); xl1.setAttribute('stroke-width', 3);
-        svg.appendChild(xl1);
-        const xl2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        xl2.setAttribute('x1', mx + sz); xl2.setAttribute('y1', sy - sz);
-        xl2.setAttribute('x2', mx - sz); xl2.setAttribute('y2', sy + sz);
-        xl2.setAttribute('stroke', '#D55E00'); xl2.setAttribute('stroke-width', 3);
-        svg.appendChild(xl2);
-      }
-    }
-  }
-
-  // Clickable hit areas
-  for (let s = 0; s < 4; s++) {
-    const sy = topM + s * strH - strH / 2;
-    for (let f = 0; f <= numFrets; f++) {
-      const fx = f === 0 ? 0 : nutX + (f - 1) * fretW;
-      const fw = f === 0 ? nutX : fretW;
-      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      hit.setAttribute('x', fx); hit.setAttribute('y', sy);
-      hit.setAttribute('width', fw); hit.setAttribute('height', strH);
-      hit.setAttribute('fill', 'transparent');
-      hit.setAttribute('cursor', 'pointer');
-      hit.dataset.string = s;
-      hit.dataset.fret = f;
-      hit.addEventListener('click', function() {
-        toggleBassFret(parseInt(this.dataset.string), parseInt(this.dataset.fret));
-      });
-      svg.appendChild(hit);
-    }
-  }
+  padRenderFretboard(svg, {
+    tuning: PAD_BASS_TUNING,
+    stringNames: PAD_BASS_NAMES,
+    rootPC: rootPC,
+    pcsSet: pcsSet,
+    bassPC: bassPC,
+    overlayPCS: overlayPCS,
+    overlayCharPCS: overlayCharPCS,
+    renderState: bSt,
+    positionState: BassPositionState,
+    selectedFrets: bassSelectedFrets,
+    labelFn: labelFn,
+    chordMode: AppState.mode === 'chord',
+    solo: showBass && !showGuitar && !showPiano,
+    width: DIAGRAM_WIDTH,
+    isMobile: _isMobile,
+    isLandscape: _isLandscape,
+    padRange: { lo: bPadLo, hi: bPadHi },
+    onFretClick: toggleBassFret,
+  });
 }
 
 function toggleBassFret(stringIdx, fret) {
@@ -2403,7 +1858,7 @@ function getAllInputMidiNotes() {
   }
   for (let s = 0; s < 4; s++) {
     if (bassSelectedFrets[s] !== null) {
-      const m = BASS_OPEN_MIDI[s] + bassSelectedFrets[s];
+      const m = PAD_BASS_TUNING[s] + bassSelectedFrets[s];
       if (!notes.includes(m)) notes.push(m);
     }
   }

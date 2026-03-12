@@ -64,8 +64,8 @@ var TutorialEngine = {
     return true;
   },
 
-  start: function() {
-    if (!this.shouldStart()) return;
+  start: function(force) {
+    if (!force && !this.shouldStart()) return;
     localStorage.removeItem('64pad-tutorial-reset');  // clear reset flag after use
     this.active = true;
     this.step = -1;
@@ -245,13 +245,14 @@ var TutorialEngine = {
 };
 
 // Hook: Start tutorial after audio overlay is dismissed (for first-time users)
+// Check shouldStart() BEFORE origDismiss — origDismiss saves 64pad-sound to localStorage
 (function hookTutorialStart() {
   var origDismiss = window.dismissAudioOverlay;
   window.dismissAudioOverlay = function() {
+    var startTutorial = TutorialEngine.shouldStart();
     if (typeof origDismiss === 'function') origDismiss();
-    // Delay slightly to let audio init complete
-    if (TutorialEngine.shouldStart()) {
-      setTimeout(function() { TutorialEngine.start(); }, 800);
+    if (startTutorial) {
+      setTimeout(function() { TutorialEngine.start(true); }, 800);
     }
   };
 })();

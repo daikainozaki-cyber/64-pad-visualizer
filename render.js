@@ -729,7 +729,7 @@ function render() {
   // Guitar/bass positions already computed above (before renderPads)
   renderGuitarDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state);
   renderBassDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state);
-  renderPianoDisplay(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS);
+  renderPianoDisplay(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state.charPCS);
   renderCircle();
 
   // Re-apply instrument highlights after SVG rebuild
@@ -1801,7 +1801,7 @@ function toggleBassFret(stringIdx, fret) {
 // ========================================
 // PIANO DISPLAY
 // ========================================
-function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) {
+function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, charPCS) {
   const svg = document.getElementById('piano-display');
   if (!pcsSet) pcsSet = new Set();
 
@@ -1822,8 +1822,10 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
   svg.innerHTML = '';
 
   const solo = showPiano && !showGuitar;
-  const numOctaves = 4; // C1 to B4 (matches pad range)
-  const startOctave = 1;
+  const numOctaves = 4;
+  const pianoBaseMidi = baseMidi();
+  const startOctave = Math.floor(pianoBaseMidi / 12) - 2; // MIDI 36=C1 → oct 1, MIDI 24=C0 → oct 0
+  const pianoMidiBase = (startOctave + 2) * 12; // C of the lowest octave shown
   const whiteH = solo ? 80 : 50, blackH = solo ? 52 : 32;
   const numWhites = numOctaves * 7;
   const W = DIAGRAM_WIDTH;
@@ -1866,13 +1868,21 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
       const isActive = pcsSet.has(pc);
       const isRoot = pc === rootPC;
       const isBass = bassPC !== undefined && bassPC !== null && pc === bassPC && !isRoot;
+      const isActiveChar = isActive && !isRoot && !isBass && charPCS && charPCS.has(pc);
       const isOvl = !isActive && !isRoot && !isBass && overlayPCS && overlayPCS.has(pc);
-      const isChar = isOvl && overlayCharPCS && overlayCharPCS.has(pc);
+      const isOvlChar = isOvl && overlayCharPCS && overlayCharPCS.has(pc);
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', wx); rect.setAttribute('y', startY);
       rect.setAttribute('width', whiteW - 1); rect.setAttribute('height', whiteH);
       rect.setAttribute('rx', 1);
-      rect.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBass ? INST_BASS_COLOR : (isActive ? '#999' : (isOvl ? (isChar ? '#e8dfa0' : '#b8d8ec') : '#eee'))));
+      var wFill = '#eee';
+      if (isRoot) wFill = INST_ROOT_COLOR;
+      else if (isBass) wFill = INST_BASS_COLOR;
+      else if (isActiveChar) wFill = '#F0E442';  // --pad-char (yellow)
+      else if (isActive) wFill = '#90CAF9';       // light blue (--pad-scale on white key)
+      else if (isOvlChar) wFill = '#e8dfa0';
+      else if (isOvl) wFill = '#b8d8ec';
+      rect.setAttribute('fill', wFill);
       rect.setAttribute('stroke', '#bbb'); rect.setAttribute('stroke-width', 0.5);
       svg.appendChild(rect);
       if (isActive || isRoot || isBass || isOvl) {
@@ -1880,7 +1890,7 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
         label.setAttribute('x', wx + (whiteW - 1) / 2); label.setAttribute('y', startY + whiteH - 6);
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('font-size', '10px');
-        label.setAttribute('fill', isRoot ? '#fff' : (isBass ? '#000' : (isOvl ? '#666' : '#333')));
+        label.setAttribute('fill', isRoot ? '#fff' : '#333');
         label.setAttribute('font-weight', '700');
         label.textContent = pianoDegreeLabel(pc);
         svg.appendChild(label);
@@ -1896,23 +1906,31 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
       const isActive = pcsSet.has(pc);
       const isRoot = pc === rootPC;
       const isBass = bassPC !== undefined && bassPC !== null && pc === bassPC && !isRoot;
+      const isActiveChar = isActive && !isRoot && !isBass && charPCS && charPCS.has(pc);
       const isOvl = !isActive && !isRoot && !isBass && overlayPCS && overlayPCS.has(pc);
-      const isChar = isOvl && overlayCharPCS && overlayCharPCS.has(pc);
+      const isOvlChar = isOvl && overlayCharPCS && overlayCharPCS.has(pc);
       const whiteIdx = blackPositions[i] + oct * 7;
       const bx = startX + (whiteIdx + 1) * whiteW - blackW / 2;
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', bx); rect.setAttribute('y', startY);
       rect.setAttribute('width', blackW); rect.setAttribute('height', blackH);
       rect.setAttribute('rx', 1);
-      rect.setAttribute('fill', isRoot ? INST_ROOT_COLOR : (isBass ? INST_BASS_COLOR : (isActive ? '#555' : (isOvl ? (isChar ? INST_OVERLAY_CHAR_COLOR : INST_OVERLAY_COLOR) : '#222'))));
+      var bFill = '#222';
+      if (isRoot) bFill = INST_ROOT_COLOR;
+      else if (isBass) bFill = INST_BASS_COLOR;
+      else if (isActiveChar) bFill = '#C8B900';   // darker yellow for black key visibility
+      else if (isActive) bFill = '#4A90D9';        // medium blue (--pad-scale on black key)
+      else if (isOvlChar) bFill = INST_OVERLAY_CHAR_COLOR;
+      else if (isOvl) bFill = INST_OVERLAY_COLOR;
+      rect.setAttribute('fill', bFill);
       rect.setAttribute('stroke', '#000'); rect.setAttribute('stroke-width', 0.5);
-      if (isOvl) rect.setAttribute('opacity', isChar ? '0.6' : '0.5');
+      if (isOvl) rect.setAttribute('opacity', isOvlChar ? '0.6' : '0.5');
       svg.appendChild(rect);
       if (isActive || isRoot || isBass || isOvl) {
         const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         label.setAttribute('x', bx + blackW / 2); label.setAttribute('y', startY + blackH - 3);
         label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('font-size', '8px'); label.setAttribute('fill', isBass ? '#000' : (isOvl ? '#fff' : '#ddd'));
+        label.setAttribute('font-size', '8px'); label.setAttribute('fill', (isRoot || isActiveChar) ? '#000' : '#fff');
         label.setAttribute('font-weight', '700');
         label.textContent = pianoDegreeLabel(pc);
         svg.appendChild(label);
@@ -1923,7 +1941,7 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
   // Piano selected note markers (white circles)
   for (let oct = 0; oct < numOctaves; oct++) {
     for (let i = 0; i < 12; i++) {
-      const midi = 36 + oct * 12 + i;
+      const midi = pianoMidiBase + oct * 12 + i;
       if (!pianoSelectedNotes.has(midi)) continue;
       const isWhite = [0,2,4,5,7,9,11].includes(i);
       let cx, cy;
@@ -1964,9 +1982,9 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
       var hand = stockAllNotes[si];
       for (var sn = 0; sn < hand.notes.length; sn++) {
         var smidi = hand.notes[sn];
-        if (smidi < 36 || smidi > 36 + numOctaves * 12 - 1) continue;
-        var soct = Math.floor((smidi - 36) / 12);
-        var spc = (smidi - 36) % 12;
+        if (smidi < pianoMidiBase || smidi > pianoMidiBase + numOctaves * 12 - 1) continue;
+        var soct = Math.floor((smidi - pianoMidiBase) / 12);
+        var spc = (smidi - pianoMidiBase) % 12;
         var sisWhite = [0,2,4,5,7,9,11].includes(spc);
         var scx, scy;
         if (sisWhite) {
@@ -2003,7 +2021,7 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
   for (let oct = 0; oct < numOctaves; oct++) {
     for (let i = 0; i < 7; i++) {
       const pc = whiteNotes[i];
-      const midi = 36 + oct * 12 + pc;
+      const midi = pianoMidiBase + oct * 12 + pc;
       const kx = startX + (oct * 7 + i) * whiteW;
       const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       hit.setAttribute('x', kx); hit.setAttribute('y', startY + blackH);
@@ -2018,7 +2036,7 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
   for (let oct = 0; oct < numOctaves; oct++) {
     for (let i = 0; i < 5; i++) {
       const pc = blackNotes[i];
-      const midi = 36 + oct * 12 + pc;
+      const midi = pianoMidiBase + oct * 12 + pc;
       const whiteIdx = blackPositions[i] + oct * 7;
       const bx = startX + (whiteIdx + 1) * whiteW - blackW / 2;
       const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');

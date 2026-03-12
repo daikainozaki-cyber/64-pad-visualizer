@@ -1009,9 +1009,14 @@ function updateTastyMatches() {
   TastyState.currentCategory = cat;
   // Use voicings JSON (129 degree-based recipes) when available
   if (TastyState.voicings && cat) {
-    TastyState.currentMatches = TastyState.voicings.filter(function(v) {
+    var matches = TastyState.voicings.filter(function(v) {
       return v.cat === cat;
     });
+    // Apply top-note filter if set
+    if (TastyState.topFilter) {
+      matches = matches.filter(function(v) { return v.top === TastyState.topFilter; });
+    }
+    TastyState.currentMatches = matches;
   } else {
     TastyState.currentMatches = [];
   }
@@ -1120,10 +1125,28 @@ function disableTasty() {
   TastyState.outOfRange = [];
   TastyState.degreeMap = {};
   TastyState.topNote = null;
+  TastyState.topFilter = null;
 
   updateTastyUI();
   render();
   playCurrentChord();
+}
+
+function setTastyTopFilter(top) {
+  TastyState.topFilter = top;
+  updateTastyMatches();
+  if (TastyState.currentMatches.length > 0) {
+    TastyState.currentIndex = -1;
+    cycleTasty();
+  } else {
+    TastyState.currentIndex = -1;
+    TastyState.midiNotes = [];
+    TastyState.outOfRange = [];
+    TastyState.degreeMap = {};
+    TastyState.topNote = null;
+    updateTastyUI();
+    render();
+  }
 }
 
 // Base chord tones for each quality (used to determine added tensions)
@@ -1289,9 +1312,40 @@ function updateTastyUI() {
     if (nextBtn) nextBtn.style.display = 'none';
   }
 
-  // Degree badges disabled — degree info is on pads (cognitive flow: bar=concept, pads=degrees)
+  // Top-note filter buttons
   var degRow = document.getElementById('tasty-degrees-row');
-  if (degRow) { degRow.innerHTML = ''; degRow.style.display = 'none'; }
+  if (degRow) {
+    if (TastyState.enabled && TastyState.currentCategory) {
+      // Build unique top notes for this category
+      var allCat = TastyState.voicings ? TastyState.voicings.filter(function(v) {
+        return v.cat === TastyState.currentCategory;
+      }) : [];
+      var topSet = {};
+      allCat.forEach(function(v) { topSet[v.top] = (topSet[v.top] || 0) + 1; });
+      var tops = Object.keys(topSet);
+      // Sort by semitone value
+      var DEG_SEMI = {'1':0,'b9':1,'9':2,'#9':3,'b3':3,'3':4,'11':5,'#11':6,'b5':6,'5':7,'#5':8,'b13':8,'13':9,'6':9,'b7':10,'7':11};
+      tops.sort(function(a, b) { return (DEG_SEMI[a] || 0) - (DEG_SEMI[b] || 0); });
+      var html = '<button onclick="setTastyTopFilter(null)" style="font-size:0.6rem;padding:2px 6px;border-radius:4px;cursor:pointer;border:1px solid var(--accent,#f80);' +
+        (TastyState.topFilter === null ? 'background:var(--accent,#f80);color:#000;font-weight:700;' : 'background:var(--surface);color:var(--text);') +
+        '">ALL(' + allCat.length + ')</button> ';
+      tops.forEach(function(t) {
+        var active = TastyState.topFilter === t;
+        html += '<button onclick="setTastyTopFilter(\'' + t + '\')" style="font-size:0.6rem;padding:2px 6px;border-radius:4px;cursor:pointer;border:1px solid var(--accent,#f80);' +
+          (active ? 'background:var(--accent,#f80);color:#000;font-weight:700;' : 'background:var(--surface);color:var(--text);') +
+          '">Top:' + t + '(' + topSet[t] + ')</button> ';
+      });
+      degRow.innerHTML = html;
+      degRow.style.display = '';
+      degRow.style.padding = '2px 8px';
+      degRow.style.display = 'flex';
+      degRow.style.gap = '4px';
+      degRow.style.flexWrap = 'wrap';
+    } else {
+      degRow.innerHTML = '';
+      degRow.style.display = 'none';
+    }
+  }
 }
 
 // ========================================
@@ -1505,7 +1559,7 @@ if (typeof module !== 'undefined') module.exports = {
   chordDegreeName, getDiatonicTetrads, getBuilderChordName,
   findParentScales, fifthsDistance, noteNameForKey,
   getTastyCategory, findQualityByName, toggleTasty, cycleTasty,
-  disableTasty, updateTastyMatches, getTastyDiffText, updateTastyUI,
+  disableTasty, updateTastyMatches, getTastyDiffText, updateTastyUI, setTastyTopFilter,
   buildTastyVoicing, buildTastyDegreeMap, getTastyLabels, splitByPadRange, findBestPosition, TASTY_DEGREE_MAP,
   getTastyDegreeCategory, renderTastyDegreeBadges,
 };

@@ -110,6 +110,7 @@ const TastyState = {
   outOfRange: [],        // MIDI notes outside pad range
   degreeMap: {},         // {midiNote: degreeString} — recipe degree per note
   topNote: null,         // highest MIDI note in current voicing
+  topFilter: null,       // top-note degree filter (e.g. '1', '3', 'b7') or null = all
 };
 
 // ======== STOCK VOICING STATE ========

@@ -341,8 +341,9 @@ I18N.addLang('en', {
   tips_off: "Don't show tips",
   whats_new: "What's New",
   whats_new_32427: 'Guitar voicing \u2192 Pad reflect (V key). Guitar-like / Compact layout switch.',
+  whats_new_33000: 'Tutorial system! Click the book icon in the header to learn Scale mode, Chord mode, and more.',
 
-  // Tutorial (first-time onboarding)
+  // Legacy tutorial keys (backward compat for old lang files)
   tutorial: {
     sound_title: 'Sound Preset',
     sound_msg: 'Choose a sound preset and tap a pad to hear it.\nORGAN, E.PIANO, CLAV — each has multiple presets.',
@@ -362,5 +363,68 @@ I18N.addLang('en', {
     open_guide: 'Open Guide',
     close: 'Start',
     reset: 'Restart tutorial',
+  },
+
+  // Tutorial system (tut.* namespace)
+  tut: {
+    // Selector UI
+    selector_title: 'Tutorials',
+    cat_getting_started: 'Getting Started',
+    cat_features: 'Features',
+    cat_advanced: 'Advanced',
+    steps_label: 'steps',
+    reset_all: 'Reset all progress',
+    close_selector: 'Close',
+    // Shared action labels
+    next: 'Next',
+    skip_step: 'Skip',
+    skip_all: 'Skip tutorial',
+    open_guide: 'Open Guide',
+    close: 'Done',
+    // Onboarding
+    onboarding_title: 'First Steps',
+    onboarding_desc: 'Learn the basics of 64 Pad Explorer',
+    onboarding: {
+      sound_title: 'Sound Preset',
+      sound_msg: 'Choose a sound preset and tap a pad to hear it.\nORGAN, E.PIANO, CLAV — each has multiple presets.',
+      sound_done: 'Sounds good! Press Next to continue.',
+      midi_title: 'MIDI Controller',
+      midi_msg: 'A MIDI controller has been detected. Select your device from the dropdown.\nVelocity sensitivity can be adjusted in the Sound panel.',
+      midi_no_device: 'No MIDI controller detected — that\'s OK.\nYou can use pad clicks, guitar/bass/piano input, or text chord input.',
+      input_title: 'Three Modes',
+      input_msg: 'Scale — view scale notes on the 64-pad grid\nChord — build chords with voicings, inversions, and tensions\nInput — tap pads freely to detect chord names\n\nSwitch with Tab or the mode buttons above.',
+      instruments_title: 'Instrument Input',
+      instruments_msg: 'Guitar, Bass, Piano — toggle each display and click to input notes directly.\nGuitar fretboard click \u2192 chord detection \u2192 "Pad reflect" (V) to convert to pad layout.\nText input: press / in Chord mode to type chord names (e.g. Cm7, G7(b9,#11)).',
+      done_title: 'Ready!',
+      done_msg: 'You\'re all set. Explore freely — press ? for the full shortcut list.\nThe Guide has screenshots, videos, and use cases.',
+    },
+    // Scale Mode tutorial
+    scale_mode_title: 'Scale Mode',
+    scale_mode_desc: 'Explore scales on the 64-pad grid',
+    scale_mode: {
+      step1_title: 'Switch to Scale Mode',
+      step1_msg: 'Scale mode shows scale notes lit up across the pad grid.\nTap any lit pad to hear the note.',
+      step2_title: 'Choose a Key',
+      step2_msg: 'Pick a root key. The pad grid updates instantly.\nTry switching between C, G, F — hear how the color pattern shifts.',
+      step3_title: 'Choose a Scale',
+      step3_msg: 'Major, Minor, Dorian, Mixolydian, Pentatonic...\n31 scales available. The pads update in real time.',
+      step4_title: 'Diatonic Bar',
+      step4_msg: 'The diatonic chords for your chosen scale appear here.\nClick any chord to jump into Chord mode with that voicing.',
+    },
+    // Chord Mode tutorial
+    chord_mode_title: 'Chord Mode',
+    chord_mode_desc: 'Build chords step by step',
+    chord_mode: {
+      step1_title: 'Switch to Chord Mode',
+      step1_msg: 'Chord mode lets you build any chord from scratch.\n3 steps: Root → Quality → Tension.',
+      step2_title: 'Step 1: Root',
+      step2_msg: 'Pick a root note. C, D, E... all 12 keys.\nThe display shows your current chord.',
+      step3_title: 'Step 2: Quality',
+      step3_msg: 'Choose the chord type: Maj, min, 7, m7, dim, aug...\nThe pad grid lights up the chord tones.',
+      step4_title: 'Step 3: Tensions',
+      step4_msg: 'Pick a Quality first — Tension buttons appear automatically.\nAdd color: 9, b9, #9, 11, #11, 13, b13. Multiple OK.',
+      step5_title: 'Text Input',
+      step5_msg: 'Press / to type chord names directly.\nCm7, G7(b9,#11), Am7/G — autocomplete helps you.',
+    },
   },
 });

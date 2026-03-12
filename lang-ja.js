@@ -341,8 +341,9 @@ I18N.addLang('ja', {
   tips_off: 'ヒントを非表示',
   whats_new: '新機能',
   whats_new_32427: 'ギターボイシング→パッド反映（Vキー）。ギターライク / コンパクト配置の切替',
+  whats_new_33000: 'チュートリアル機能！ヘッダーの本アイコンからScaleモード・Chordモードの使い方を学べます。',
 
-  // チュートリアル（初回オンボーディング）
+  // チュートリアル（初回オンボーディング）— 後方互換
   tutorial: {
     sound_title: '音色プリセット',
     sound_msg: '音色を選んでパッドを叩いてみてください。\nORGAN、E.PIANO、CLAV — それぞれ複数のプリセットがあります。',
@@ -362,5 +363,68 @@ I18N.addLang('ja', {
     open_guide: 'ガイドを開く',
     close: 'はじめる',
     reset: 'チュートリアルをやり直す',
+  },
+
+  // チュートリアルシステム（tut.* namespace）
+  tut: {
+    // セレクターUI
+    selector_title: 'チュートリアル',
+    cat_getting_started: 'はじめよう',
+    cat_features: '機能を学ぶ',
+    cat_advanced: '応用',
+    steps_label: 'ステップ',
+    reset_all: '進捗をリセット',
+    close_selector: '閉じる',
+    // 共通アクション
+    next: '次へ',
+    skip_step: 'スキップ',
+    skip_all: 'チュートリアルをスキップ',
+    open_guide: 'ガイドを開く',
+    close: '完了',
+    // オンボーディング
+    onboarding_title: 'はじめの一歩',
+    onboarding_desc: '64 Pad Explorerの基本を学ぶ',
+    onboarding: {
+      sound_title: '音色プリセット',
+      sound_msg: '音色を選んでパッドを叩いてみてください。\nORGAN、E.PIANO、CLAV — それぞれ複数のプリセットがあります。',
+      sound_done: 'いい音ですね！次へ進みましょう。',
+      midi_title: 'MIDIコントローラー',
+      midi_msg: 'MIDIコントローラーが検出されました。ドロップダウンからデバイスを選択してください。\nベロシティ感度はSoundパネルで調整できます。',
+      midi_no_device: 'MIDIコントローラーがなくても大丈夫。\nパッドクリック、ギター・ベース・ピアノ入力、テキスト入力で使えます。',
+      input_title: '3つのモード',
+      input_msg: 'Scale — 64パッド上にスケール音を表示\nChord — ボイシング・転回形・テンション付きでコードを構築\nInput — パッドを自由にタップしてコード名を判定\n\nTabキーまたはモードボタンで切り替え。',
+      instruments_title: '楽器入力',
+      instruments_msg: 'ギター・ベース・ピアノ — 表示をONにしてクリックで音を入力。\nギターフレットボードクリック → コード判定 →「パッドに反映」(V)。\nChordモードで / を押してコード名を直接入力。',
+      done_title: '準備完了！',
+      done_msg: '自由に探索してください。? でショートカット一覧。\nガイドにスクリーンショットと動画があります。',
+    },
+    // Scaleモード
+    scale_mode_title: 'Scaleモード',
+    scale_mode_desc: 'パッド上でスケールを探索',
+    scale_mode: {
+      step1_title: 'Scaleモードへ切替',
+      step1_msg: 'Scaleモードではスケールの音がパッド上に光ります。\n光っているパッドを叩いて音を確かめてみてください。',
+      step2_title: 'キーを選ぶ',
+      step2_msg: 'ルートキーを選択。パッドの表示が即座に変わります。\nC、G、F を切り替えて色のパターンの変化を見てみましょう。',
+      step3_title: 'スケールを選ぶ',
+      step3_msg: 'メジャー、マイナー、ドリアン、ミクソリディアン、ペンタトニック...\n31種類のスケール。パッドがリアルタイムで更新されます。',
+      step4_title: 'ダイアトニックバー',
+      step4_msg: '選んだスケールのダイアトニックコードが表示されます。\nクリックするとそのコードでChordモードに移動します。',
+    },
+    // Chordモード
+    chord_mode_title: 'Chordモード',
+    chord_mode_desc: 'コードをステップで構築',
+    chord_mode: {
+      step1_title: 'Chordモードへ切替',
+      step1_msg: 'Chordモードではコードをゼロから構築できます。\n3ステップ: ルート → クオリティ → テンション。',
+      step2_title: 'Step 1: ルート',
+      step2_msg: 'ルート音を選びます。C、D、E... 全12キー。\n選択中のコードが上部に表示されます。',
+      step3_title: 'Step 2: クオリティ',
+      step3_msg: 'コードタイプを選択: Maj、min、7、m7、dim、aug...\nパッド上にコードトーンが光ります。',
+      step4_title: 'Step 3: テンション',
+      step4_msg: 'まずQualityを選んでください — テンションボタンが自動で表示されます。\n9、b9、#9、11、#11、13、b13。複数選択OK。',
+      step5_title: 'テキスト入力',
+      step5_msg: '/ キーでコード名を直接入力。\nCm7、G7(b9,#11)、Am7/G — オートコンプリートが助けてくれます。',
+    },
   },
 });

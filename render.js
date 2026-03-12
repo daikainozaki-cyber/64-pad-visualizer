@@ -581,6 +581,7 @@ function renderVoicingBoxes(svg, state) {
 function renderInfoText(state) {
   const { activeLabel, rootPC } = state;
   const infoEl = document.getElementById('info-text');
+  if (!infoEl) return;
   if (AppState.mode === 'scale') {
     const scale = SCALES[AppState.scaleIdx];
     const notes = scale.pcs.map(pc => pcName((pc + AppState.key) % 12));

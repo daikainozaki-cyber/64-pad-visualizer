@@ -1,7 +1,8 @@
 // ========================================
-// TUTORIAL ENGINE — Interactive onboarding for first-time users
-// Loaded after main.js. Starts after Audio Overlay is dismissed.
-// localStorage '64pad-tutorial-complete' tracks completion.
+// TUTORIAL ENGINE — Multi-tutorial system with selector UI
+// Depends on: tutorial-data.js (TutorialRegistry), i18n.js (t())
+// localStorage '64pad-tutorial-complete' = onboarding backward compat
+// localStorage '64pad-tut-{id}' = per-tutorial completion
 // ========================================
 
 var TutorialEngine = {
@@ -10,79 +11,52 @@ var TutorialEngine = {
   card: null,
   highlightEl: null,
   _presetChanged: false,
+  _currentTutorialId: null,
+  _currentSteps: null,
 
-  STEPS: [
-    {
-      id: 'sound',
-      targets: ['#sound-controls', '#organ-preset'],
-      highlight: '#organ-preset',
-      titleKey: 'tutorial.sound_title',
-      msgKey: 'tutorial.sound_msg',
-      waitFor: 'preset-change',  // wait for user to change sound preset
-    },
-    {
-      id: 'midi',
-      targets: ['#midi-status'],
-      highlight: '#midi-status',
-      titleKey: 'tutorial.midi_title',
-      msgKey: 'tutorial.midi_msg',
-      msgKeyAlt: 'tutorial.midi_no_device',
-      waitFor: 'next',
-    },
-    {
-      id: 'input',
-      targets: ['#mode-scale', '#mode-chord', '#mode-input'],
-      highlight: null,  // highlight the mode bar area
-      titleKey: 'tutorial.input_title',
-      msgKey: 'tutorial.input_msg',
-      waitFor: 'next',
-    },
-    {
-      id: 'instruments',
-      targets: ['#inst-toggle-guitar', '#inst-toggle-bass', '#inst-toggle-piano'],
-      highlight: '#inst-toggle-bar',
-      titleKey: 'tutorial.instruments_title',
-      msgKey: 'tutorial.instruments_msg',
-      waitFor: 'next',
-    },
-    {
-      id: 'done',
-      targets: [],
-      highlight: null,
-      titleKey: 'tutorial.done_title',
-      msgKey: 'tutorial.done_msg',
-      waitFor: 'close',
-    },
-  ],
+  // ---- Onboarding auto-start logic (backward compat) ----
 
   shouldStart: function() {
-    // Only start for first-time users who haven't completed tutorial
-    // Existing users (who have 64pad-sound) see tutorial only if they explicitly reset
     if (localStorage.getItem('64pad-tutorial-complete')) return false;
-    if (localStorage.getItem('64pad-tutorial-reset')) return true;  // explicit reset from Help modal
-    if (localStorage.getItem('64pad-sound')) return false;  // existing user
+    if (localStorage.getItem('64pad-tutorial-reset')) return true;
+    if (localStorage.getItem('64pad-sound')) return false;
     return true;
   },
 
-  start: function(force) {
-    if (!force && !this.shouldStart()) return;
-    localStorage.removeItem('64pad-tutorial-reset');  // clear reset flag after use
+  // ---- Start a specific tutorial by ID ----
+
+  startTutorial: function(id) {
+    var tut = TutorialRegistry.get(id);
+    if (!tut) return;
+    // Close selector if open
+    this._closeSelector();
+    this._currentTutorialId = id;
+    this._currentSteps = tut.steps;
     this.active = true;
     this.step = -1;
     this._presetChanged = false;
-    // Listen for preset changes (for step 0)
-    // Store bound reference so removeEventListener works (bind creates new fn each call)
-    this._boundOnPresetChange = this._onPresetChange.bind(this);
-    var presetSel = document.getElementById('organ-preset');
-    if (presetSel) {
-      presetSel.addEventListener('change', this._boundOnPresetChange);
+    // Preset listener for onboarding sound step
+    if (id === 'onboarding') {
+      this._boundOnPresetChange = this._onPresetChange.bind(this);
+      var presetSel = document.getElementById('organ-preset');
+      if (presetSel) {
+        presetSel.addEventListener('change', this._boundOnPresetChange);
+      }
     }
     this.next();
   },
 
+  // Legacy: start onboarding
+  start: function(force) {
+    if (!force && !this.shouldStart()) return;
+    localStorage.removeItem('64pad-tutorial-reset');
+    this.startTutorial('onboarding');
+  },
+
   next: function() {
     this.step++;
-    if (this.step >= this.STEPS.length) {
+    var steps = this._currentSteps || [];
+    if (this.step >= steps.length) {
       this.complete();
       return;
     }
@@ -97,25 +71,31 @@ var TutorialEngine = {
     this.active = false;
     this._removeCard();
     this._removeHighlight();
-    localStorage.setItem('64pad-tutorial-complete', '1');
-    // Remove preset listener (use stored bound reference)
+    // Mark tutorial complete
+    if (this._currentTutorialId) {
+      TutorialRegistry.markComplete(this._currentTutorialId);
+    }
+    // Remove preset listener
     var presetSel = document.getElementById('organ-preset');
     if (presetSel && this._boundOnPresetChange) {
       presetSel.removeEventListener('change', this._boundOnPresetChange);
     }
+    this._currentTutorialId = null;
+    this._currentSteps = null;
   },
 
   _onPresetChange: function() {
     this._presetChanged = true;
-    if (this.active && this.step === 0) {
-      // Show "Next" button after preset change
-      var nextBtn = document.querySelector('.tutorial-next-btn');
-      if (nextBtn) nextBtn.style.display = '';
-      // Update message
-      var msgEl = document.querySelector('.tutorial-msg');
-      if (msgEl) {
-        var doneMsg = t('tutorial.sound_done');
-        if (doneMsg !== 'tutorial.sound_done') msgEl.textContent = doneMsg;
+    if (this.active && this._currentSteps && this.step >= 0) {
+      var stepDef = this._currentSteps[this.step];
+      if (stepDef && stepDef.waitFor === 'preset-change') {
+        var nextBtn = document.querySelector('.tutorial-next-btn');
+        if (nextBtn) nextBtn.style.display = '';
+        var msgEl = document.querySelector('.tutorial-msg');
+        if (msgEl) {
+          var doneMsg = t('tut.onboarding.sound_done');
+          if (doneMsg !== 'tut.onboarding.sound_done') msgEl.textContent = doneMsg;
+        }
       }
     }
   },
@@ -124,11 +104,17 @@ var TutorialEngine = {
     this._removeCard();
     this._removeHighlight();
 
-    var stepDef = this.STEPS[this.step];
-    var self = this;
+    var steps = this._currentSteps;
+    if (!steps || this.step < 0 || this.step >= steps.length) return;
+    var stepDef = steps[this.step];
 
-    // Ensure Sound panel is expanded for sound step
-    if (stepDef.id === 'sound') {
+    // beforeShow hook
+    if (typeof stepDef.beforeShow === 'function') {
+      stepDef.beforeShow();
+    }
+
+    // Ensure Sound panel is expanded for onboarding sound step
+    if (stepDef.id === 'sound' && this._currentTutorialId === 'onboarding') {
       if (typeof showSound !== 'undefined' && !showSound && typeof toggleInstrument === 'function') {
         toggleInstrument('sound');
       }
@@ -142,10 +128,12 @@ var TutorialEngine = {
         this.highlightEl = hl;
       }
     }
-    stepDef.targets.forEach(function(sel) {
-      var el = document.querySelector(sel);
-      if (el) el.classList.add('tutorial-target');
-    });
+    if (stepDef.targets) {
+      stepDef.targets.forEach(function(sel) {
+        var el = document.querySelector(sel);
+        if (el) el.classList.add('tutorial-target');
+      });
+    }
 
     // Create card
     var card = document.createElement('div');
@@ -153,8 +141,7 @@ var TutorialEngine = {
     card.className = 'tutorial-card';
 
     // Step indicator
-    var stepNum = this.step + 1;
-    var totalSteps = this.STEPS.length;
+    var totalSteps = steps.length;
     var dots = '';
     for (var i = 0; i < totalSteps; i++) {
       dots += '<span class="tutorial-dot' + (i === this.step ? ' active' : '') + '"></span>';
@@ -162,12 +149,12 @@ var TutorialEngine = {
 
     // Title
     var title = t(stepDef.titleKey);
-    if (title === stepDef.titleKey) title = stepDef.id; // fallback
+    if (title === stepDef.titleKey) title = stepDef.id || '';
 
     // Message — check for alt message (e.g., MIDI no device)
     var msg = '';
-    if (stepDef.id === 'midi') {
-      var hasMidi = midiAccess && midiAccess.inputs && midiAccess.inputs.size > 0;
+    if (stepDef.id === 'midi' && this._currentTutorialId === 'onboarding') {
+      var hasMidi = typeof midiAccess !== 'undefined' && midiAccess && midiAccess.inputs && midiAccess.inputs.size > 0;
       if (hasMidi) {
         msg = t(stepDef.msgKey);
       } else {
@@ -178,34 +165,44 @@ var TutorialEngine = {
     }
     if (msg === stepDef.msgKey || msg === stepDef.msgKeyAlt) msg = '';
 
+    // Media
+    var mediaHtml = '';
+    if (stepDef.media) {
+      if (stepDef.media.type === 'img') {
+        mediaHtml = '<div class="tutorial-media"><img src="' + stepDef.media.src + '" loading="lazy" alt=""></div>';
+      } else if (stepDef.media.type === 'video') {
+        mediaHtml = '<div class="tutorial-media"><div class="video-wrap"><iframe src="' + stepDef.media.src + '" allowfullscreen loading="lazy"></iframe></div></div>';
+      }
+    }
+
     // Build card HTML
     var html = '<div class="tutorial-dots">' + dots + '</div>';
     html += '<div class="tutorial-title">' + title + '</div>';
     html += '<div class="tutorial-msg">' + msg + '</div>';
+    if (mediaHtml) html += mediaHtml;
     html += '<div class="tutorial-actions">';
 
     if (stepDef.waitFor === 'preset-change') {
-      // Sound step: show Next only after preset change
-      html += '<button class="tutorial-next-btn" style="' + (this._presetChanged ? '' : 'display:none') + '" onclick="TutorialEngine.next()">' + t('tutorial.next') + '</button>';
-      html += '<button class="tutorial-skip-btn" onclick="TutorialEngine.next()">' + t('tutorial.skip_step') + '</button>';
+      html += '<button class="tutorial-next-btn" style="' + (this._presetChanged ? '' : 'display:none') + '" onclick="TutorialEngine.next()">' + t('tut.next') + '</button>';
+      html += '<button class="tutorial-skip-btn" onclick="TutorialEngine.next()">' + t('tut.skip_step') + '</button>';
     } else if (stepDef.waitFor === 'close') {
-      // Done step
-      html += '<a class="tutorial-guide-link" href="guide.html" target="_blank">' + t('tutorial.open_guide') + '</a>';
-      html += '<button class="tutorial-next-btn" onclick="TutorialEngine.complete()">' + t('tutorial.close') + '</button>';
+      if (this._currentTutorialId === 'onboarding') {
+        html += '<a class="tutorial-guide-link" href="guide.html" target="_blank">' + t('tut.open_guide') + '</a>';
+      }
+      html += '<button class="tutorial-next-btn" onclick="TutorialEngine.complete()">' + t('tut.close') + '</button>';
     } else {
-      // Normal next step
-      html += '<button class="tutorial-next-btn" onclick="TutorialEngine.next()">' + t('tutorial.next') + '</button>';
+      html += '<button class="tutorial-next-btn" onclick="TutorialEngine.next()">' + t('tut.next') + '</button>';
     }
 
     // Skip tutorial (always available except on last step)
     if (stepDef.waitFor !== 'close') {
-      html += '<button class="tutorial-skip-all-btn" onclick="TutorialEngine.skip()">' + t('tutorial.skip_all') + '</button>';
+      html += '<button class="tutorial-skip-all-btn" onclick="TutorialEngine.skip()">' + t('tut.skip_all') + '</button>';
     }
 
     html += '</div>';
     card.innerHTML = html;
 
-    // Insert card near target or at top of main area
+    // Insert card
     var insertTarget = document.getElementById('pad-grid');
     if (insertTarget) {
       insertTarget.parentNode.insertBefore(card, insertTarget);
@@ -227,7 +224,6 @@ var TutorialEngine = {
   },
 
   _removeHighlight: function() {
-    // Remove all tutorial highlights
     document.querySelectorAll('.tutorial-highlight').forEach(function(el) {
       el.classList.remove('tutorial-highlight');
     });
@@ -237,15 +233,99 @@ var TutorialEngine = {
     this.highlightEl = null;
   },
 
-  // Reset tutorial (from Help modal) — forces restart even for existing users
+  // Legacy reset (from Help modal) — forces onboarding restart
   reset: function() {
     localStorage.removeItem('64pad-tutorial-complete');
     localStorage.setItem('64pad-tutorial-reset', '1');
+  },
+
+  // ---- Selector Modal ----
+
+  showSelector: function() {
+    // Close help modal if open
+    var helpOv = document.getElementById('help-overlay');
+    if (helpOv) helpOv.classList.remove('active');
+
+    // Don't open if tutorial is running
+    if (this.active) {
+      this.skip();
+    }
+
+    // Always rebuild to reflect current completion state
+    var existing = document.getElementById('tut-selector-overlay');
+    if (existing) existing.remove();
+
+    // Build selector
+    var overlay = document.createElement('div');
+    overlay.id = 'tut-selector-overlay';
+    overlay.className = 'help-overlay active';
+    overlay.onclick = function(e) {
+      if (e.target === overlay) overlay.classList.remove('active');
+    };
+
+    var modal = document.createElement('div');
+    modal.className = 'help-modal tut-selector-modal';
+
+    var html = '<h2>' + t('tut.selector_title') + '</h2>';
+
+    var cats = TutorialRegistry.categories;
+    for (var ci = 0; ci < cats.length; ci++) {
+      var cat = cats[ci];
+      var tuts = TutorialRegistry.getByCategory(cat.id);
+      if (tuts.length === 0) continue;
+
+      html += '<h3 class="tut-cat-title">' + t(cat.titleKey) + '</h3>';
+      html += '<div class="tut-card-grid">';
+
+      for (var ti = 0; ti < tuts.length; ti++) {
+        var tut = tuts[ti];
+        var done = TutorialRegistry.isComplete(tut.id);
+        var title = t(tut.titleKey);
+        if (title === tut.titleKey) title = tut.id;
+        var desc = t(tut.descKey || '');
+        if (desc === tut.descKey) desc = '';
+        var stepCount = tut.steps ? tut.steps.length : 0;
+
+        html += '<button class="tut-card' + (done ? ' tut-card-done' : '') + '" onclick="TutorialEngine._launchFromSelector(\'' + tut.id + '\')">';
+        html += '<span class="tut-card-title">' + title + (done ? ' <span class="tut-badge">&#10003;</span>' : '') + '</span>';
+        if (desc) html += '<span class="tut-card-desc">' + desc + '</span>';
+        html += '<span class="tut-card-steps">' + stepCount + ' ' + t('tut.steps_label') + '</span>';
+        html += '</button>';
+      }
+
+      html += '</div>';
+    }
+
+    // Reset all button
+    html += '<div style="text-align:center;margin-top:12px;">';
+    html += '<button class="tut-reset-all-btn" onclick="TutorialRegistry.resetAll();TutorialEngine._refreshSelector();">' + t('tut.reset_all') + '</button>';
+    html += '</div>';
+
+    html += '<button class="close-btn" onclick="document.getElementById(\'tut-selector-overlay\').classList.remove(\'active\')">' + t('tut.close_selector') + '</button>';
+
+    modal.innerHTML = html;
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+  },
+
+  _closeSelector: function() {
+    var ov = document.getElementById('tut-selector-overlay');
+    if (ov) ov.classList.remove('active');
+  },
+
+  _launchFromSelector: function(id) {
+    this._closeSelector();
+    this.startTutorial(id);
+  },
+
+  _refreshSelector: function() {
+    var ov = document.getElementById('tut-selector-overlay');
+    if (ov) ov.remove();
+    this.showSelector();
   }
 };
 
-// Hook: Start tutorial after audio overlay is dismissed (for first-time users)
-// Check shouldStart() BEFORE origDismiss — origDismiss saves 64pad-sound to localStorage
+// Hook: Start onboarding after audio overlay is dismissed (for first-time users)
 (function hookTutorialStart() {
   var origDismiss = window.dismissAudioOverlay;
   window.dismissAudioOverlay = function() {

@@ -113,7 +113,7 @@ var _versionNoticeShown = (function showVersionNotice() {
   if (!lastSeen || lastSeen === current) return false;
   // Version changed — show What's New (takes priority over startup tip)
   var whatsNew = t('whats_new') || "What's New";
-  var msg = t('whats_new_32427') || 'Guitar voicing \u2192 Pad reflect (V key). Guitar-like / Compact layout switch.';
+  var msg = t('whats_new_33000') || 'Tutorial system! Click the book icon to learn Scale mode, Chord mode, and more.';
   var el = document.createElement('div');
   el.id = 'startup-tip';
   el.innerHTML = '<span class="tip-text">\u2728 <b>' + whatsNew + ' (' + current + ')</b> \u2014 ' + msg + '</span>' +

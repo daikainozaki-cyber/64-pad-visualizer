@@ -775,315 +775,98 @@ function render() {
 }
 
 // ========================================
-// STAFF NOTATION
+// STAFF NOTATION — adapter to pad-core padRenderStaff
 // ========================================
 function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMidiNotes, bassPC, activeIvPCS) {
-  const staffSvg = document.getElementById('staff-notation');
-  let midiNotes;
+  var staffSvg = document.getElementById('staff-notation');
+  var midiNotes;
+
   if (overrideMidiNotes && overrideMidiNotes.length > 0) {
-    // Deduplicate by pitch class (keep lowest octave) — staff shows chord structure, not octave doublings
-    const seen = new Set();
-    midiNotes = [...overrideMidiNotes].sort((a, b) => a - b).filter(m => {
-      const pc = m % 12;
+    var seen = new Set();
+    midiNotes = [...overrideMidiNotes].sort(function(a, b) { return a - b; }).filter(function(m) {
+      var pc = m % 12;
       if (seen.has(pc)) return false;
       seen.add(pc);
       return true;
     });
   } else if (Array.isArray(overrideMidiNotes)) {
-    // Empty array (Plain mode with no notes selected): show empty staff lines
     midiNotes = [];
   } else if (mode === 'scale') {
     if (activePCS.size === 0) {
       staffSvg.style.display = 'none'; staffSvg.setAttribute('height', 0); return;
     }
-    // Scale mode: render scale notes ascending from root over 1 octave
-    const pcsArr = [...activePCS].map(pc => (pc - rootPC + 12) % 12).sort((a, b) => a - b);
-    const staffBase = 60 + rootPC; // C4 octave (fixed — shows pitch classes, not position)
-    midiNotes = pcsArr.map(iv => staffBase + iv);
+    var pcsArr = [...activePCS].map(function(pc) { return (pc - rootPC + 12) % 12; }).sort(function(a, b) { return a - b; });
+    var staffBase = 60 + rootPC;
+    midiNotes = pcsArr.map(function(iv) { return staffBase + iv; });
   } else {
-    // Chord mode
-    const chordPCS = getBuilderPCS();
+    var chordPCS = getBuilderPCS();
     if (!chordPCS || chordPCS.length < 1) {
-      // No quality selected yet — show root or activePCS
       if (activePCS.size > 0) {
-        const pcsArr = [...activePCS].map(pc => (pc - rootPC + 12) % 12).sort((a, b) => a - b);
-        const staffBase = 48 + rootPC; // C3 octave (fixed)
-        midiNotes = pcsArr.map(iv => staffBase + iv);
+        var pcsArr2 = [...activePCS].map(function(pc) { return (pc - rootPC + 12) % 12; }).sort(function(a, b) { return a - b; });
+        var staffBase2 = 48 + rootPC;
+        midiNotes = pcsArr2.map(function(iv) { return staffBase2 + iv; });
       } else if (rootPC !== null && rootPC !== undefined) {
-        // Root only selected, activePCS is empty but we know the root
         midiNotes = [48 + rootPC];
       } else {
         staffSvg.style.display = 'none'; staffSvg.setAttribute('height', 0); return;
       }
     } else {
-    // Staff always shows all chord tones (voicing is a performance choice, not theory)
-    const allIntervals = [...chordPCS].sort((a, b) => a - b);
-    if (overrideMidiNotes) {
-      midiNotes = overrideMidiNotes;
-    } else {
-      const staffBase = 48 + rootPC; // C3 octave (fixed)
-      midiNotes = allIntervals.map(iv => staffBase + iv);
-      // Add on-chord bass note below the chord
-      if (bassPC !== undefined && bassPC !== null) {
-        let bassMidi = 36 + bassPC;
-        const lowest = Math.min(...midiNotes);
-        while (bassMidi >= lowest) bassMidi -= 12;
-        midiNotes.unshift(bassMidi);
+      var allIntervals = [...chordPCS].sort(function(a, b) { return a - b; });
+      if (overrideMidiNotes) {
+        midiNotes = overrideMidiNotes;
+      } else {
+        var staffBase3 = 48 + rootPC;
+        midiNotes = allIntervals.map(function(iv) { return staffBase3 + iv; });
+        if (bassPC !== undefined && bassPC !== null) {
+          var bassMidi = 36 + bassPC;
+          var lowest = Math.min.apply(null, midiNotes);
+          while (bassMidi >= lowest) bassMidi -= 12;
+          midiNotes.unshift(bassMidi);
+        }
       }
     }
-    }
   }
 
-  // Staff config
-  const W = DIAGRAM_WIDTH, staffLineGap = 8;
-  const trebleTop = 20; // top line of treble staff (F5)
-  const bassTop = trebleTop + 4 * staffLineGap + 30; // top line of bass staff (A3)
-  const totalH = bassTop + 4 * staffLineGap + 30;
-  staffSvg.style.display = '';
-  staffSvg.setAttribute('viewBox', '0 0 ' + W + ' ' + totalH);
-  if (_isMobile || _isLandscape) {
-    staffSvg.removeAttribute('width'); staffSvg.removeAttribute('height');
-    staffSvg.style.width = '100%'; staffSvg.style.height = 'auto';
-  } else {
-    staffSvg.setAttribute('width', W);
-    staffSvg.setAttribute('height', totalH);
-    staffSvg.style.width = ''; staffSvg.style.height = '';
-  }
-  staffSvg.innerHTML = '';
+  var defaultFlats = FLAT_MAJOR_KEYS.has(getParentMajorKey(AppState.scaleIdx, AppState.key));
 
-  // Draw staff lines
-  const staffLeft = 40, staffRight = W - 20;
-  for (let i = 0; i < 5; i++) {
-    // Treble
-    const ty = trebleTop + i * staffLineGap;
-    const tl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    tl.setAttribute('x1', staffLeft); tl.setAttribute('y1', ty);
-    tl.setAttribute('x2', staffRight); tl.setAttribute('y2', ty);
-    tl.setAttribute('stroke', '#666'); tl.setAttribute('stroke-width', 1);
-    staffSvg.appendChild(tl);
-    // Bass
-    const by = bassTop + i * staffLineGap;
-    const bl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    bl.setAttribute('x1', staffLeft); bl.setAttribute('y1', by);
-    bl.setAttribute('x2', staffRight); bl.setAttribute('y2', by);
-    bl.setAttribute('stroke', '#666'); bl.setAttribute('stroke-width', 1);
-    staffSvg.appendChild(bl);
-  }
-
-  // Clef labels
-  const trebleClef = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  trebleClef.setAttribute('x', 14); trebleClef.setAttribute('y', trebleTop + 28);
-  trebleClef.setAttribute('font-size', '36px'); trebleClef.setAttribute('fill', '#999');
-  trebleClef.textContent = '𝄞';
-  staffSvg.appendChild(trebleClef);
-  const bassClef = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  bassClef.setAttribute('x', 14); bassClef.setAttribute('y', bassTop + 16);
-  bassClef.setAttribute('font-size', '24px'); bassClef.setAttribute('fill', '#999');
-  bassClef.textContent = '𝄢';
-  staffSvg.appendChild(bassClef);
-
-  // MIDI to staff Y position
-  // Treble: bottom line = E4(64), top line = F5(77). Each semitone = half step but staff uses diatonic.
-  // Map: use note position in C major scale-like mapping
-  // Staff position: 0 = middle C (C4=60). Each +1 = one diatonic step up (line or space)
-  function midiToStaffPos(midi, flats) {
-    const octave = Math.floor(midi / 12) - 1; // C4 = octave 4
-    const pc = midi % 12;
-    if (flats) {
-      //             C  Db  D  Eb  E   F  Gb  G  Ab  A  Bb  B
-      const p =     [0,  1, 1,  2, 2,  3,  4, 4,  5, 5,  6, 6];
-      const isFlat = [0, 1, 0,  1, 0,  0,  1, 0,  1, 0,  1, 0][pc];
-      return { pos: (octave - 4) * 7 + p[pc], accidental: isFlat ? 'flat' : null };
-    }
-    // Pitch class to diatonic position within octave: C=0,D=1,E=2,F=3,G=4,A=5,B=6
-    const pcToPos = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
-    const isSharp = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0][pc];
-    return { pos: (octave - 4) * 7 + pcToPos[pc], accidental: isSharp ? 'sharp' : null };
-  }
-
-  // Degree-aware staff positioning (chord mode only)
-  // Uses degree name to determine correct diatonic line and accidental
-  // e.g., Db7 b7 = Cb (C line + flat), not B natural
-  var DIATONIC_SEMITONES = [0, 2, 4, 5, 7, 9, 11]; // C D E F G A B
-  var LETTER_NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
-  var PC_TO_DIA_SHARP = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
-  var PC_TO_DIA_FLAT  = [0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6];
-
-  function degreeToDiatonicOffset(degName) {
-    if (degName === 'R') return 0;
-    if (degName === 'b9' || degName === '9' || degName === '2' || degName === '#9') return 1;
-    if (degName === 'm3' || degName === '3') return 2;
-    if (degName === '4' || degName === '11' || degName === '#11') return 3;
-    if (degName === 'b5' || degName === '5' || degName === '#5') return 4;
-    if (degName === 'b13' || degName === '6' || degName === '13') return 5;
-    if (degName === 'b7' || degName === '\u25B37') return 6; // △7
-    return null;
-  }
-
-  function degreeAwareStaffPos(midi, rootPC, degName, defaultFlats) {
-    var diaOffset = degreeToDiatonicOffset(degName);
-    if (diaOffset === null) return midiToStaffPos(midi, defaultFlats);
-    var rootDia = defaultFlats ? PC_TO_DIA_FLAT[rootPC] : PC_TO_DIA_SHARP[rootPC];
-    var targetDia = (rootDia + diaOffset) % 7;
-    var targetSemitone = DIATONIC_SEMITONES[targetDia];
-    // Find the octave where this diatonic note is closest to the MIDI pitch
-    var midiOctave = Math.floor(midi / 12) - 1;
-    var bestOctave = midiOctave, minDiff = Infinity;
-    for (var o = midiOctave - 1; o <= midiOctave + 1; o++) {
-      var diff = Math.abs(midi - ((o + 1) * 12 + targetSemitone));
-      if (diff < minDiff) { minDiff = diff; bestOctave = o; }
-    }
-    var pos = (bestOctave - 4) * 7 + targetDia;
-    var accVal = midi - ((bestOctave + 1) * 12 + targetSemitone);
-    // Double sharp/flat: fallback to midiToStaffPos
-    if (accVal > 1 || accVal < -1) return midiToStaffPos(midi, defaultFlats);
-    var accStr = accVal === 1 ? 'sharp' : accVal === -1 ? 'flat' : null;
-    var noteName = LETTER_NAMES[targetDia] + (accVal === 1 ? '#' : accVal === -1 ? 'b' : '');
-    return { pos: pos, accidental: accStr, noteName: noteName };
-  }
-
-  // Staff pos 0 = C4 (middle C). Treble staff bottom line (E4) = pos 2. Y coords:
-  // Middle C (pos 0): trebleTop + 5 * staffLineGap (one ledger line below treble)
-  const middleCY = trebleTop + 5 * staffLineGap;
-  function posToY(pos) {
-    return middleCY - pos * (staffLineGap / 2);
-  }
-
-  // Draw notes
-  const noteX = staffLeft + 80;
-  const noteSpacing = 50;
-  const defaultFlats = FLAT_MAJOR_KEYS.has(getParentMajorKey(AppState.scaleIdx, AppState.key));
-  midiNotes.forEach((midi, idx) => {
-    const pc = midi % 12;
-    const interval = ((pc - rootPC) % 12 + 12) % 12;
-
-    // In chord mode, determine flat/sharp per note based on degree context
-    // b7 → Bb (not A#), #11 → F# (not Gb), etc.
-    let useFlats = defaultFlats;
-    let degName = SCALE_DEGREE_NAMES[interval];
-    let staffResult;
-    let degreeNoteName = null;
-    if (mode === 'chord' && qualityPCS) {
-      degName = chordDegreeName(interval, qualityPCS, activeIvPCS || null);
-      staffResult = degreeAwareStaffPos(midi, rootPC, degName, defaultFlats);
-      degreeNoteName = staffResult.noteName || null;
-    } else if (mode === 'input' && typeof lastDetectedCandidates !== 'undefined' && lastDetectedCandidates.length > 0) {
-      // Input mode with chord detection: use degree-aware spelling
-      var detRootPC = lastDetectedCandidates[0].rootPC;
+  // Build noteInfoFn based on mode
+  var noteInfoFn = null;
+  if (mode === 'chord' && qualityPCS) {
+    noteInfoFn = function(midi, pc, interval) {
+      var degName = chordDegreeName(interval, qualityPCS, activeIvPCS || null);
+      return { degName: degName, staffRootPC: rootPC };
+    };
+  } else if (mode === 'input' && typeof lastDetectedCandidates !== 'undefined' && lastDetectedCandidates.length > 0) {
+    var detRootPC = lastDetectedCandidates[0].rootPC;
+    noteInfoFn = function(midi, pc, interval) {
       var detIv = ((pc - detRootPC) + 12) % 12;
-      degName = SCALE_DEGREE_NAMES[detIv];
-      staffResult = degreeAwareStaffPos(midi, detRootPC, degName, defaultFlats);
-      degreeNoteName = staffResult.noteName || null;
-    } else {
-      if (mode === 'chord') {
-        if (degName.startsWith('b') || degName === 'm3') useFlats = true;
-        else if (degName.startsWith('#') || degName.startsWith('△')) useFlats = false;
-      }
-      staffResult = midiToStaffPos(midi, useFlats);
-    }
+      var degName = SCALE_DEGREE_NAMES[detIv];
+      return { degName: degName, staffRootPC: detRootPC };
+    };
+  } else if (mode === 'chord') {
+    noteInfoFn = function(midi, pc, interval) {
+      var degName = SCALE_DEGREE_NAMES[interval];
+      var useFlats = defaultFlats;
+      if (degName.startsWith('b') || degName === 'm3') useFlats = true;
+      else if (degName.startsWith('#') || degName.startsWith('\u25B3')) useFlats = false;
+      return { degName: degName, useFlats: useFlats };
+    };
+  }
 
-    const { pos, accidental } = staffResult;
-    const ny = posToY(pos);
-    const nx = noteX + idx * noteSpacing;
-
-    // Ledger lines
-    // Middle C ledger (between staves): pos 0
-    if (pos <= 0) {
-      // Below treble: ledger lines at pos 0, -2, -4, ...
-      for (let lp = 0; lp >= pos; lp -= 2) {
-        const ly = posToY(lp);
-        // Only draw if below treble staff (pos < 2) or above bass staff
-        if (ly > trebleTop + 4 * staffLineGap && ly < bassTop) {
-          const ll = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          ll.setAttribute('x1', nx - 10); ll.setAttribute('y1', ly);
-          ll.setAttribute('x2', nx + 10); ll.setAttribute('y2', ly);
-          ll.setAttribute('stroke', '#666'); ll.setAttribute('stroke-width', 1);
-          staffSvg.appendChild(ll);
-        }
-      }
-    }
-    if (pos >= 12) {
-      // Above treble: ledger lines at pos 12, 14, ...
-      for (let lp = 12; lp <= pos; lp += 2) {
-        const ly = posToY(lp);
-        if (ly < trebleTop) {
-          const ll = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          ll.setAttribute('x1', nx - 10); ll.setAttribute('y1', ly);
-          ll.setAttribute('x2', nx + 10); ll.setAttribute('y2', ly);
-          ll.setAttribute('stroke', '#666'); ll.setAttribute('stroke-width', 1);
-          staffSvg.appendChild(ll);
-        }
-      }
-    }
-    // Below bass staff: bass bottom line = B2 (pos = -5)
-    if (pos <= -7) {
-      for (let lp = -7; lp >= pos; lp -= 2) {
-        const ly = posToY(lp);
-        if (ly > bassTop + 4 * staffLineGap) {
-          const ll = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          ll.setAttribute('x1', nx - 10); ll.setAttribute('y1', ly);
-          ll.setAttribute('x2', nx + 10); ll.setAttribute('y2', ly);
-          ll.setAttribute('stroke', '#666'); ll.setAttribute('stroke-width', 1);
-          staffSvg.appendChild(ll);
-        }
-      }
-    }
-
-    // Note head
-    const note = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
-    note.setAttribute('cx', nx); note.setAttribute('cy', ny);
-    note.setAttribute('rx', 5); note.setAttribute('ry', 3.5);
-    note.setAttribute('fill', '#fff');
-    note.setAttribute('transform', 'rotate(-15 ' + nx + ' ' + ny + ')');
-    staffSvg.appendChild(note);
-
-    // Accidental (sharp or flat)
-    if (accidental) {
-      const sh = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      sh.setAttribute('x', nx - 12); sh.setAttribute('y', ny + 4);
-      sh.setAttribute('font-size', '12px'); sh.setAttribute('fill', '#ff9800');
-      sh.textContent = accidental === 'sharp' ? '♯' : '♭';
-      staffSvg.appendChild(sh);
-    }
-
-    // Degree label above note
-    const deg = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    deg.setAttribute('x', nx); deg.setAttribute('y', ny - 10);
-    deg.setAttribute('text-anchor', 'middle');
-    deg.setAttribute('font-size', '9px'); deg.setAttribute('font-weight', '600');
-    deg.setAttribute('fill', interval === 0 ? '#E69F00' : '#aaa');
-    deg.textContent = degName;
-    staffSvg.appendChild(deg);
-
-    // Note name label below
-    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('x', nx); label.setAttribute('y', totalH - 4);
-    label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('font-size', '9px'); label.setAttribute('fill', '#999');
-    label.textContent = degreeNoteName || (useFlats ? NOTE_NAMES_FLAT[pc] : NOTE_NAMES_SHARP[pc]);
-    staffSvg.appendChild(label);
+  padRenderStaff(staffSvg, {
+    midiNotes: midiNotes,
+    rootPC: rootPC,
+    defaultFlats: defaultFlats,
+    width: DIAGRAM_WIDTH,
+    isMobile: _isMobile,
+    isLandscape: _isLandscape,
+    noteInfoFn: noteInfoFn,
   });
 }
 
 // ========================================
 // GUITAR DIAGRAM
 // ========================================
-// Colors: white/black clean style
-const INST_ROOT_COLOR = '#E69F00';       // amber (matches --pad-root)
-const INST_ACTIVE_COLOR = '#666';       // medium gray (active notes)
-const INST_ROOT_TEXT = '#000';
-const INST_ACTIVE_TEXT = '#fff';
-const INST_BASS_COLOR = '#ff9800';     // orange (matches pad bass color)
-const INST_BASS_TEXT = '#000';
-const INST_GUIDE3_COLOR = '#CC79A7';   // pink (matches --pad-guide3)
-const INST_GUIDE7_COLOR = '#009E73';   // green (matches --pad-guide7)
-const INST_TENSION_COLOR = '#0072B2';  // blue (matches --pad-tension)
-const INST_AVOID_COLOR = '#D55E00';    // red-orange (matches --pad-avoid)
-const INST_OMITTED_COLOR = '#555';     // dim gray (matches --pad-omitted)
-const INST_CHORD_COLOR = '#56B4E9';    // sky blue (matches --pad-chord)
-const INST_OVERLAY_COLOR = '#56B4E9';   // Okabe-Ito sky blue (scale overlay)
-const INST_OVERLAY_CHAR_COLOR = '#F0E442'; // Okabe-Ito yellow (char note overlay)
-const INST_OVERLAY_TEXT = '#aaa';
 const DIAGRAM_WIDTH = 564;              // shared width for pad, guitar & piano (matches pad grid)
 let showGuitar = false;
 let showPiano = false;

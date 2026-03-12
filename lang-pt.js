@@ -328,4 +328,26 @@ I18N.addLang('pt', {
   tips_off: 'Não mostrar dicas',
   whats_new: 'Novidades',
   whats_new_32427: 'Voicing de guitarra \u2192 refletir no pad (tecla V). Alternância layout estilo guitarra / compacto',
+
+  // Tutorial (first-time onboarding)
+  tutorial: {
+    sound_title: 'Preset de som',
+    sound_msg: 'Escolha um preset de som e toque num pad para ouvir.\nORGAN, E.PIANO, CLAV \u2014 cada um tem m\u00FAltiplos presets.',
+    sound_done: 'Soa bem! Prima Seguinte para continuar.',
+    midi_title: 'Controlador MIDI',
+    midi_msg: 'Foi detetado um controlador MIDI. Selecione o seu dispositivo no menu suspenso.\nA sensibilidade de velocidade pode ser ajustada no painel Sound.',
+    midi_no_device: 'Nenhum controlador MIDI detetado \u2014 sem problema.\nPode usar cliques nos pads, entrada de guitarra/baixo/piano ou entrada de texto de acordes.',
+    input_title: 'Tr\u00EAs modos',
+    input_msg: 'Scale \u2014 ver notas da escala na grelha de 64 pads\nChord \u2014 construir acordes com voicings, invers\u00F5es e tens\u00F5es\nInput \u2014 clicar livremente nos pads para detetar nomes de acordes\n\nMude com Tab ou os bot\u00F5es de modo acima.',
+    instruments_title: 'Entrada de instrumentos',
+    instruments_msg: 'Guitarra, Baixo, Piano \u2014 ative cada visualiza\u00E7\u00E3o e clique para inserir notas diretamente.\nClique no bra\u00E7o \u2192 dete\u00E7\u00E3o de acorde \u2192 "Para Pad" (V) para converter em layout de pads.\nEntrada de texto: prima / no modo Chord para digitar nomes de acordes (ex. Cm7, G7(b9,#11)).',
+    done_title: 'Pronto!',
+    done_msg: 'Tudo preparado. Explore livremente \u2014 prima ? para a lista completa de atalhos.\nO Guia tem capturas de ecr\u00E3, v\u00EDdeos e casos de uso.',
+    next: 'Seguinte',
+    skip_step: 'Saltar',
+    skip_all: 'Saltar tutorial',
+    open_guide: 'Abrir Guia',
+    close: 'Come\u00E7ar',
+    reset: 'Reiniciar tutorial',
+  },
 });

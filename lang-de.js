@@ -328,4 +328,26 @@ I18N.addLang('de', {
   tips_off: 'Tipps ausblenden',
   whats_new: 'Neuheiten',
   whats_new_32427: 'Gitarren-Voicing \u2192 Pad-Spiegelung (V-Taste). Umschalten Gitarren-Stil / Kompakt-Layout',
+
+  // Tutorial (first-time onboarding)
+  tutorial: {
+    sound_title: 'Sound-Preset',
+    sound_msg: 'W\u00E4hle ein Sound-Preset und tippe auf ein Pad zum Anh\u00F6ren.\nORGAN, E.PIANO, CLAV \u2014 jedes hat mehrere Presets.',
+    sound_done: 'Klingt gut! Dr\u00FCcke Weiter um fortzufahren.',
+    midi_title: 'MIDI-Controller',
+    midi_msg: 'Ein MIDI-Controller wurde erkannt. W\u00E4hle dein Ger\u00E4t aus dem Dropdown.\nDie Anschlagdynamik kann im Sound-Panel angepasst werden.',
+    midi_no_device: 'Kein MIDI-Controller erkannt \u2014 kein Problem.\nDu kannst Pad-Klicks, Gitarren-/Bass-/Klaviereingabe oder Text-Akkordeingabe nutzen.',
+    input_title: 'Drei Modi',
+    input_msg: 'Scale \u2014 Skalent\u00F6ne auf dem 64-Pad-Raster anzeigen\nChord \u2014 Akkorde mit Voicings, Umkehrungen und Tensions bauen\nInput \u2014 Pads frei antippen um Akkordnamen zu erkennen\n\nWechsle mit Tab oder den Modus-Buttons oben.',
+    instruments_title: 'Instrument-Eingabe',
+    instruments_msg: 'Gitarre, Bass, Klavier \u2014 Anzeige jeweils umschalten und klicken um Noten direkt einzugeben.\nGriffbrett-Klick \u2192 Akkorderkennung \u2192 "Auf Pad" (V) um in Pad-Layout umzuwandeln.\nTexteingabe: / im Chord-Modus dr\u00FCcken um Akkordnamen einzugeben (z.B. Cm7, G7(b9,#11)).',
+    done_title: 'Bereit!',
+    done_msg: 'Alles eingerichtet. Erkunde frei \u2014 dr\u00FCcke ? f\u00FCr die vollst\u00E4ndige Tastenk\u00FCrzel-Liste.\nDie Anleitung enth\u00E4lt Screenshots, Videos und Anwendungsf\u00E4lle.',
+    next: 'Weiter',
+    skip_step: '\u00DCberspringen',
+    skip_all: 'Tutorial \u00FCberspringen',
+    open_guide: 'Anleitung \u00F6ffnen',
+    close: 'Starten',
+    reset: 'Tutorial neu starten',
+  },
 });

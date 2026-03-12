@@ -593,6 +593,105 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   50% { opacity: 1; transform: scale(1.05); }
 }
 
+/* === Tutorial (first-time onboarding) === */
+.tutorial-card {
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(74,158,255,0.12), rgba(74,158,255,0.04));
+  border: 1px solid rgba(74,158,255,0.3);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  animation: tip-in 0.3s ease-out;
+}
+.tutorial-dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+.tutorial-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+}
+.tutorial-dot.active {
+  background: var(--accent);
+  box-shadow: 0 0 4px var(--accent);
+}
+.tutorial-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.tutorial-msg {
+  font-size: 0.8rem;
+  color: var(--text);
+  line-height: 1.6;
+  margin-bottom: 8px;
+  white-space: pre-line;
+}
+.tutorial-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.tutorial-next-btn {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 5px;
+  padding: 4px 16px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tutorial-next-btn:hover { opacity: 0.85; }
+.tutorial-skip-btn,
+.tutorial-skip-all-btn {
+  background: none;
+  border: none;
+  color: var(--text);
+  opacity: 0.4;
+  font-size: 0.65rem;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.tutorial-skip-btn:hover,
+.tutorial-skip-all-btn:hover { opacity: 0.7; }
+.tutorial-guide-link {
+  display: inline-block;
+  padding: 4px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.tutorial-guide-link:hover { background: rgba(74,158,255,0.1); }
+.tutorial-highlight {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+  border-radius: 4px;
+  animation: tutorial-glow 1.5s ease-in-out infinite;
+}
+@keyframes tutorial-glow {
+  0%, 100% { box-shadow: 0 0 4px rgba(74,158,255,0.3); }
+  50% { box-shadow: 0 0 12px rgba(74,158,255,0.6); }
+}
+.tutorial-target {
+  position: relative;
+}
+.tutorial-target::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 1px dashed rgba(74,158,255,0.3);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
 /* === Guitar/Bass Position Bar (v3.19, groups v3.21) === */
 .position-bar {
   display: flex;

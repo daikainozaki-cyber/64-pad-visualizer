@@ -72,7 +72,7 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
-<link rel="stylesheet" href="style.css?v=3.31.5">
+<link rel="stylesheet" href="style.css?v=3.32.0">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -90,13 +90,13 @@ document.addEventListener('click', function(e) {
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_GeneralUserGS_sf2_file.js"></script>
 <!-- E.Piano: jRhodes3c velocity-layer sampler (5 layers, 1977 Rhodes Mark I) -->
-<script src="jrhodes3c-samples.js?v=3.31.5"></script>
+<script src="jrhodes3c-samples.js?v=3.32.0"></script>
 </head>
 <body>
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V3.31.5</span>
+  <span class="version-tag">V3.32.0</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -296,6 +296,7 @@ document.addEventListener('click', function(e) {
 
     <p style="margin-top:12px;text-align:center;">
       <label style="font-size:0.7rem;color:var(--text-muted);cursor:pointer;"><input type="checkbox" id="tips-toggle" onchange="toggleStartupTips(this.checked)" style="vertical-align:middle;margin-right:4px;"> <span data-i18n="help.tips_toggle">起動時にヒントを表示</span></label>
+      <br><button onclick="TutorialEngine.reset();document.getElementById('help-overlay').classList.remove('active');location.reload();" style="font-size:0.65rem;color:var(--text-muted);background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;cursor:pointer;margin-top:4px;" data-i18n="tutorial.reset">チュートリアルをやり直す</button>
     </p>
 
     <p style="font-size:0.7rem;color:var(--text-muted);margin-top:8px;text-align:center;" data-i18n="help.footer">
@@ -725,32 +726,33 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.31.5"></script>
-<script src="lang-en.js?v=3.31.5"></script>
-<script src="lang-ja.js?v=3.31.5"></script>
-<script src="lang-zh.js?v=3.31.5"></script>
-<script src="lang-es.js?v=3.31.5"></script>
-<script src="lang-fr.js?v=3.31.5"></script>
-<script src="lang-pt.js?v=3.31.5"></script>
-<script src="lang-de.js?v=3.31.5"></script>
-<script src="lang-ko.js?v=3.31.5"></script>
-<script src="lang-it.js?v=3.31.5"></script>
+<script src="i18n.js?v=3.32.0"></script>
+<script src="lang-en.js?v=3.32.0"></script>
+<script src="lang-ja.js?v=3.32.0"></script>
+<script src="lang-zh.js?v=3.32.0"></script>
+<script src="lang-es.js?v=3.32.0"></script>
+<script src="lang-fr.js?v=3.32.0"></script>
+<script src="lang-pt.js?v=3.32.0"></script>
+<script src="lang-de.js?v=3.32.0"></script>
+<script src="lang-ko.js?v=3.32.0"></script>
+<script src="lang-it.js?v=3.32.0"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=3.31.5"></script>
-<script src="pad-core/theory.js?v=3.31.5"></script>
-<script src="pad-core/render.js?v=3.31.5"></script>
-<script src="pad-core/circle.js?v=3.31.5"></script>
-<script src="pad-core/builder-ui.js?v=3.31.5"></script>
-<script src="pad-core/incremental.js?v=3.31.5"></script>
+<script src="pad-core/data.js?v=3.32.0"></script>
+<script src="pad-core/theory.js?v=3.32.0"></script>
+<script src="pad-core/render.js?v=3.32.0"></script>
+<script src="pad-core/circle.js?v=3.32.0"></script>
+<script src="pad-core/builder-ui.js?v=3.32.0"></script>
+<script src="pad-core/incremental.js?v=3.32.0"></script>
 <!-- App JS -->
-<script src="data.js?v=3.31.5"></script>
-<script src="audio.js?v=3.31.5"></script>
-<script src="theory.js?v=3.31.5"></script>
-<script src="render.js?v=3.31.5"></script>
-<script src="plain.js?v=3.31.5"></script>
-<script src="perform.js?v=3.31.5"></script>
-<script src="builder.js?v=3.31.5"></script>
-<script src="main.js?v=3.31.5"></script>
+<script src="data.js?v=3.32.0"></script>
+<script src="audio.js?v=3.32.0"></script>
+<script src="theory.js?v=3.32.0"></script>
+<script src="render.js?v=3.32.0"></script>
+<script src="plain.js?v=3.32.0"></script>
+<script src="perform.js?v=3.32.0"></script>
+<script src="builder.js?v=3.32.0"></script>
+<script src="main.js?v=3.32.0"></script>
+<script src="tutorial.js?v=3.32.0"></script>
 <script>
 if ('serviceWorker' in navigator) {
   // Clean up old ?v= registrations (they create zombie SWs)

@@ -328,4 +328,26 @@ I18N.addLang('fr', {
   tips_off: 'Ne plus afficher',
   whats_new: 'Nouveautés',
   whats_new_32427: 'Voicing guitare \u2192 reflet sur pad (touche V). Basculement disposition style guitare / compact',
+
+  // Tutorial (first-time onboarding)
+  tutorial: {
+    sound_title: 'Preset de son',
+    sound_msg: 'Choisissez un preset et appuyez sur un pad pour l\u0027\u00E9couter.\nORGAN, E.PIANO, CLAV \u2014 chacun a plusieurs presets.',
+    sound_done: '\u00C7a sonne bien ! Appuyez sur Suivant pour continuer.',
+    midi_title: 'Contr\u00F4leur MIDI',
+    midi_msg: 'Un contr\u00F4leur MIDI a \u00E9t\u00E9 d\u00E9tect\u00E9. S\u00E9lectionnez votre appareil dans le menu d\u00E9roulant.\nLa sensibilit\u00E9 de v\u00E9locit\u00E9 peut \u00EAtre ajust\u00E9e dans le panneau Sound.',
+    midi_no_device: 'Aucun contr\u00F4leur MIDI d\u00E9tect\u00E9 \u2014 pas de souci.\nVous pouvez utiliser les clics sur les pads, l\u0027entr\u00E9e guitare/basse/piano ou la saisie texte d\u0027accords.',
+    input_title: 'Trois modes',
+    input_msg: 'Scale \u2014 voir les notes de gamme sur la grille de 64 pads\nChord \u2014 construire des accords avec voicings, renversements et tensions\nInput \u2014 cliquer librement sur les pads pour d\u00E9tecter les noms d\u0027accords\n\nChangez avec Tab ou les boutons de mode ci-dessus.',
+    instruments_title: 'Entr\u00E9e instrumentale',
+    instruments_msg: 'Guitare, Basse, Piano \u2014 activez chaque affichage et cliquez pour saisir des notes directement.\nClic sur le manche \u2192 d\u00E9tection d\u0027accord \u2192 \u00AB Vers Pad \u00BB (V) pour convertir en disposition de pads.\nSaisie texte : appuyez sur / en mode Chord pour saisir des noms d\u0027accords (ex. Cm7, G7(b9,#11)).',
+    done_title: 'Pr\u00EAt !',
+    done_msg: 'Tout est pr\u00EAt. Explorez librement \u2014 appuyez sur ? pour la liste compl\u00E8te des raccourcis.\nLe Guide contient des captures d\u0027\u00E9cran, des vid\u00E9os et des cas d\u0027utilisation.',
+    next: 'Suivant',
+    skip_step: 'Passer',
+    skip_all: 'Passer le tutoriel',
+    open_guide: 'Ouvrir le Guide',
+    close: 'Commencer',
+    reset: 'Red\u00E9marrer le tutoriel',
+  },
 });

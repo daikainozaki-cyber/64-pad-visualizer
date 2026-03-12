@@ -328,4 +328,26 @@ I18N.addLang('it', {
   tips_off: 'Non mostrare suggerimenti',
   whats_new: 'Novità',
   whats_new_32427: 'Voicing chitarra \u2192 riflesso su pad (tasto V). Cambio layout stile chitarra / compatto',
+
+  // Tutorial (first-time onboarding)
+  tutorial: {
+    sound_title: 'Preset audio',
+    sound_msg: 'Scegli un preset audio e tocca un pad per ascoltarlo.\nORGAN, E.PIANO, CLAV \u2014 ognuno ha diversi preset.',
+    sound_done: 'Suona bene! Premi Avanti per continuare.',
+    midi_title: 'Controller MIDI',
+    midi_msg: '\u00C8 stato rilevato un controller MIDI. Seleziona il tuo dispositivo dal menu a tendina.\nLa sensibilit\u00E0 della velocit\u00E0 pu\u00F2 essere regolata nel pannello Sound.',
+    midi_no_device: 'Nessun controller MIDI rilevato \u2014 nessun problema.\nPuoi usare i clic sui pad, l\u0027input chitarra/basso/piano o l\u0027input testuale di accordi.',
+    input_title: 'Tre modalit\u00E0',
+    input_msg: 'Scale \u2014 visualizza le note della scala sulla griglia di 64 pad\nChord \u2014 costruisci accordi con voicing, rivolti e tensioni\nInput \u2014 tocca i pad liberamente per rilevare i nomi degli accordi\n\nCambia con Tab o i pulsanti di modalit\u00E0 sopra.',
+    instruments_title: 'Input strumentale',
+    instruments_msg: 'Chitarra, Basso, Piano \u2014 attiva ogni visualizzazione e clicca per inserire note direttamente.\nClic sulla tastiera \u2192 rilevamento accordo \u2192 "Su Pad" (V) per convertire nel layout dei pad.\nInput testuale: premi / in modalit\u00E0 Chord per digitare nomi di accordi (es. Cm7, G7(b9,#11)).',
+    done_title: 'Pronto!',
+    done_msg: 'Tutto pronto. Esplora liberamente \u2014 premi ? per l\u0027elenco completo delle scorciatoie.\nLa Guida contiene screenshot, video e casi d\u0027uso.',
+    next: 'Avanti',
+    skip_step: 'Salta',
+    skip_all: 'Salta tutorial',
+    open_guide: 'Apri Guida',
+    close: 'Inizia',
+    reset: 'Riavvia tutorial',
+  },
 });

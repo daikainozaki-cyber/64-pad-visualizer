@@ -328,4 +328,26 @@ I18N.addLang('zh', {
   tips_off: '不再显示提示',
   whats_new: '新功能',
   whats_new_32427: '吉他声位\u2192打击垫映射（V键）。吉他式 / 紧凑式布局切换',
+
+  // Tutorial (first-time onboarding)
+  tutorial: {
+    sound_title: '音色预设',
+    sound_msg: '选择一个音色预设，点击打击垫试听。\nORGAN、E.PIANO、CLAV — 每种都有多个预设。',
+    sound_done: '听起来不错！按下"下一步"继续。',
+    midi_title: 'MIDI控制器',
+    midi_msg: '已检测到MIDI控制器。从下拉菜单中选择你的设备。\n力度灵敏度可在Sound面板中调节。',
+    midi_no_device: '未检测到MIDI控制器 — 没关系。\n你可以使用打击垫点击、吉他/贝斯/钢琴输入或文本和弦输入。',
+    input_title: '三种模式',
+    input_msg: 'Scale — 在64键打击垫网格上查看音阶音\nChord — 使用声位、转位和延伸音构建和弦\nInput — 自由点击打击垫识别和弦名称\n\n使用Tab键或上方的模式按钮切换。',
+    instruments_title: '乐器输入',
+    instruments_msg: '吉他、贝斯、钢琴 — 分别开关显示并直接点击输入音符。\n吉他指板点击 \u2192 和弦识别 \u2192 "映射到Pad"(V) 转换为打击垫布局。\n文本输入：在Chord模式下按 / 直接输入和弦名（如 Cm7, G7(b9,#11)）。',
+    done_title: '准备就绪！',
+    done_msg: '一切准备好了。自由探索吧 — 按 ? 查看完整快捷键列表。\n指南中有截图、视频和使用场景。',
+    next: '下一步',
+    skip_step: '跳过',
+    skip_all: '跳过教程',
+    open_guide: '打开指南',
+    close: '开始',
+    reset: '重新开始教程',
+  },
 });

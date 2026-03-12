@@ -341,4 +341,26 @@ I18N.addLang('en', {
   tips_off: "Don't show tips",
   whats_new: "What's New",
   whats_new_32427: 'Guitar voicing \u2192 Pad reflect (V key). Guitar-like / Compact layout switch.',
+
+  // Tutorial (first-time onboarding)
+  tutorial: {
+    sound_title: 'Sound Preset',
+    sound_msg: 'Choose a sound preset and tap a pad to hear it.\nORGAN, E.PIANO, CLAV — each has multiple presets.',
+    sound_done: 'Sounds good! Press Next to continue.',
+    midi_title: 'MIDI Controller',
+    midi_msg: 'A MIDI controller has been detected. Select your device from the dropdown.\nVelocity sensitivity can be adjusted in the Sound panel.',
+    midi_no_device: 'No MIDI controller detected — that\'s OK.\nYou can use pad clicks, guitar/bass/piano input, or text chord input.',
+    input_title: 'Three Modes',
+    input_msg: 'Scale — view scale notes on the 64-pad grid\nChord — build chords with voicings, inversions, and tensions\nInput — tap pads freely to detect chord names\n\nSwitch with Tab or the mode buttons above.',
+    instruments_title: 'Instrument Input',
+    instruments_msg: 'Guitar, Bass, Piano — toggle each display and click to input notes directly.\nGuitar fretboard click \u2192 chord detection \u2192 "Pad reflect" (V) to convert to pad layout.\nText input: press / in Chord mode to type chord names (e.g. Cm7, G7(b9,#11)).',
+    done_title: 'Ready!',
+    done_msg: 'You\'re all set. Explore freely — press ? for the full shortcut list.\nThe Guide has screenshots, videos, and use cases.',
+    next: 'Next',
+    skip_step: 'Skip',
+    skip_all: 'Skip tutorial',
+    open_guide: 'Open Guide',
+    close: 'Start',
+    reset: 'Restart tutorial',
+  },
 });

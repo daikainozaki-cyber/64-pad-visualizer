@@ -1805,15 +1805,6 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, 
   const svg = document.getElementById('piano-display');
   if (!pcsSet) pcsSet = new Set();
 
-  // Stock Voicing active: suppress chord tone/root coloring (LH/RH markers are sufficient)
-  if (StockState.enabled && StockState.currentIndex >= 0) {
-    pcsSet = new Set();
-    rootPC = -1;
-    bassPC = null;
-    overlayPCS = null;
-    overlayCharPCS = null;
-  }
-
   // Piano has its own position system (black/white pattern) — only show root when chord/scale tones exist
   if (pcsSet.size === 0) {
     rootPC = -1;

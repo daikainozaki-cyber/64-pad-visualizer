@@ -236,6 +236,9 @@ document.addEventListener('click', function(e) {
       <li data-i18n="help.sc_clear"><kbd>x</kbd> — コードクリア（Chordモード）</li>
       <li data-i18n="help.sc_voicing_reflect"><kbd>v</kbd> — パッドに反映 切り替え / レイアウト循環（ギターライク ↔ コンパクト）</li>
       <li data-i18n="help.sc_guitar_pos"><kbd>,</kbd> / <kbd>.</kbd> — ギターポジション送り（前 / 次）</li>
+      <li data-i18n="help.sc_bass_pos"><kbd>&lt;</kbd> / <kbd>&gt;</kbd> — ベースポジション送り（前 / 次）</li>
+      <li data-i18n="help.sc_tasty"><kbd>t</kbd> — TASTY ON / 次のボイシング、<kbd>Shift</kbd>+<kbd>t</kbd> — 前のボイシング</li>
+      <li data-i18n="help.sc_stock"><kbd>k</kbd> — STOCK ON / 次のボイシング、<kbd>Shift</kbd>+<kbd>k</kbd> — 前のボイシング</li>
       <li data-i18n="help.sc_pad_explore"></li>
     </ul>
     <h3 data-i18n="help.shortcut_input">Input モード</h3>
@@ -344,9 +347,9 @@ document.addEventListener('click', function(e) {
           <svg id="guitar-diagram" style="flex:1;"></svg>
           <div id="guitar-position-bar" class="position-bar" style="display:none;">
             <div id="guitar-pos-groups" class="pos-groups" style="display:none;"></div>
-            <button class="pos-nav-btn" onclick="cycleGuitarPosition(-1)">&#9664;</button>
+            <button class="pos-nav-btn" onclick="cycleGuitarPosition(-1)"><span class="kbd-hint">,</span>&#9664;</button>
             <span id="guitar-pos-label">A 1/1</span>
-            <button class="pos-nav-btn" onclick="cycleGuitarPosition(1)">&#9654;</button>
+            <button class="pos-nav-btn" onclick="cycleGuitarPosition(1)">&#9654;<span class="kbd-hint">.</span></button>
           </div>
           <button id="voicing-reflect-btn" onclick="toggleVoicingReflect()" data-i18n="pos.to_pad" style="display:none;font-size:0.65rem;padding:4px 10px;background:var(--surface);color:var(--text);border:2px solid var(--accent, #f80);border-radius:6px;cursor:pointer;font-weight:700;white-space:nowrap;position:relative;"><span class="kbd-hint">V</span>To Pad</button>
         </div>
@@ -354,9 +357,9 @@ document.addEventListener('click', function(e) {
           <svg id="bass-diagram" style="flex:1;"></svg>
           <div id="bass-position-bar" class="position-bar" style="display:none;">
             <div id="bass-pos-groups" class="pos-groups" style="display:none;"></div>
-            <button class="pos-nav-btn" onclick="cycleBassPosition(-1)">&#9664;</button>
+            <button class="pos-nav-btn" onclick="cycleBassPosition(-1)"><span class="kbd-hint">&lt;</span>&#9664;</button>
             <span id="bass-pos-label">A 1/1</span>
-            <button class="pos-nav-btn" onclick="cycleBassPosition(1)">&#9654;</button>
+            <button class="pos-nav-btn" onclick="cycleBassPosition(1)">&#9654;<span class="kbd-hint">&gt;</span></button>
           </div>
         </div>
         <div id="piano-wrap-display" style="display:none;">

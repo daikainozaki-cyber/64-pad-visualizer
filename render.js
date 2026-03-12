@@ -102,173 +102,44 @@ function setLandscapeTab(tab) {
 // ========================================
 
 function computeRenderState() {
-  let activePCS, activeLabel, rootPC, bassPC = null;
-  let charPCS = new Set();
-  let omittedPCS = new Set();
-  let guide3PCS = new Set();
-  let guide7PCS = new Set();
-  let tensionPCS = new Set();
-  let qualityPCS = null;
-  let avoidPCS = new Set();
+  var inputNotes = AppState.mode === 'input'
+    ? [...PlainState.activeNotes].sort(function(a, b) { return a - b; }) : [];
+  var instrumentNotes = AppState.mode === 'input' && instrumentInputActive
+    ? getAllInputMidiNotes() : [];
+  var builderPCS = AppState.mode === 'chord' ? getBuilderPCS() : null;
+  var chordNameVal = AppState.mode === 'chord' && builderPCS ? getBuilderChordName() : '';
+  var extNotesArr = AppState.mode === 'chord' && padExtNotes.size > 0
+    ? [...padExtNotes].sort(function(a, b) { return a - b; }) : [];
 
-  if (AppState.mode === 'input') {
-    let notes = [...PlainState.activeNotes].sort((a, b) => a - b);
-    activePCS = new Set(notes.map(n => n % 12));
-    // Merge instrument input notes for unified chord detection
-    if (instrumentInputActive) {
-      const instrNotes = getAllInputMidiNotes();
-      const merged = new Set([...instrNotes, ...notes]);
-      notes = [...merged].sort((a, b) => a - b);
-      instrNotes.forEach(n => activePCS.add(n % 12));
-    }
-    // Detect chord → rootPC for instrument diagrams, staff, and pad root highlight
-    // Pad degree labels remain hidden (guarded by AppState.mode !== 'input')
-    rootPC = null;
-    if (notes.length >= 2) {
-      const candidates = detectChord(notes);
-      if (candidates.length > 0) {
-        rootPC = candidates[0].rootPC;
-      }
-    }
-    activeLabel = '';
-    return { activePCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS };
-  } else if (AppState.mode === 'scale') {
-    const scale = SCALES[AppState.scaleIdx];
-    activePCS = new Set(scale.pcs.map(pc => (pc + AppState.key) % 12));
-    rootPC = AppState.key;
-    activeLabel = pcName(AppState.key) + ' ' + scale.name;
-    if (scale.cn && scale.cn.length > 0) {
-      charPCS = new Set(scale.cn.map(pc => (pc + AppState.key) % 12));
-    }
-  } else {
-    const pcs = getBuilderPCS();
-    rootPC = BuilderState.root !== null ? BuilderState.root : 0;
-    qualityPCS = BuilderState.quality ? BuilderState.quality.pcs : null;
-    if (pcs) {
-      activePCS = new Set(pcs.map(pc => (pc + rootPC) % 12));
-      // Track tension notes (compound intervals >= 12)
-      pcs.filter(pc => pc >= 12).forEach(pc => tensionPCS.add((pc + rootPC) % 12));
-      activeLabel = getBuilderChordName();
-      if (BuilderState.bass !== null) bassPC = BuilderState.bass;
-      // Apply voicing toggles
-      const p5 = (rootPC + 7) % 12;
-      const p3maj = (rootPC + 4) % 12;
-      const p3min = (rootPC + 3) % 12;
-      if (VoicingState.omit5 && activePCS.has(p5)) {
-        activePCS.delete(p5); omittedPCS.add(p5);
-      }
-      if (VoicingState.rootless && activePCS.has(rootPC)) {
-        activePCS.delete(rootPC); omittedPCS.add(rootPC);
-      }
-      if (VoicingState.omit3) {
-        if (activePCS.has(p3maj)) { activePCS.delete(p3maj); omittedPCS.add(p3maj); }
-        if (activePCS.has(p3min)) { activePCS.delete(p3min); omittedPCS.add(p3min); }
-      }
-      // Shell voicing: keep only R, 3rd, 7th
-      if (VoicingState.shell) {
-        const shellIntervals = new Set([0]); // always root
-        [3,4].forEach(iv => shellIntervals.add(iv));   // 3rd (b3 or 3)
-        [10,11].forEach(iv => shellIntervals.add(iv));  // 7th (b7 or △7)
-        // Also keep 6th for 6th chords (no 7th)
-        if (qualityPCS && qualityPCS.includes(9) && !qualityPCS.includes(10) && !qualityPCS.includes(11)) {
-          shellIntervals.add(9);
-        }
-        for (const pc of [...activePCS]) {
-          const iv = ((pc - rootPC) + 12) % 12;
-          if (!shellIntervals.has(iv) && !tensionPCS.has(pc)) {
-            activePCS.delete(pc); omittedPCS.add(pc);
-          }
-        }
-      }
-      // Guide tones: 3rd and 7th separately
-      [3,4].forEach(iv => { const pc = (rootPC + iv) % 12; if (activePCS.has(pc)) guide3PCS.add(pc); });
-      [10,11].forEach(iv => { const pc = (rootPC + iv) % 12; if (activePCS.has(pc)) guide7PCS.add(pc); });
-      // 6th chords: treat 6th as guide tone (replaces 7th role)
-      if (qualityPCS && qualityPCS.includes(9) && !qualityPCS.includes(10) && !qualityPCS.includes(11)) {
-        const pc = (rootPC + 9) % 12; if (activePCS.has(pc)) guide7PCS.add(pc);
-      }
-    } else {
-      activePCS = new Set();
-      activeLabel = BuilderState.root !== null ? pcName(BuilderState.root) + '...' : t('builder.select_root');
-    }
-  }
-
-  // TASTY Voicing: override activePCS with voicing pitch classes + build MIDI set
-  let tastyMidiSet = null;
-  let tastyDegreeMap = null;
-  let tastyTopMidi = null;
-  if (AppState.mode === 'chord' && TastyState.enabled && TastyState.midiNotes.length > 0) {
-    // Always use degree map for color classification
-    tastyDegreeMap = TastyState.degreeMap || {};
-    // Only use exact-MIDI filtering when a voicing box is selected
-    // When no box selected, show TASTY pitch classes across all octaves
-    if (VoicingState.selectedBoxIdx !== null) {
-      tastyMidiSet = new Set(TastyState.midiNotes);
-      tastyTopMidi = TastyState.topNote;
-    }
-    activePCS = new Set(TastyState.midiNotes.map(m => m % 12));
-    guide3PCS = new Set(); guide7PCS = new Set(); tensionPCS = new Set();
-    omittedPCS = new Set();
-    // Classify by TASTY degree (not by interval from root)
-    for (var _ti = 0; _ti < TastyState.midiNotes.length; _ti++) {
-      var _tm = TastyState.midiNotes[_ti];
-      var _td = tastyDegreeMap[_tm];
-      var _tpc = _tm % 12;
-      if (!_td) continue;
-      if (_td === '3' || _td === 'b3') guide3PCS.add(_tpc);
-      else if (_td === '7' || _td === 'b7' || _td === '6') guide7PCS.add(_tpc);
-      else if (_td !== '1' && _td !== '5' && _td !== 'b5' && _td !== '#5') tensionPCS.add(_tpc);
-    }
-  }
-
-  // padExtNotes override: when user toggled pad notes in chord mode, override the chord display
-  if (AppState.mode === 'chord' && !tastyMidiSet && padExtNotes.size > 0) {
-    const extMidi = [...padExtNotes].sort((a, b) => a - b);
-    activePCS = new Set(extMidi.map(n => n % 12));
-    const detected = detectChord(extMidi);
-    if (detected.length > 0) {
-      rootPC = detected[0].rootPC;
-      activeLabel = detected[0].name;
-    } else if (extMidi.length > 0) {
-      rootPC = extMidi[0] % 12;
-      activeLabel = [...activePCS].map(pc => NOTE_NAMES_SHARP[pc]).join(' ');
-    }
-    // Recompute guide tones from detected chord
-    guide3PCS = new Set(); guide7PCS = new Set(); tensionPCS = new Set();
-    omittedPCS = new Set(); charPCS = new Set();
-    [3,4].forEach(iv => { const pc = (rootPC + iv) % 12; if (activePCS.has(pc)) guide3PCS.add(pc); });
-    [10,11].forEach(iv => { const pc = (rootPC + iv) % 12; if (activePCS.has(pc)) guide7PCS.add(pc); });
-  }
-
-  // Avoid notes: tension notes that are a half step above a non-tension chord tone
-  avoidPCS = new Set();
-  if (AppState.mode === 'chord' && tensionPCS.size > 0) {
-    const baseTones = new Set([...activePCS].filter(pc => !tensionPCS.has(pc)));
-    omittedPCS.forEach(pc => baseTones.add(pc));
-    for (const tpc of tensionPCS) {
-      const below = (tpc - 1 + 12) % 12;
-      if (baseTones.has(below)) {
-        avoidPCS.add(tpc);
-      }
-    }
-  }
-
-  // Interval-based PCS for chordDegreeName (expects intervals, not absolute pitch classes)
-  const activeIvPCS = (AppState.mode === 'chord' && activePCS.size > 0)
-    ? new Set([...activePCS].map(pc => ((pc - rootPC) % 12 + 12) % 12))
-    : null;
-
-  // Scale overlay: when a Parent Scale is selected in chord mode, show its non-chord tones
-  let overlayPCS = null, overlayCharPCS = new Set();
-  if (AppState.mode === 'chord' && _selectedPS) {
-    const scale = SCALES[_selectedPS.scaleIdx];
-    overlayPCS = new Set(scale.pcs.map(iv => (iv + rootPC) % 12));
-    if (scale.cn && scale.cn.length > 0) {
-      overlayCharPCS = new Set(scale.cn.map(iv => (iv + rootPC) % 12));
-    }
-  }
-
-  return { activePCS, activeIvPCS, activeLabel, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS, tastyMidiSet, tastyDegreeMap, tastyTopMidi };
+  return padComputeRenderState({
+    mode: AppState.mode,
+    key: AppState.key,
+    scaleIdx: AppState.scaleIdx,
+    builderRoot: BuilderState.root,
+    qualityPCS: BuilderState.quality ? BuilderState.quality.pcs : null,
+    builderPCS: builderPCS,
+    chordName: chordNameVal,
+    builderBass: BuilderState.bass,
+    inputNotes: inputNotes,
+    instrumentNotes: instrumentNotes,
+    detectChordFn: typeof detectChord === 'function' ? detectChord : null,
+    voicing: {
+      omit5: VoicingState.omit5,
+      rootless: VoicingState.rootless,
+      omit3: VoicingState.omit3,
+      shell: VoicingState.shell
+    },
+    tasty: {
+      enabled: TastyState.enabled,
+      midiNotes: TastyState.midiNotes,
+      degreeMap: TastyState.degreeMap,
+      topNote: TastyState.topNote,
+      boxSelected: VoicingState.selectedBoxIdx !== null
+    },
+    extNotes: extNotesArr,
+    selectedPS: _selectedPS || null,
+    noRootLabel: t('builder.select_root')
+  });
 }
 
 function renderPads(svg, state, grid) {

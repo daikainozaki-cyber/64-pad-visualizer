@@ -1281,249 +1281,65 @@ function renderPianoDisplay(state) {
   if (!pcsSet) pcsSet = new Set();
   var rootPC = state ? state.rootPC : -1;
   var bassPC = state ? state.bassPC : null;
-  var overlayPCS = state ? state.overlayPCS : null;
-  var overlayCharPCS = state ? state.overlayCharPCS : null;
-  var charPCS = state ? state.charPCS : new Set();
-  var guide3PCS = state ? state.guide3PCS : new Set();
-  var guide7PCS = state ? state.guide7PCS : new Set();
-  var tensionPCS = state ? state.tensionPCS : new Set();
-  var avoidPCS = state ? state.avoidPCS : new Set();
 
-  // Piano has its own position system (black/white pattern) — only show root when chord/scale tones exist
-  if (pcsSet.size === 0) {
-    rootPC = -1;
-  }
-
-  svg.innerHTML = '';
-
-  const solo = showPiano && !showGuitar;
   const stockPinned = StockState.enabled && StockState.lhMidi && StockState.rhMidi;
-  const numOctaves = stockPinned ? 5 : 4;
   const pianoBaseMidi = baseMidi();
-  const startOctave = stockPinned ? 0 : Math.floor(pianoBaseMidi / 12) - 2;
-  const pianoMidiBase = stockPinned ? 24 : (startOctave + 2) * 12;
-  const whiteH = solo ? 80 : 50, blackH = solo ? 52 : 32;
-  const numWhites = numOctaves * 7;
-  const W = DIAGRAM_WIDTH;
-  const startX = 8, startY = 2;
-  const whiteW = (W - startX - 15) / numWhites;
-  const blackW = whiteW * 0.7;
-  const H = whiteH + (solo ? 22 : 16);
-  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-  if (_isMobile || _isLandscape) {
-    svg.removeAttribute('width'); svg.removeAttribute('height');
-    svg.style.width = '100%'; svg.style.height = 'auto';
-  } else {
-    svg.setAttribute('width', W); svg.setAttribute('height', H);
-    svg.style.width = ''; svg.style.height = '';
-  }
+  const pianoMidiBase = stockPinned ? 24 : (Math.floor(pianoBaseMidi / 12) - 2 + 2) * 12;
 
-  const whiteNotes = [0,2,4,5,7,9,11];
-  const blackNotes = [1,3,6,8,10];
-  const blackPositions = [0, 1, 3, 4, 5];
-
-  // Stock MIDI-specific rendering
-  var stockActive = StockState.enabled && StockState.lhMidi && StockState.rhMidi;
+  // Stock mode: build keyColorFn override
   var stockMidiSet = null;
-  if (stockActive) {
+  var keyColorFn = null;
+  if (stockPinned) {
     stockMidiSet = new Set(StockState.lhMidi.concat(StockState.rhMidi));
+    keyColorFn = function(pc, isWhite, midi) {
+      var baseOff = isWhite ? '#eee' : '#222';
+      if (!stockMidiSet.has(midi)) return { fill: baseOff, textColor: null, opacity: 1, showLabel: false };
+      var deg = StockState.degreeMap[midi];
+      var fill, textColor;
+      if (deg === '1')                                       { fill = PAD_INST_COLORS.root; textColor = '#fff'; }
+      else if (deg === '3' || deg === 'b3')                  { fill = PAD_INST_COLORS.guide3; textColor = '#fff'; }
+      else if (deg === '7' || deg === 'b7' || deg === 'bb7') { fill = PAD_INST_COLORS.guide7; textColor = '#fff'; }
+      else if (deg === '5' || deg === 'b5' || deg === '#5')  { fill = isWhite ? PAD_INST_COLORS.pianoChordWhite : PAD_INST_COLORS.pianoChordBlack; textColor = isWhite ? '#333' : '#fff'; }
+      else                                                    { fill = PAD_INST_COLORS.tension; textColor = '#fff'; }
+      return { fill: fill, textColor: textColor, opacity: 1, showLabel: true };
+    };
   }
 
-  // Degree label helper
-  var pianoUseDegreee = rootPC >= 0;
-  var pianoIvPcsSet = pianoUseDegreee && AppState.mode === 'chord' && pcsSet.size > 0
+  // Label function: maps global state
+  var pianoIvPcsSet = rootPC >= 0 && AppState.mode === 'chord' && pcsSet.size > 0
     ? new Set([...pcsSet].map(function(p) { return ((p - rootPC) % 12 + 12) % 12; }))
     : null;
-  function pianoDegreeLabel(pc, midi) {
-    // Stock mode: use degree from degreeMap
-    if (stockActive && stockMidiSet && stockMidiSet.has(midi)) {
+  const labelFn = function(pc, midi) {
+    if (stockPinned && stockMidiSet && stockMidiSet.has(midi)) {
       return StockState.degreeMap[midi] || pcName(pc);
     }
-    if (!pianoUseDegreee) return pcName(pc);
+    if (rootPC < 0) return pcName(pc);
     var iv = ((pc - rootPC) % 12 + 12) % 12;
     if (AppState.mode === 'chord' && BuilderState.quality) {
       return chordDegreeName(iv, BuilderState.quality.pcs, pianoIvPcsSet);
     }
     return SCALE_DEGREE_NAMES[iv];
-  }
+  };
 
-  // Color logic matching pad exactly (same priority order as pad rendering)
-  function pianoKeyColor(pc, isWhite, midi) {
-    // Stock mode: MIDI-specific rendering — only color keys in the voicing
-    if (stockActive && stockMidiSet) {
-      var baseOff = isWhite ? '#eee' : '#222';
-      if (!stockMidiSet.has(midi)) return { fill: baseOff, textColor: null, opacity: 1, showLabel: false };
-      var deg = StockState.degreeMap[midi];
-      var fill, textColor;
-      if (deg === '1')                                          { fill = INST_ROOT_COLOR; textColor = '#fff'; }
-      else if (deg === '3' || deg === 'b3')                     { fill = '#CC79A7'; textColor = '#fff'; }
-      else if (deg === '7' || deg === 'b7' || deg === 'bb7')    { fill = '#009E73'; textColor = '#fff'; }
-      else if (deg === '5' || deg === 'b5' || deg === '#5')     { fill = isWhite ? '#90CAF9' : '#4A90D9'; textColor = isWhite ? '#333' : '#fff'; }
-      else                                                       { fill = '#0072B2'; textColor = '#fff'; } // tensions
-      return { fill: fill, textColor: textColor, opacity: 1, showLabel: true };
-    }
-    var isActive = pcsSet.has(pc);
-    var isRoot = pc === rootPC;
-    var isBass = bassPC !== undefined && bassPC !== null && pc === bassPC && !isRoot;
-    var isChar = AppState.mode === 'scale' && charPCS && charPCS.has(pc) && !isRoot;
-    var isGuide3 = AppState.mode === 'chord' && guide3PCS && guide3PCS.has(pc) && !isRoot && !(tensionPCS && tensionPCS.has(pc));
-    var isGuide7 = AppState.mode === 'chord' && guide7PCS && guide7PCS.has(pc) && !isRoot && !(tensionPCS && tensionPCS.has(pc));
-    var isTension = AppState.mode === 'chord' && tensionPCS && tensionPCS.has(pc) && !isRoot && !isGuide3 && !isGuide7;
-    var isAvoid = AppState.mode === 'chord' && avoidPCS && avoidPCS.has(pc) && !isRoot;
-    var isOvl = AppState.mode === 'scale' && !isActive && !isRoot && !isBass && overlayPCS && overlayPCS.has(pc);
-    var isOvlChar = isOvl && overlayCharPCS && overlayCharPCS.has(pc);
-    var baseOff = isWhite ? '#eee' : '#222';
-    // Same priority as pad: root > bass > guide3 > guide7 > char > avoid > tension > active > overlay > off
-    var fill, textColor, opacity = 1;
-    if (isRoot)          { fill = INST_ROOT_COLOR; textColor = '#fff'; }
-    else if (isBass)     { fill = INST_BASS_COLOR; textColor = '#000'; }
-    else if (isGuide3)   { fill = '#CC79A7'; textColor = '#fff'; }   // --pad-guide3
-    else if (isGuide7)   { fill = '#009E73'; textColor = '#fff'; }   // --pad-guide7
-    else if (isChar)     { fill = '#F0E442'; textColor = '#000'; }   // --pad-char
-    else if (isAvoid)    { fill = '#D55E00'; textColor = '#fff'; }   // --pad-avoid
-    else if (isTension)  { fill = '#0072B2'; textColor = '#fff'; }   // --pad-tension
-    else if (isActive)   {
-      fill = isWhite ? '#90CAF9' : '#4A90D9';                        // --pad-chord/scale
-      textColor = isWhite ? '#333' : '#fff';
-    }
-    else if (isOvlChar)  { fill = isWhite ? '#e8dfa0' : INST_OVERLAY_CHAR_COLOR; textColor = '#666'; opacity = isWhite ? 1 : 0.6; }
-    else if (isOvl)      { fill = isWhite ? '#b8d8ec' : INST_OVERLAY_COLOR; textColor = '#666'; opacity = isWhite ? 1 : 0.5; }
-    else                 { fill = baseOff; textColor = null; }
-    var showLabel = isActive || isRoot || isBass || isOvl;
-    return { fill: fill, textColor: textColor, opacity: opacity, showLabel: showLabel };
-  }
-
-  // White keys
-  let wx = startX;
-  for (let oct = 0; oct < numOctaves; oct++) {
-    for (let i = 0; i < 7; i++) {
-      const pc = whiteNotes[i];
-      const midi = pianoMidiBase + oct * 12 + pc;
-      const k = pianoKeyColor(pc, true, midi);
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', wx); rect.setAttribute('y', startY);
-      rect.setAttribute('width', whiteW - 1); rect.setAttribute('height', whiteH);
-      rect.setAttribute('rx', 1);
-      rect.setAttribute('fill', k.fill);
-      rect.setAttribute('stroke', '#bbb'); rect.setAttribute('stroke-width', 0.5);
-      svg.appendChild(rect);
-      if (k.showLabel) {
-        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        label.setAttribute('x', wx + (whiteW - 1) / 2); label.setAttribute('y', startY + whiteH - 6);
-        label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('font-size', '10px');
-        label.setAttribute('fill', k.textColor || '#333');
-        label.setAttribute('font-weight', '700');
-        label.textContent = pianoDegreeLabel(pc, midi);
-        svg.appendChild(label);
-      }
-      wx += whiteW;
-    }
-  }
-
-  // Black keys
-  for (let oct = 0; oct < numOctaves; oct++) {
-    for (let i = 0; i < 5; i++) {
-      const pc = blackNotes[i];
-      const midi = pianoMidiBase + oct * 12 + pc;
-      const k = pianoKeyColor(pc, false, midi);
-      const whiteIdx = blackPositions[i] + oct * 7;
-      const bx = startX + (whiteIdx + 1) * whiteW - blackW / 2;
-      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', bx); rect.setAttribute('y', startY);
-      rect.setAttribute('width', blackW); rect.setAttribute('height', blackH);
-      rect.setAttribute('rx', 1);
-      rect.setAttribute('fill', k.fill);
-      rect.setAttribute('stroke', '#000'); rect.setAttribute('stroke-width', 0.5);
-      if (k.opacity < 1) rect.setAttribute('opacity', k.opacity);
-      svg.appendChild(rect);
-      if (k.showLabel) {
-        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        label.setAttribute('x', bx + blackW / 2); label.setAttribute('y', startY + blackH - 3);
-        label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('font-size', '8px'); label.setAttribute('fill', k.textColor || '#fff');
-        label.setAttribute('font-weight', '700');
-        label.textContent = pianoDegreeLabel(pc, midi);
-        svg.appendChild(label);
-      }
-    }
-  }
-
-  // Piano selected note markers (white circles)
-  for (let oct = 0; oct < numOctaves; oct++) {
-    for (let i = 0; i < 12; i++) {
-      const midi = pianoMidiBase + oct * 12 + i;
-      if (!pianoSelectedNotes.has(midi)) continue;
-      const isWhite = [0,2,4,5,7,9,11].includes(i);
-      let cx, cy;
-      if (isWhite) {
-        const whiteIdx = [0,0,1,1,2,3,3,4,4,5,5,6][i];
-        cx = startX + (oct * 7 + whiteIdx) * whiteW + (whiteW - 1) / 2;
-        cy = startY + whiteH - 12;
-      } else {
-        const blackIdx = [0,0,1,0,0,0,2,0,3,0,4,0][i];
-        const blackPos = [0, 1, 3, 4, 5];
-        const whiteOff = blackPos[blackIdx] + oct * 7;
-        cx = startX + (whiteOff + 1) * whiteW;
-        cy = startY + blackH - 10;
-      }
-      const marker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      marker.setAttribute('cx', cx); marker.setAttribute('cy', cy);
-      marker.setAttribute('r', 5);
-      marker.setAttribute('fill', '#fff');
-      marker.setAttribute('stroke', '#333'); marker.setAttribute('stroke-width', 1.5);
-      svg.appendChild(marker);
-      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', cx); label.setAttribute('y', cy + 3);
-      label.setAttribute('text-anchor', 'middle');
-      label.setAttribute('font-size', '6px'); label.setAttribute('fill', '#333');
-      label.setAttribute('font-weight', '700');
-      label.textContent = pcName(i);
-      svg.appendChild(label);
-    }
-  }
-
-  // Piano click handlers (white keys)
-  for (let oct = 0; oct < numOctaves; oct++) {
-    for (let i = 0; i < 7; i++) {
-      const pc = whiteNotes[i];
-      const midi = pianoMidiBase + oct * 12 + pc;
-      const kx = startX + (oct * 7 + i) * whiteW;
-      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      hit.setAttribute('x', kx); hit.setAttribute('y', startY + blackH);
-      hit.setAttribute('width', whiteW); hit.setAttribute('height', whiteH - blackH);
-      hit.setAttribute('fill', 'transparent'); hit.setAttribute('cursor', 'pointer');
-      hit.dataset.midi = midi;
-      hit.addEventListener('click', function() { togglePianoNote(parseInt(this.dataset.midi)); });
-      svg.appendChild(hit);
-    }
-  }
-  // Piano click handlers (black keys - on top)
-  for (let oct = 0; oct < numOctaves; oct++) {
-    for (let i = 0; i < 5; i++) {
-      const pc = blackNotes[i];
-      const midi = pianoMidiBase + oct * 12 + pc;
-      const whiteIdx = blackPositions[i] + oct * 7;
-      const bx = startX + (whiteIdx + 1) * whiteW - blackW / 2;
-      const hit = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      hit.setAttribute('x', bx); hit.setAttribute('y', startY);
-      hit.setAttribute('width', blackW); hit.setAttribute('height', blackH);
-      hit.setAttribute('fill', 'transparent'); hit.setAttribute('cursor', 'pointer');
-      hit.dataset.midi = midi;
-      hit.addEventListener('click', function() { togglePianoNote(parseInt(this.dataset.midi)); });
-      svg.appendChild(hit);
-    }
-  }
-
-  // Octave labels
-  for (let oct = 0; oct < numOctaves; oct++) {
-    const ox = startX + oct * 7 * whiteW;
-    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    t.setAttribute('x', ox + 2); t.setAttribute('y', startY + whiteH + 11);
-    t.setAttribute('font-size', '8px'); t.setAttribute('fill', '#888');
-    t.textContent = 'C' + (startOctave + oct);
-    svg.appendChild(t);
-  }
+  padRenderPiano(svg, {
+    rootPC: rootPC,
+    pcsSet: pcsSet,
+    bassPC: bassPC,
+    renderState: state || {},
+    overlayPCS: state ? state.overlayPCS : null,
+    overlayCharPCS: state ? state.overlayCharPCS : null,
+    chordMode: AppState.mode === 'chord',
+    numOctaves: stockPinned ? 5 : 4,
+    startMidi: pianoMidiBase,
+    selectedNotes: pianoSelectedNotes,
+    solo: showPiano && !showGuitar,
+    width: DIAGRAM_WIDTH,
+    isMobile: _isMobile,
+    isLandscape: _isLandscape,
+    labelFn: labelFn,
+    keyColorFn: keyColorFn,
+    onKeyClick: togglePianoNote,
+  });
 }
 
 // ========================================

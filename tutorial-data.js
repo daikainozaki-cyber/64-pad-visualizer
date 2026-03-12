@@ -222,3 +222,462 @@ TutorialRegistry.add('chord_mode', {
     },
   ]
 });
+
+// =============================================
+// INPUT MODE
+// =============================================
+TutorialRegistry.add('input_mode', {
+  titleKey: 'tut.input_mode_title',
+  descKey: 'tut.input_mode_desc',
+  category: 'getting-started',
+  steps: [
+    {
+      type: 'action',
+      id: 'switch_to_input',
+      targets: ['#mode-input'],
+      highlight: '#mode-input',
+      titleKey: 'tut.input_mode.step1_title',
+      msgKey: 'tut.input_mode.step1_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        if (typeof setMode === 'function') setMode('input');
+      }
+    },
+    {
+      type: 'highlight',
+      id: 'tap_pads',
+      targets: ['#pad-grid'],
+      highlight: '#pad-grid',
+      titleKey: 'tut.input_mode.step2_title',
+      msgKey: 'tut.input_mode.step2_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'chord_detect',
+      targets: ['#info-text'],
+      highlight: '#info-text',
+      titleKey: 'tut.input_mode.step3_title',
+      msgKey: 'tut.input_mode.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'capture',
+      targets: ['#memory-slots'],
+      highlight: '#memory-slots',
+      titleKey: 'tut.input_mode.step4_title',
+      msgKey: 'tut.input_mode.step4_msg',
+      waitFor: 'close',
+    },
+  ]
+});
+
+// =============================================
+// DIATONIC BAR
+// =============================================
+TutorialRegistry.add('diatonic', {
+  titleKey: 'tut.diatonic_title',
+  descKey: 'tut.diatonic_desc',
+  category: 'features',
+  steps: [
+    {
+      type: 'highlight',
+      id: 'bar_overview',
+      targets: ['#diatonic-bar'],
+      highlight: '#diatonic-bar',
+      titleKey: 'tut.diatonic.step1_title',
+      msgKey: 'tut.diatonic.step1_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        if (typeof setMode === 'function') setMode('scale');
+      }
+    },
+    {
+      type: 'info',
+      id: 'triad_tetrad',
+      targets: ['#diatonic-bar'],
+      highlight: '#diatonic-bar',
+      titleKey: 'tut.diatonic.step2_title',
+      msgKey: 'tut.diatonic.step2_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'click_chord',
+      targets: ['#diatonic-bar'],
+      highlight: '#diatonic-bar',
+      titleKey: 'tut.diatonic.step3_title',
+      msgKey: 'tut.diatonic.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'shortcuts',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.diatonic.step4_title',
+      msgKey: 'tut.diatonic.step4_msg',
+      waitFor: 'close',
+    },
+  ]
+});
+
+// =============================================
+// MEMORY & PERFORM
+// =============================================
+TutorialRegistry.add('memory', {
+  titleKey: 'tut.memory_title',
+  descKey: 'tut.memory_desc',
+  category: 'features',
+  steps: [
+    {
+      type: 'info',
+      id: 'save_chord',
+      targets: ['#memory-slots'],
+      highlight: '#memory-slots',
+      titleKey: 'tut.memory.step1_title',
+      msgKey: 'tut.memory.step1_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'highlight',
+      id: 'slots',
+      targets: ['#memory-slots'],
+      highlight: '#memory-slots',
+      titleKey: 'tut.memory.step2_title',
+      msgKey: 'tut.memory.step2_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'highlight',
+      id: 'banks',
+      targets: ['#bank-bar'],
+      highlight: '#bank-bar',
+      titleKey: 'tut.memory.step3_title',
+      msgKey: 'tut.memory.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'perform',
+      targets: ['#mem-view-perform'],
+      highlight: '#mem-view-perform',
+      titleKey: 'tut.memory.step4_title',
+      msgKey: 'tut.memory.step4_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'export',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.memory.step5_title',
+      msgKey: 'tut.memory.step5_msg',
+      waitFor: 'close',
+    },
+  ]
+});
+
+// =============================================
+// VOICING
+// =============================================
+TutorialRegistry.add('voicing', {
+  titleKey: 'tut.voicing_title',
+  descKey: 'tut.voicing_desc',
+  category: 'features',
+  steps: [
+    {
+      type: 'info',
+      id: 'overview',
+      targets: ['#btn-omit5', '#btn-rootless'],
+      highlight: null,
+      titleKey: 'tut.voicing.step1_title',
+      msgKey: 'tut.voicing.step1_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        if (typeof setMode === 'function') setMode('chord');
+      }
+    },
+    {
+      type: 'highlight',
+      id: 'shell',
+      targets: ['#shell-bar'],
+      highlight: '#shell-bar',
+      titleKey: 'tut.voicing.step2_title',
+      msgKey: 'tut.voicing.step2_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'highlight',
+      id: 'omit_rootless',
+      targets: ['#btn-omit5', '#btn-rootless', '#btn-omit3'],
+      highlight: '#btn-omit5',
+      titleKey: 'tut.voicing.step3_title',
+      msgKey: 'tut.voicing.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'highlight',
+      id: 'inversion',
+      targets: ['#btn-inv0', '#btn-inv1', '#btn-inv2', '#btn-inv3'],
+      highlight: '#btn-inv0',
+      titleKey: 'tut.voicing.step4_title',
+      msgKey: 'tut.voicing.step4_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'highlight',
+      id: 'drop',
+      targets: ['#drop-bar'],
+      highlight: '#drop-bar',
+      titleKey: 'tut.voicing.step5_title',
+      msgKey: 'tut.voicing.step5_msg',
+      waitFor: 'close',
+    },
+  ]
+});
+
+// =============================================
+// SOUND
+// =============================================
+TutorialRegistry.add('sound', {
+  titleKey: 'tut.sound_title',
+  descKey: 'tut.sound_desc',
+  category: 'features',
+  steps: [
+    {
+      type: 'highlight',
+      id: 'preset',
+      targets: ['#organ-preset'],
+      highlight: '#organ-preset',
+      titleKey: 'tut.sound.step1_title',
+      msgKey: 'tut.sound.step1_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        if (typeof showSound !== 'undefined' && !showSound && typeof toggleInstrument === 'function') {
+          toggleInstrument('sound');
+        }
+      }
+    },
+    {
+      type: 'info',
+      id: 'expand',
+      targets: ['#sound-expand-btn'],
+      highlight: '#sound-expand-btn',
+      titleKey: 'tut.sound.step2_title',
+      msgKey: 'tut.sound.step2_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'effects',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.sound.step3_title',
+      msgKey: 'tut.sound.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'mute_vol',
+      targets: ['#sound-mute-btn'],
+      highlight: '#sound-mute-btn',
+      titleKey: 'tut.sound.step4_title',
+      msgKey: 'tut.sound.step4_msg',
+      waitFor: 'close',
+    },
+  ]
+});
+
+// =============================================
+// TASTY VOICING (HPS)
+// =============================================
+TutorialRegistry.add('tasty', {
+  titleKey: 'tut.tasty_title',
+  descKey: 'tut.tasty_desc',
+  category: 'advanced',
+  steps: [
+    {
+      type: 'info',
+      id: 'activate',
+      targets: ['#tasty-bar'],
+      highlight: '#btn-tasty',
+      titleKey: 'tut.tasty.step1_title',
+      msgKey: 'tut.tasty.step1_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        if (typeof setMode === 'function') setMode('chord');
+      }
+    },
+    {
+      type: 'info',
+      id: 'cycle',
+      targets: ['#tasty-bar'],
+      highlight: '#tasty-counter',
+      titleKey: 'tut.tasty.step2_title',
+      msgKey: 'tut.tasty.step2_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'degrees',
+      targets: ['#tasty-info'],
+      highlight: '#tasty-info',
+      titleKey: 'tut.tasty.step3_title',
+      msgKey: 'tut.tasty.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'to_pad',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.tasty.step4_title',
+      msgKey: 'tut.tasty.step4_msg',
+      waitFor: 'close',
+    },
+  ]
+});
+
+// =============================================
+// STOCK VOICING (HPS)
+// =============================================
+TutorialRegistry.add('stock', {
+  titleKey: 'tut.stock_title',
+  descKey: 'tut.stock_desc',
+  category: 'advanced',
+  steps: [
+    {
+      type: 'info',
+      id: 'activate',
+      targets: ['#stock-bar'],
+      highlight: '#btn-stock',
+      titleKey: 'tut.stock.step1_title',
+      msgKey: 'tut.stock.step1_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        if (typeof setMode === 'function') setMode('chord');
+      }
+    },
+    {
+      type: 'info',
+      id: 'cycle',
+      targets: ['#stock-bar'],
+      highlight: '#stock-counter',
+      titleKey: 'tut.stock.step2_title',
+      msgKey: 'tut.stock.step2_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'keyboard',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.stock.step3_title',
+      msgKey: 'tut.stock.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'to_pad',
+      targets: ['#stock-reflect-btn'],
+      highlight: '#stock-reflect-btn',
+      titleKey: 'tut.stock.step4_title',
+      msgKey: 'tut.stock.step4_msg',
+      waitFor: 'close',
+    },
+  ]
+});
+
+// =============================================
+// CIRCLE OF FIFTHS
+// =============================================
+TutorialRegistry.add('circle', {
+  titleKey: 'tut.circle_title',
+  descKey: 'tut.circle_desc',
+  category: 'advanced',
+  steps: [
+    {
+      type: 'highlight',
+      id: 'open',
+      targets: ['#inst-toggle-circle'],
+      highlight: '#inst-toggle-circle',
+      titleKey: 'tut.circle.step1_title',
+      msgKey: 'tut.circle.step1_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        // Show circle if hidden
+        var wrap = document.getElementById('circle-wrap');
+        if (wrap && wrap.style.display === 'none') {
+          if (typeof toggleTheoryView === 'function') toggleTheoryView('circle');
+        }
+      }
+    },
+    {
+      type: 'highlight',
+      id: 'key_link',
+      targets: ['#circle-wrap'],
+      highlight: '#circle-of-fifths',
+      titleKey: 'tut.circle.step2_title',
+      msgKey: 'tut.circle.step2_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'functions',
+      targets: ['#circle-wrap'],
+      highlight: '#circle-of-fifths',
+      titleKey: 'tut.circle.step3_title',
+      msgKey: 'tut.circle.step3_msg',
+      waitFor: 'close',
+    },
+  ]
+});
+
+// =============================================
+// SETTINGS & DISPLAY
+// =============================================
+TutorialRegistry.add('settings', {
+  titleKey: 'tut.settings_title',
+  descKey: 'tut.settings_desc',
+  category: 'advanced',
+  steps: [
+    {
+      type: 'highlight',
+      id: 'instruments',
+      targets: ['#inst-toggle-bar'],
+      highlight: '#inst-toggle-bar',
+      titleKey: 'tut.settings.step1_title',
+      msgKey: 'tut.settings.step1_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'labels',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.settings.step2_title',
+      msgKey: 'tut.settings.step2_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'highlight',
+      id: 'octave',
+      targets: ['#oct-down', '#oct-up'],
+      highlight: '#oct-label',
+      titleKey: 'tut.settings.step3_title',
+      msgKey: 'tut.settings.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'save',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.settings.step4_title',
+      msgKey: 'tut.settings.step4_msg',
+      waitFor: 'close',
+    },
+  ]
+});

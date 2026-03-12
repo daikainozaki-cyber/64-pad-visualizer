@@ -1,8 +1,8 @@
 # 64 Pad Explorer - CLAUDE.md
 
-**最終更新**: 2026-03-11
+**最終更新**: 2026-03-12
 **担当人格**: 蔵人（実装）、継次（設計・レビュー）、フロ男（テンション・ボイシング設計）、マケ子（UI/UX外部視点）
-**バージョン**: V3.30.13（2026-03-11）
+**バージョン**: V3.31.5（2026-03-12）
 
 ---
 
@@ -917,6 +917,15 @@ z x c v   → slot 13-16
 - `?hps` パラメータで表示/非表示
 
 **設計判断**: TASTY = パッドで弾けるもののみ。ピアノ専用ボイシングはStock Voicingで別管理
+
+#### Stock Voicing + ピアノ色統一 — **完了** (2026-03-12)
+
+- **Stock Voicing**: 154度数ベースボイシング（`stock-voicings.json`）、Kキーで有効化、`?hps`ゲート
+- **ピアノ色 = パッド色**: `renderPianoDisplay(state)` で state 丸ごと渡し。Root(orange)/3rd(pink)/7th(green)/Chord(blue)/Tension(dark blue)/Avoid(red-orange)/Scale overlay — 4楽器（パッド/ギター/ベース/ピアノ）完全統一
+- **ピアノ度数ラベル**: コード選択時は度数表示（R, m3, b7, 9 etc.）、未選択時はノート名
+- **ピアノ動的オクターブ**: `baseMidi()` に追従（C0〜C3等）
+- **Stock info text**: ビルダーコード名 + 全度数（LH/RH区別なし）。例: `Em7 1-b7-b3-b7-9`
+- **Stock丸マーカー廃止**: 鍵盤色で十分。LH/RH名残を削除
 
 #### TASTY 表示バグ修正 (V3.31.3→V3.31.4, 2026-03-11)
 

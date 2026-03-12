@@ -1871,7 +1871,7 @@ function renderPianoDisplay(state) {
     var isGuide7 = AppState.mode === 'chord' && guide7PCS && guide7PCS.has(pc) && !isRoot && !(tensionPCS && tensionPCS.has(pc));
     var isTension = AppState.mode === 'chord' && tensionPCS && tensionPCS.has(pc) && !isRoot && !isGuide3 && !isGuide7;
     var isAvoid = AppState.mode === 'chord' && avoidPCS && avoidPCS.has(pc) && !isRoot;
-    var isOvl = !isActive && !isRoot && !isBass && overlayPCS && overlayPCS.has(pc);
+    var isOvl = AppState.mode === 'scale' && !isActive && !isRoot && !isBass && overlayPCS && overlayPCS.has(pc);
     var isOvlChar = isOvl && overlayCharPCS && overlayCharPCS.has(pc);
     var baseOff = isWhite ? '#eee' : '#222';
     // Same priority as pad: root > bass > guide3 > guide7 > char > avoid > tension > active > overlay > off

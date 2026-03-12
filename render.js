@@ -1963,51 +1963,6 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, 
     }
   }
 
-  // Stock Voicing markers (LH=blue, RH=orange)
-  if (StockState.enabled && StockState.currentIndex >= 0) {
-    var stockAllNotes = [
-      { notes: StockState.lhMidi, color: '#4fc3f7', label: 'L' },
-      { notes: StockState.rhMidi, color: '#ffb74d', label: 'R' }
-    ];
-    for (var si = 0; si < stockAllNotes.length; si++) {
-      var hand = stockAllNotes[si];
-      for (var sn = 0; sn < hand.notes.length; sn++) {
-        var smidi = hand.notes[sn];
-        if (smidi < pianoMidiBase || smidi > pianoMidiBase + numOctaves * 12 - 1) continue;
-        var soct = Math.floor((smidi - pianoMidiBase) / 12);
-        var spc = (smidi - pianoMidiBase) % 12;
-        var sisWhite = [0,2,4,5,7,9,11].includes(spc);
-        var scx, scy;
-        if (sisWhite) {
-          var swhiteIdx = [0,0,1,1,2,3,3,4,4,5,5,6][spc];
-          scx = startX + (soct * 7 + swhiteIdx) * whiteW + (whiteW - 1) / 2;
-          scy = startY + whiteH - 12;
-        } else {
-          var sblackIdx = [0,0,1,0,0,0,2,0,3,0,4,0][spc];
-          var sblackPos = [0, 1, 3, 4, 5];
-          var swhiteOff = sblackPos[sblackIdx] + soct * 7;
-          scx = startX + (swhiteOff + 1) * whiteW;
-          scy = startY + blackH - 10;
-        }
-        var smarker = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        smarker.setAttribute('cx', scx); smarker.setAttribute('cy', scy);
-        smarker.setAttribute('r', 6);
-        smarker.setAttribute('fill', hand.color);
-        smarker.setAttribute('stroke', '#fff'); smarker.setAttribute('stroke-width', 1.5);
-        svg.appendChild(smarker);
-        // Show degree label
-        var sdeg = StockState.degreeMap[smidi] || '';
-        var slabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        slabel.setAttribute('x', scx); slabel.setAttribute('y', scy + 3);
-        slabel.setAttribute('text-anchor', 'middle');
-        slabel.setAttribute('font-size', '6px'); slabel.setAttribute('fill', '#000');
-        slabel.setAttribute('font-weight', '700');
-        slabel.textContent = sdeg;
-        svg.appendChild(slabel);
-      }
-    }
-  }
-
   // Piano click handlers (white keys)
   for (let oct = 0; oct < numOctaves; oct++) {
     for (let i = 0; i < 7; i++) {

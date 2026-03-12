@@ -433,6 +433,15 @@ TutorialRegistry.add('voicing', {
       highlight: '#drop-bar',
       titleKey: 'tut.voicing.step5_title',
       msgKey: 'tut.voicing.step5_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'voicing_box',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.voicing.step6_title',
+      msgKey: 'tut.voicing.step6_msg',
       waitFor: 'close',
     },
   ]
@@ -497,7 +506,6 @@ TutorialRegistry.add('tasty', {
   titleKey: 'tut.tasty_title',
   descKey: 'tut.tasty_desc',
   category: 'advanced',
-  requireEl: '#tasty-bar',
   steps: [
     {
       type: 'info',
@@ -548,7 +556,6 @@ TutorialRegistry.add('stock', {
   titleKey: 'tut.stock_title',
   descKey: 'tut.stock_desc',
   category: 'advanced',
-  requireEl: '#stock-bar',
   steps: [
     {
       type: 'info',

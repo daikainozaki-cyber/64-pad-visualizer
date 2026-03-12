@@ -1453,13 +1453,10 @@ function getStockInfoText() {
   if (!StockState.enabled || StockState.currentIndex < 0) return '';
   var entry = StockState.currentMatches[StockState.currentIndex];
   if (!entry) return '';
-  var parts = [entry.name];
-  if (entry.label) parts.push(entry.label);
-  // Show LH/RH degrees
-  var lhStr = entry.LH && entry.LH.length > 0 ? 'LH:' + entry.LH.join('-') : '';
-  var rhStr = entry.RH && entry.RH.length > 0 ? 'RH:' + entry.RH.join('-') : '';
-  if (lhStr || rhStr) parts.push([lhStr, rhStr].filter(Boolean).join(' '));
-  return parts.join(' ');
+  // Chord name from builder + all degrees (bottom to top, LH then RH merged)
+  var chord = getBuilderChordName() || '';
+  var allDegrees = (entry.LH || []).concat(entry.RH || []);
+  return allDegrees.length > 0 ? chord + ' ' + allDegrees.join('-') : chord;
 }
 
 function updateStockUI() {

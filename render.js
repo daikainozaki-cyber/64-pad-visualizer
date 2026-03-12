@@ -1844,6 +1844,20 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
   const blackNotes = [1,3,6,8,10];
   const blackPositions = [0, 1, 3, 4, 5];
 
+  // Degree label helper: piano shows degrees (not note names) when root is known
+  var pianoUseDegreee = rootPC >= 0;
+  var pianoIvPcsSet = pianoUseDegreee && AppState.mode === 'chord' && pcsSet.size > 0
+    ? new Set([...pcsSet].map(function(p) { return ((p - rootPC) % 12 + 12) % 12; }))
+    : null;
+  function pianoDegreeLabel(pc) {
+    if (!pianoUseDegreee) return pcName(pc);
+    var iv = ((pc - rootPC) % 12 + 12) % 12;
+    if (AppState.mode === 'chord' && BuilderState.quality) {
+      return chordDegreeName(iv, BuilderState.quality.pcs, pianoIvPcsSet);
+    }
+    return SCALE_DEGREE_NAMES[iv];
+  }
+
   // White keys
   let wx = startX;
   for (let oct = 0; oct < numOctaves; oct++) {
@@ -1868,7 +1882,7 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
         label.setAttribute('font-size', '10px');
         label.setAttribute('fill', isRoot ? '#fff' : (isBass ? '#000' : (isOvl ? '#666' : '#333')));
         label.setAttribute('font-weight', '700');
-        label.textContent = pcName(pc);
+        label.textContent = pianoDegreeLabel(pc);
         svg.appendChild(label);
       }
       wx += whiteW;
@@ -1900,7 +1914,7 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('font-size', '8px'); label.setAttribute('fill', isBass ? '#000' : (isOvl ? '#fff' : '#ddd'));
         label.setAttribute('font-weight', '700');
-        label.textContent = pcName(pc);
+        label.textContent = pianoDegreeLabel(pc);
         svg.appendChild(label);
       }
     }

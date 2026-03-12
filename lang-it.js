@@ -361,6 +361,8 @@ I18N.addLang('it', {
     steps_label: 'passaggi',
     reset_all: 'Reimposta tutti i progressi',
     close_selector: 'Chiudi',
+    hint_available: 'Tutorial disponibile',
+    hint_try: 'Provalo',
     // Shared action labels
     next: 'Avanti',
     skip_step: 'Salta',

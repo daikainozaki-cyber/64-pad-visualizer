@@ -361,6 +361,8 @@ I18N.addLang('de', {
     steps_label: 'Schritte',
     reset_all: 'Gesamten Fortschritt zur\u00FCcksetzen',
     close_selector: 'Schlie\u00DFen',
+    hint_available: 'Tutorial verfügbar',
+    hint_try: 'Ausprobieren',
     // Shared action labels
     next: 'Weiter',
     skip_step: '\u00DCberspringen',

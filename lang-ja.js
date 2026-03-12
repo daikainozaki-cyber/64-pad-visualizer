@@ -375,6 +375,8 @@ I18N.addLang('ja', {
     steps_label: 'ステップ',
     reset_all: '進捗をリセット',
     close_selector: '閉じる',
+    hint_available: 'チュートリアルあります',
+    hint_try: 'やってみる',
     // 共通アクション
     next: '次へ',
     skip_step: 'スキップ',

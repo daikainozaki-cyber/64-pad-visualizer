@@ -368,8 +368,8 @@ fingerings.json に追加
 | Phase 4.98 | **多言語対応（i18n）** | **完了** | 9言語(en/zh/es/fr/pt/de/ja/ko/it)、`t()`関数+`data-i18n`属性方式、ビルドツール不要 |
 | Phase 4.99 | **Parent Scale逆引き** | **完了** | 4スケールシステム(○/NM/■/◆)×7度×12キー。テンションフィルタ、五度圏距離ソート、行クリックでスケール切替。**コード・スケール編完成** |
 | ~~Phase 5~~ | ~~指番号判定ロジック~~ | **廃止** | 指番号はツール自動化より人間が教える価値。HPSの参入障壁そのもの |
-| Phase 6 | **ダイアグラム描画モジュール化** | 未着手 | ギター/ベース/ピアノ描画を再利用可能な単位に切り出し |
-| Phase 7 | **五度圏アプリにダイアグラム統合** | 未着手 | モジュールを五度圏アプリにインポート |
+| Phase 6 | **ダイアグラム描画モジュール化** | 一部完了 | pad-core: パッドグリッド描画済み。**未モジュール化**: ギター(renderGuitarDiagram)・ベース(renderBassDiagram)・ピアノ(renderPianoDisplay)・五線譜(renderStaff) — 全てrender.jsに残存。pad-coreへ移行すべき |
+| Phase 7 | **五度圏アプリにダイアグラム統合** | 未着手 | Phase 6完了後、モジュールを五度圏アプリにインポート |
 | ~~Phase 8~~ | ~~記事からのデータ抽出パイプライン~~ | **廃止** | Phase 5廃止に伴い不要 |
 | Phase A | **Audio Input（マイク→コード判定）** | 未着手 | getUserMedia+AnalyserNode→Chromagram(FFT→12PC)→padDetectChord。ギターユーザー取り込みの入口 |
 | Phase R | **マルチトラック録音** | 未着手 | MediaRecorder+Web Audio。マイク+内部音源の複数トラック→WAV書き出し。デモ録り・レッスン記録品質 |

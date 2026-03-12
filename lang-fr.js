@@ -361,6 +361,8 @@ I18N.addLang('fr', {
     steps_label: '\u00E9tapes',
     reset_all: 'R\u00E9initialiser toute la progression',
     close_selector: 'Fermer',
+    hint_available: 'Tutoriel disponible',
+    hint_try: 'Essayer',
     // Shared action labels
     next: 'Suivant',
     skip_step: 'Passer',

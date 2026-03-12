@@ -348,3 +348,95 @@ var TutorialEngine = {
   var btn = document.getElementById('tut-btn');
   if (btn) btn.classList.add('tut-pulse');
 })();
+
+// ========================================
+// CONTEXT HINTS — suggest tutorials on first feature interaction
+// Shows a small toast when user first touches a feature with a tutorial
+// localStorage '64pad-hint-{id}' = shown flag (one-time per tutorial)
+// ========================================
+
+var TutorialHints = {
+  _map: [
+    { sel: '#mode-scale', id: 'scale_mode' },
+    { sel: '#mode-chord', id: 'chord_mode' },
+    { sel: '#mode-input', id: 'input_mode' },
+    { sel: '#diatonic-bar', id: 'diatonic' },
+    { sel: '#memory-section', id: 'memory' },
+    { sel: '#shell-bar', id: 'voicing' },
+    { sel: '#sound-expand-btn', id: 'sound' },
+    { sel: '#tasty-bar', id: 'tasty' },
+    { sel: '#stock-bar', id: 'stock' },
+    { sel: '#inst-toggle-circle', id: 'circle' },
+    { sel: '#inst-toggle-bar', id: 'settings' }
+  ],
+  _toastTimer: null,
+
+  init: function() {
+    var self = this;
+    this._map.forEach(function(entry) {
+      var el = document.querySelector(entry.sel);
+      if (!el) return;
+      el.addEventListener('click', function() {
+        self._onFeatureClick(entry.id);
+      });
+    });
+  },
+
+  _onFeatureClick: function(tutorialId) {
+    // Don't show during active tutorial
+    if (TutorialEngine.active) return;
+    // Don't show if tutorial already completed
+    if (TutorialRegistry.isComplete(tutorialId)) return;
+    // Don't show if hint already shown for this tutorial
+    if (localStorage.getItem('64pad-hint-' + tutorialId)) return;
+    // Don't show until onboarding is done (avoid overwhelming new users)
+    if (!localStorage.getItem('64pad-tutorial-complete')) return;
+
+    // Mark hint as shown (one-time)
+    localStorage.setItem('64pad-hint-' + tutorialId, '1');
+    this._showToast(tutorialId);
+  },
+
+  _showToast: function(tutorialId) {
+    this._dismissToast();
+
+    var tut = TutorialRegistry.get(tutorialId);
+    if (!tut) return;
+
+    var title = t(tut.titleKey);
+    if (title === tut.titleKey) title = tutorialId;
+
+    var toast = document.createElement('div');
+    toast.id = 'tut-hint-toast';
+    toast.className = 'tut-hint-toast';
+    toast.innerHTML =
+      '<span class="tut-hint-text">' + title + ' — ' + t('tut.hint_available') + '</span>' +
+      '<button class="tut-hint-try" onclick="TutorialHints._tryTutorial(\'' + tutorialId + '\')">' + t('tut.hint_try') + '</button>' +
+      '<button class="tut-hint-dismiss" onclick="TutorialHints._dismissToast()">&times;</button>';
+
+    var grid = document.getElementById('pad-grid');
+    if (grid) {
+      grid.parentNode.insertBefore(toast, grid);
+    } else {
+      document.body.appendChild(toast);
+    }
+
+    this._toastTimer = setTimeout(function() {
+      TutorialHints._dismissToast();
+    }, 6000);
+  },
+
+  _tryTutorial: function(tutorialId) {
+    this._dismissToast();
+    TutorialEngine.startTutorial(tutorialId);
+  },
+
+  _dismissToast: function() {
+    clearTimeout(this._toastTimer);
+    var toast = document.getElementById('tut-hint-toast');
+    if (toast) toast.remove();
+  }
+};
+
+// Init context hints after DOM is ready
+TutorialHints.init();

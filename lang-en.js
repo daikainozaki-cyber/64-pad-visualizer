@@ -375,6 +375,8 @@ I18N.addLang('en', {
     steps_label: 'steps',
     reset_all: 'Reset all progress',
     close_selector: 'Close',
+    hint_available: 'Tutorial available',
+    hint_try: 'Try it',
     // Shared action labels
     next: 'Next',
     skip_step: 'Skip',

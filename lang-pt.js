@@ -361,6 +361,8 @@ I18N.addLang('pt', {
     steps_label: 'passos',
     reset_all: 'Reiniciar todo o progresso',
     close_selector: 'Fechar',
+    hint_available: 'Tutorial disponível',
+    hint_try: 'Experimentar',
     // Shared action labels
     next: 'Seguinte',
     skip_step: 'Saltar',

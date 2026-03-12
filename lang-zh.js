@@ -361,6 +361,8 @@ I18N.addLang('zh', {
     steps_label: '步',
     reset_all: '重置所有进度',
     close_selector: '关闭',
+    hint_available: '有教程可用',
+    hint_try: '试试看',
     // Shared action labels
     next: '下一步',
     skip_step: '跳过',

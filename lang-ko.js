@@ -361,6 +361,8 @@ I18N.addLang('ko', {
     steps_label: '단계',
     reset_all: '모든 진행 상황 초기화',
     close_selector: '닫기',
+    hint_available: '튜토리얼 있어요',
+    hint_try: '해보기',
     // Shared action labels
     next: '다음',
     skip_step: '건너뛰기',

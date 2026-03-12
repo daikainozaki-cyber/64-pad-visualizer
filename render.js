@@ -729,7 +729,7 @@ function render() {
   // Guitar/bass positions already computed above (before renderPads)
   renderGuitarDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state);
   renderBassDiagram(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state);
-  renderPianoDisplay(state.rootPC, state.activePCS, state.bassPC, state.overlayPCS, state.overlayCharPCS, state.charPCS);
+  renderPianoDisplay(state);
   renderCircle();
 
   // Re-apply instrument highlights after SVG rebuild
@@ -1801,9 +1801,19 @@ function toggleBassFret(stringIdx, fret) {
 // ========================================
 // PIANO DISPLAY
 // ========================================
-function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, charPCS) {
+function renderPianoDisplay(state) {
   const svg = document.getElementById('piano-display');
+  var pcsSet = state ? state.activePCS : new Set();
   if (!pcsSet) pcsSet = new Set();
+  var rootPC = state ? state.rootPC : -1;
+  var bassPC = state ? state.bassPC : null;
+  var overlayPCS = state ? state.overlayPCS : null;
+  var overlayCharPCS = state ? state.overlayCharPCS : null;
+  var charPCS = state ? state.charPCS : new Set();
+  var guide3PCS = state ? state.guide3PCS : new Set();
+  var guide7PCS = state ? state.guide7PCS : new Set();
+  var tensionPCS = state ? state.tensionPCS : new Set();
+  var avoidPCS = state ? state.avoidPCS : new Set();
 
   // Piano has its own position system (black/white pattern) — only show root when chord/scale tones exist
   if (pcsSet.size === 0) {
@@ -1815,8 +1825,8 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, 
   const solo = showPiano && !showGuitar;
   const numOctaves = 4;
   const pianoBaseMidi = baseMidi();
-  const startOctave = Math.floor(pianoBaseMidi / 12) - 2; // MIDI 36=C1 → oct 1, MIDI 24=C0 → oct 0
-  const pianoMidiBase = (startOctave + 2) * 12; // C of the lowest octave shown
+  const startOctave = Math.floor(pianoBaseMidi / 12) - 2;
+  const pianoMidiBase = (startOctave + 2) * 12;
   const whiteH = solo ? 80 : 50, blackH = solo ? 52 : 32;
   const numWhites = numOctaves * 7;
   const W = DIAGRAM_WIDTH;
@@ -1837,7 +1847,7 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, 
   const blackNotes = [1,3,6,8,10];
   const blackPositions = [0, 1, 3, 4, 5];
 
-  // Degree label helper: piano shows degrees (not note names) when root is known
+  // Degree label helper
   var pianoUseDegreee = rootPC >= 0;
   var pianoIvPcsSet = pianoUseDegreee && AppState.mode === 'chord' && pcsSet.size > 0
     ? new Set([...pcsSet].map(function(p) { return ((p - rootPC) % 12 + 12) % 12; }))
@@ -1851,37 +1861,58 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, 
     return SCALE_DEGREE_NAMES[iv];
   }
 
+  // Color logic matching pad exactly (same priority order as pad rendering)
+  function pianoKeyColor(pc, isWhite) {
+    var isActive = pcsSet.has(pc);
+    var isRoot = pc === rootPC;
+    var isBass = bassPC !== undefined && bassPC !== null && pc === bassPC && !isRoot;
+    var isChar = AppState.mode === 'scale' && charPCS && charPCS.has(pc) && !isRoot;
+    var isGuide3 = AppState.mode === 'chord' && guide3PCS && guide3PCS.has(pc) && !isRoot && !(tensionPCS && tensionPCS.has(pc));
+    var isGuide7 = AppState.mode === 'chord' && guide7PCS && guide7PCS.has(pc) && !isRoot && !(tensionPCS && tensionPCS.has(pc));
+    var isTension = AppState.mode === 'chord' && tensionPCS && tensionPCS.has(pc) && !isRoot && !isGuide3 && !isGuide7;
+    var isAvoid = AppState.mode === 'chord' && avoidPCS && avoidPCS.has(pc) && !isRoot;
+    var isOvl = !isActive && !isRoot && !isBass && overlayPCS && overlayPCS.has(pc);
+    var isOvlChar = isOvl && overlayCharPCS && overlayCharPCS.has(pc);
+    var baseOff = isWhite ? '#eee' : '#222';
+    // Same priority as pad: root > bass > guide3 > guide7 > char > avoid > tension > active > overlay > off
+    var fill, textColor, opacity = 1;
+    if (isRoot)          { fill = INST_ROOT_COLOR; textColor = '#fff'; }
+    else if (isBass)     { fill = INST_BASS_COLOR; textColor = '#000'; }
+    else if (isGuide3)   { fill = '#CC79A7'; textColor = '#fff'; }   // --pad-guide3
+    else if (isGuide7)   { fill = '#009E73'; textColor = '#fff'; }   // --pad-guide7
+    else if (isChar)     { fill = '#F0E442'; textColor = '#000'; }   // --pad-char
+    else if (isAvoid)    { fill = '#D55E00'; textColor = '#fff'; }   // --pad-avoid
+    else if (isTension)  { fill = '#0072B2'; textColor = '#fff'; }   // --pad-tension
+    else if (isActive)   {
+      fill = isWhite ? '#90CAF9' : '#4A90D9';                        // --pad-chord/scale
+      textColor = isWhite ? '#333' : '#fff';
+    }
+    else if (isOvlChar)  { fill = isWhite ? '#e8dfa0' : INST_OVERLAY_CHAR_COLOR; textColor = '#666'; opacity = isWhite ? 1 : 0.6; }
+    else if (isOvl)      { fill = isWhite ? '#b8d8ec' : INST_OVERLAY_COLOR; textColor = '#666'; opacity = isWhite ? 1 : 0.5; }
+    else                 { fill = baseOff; textColor = null; }
+    var showLabel = isActive || isRoot || isBass || isOvl;
+    return { fill: fill, textColor: textColor, opacity: opacity, showLabel: showLabel };
+  }
+
   // White keys
   let wx = startX;
   for (let oct = 0; oct < numOctaves; oct++) {
     for (let i = 0; i < 7; i++) {
       const pc = whiteNotes[i];
-      const isActive = pcsSet.has(pc);
-      const isRoot = pc === rootPC;
-      const isBass = bassPC !== undefined && bassPC !== null && pc === bassPC && !isRoot;
-      const isActiveChar = isActive && !isRoot && !isBass && charPCS && charPCS.has(pc);
-      const isOvl = !isActive && !isRoot && !isBass && overlayPCS && overlayPCS.has(pc);
-      const isOvlChar = isOvl && overlayCharPCS && overlayCharPCS.has(pc);
+      const k = pianoKeyColor(pc, true);
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', wx); rect.setAttribute('y', startY);
       rect.setAttribute('width', whiteW - 1); rect.setAttribute('height', whiteH);
       rect.setAttribute('rx', 1);
-      var wFill = '#eee';
-      if (isRoot) wFill = INST_ROOT_COLOR;
-      else if (isBass) wFill = INST_BASS_COLOR;
-      else if (isActiveChar) wFill = '#F0E442';  // --pad-char (yellow)
-      else if (isActive) wFill = '#90CAF9';       // light blue (--pad-scale on white key)
-      else if (isOvlChar) wFill = '#e8dfa0';
-      else if (isOvl) wFill = '#b8d8ec';
-      rect.setAttribute('fill', wFill);
+      rect.setAttribute('fill', k.fill);
       rect.setAttribute('stroke', '#bbb'); rect.setAttribute('stroke-width', 0.5);
       svg.appendChild(rect);
-      if (isActive || isRoot || isBass || isOvl) {
+      if (k.showLabel) {
         const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         label.setAttribute('x', wx + (whiteW - 1) / 2); label.setAttribute('y', startY + whiteH - 6);
         label.setAttribute('text-anchor', 'middle');
         label.setAttribute('font-size', '10px');
-        label.setAttribute('fill', isRoot ? '#fff' : '#333');
+        label.setAttribute('fill', k.textColor || '#333');
         label.setAttribute('font-weight', '700');
         label.textContent = pianoDegreeLabel(pc);
         svg.appendChild(label);
@@ -1894,34 +1925,22 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS, 
   for (let oct = 0; oct < numOctaves; oct++) {
     for (let i = 0; i < 5; i++) {
       const pc = blackNotes[i];
-      const isActive = pcsSet.has(pc);
-      const isRoot = pc === rootPC;
-      const isBass = bassPC !== undefined && bassPC !== null && pc === bassPC && !isRoot;
-      const isActiveChar = isActive && !isRoot && !isBass && charPCS && charPCS.has(pc);
-      const isOvl = !isActive && !isRoot && !isBass && overlayPCS && overlayPCS.has(pc);
-      const isOvlChar = isOvl && overlayCharPCS && overlayCharPCS.has(pc);
+      const k = pianoKeyColor(pc, false);
       const whiteIdx = blackPositions[i] + oct * 7;
       const bx = startX + (whiteIdx + 1) * whiteW - blackW / 2;
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', bx); rect.setAttribute('y', startY);
       rect.setAttribute('width', blackW); rect.setAttribute('height', blackH);
       rect.setAttribute('rx', 1);
-      var bFill = '#222';
-      if (isRoot) bFill = INST_ROOT_COLOR;
-      else if (isBass) bFill = INST_BASS_COLOR;
-      else if (isActiveChar) bFill = '#C8B900';   // darker yellow for black key visibility
-      else if (isActive) bFill = '#4A90D9';        // medium blue (--pad-scale on black key)
-      else if (isOvlChar) bFill = INST_OVERLAY_CHAR_COLOR;
-      else if (isOvl) bFill = INST_OVERLAY_COLOR;
-      rect.setAttribute('fill', bFill);
+      rect.setAttribute('fill', k.fill);
       rect.setAttribute('stroke', '#000'); rect.setAttribute('stroke-width', 0.5);
-      if (isOvl) rect.setAttribute('opacity', isOvlChar ? '0.6' : '0.5');
+      if (k.opacity < 1) rect.setAttribute('opacity', k.opacity);
       svg.appendChild(rect);
-      if (isActive || isRoot || isBass || isOvl) {
+      if (k.showLabel) {
         const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         label.setAttribute('x', bx + blackW / 2); label.setAttribute('y', startY + blackH - 3);
         label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('font-size', '8px'); label.setAttribute('fill', (isRoot || isActiveChar) ? '#000' : '#fff');
+        label.setAttribute('font-size', '8px'); label.setAttribute('fill', k.textColor || '#fff');
         label.setAttribute('font-weight', '700');
         label.textContent = pianoDegreeLabel(pc);
         svg.appendChild(label);

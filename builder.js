@@ -62,9 +62,12 @@ function updateKeyButtons() {
   var activePC = AppState.mode === 'chord' ? BuilderState.root : AppState.key;
   var container = document.getElementById('key-buttons');
   container.classList.toggle('disabled', isInput);
+  var hint = isInput ? (typeof t === 'function' ? t('ui.input_keys_disabled') : 'Key selection is not used in Input mode') : '';
+  container.title = hint;
   document.querySelectorAll('#key-buttons .key-btn').forEach((btn, i) => {
     btn.classList.toggle('active', !isInput && i === activePC);
     btn.disabled = isInput;
+    btn.title = hint;
   });
 }
 

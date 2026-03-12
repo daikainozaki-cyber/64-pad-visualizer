@@ -105,8 +105,8 @@ I18N.addLang('ja', {
   },
   legend: {
     characteristic: '特性音',
-    scale_note: 'Scale Note',
-    chord_tone: 'Chord Tone',
+    scale_note: 'スケール音',
+    chord_tone: 'コード音',
   },
   ui: {
     close: '閉じる',
@@ -115,6 +115,7 @@ I18N.addLang('ja', {
     sound_hint: 'ORGAN または E.PIANO を選んで音を有効にしてください',
     tap_to_start: 'タップして音を有効にする',
     tap_pads: 'パッドをタップして演奏！',
+    input_keys_disabled: 'Inputモードではキー指定は不要です',
     load_vst: 'VST/AU プラグインを読み込む...',
     affiliate_label: '徳を積みたい方はこちら…',
     circle: '五度圏',
@@ -388,7 +389,7 @@ I18N.addLang('ja', {
     onboarding_desc: '64 Pad Explorerの基本を学ぶ',
     onboarding: {
       sound_title: '音色プリセット',
-      sound_msg: '音色を選んでパッドを叩いてみてください。\nORGAN、E.PIANO、CLAV — それぞれ複数のプリセットがあります。',
+      sound_msg: 'プリセットを変更してパッドを叩いてみてください。\nORGAN、E.PIANO、CLAV — それぞれ複数のプリセットがあります。',
       sound_done: 'いい音ですね！次へ進みましょう。',
       midi_title: 'MIDIコントローラー',
       midi_msg: 'MIDIコントローラーが検出されました。ドロップダウンからデバイスを選択してください。\nベロシティ感度はSoundパネルで調整できます。',

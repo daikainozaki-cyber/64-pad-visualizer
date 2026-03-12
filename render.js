@@ -1814,6 +1814,11 @@ function renderPianoDisplay(rootPC, pcsSet, bassPC, overlayPCS, overlayCharPCS) 
     overlayCharPCS = null;
   }
 
+  // Piano has its own position system (black/white pattern) — only show root when chord/scale tones exist
+  if (pcsSet.size === 0) {
+    rootPC = -1;
+  }
+
   svg.innerHTML = '';
 
   const solo = showPiano && !showGuitar;

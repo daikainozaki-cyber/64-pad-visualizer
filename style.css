@@ -397,13 +397,15 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   cursor: pointer; text-align: center; position: relative;
 }
 .voicing-btn:hover { border-color: var(--accent); }
-.voicing-btn.active { background: var(--pad-omitted); color: #fff; border-color: var(--pad-omitted); }
+.voicing-btn.active { background: var(--pad-omitted); color: #fff; border-color: var(--pad-omitted); box-shadow: 0 0 6px rgba(85,85,85,0.6); }
 
 /* === TASTY Mode === */
 #tasty-bar { align-items: center; }
 #btn-tasty { flex: 0 0 auto; min-width: 70px; }
-#btn-tasty.active { background: #E69F00; color: #000; border-color: #E69F00; }
+#btn-tasty.active { background: #E69F00; color: #000; border-color: #E69F00; box-shadow: 0 0 6px rgba(230,159,0,0.5); }
 #btn-tasty.active .kbd-hint { color: rgba(0,0,0,0.5); }
+#btn-stock.active { background: #2a9d8f; color: #fff; border-color: #2a9d8f; box-shadow: 0 0 6px rgba(42,157,143,0.5); }
+#btn-stock.active .kbd-hint { color: rgba(255,255,255,0.6); }
 .tasty-counter { font-size: 0.7rem; font-weight: 700; color: #E69F00; white-space: nowrap; min-width: 30px; }
 .tasty-nav-btn { background: none; border: 1px solid var(--text-muted); color: var(--text-muted); border-radius: 4px; padding: 1px 6px; cursor: pointer; font-size: 0.65rem; line-height: 1; }
 .tasty-nav-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }

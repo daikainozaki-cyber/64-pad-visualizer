@@ -493,7 +493,7 @@ I18N.addLang('zh', {
     },
     // TASTY Voicing tutorial
     tasty_title: 'TASTY Voicing',
-    tasty_desc: '按顶音分类的专业声位 (HPS)',
+    tasty_desc: '按顶音分类的魅力声位。HPS会员专用功能',
     tasty: {
       step1_title: '激活 TASTY',
       step1_msg: '挑选简单逻辑无法产生的时髦声位。\n从最高音思考，对弦乐和管乐编配很有用。\n（仅限 HPS 会员）',
@@ -506,7 +506,7 @@ I18N.addLang('zh', {
     },
     // STOCK Voicing tutorial
     stock_title: 'STOCK Voicing',
-    stock_desc: '钢琴声位合集 (HPS)',
+    stock_desc: '钢琴常用的经典声位。HPS会员专用功能',
     stock: {
       step1_title: '激活 STOCK',
       step1_msg: '了解钢琴专用声位，帮助你摆脱只用基本形式的演奏。\n154种钢琴声位以音级标记法呈现。\n（仅限 HPS 会员）',

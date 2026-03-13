@@ -495,7 +495,7 @@ I18N.addLang('fr', {
     },
     // TASTY Voicing tutorial
     tasty_title: 'TASTY Voicing',
-    tasty_desc: 'Voicings pro class\u00E9s par note sup\u00E9rieure (HPS)',
+    tasty_desc: 'Mote Voicings class\u00E9s par note sup\u00E9rieure. R\u00E9serv\u00E9 aux membres HPS',
     tasty: {
       step1_title: 'Activer TASTY',
       step1_msg: 'S\u00E9lectionnez des voicings raffin\u00E9s que la logique simple ne peut pas produire.\nPenser \u00E0 partir de la note sup\u00E9rieure est utile pour les arrangements de cordes et de cuivres.\n(R\u00E9serv\u00E9 aux membres HPS)',
@@ -508,7 +508,7 @@ I18N.addLang('fr', {
     },
     // STOCK Voicing tutorial
     stock_title: 'STOCK Voicing',
-    stock_desc: 'Collection de voicings piano (HPS)',
+    stock_desc: 'Voicings idiomatiques classiques du piano. R\u00E9serv\u00E9 aux membres HPS',
     stock: {
       step1_title: 'Activer STOCK',
       step1_msg: 'Conna\u00EEtre les voicings sp\u00E9cifiques au piano vous aide \u00E0 sortir du jeu en forme de base uniquement.\n154 voicings piano en notation de degr\u00E9s.\n(R\u00E9serv\u00E9 aux membres HPS)',

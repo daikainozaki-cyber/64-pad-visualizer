@@ -509,7 +509,7 @@ I18N.addLang('en', {
     },
     // TASTY Voicing tutorial
     tasty_title: 'TASTY Voicing',
-    tasty_desc: 'Pro voicings sorted by top note (HPS)',
+    tasty_desc: 'Mote Voicings classified by top note. HPS members only',
     tasty: {
       step1_title: 'Activate TASTY',
       step1_msg: 'Select hip voicings that simple logic alone can\'t produce.\nThinking from the top note is useful for string and horn arrangements.\n(HPS members only)',
@@ -526,7 +526,7 @@ I18N.addLang('en', {
     },
     // STOCK Voicing tutorial
     stock_title: 'STOCK Voicing',
-    stock_desc: 'Piano voicing collection (HPS)',
+    stock_desc: 'Classic piano voicing idioms. HPS members only',
     stock: {
       step1_title: 'Activate STOCK',
       step1_msg: 'Knowing piano-specific voicings helps you break free from basic-form-only playing.\n154 piano voicings in degree notation.\n(HPS members only)',

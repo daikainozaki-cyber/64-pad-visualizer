@@ -70,19 +70,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   animation: tut-btn-pulse 2s ease-in-out infinite;
 }
 .help-btn.tut-pulse::after {
-  content: attr(data-tut-label);
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.55rem;
-  padding: 2px 6px;
-  border-radius: 3px;
-  white-space: nowrap;
-  pointer-events: none;
-  animation: tut-label-fade 3s ease-in-out infinite;
+  content: none;
 }
 @keyframes tut-btn-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(74,158,255,0.4); }

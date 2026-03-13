@@ -493,7 +493,7 @@ I18N.addLang('de', {
     },
     // TASTY Voicing tutorial
     tasty_title: 'TASTY Voicing',
-    tasty_desc: 'Profi-Voicings nach Topnote sortiert (HPS)',
+    tasty_desc: 'Mote-Voicings nach Topnote sortiert. Nur f\u00FCr HPS-Mitglieder',
     tasty: {
       step1_title: 'TASTY aktivieren',
       step1_msg: 'W\u00E4hle stilvolle Voicings aus, die einfache Logik allein nicht erzeugen kann.\nVom Topnote aus zu denken ist n\u00FCtzlich f\u00FCr Streicher- und Bl\u00E4ser-Arrangements.\n(Nur f\u00FCr HPS-Mitglieder)',
@@ -506,7 +506,7 @@ I18N.addLang('de', {
     },
     // STOCK Voicing tutorial
     stock_title: 'STOCK Voicing',
-    stock_desc: 'Klavier-Voicing-Sammlung (HPS)',
+    stock_desc: 'Klassische Klavier-Voicing-Idiome. Nur f\u00FCr HPS-Mitglieder',
     stock: {
       step1_title: 'STOCK aktivieren',
       step1_msg: 'Klavier-spezifische Voicings kennen hilft dir, \u00FCber das reine Grundform-Spiel hinauszukommen.\n154 Klavier-Voicings in Stufen-Notation.\n(Nur f\u00FCr HPS-Mitglieder)',

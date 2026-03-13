@@ -493,7 +493,7 @@ I18N.addLang('ko', {
     },
     // TASTY Voicing tutorial
     tasty_title: 'TASTY Voicing',
-    tasty_desc: '탑 노트 기준 분류 프로 보이싱 (HPS)',
+    tasty_desc: '탑 노트로 분류한 모테 보이싱. HPS 회원 전용 기능',
     tasty: {
       step1_title: 'TASTY 활성화',
       step1_msg: '단순한 로직만으로는 만들 수 없는 세련된 보이싱을 선택합니다.\n탑 노트 기준으로 생각하면 스트링 및 혼 편곡에 유용합니다.\n(HPS 회원 전용)',
@@ -506,7 +506,7 @@ I18N.addLang('ko', {
     },
     // STOCK Voicing tutorial
     stock_title: 'STOCK Voicing',
-    stock_desc: '피아노 보이싱 컬렉션 (HPS)',
+    stock_desc: '피아노에서 자주 쓰이는 관용적 보이싱. HPS 회원 전용 기능',
     stock: {
       step1_title: 'STOCK 활성화',
       step1_msg: '피아노 전용 보이싱을 알면 기본 형태만 사용하는 연주에서 벗어날 수 있습니다.\n154개 피아노 보이싱을 음도 표기법으로 수록.\n(HPS 회원 전용)',

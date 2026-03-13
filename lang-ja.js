@@ -509,7 +509,7 @@ I18N.addLang('ja', {
     },
     // TASTYボイシング
     tasty_title: 'TASTY Voicing',
-    tasty_desc: 'トップノート分類のプロボイシング（HPS）',
+    tasty_desc: 'トップノートで分類したモテボイシング。HPS会員専用機能です',
     tasty: {
       step1_title: 'TASTYを起動',
       step1_msg: '単純なロジックだけでは出てこないヒップなボイシングが選択できます。\nトップノートから考えるのは、ストリングス、ホーンアレンジに役立ちます。\n（HPS会員限定）',
@@ -526,7 +526,7 @@ I18N.addLang('ja', {
     },
     // STOCKボイシング
     stock_title: 'STOCK Voicing',
-    stock_desc: 'ピアノボイシング集（HPS）',
+    stock_desc: 'ピアノでよく使われる常套句的なボイシング。HPS会員専用機能です',
     stock: {
       step1_title: 'STOCKを起動',
       step1_msg: 'ピアノ固有のボイシングを知ることで、基本形だけのプレイから抜け出せます。\n154種のピアノボイシングを度数表記で収録。\n（HPS会員限定）',

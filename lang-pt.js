@@ -493,7 +493,7 @@ I18N.addLang('pt', {
     },
     // TASTY Voicing tutorial
     tasty_title: 'TASTY Voicing',
-    tasty_desc: 'Voicings profissionais por nota superior (HPS)',
+    tasty_desc: 'Mote Voicings classificados por nota superior. Apenas membros HPS',
     tasty: {
       step1_title: 'Ativar TASTY',
       step1_msg: 'Selecione voicings sofisticados que a l\u00F3gica simples n\u00E3o consegue produzir.\nPensar a partir da nota superior \u00E9 \u00FAtil para arranjos de cordas e metais.\n(Apenas membros HPS)',
@@ -506,7 +506,7 @@ I18N.addLang('pt', {
     },
     // STOCK Voicing tutorial
     stock_title: 'STOCK Voicing',
-    stock_desc: 'Cole\u00E7\u00E3o de voicings de piano (HPS)',
+    stock_desc: 'Voicings idiom\u00E1ticos cl\u00E1ssicos de piano. Apenas membros HPS',
     stock: {
       step1_title: 'Ativar STOCK',
       step1_msg: 'Conhecer voicings espec\u00EDficos do piano ajuda a libertar-se de tocar apenas na forma b\u00E1sica.\n154 voicings de piano em nota\u00E7\u00E3o de graus.\n(Apenas membros HPS)',

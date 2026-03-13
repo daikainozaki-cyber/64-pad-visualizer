@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>PAD DAW — Engine Test (Phase 1+2)</title>
+<title>PAD DAW — Engine Test (Phase 1+2+3)</title>
 <style>
   body { font-family: monospace; background: #1a1a2e; color: #e0e0e0; padding: 20px; }
   button { font-size: 16px; padding: 10px 20px; margin: 5px; cursor: pointer;
@@ -27,10 +27,29 @@
                color: #e0e0e0; border: 1px solid #0f3460; border-radius: 4px; text-align: center; }
   .pattern-btn { font-size: 14px; padding: 8px 16px; }
   label { margin-right: 12px; }
+
+  /* Phase 3: Mixer */
+  .mixer { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; margin: 16px 0;
+           background: #0d1117; padding: 16px; border-radius: 8px; }
+  .track-strip { display: flex; flex-direction: column; align-items: center; gap: 6px;
+                 padding: 8px 4px; background: #16213e; border-radius: 4px; min-width: 60px; }
+  .track-strip.muted { opacity: 0.4; }
+  .track-strip.soloed { border: 2px solid #fbbf24; }
+  .track-label { font-size: 11px; color: #a78bfa; font-weight: bold; }
+  .vol-slider { writing-mode: vertical-lr; direction: rtl; height: 80px; width: 20px;
+                accent-color: #4ade80; }
+  .pan-slider { width: 52px; accent-color: #60a5fa; }
+  .vol-value, .pan-value { font-size: 10px; color: #888; }
+  .mute-btn, .solo-btn { font-size: 10px; padding: 3px 6px; min-width: 28px; margin: 0;
+                          border: 1px solid #333; border-radius: 3px; cursor: pointer; }
+  .mute-btn { background: #2a1a1a; color: #f87171; }
+  .mute-btn.active { background: #7f1d1d; color: #fca5a5; }
+  .solo-btn { background: #1a2a1a; color: #fbbf24; }
+  .solo-btn.active { background: #78350f; color: #fde68a; }
 </style>
 </head>
 <body>
-<h2>PAD DAW — Engine Test (Phase 1+2)</h2>
+<h2>PAD DAW — Engine Test (Phase 1+2+3)</h2>
 
 <div id="sabStatus" class="status"></div>
 
@@ -55,7 +74,7 @@
   <button id="btnFourOnFloor" class="pattern-btn">4 on Floor</button>
   <button id="btnSixteenthHat" class="pattern-btn">16th Hat</button>
   <button id="btnScaleRun" class="pattern-btn">Scale Run</button>
-  <button id="btnCombined" class="pattern-btn">Kick+Hat</button>
+  <button id="btnCombined" class="pattern-btn">Kick+Hat (2 tracks)</button>
 </div>
 
 <div style="margin: 12px 0;">
@@ -64,6 +83,9 @@
 </div>
 
 <div id="seqInfo">Select a pattern to see sequence info...</div>
+
+<h3>Phase 3: Mixer</h3>
+<div class="mixer" id="mixer"></div>
 
 <div id="log"></div>
 
@@ -106,8 +128,8 @@
       pad.className = 'pad';
       pad.textContent = NOTE_NAMES[idx];
       pad.addEventListener('mousedown', function() {
-        PadDawEngine.noteOn(idx, 0.5);
-        log('noteOn(' + idx + ', 0.5) — ' + NOTE_NAMES[idx] + ' [' + (PadDawEngine.useSAB ? 'SAB' : 'MessagePort') + ']');
+        PadDawEngine.noteOn(idx, 0.5, 1.0, 0);
+        log('noteOn(' + idx + ', 0.5, track=0) — ' + NOTE_NAMES[idx] + ' [' + (PadDawEngine.useSAB ? 'SAB' : 'MessagePort') + ']');
       });
       padGrid.appendChild(pad);
     })(i);
@@ -165,11 +187,17 @@
     var loopEndSample = loop ? PadDawEngine.getBarEndSample(1, bpm) : 0;
     var durationSec = loop ? 'loop' : ((events.length > 0 ? events[events.length - 1].startSample / 48000 : 0) + 1).toFixed(2) + 's';
 
+    // Count unique tracks
+    var trackSet = {};
+    for (var i = 0; i < events.length; i++) trackSet[events[i].track] = true;
+    var trackCount = Object.keys(trackSet).length;
+
     PadDawEngine.loadSequence(events, loopEndSample);
 
     seqInfo.textContent =
       'Pattern: ' + name + '\n' +
       'Events:  ' + events.length + '\n' +
+      'Tracks:  ' + trackCount + '\n' +
       'BPM:     ' + bpm + '\n' +
       'Duration: ' + durationSec + '\n' +
       (loop ? 'Loop:    1 bar (' + (PadDawEngine.getBarEndSample(1, bpm) / 48000).toFixed(3) + 's)\n' : '') +
@@ -177,20 +205,20 @@
       (events.length > 1 ? 'Last startSample:  ' + events[events.length - 1].startSample : '');
 
     updateSeqState('Loaded: ' + name + ' — press Play', 'status-warn');
-    log('Loaded pattern: ' + name + ' (' + events.length + ' events, ' + bpm + ' BPM' + (loop ? ', loop' : '') + ')');
+    log('Loaded pattern: ' + name + ' (' + events.length + ' events, ' + trackCount + ' track(s), ' + bpm + ' BPM' + (loop ? ', loop' : '') + ')');
   }
 
   document.getElementById('btnFourOnFloor').addEventListener('click', function() {
-    loadAndShowPattern('Four on Floor', SequenceTestData.fourOnFloor(0));
+    loadAndShowPattern('Four on Floor', SequenceTestData.fourOnFloor(0, 0));
   });
   document.getElementById('btnSixteenthHat').addEventListener('click', function() {
-    loadAndShowPattern('16th Hat', SequenceTestData.sixteenthHat(0));
+    loadAndShowPattern('16th Hat', SequenceTestData.sixteenthHat(0, 0));
   });
   document.getElementById('btnScaleRun').addEventListener('click', function() {
-    loadAndShowPattern('Scale Run (C major)', SequenceTestData.scaleRun(0));
+    loadAndShowPattern('Scale Run (C major)', SequenceTestData.scaleRun(0, 0));
   });
   document.getElementById('btnCombined').addEventListener('click', function() {
-    loadAndShowPattern('Combined (Kick+Hat)', SequenceTestData.combined(0, 7));
+    loadAndShowPattern('Combined (Kick=T0 + Hat=T1)', SequenceTestData.combined(0, 7));
   });
 
   document.getElementById('btnPlay').addEventListener('click', function() {
@@ -208,6 +236,130 @@
     updateSeqState('STOPPED (playback ended)', 'status-warn');
     log('Playback ended (auto-stop)');
   };
+
+  // ========== Phase 3: Mixer ==========
+
+  var NUM_TRACKS = 8;
+  var TRACK_NAMES = ['T0 Kick', 'T1 Hat', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+  var mixerEl = document.getElementById('mixer');
+  var muteState = new Uint8Array(NUM_TRACKS);   // 0 = not muted
+  var soloState = new Uint8Array(NUM_TRACKS);    // 0 = not soloed
+
+  function computeEffectiveMute() {
+    // If any track is soloed, mute all non-soloed tracks
+    var anySoloed = false;
+    for (var i = 0; i < NUM_TRACKS; i++) {
+      if (soloState[i]) { anySoloed = true; break; }
+    }
+    var effective = new Uint8Array(NUM_TRACKS);
+    for (var i = 0; i < NUM_TRACKS; i++) {
+      if (muteState[i]) {
+        effective[i] = 1;
+      } else if (anySoloed && !soloState[i]) {
+        effective[i] = 1;
+      }
+    }
+    return effective;
+  }
+
+  function sendMuteState() {
+    var effective = computeEffectiveMute();
+    PadDawEngine.updateMuteState(effective);
+    // Update strip visual
+    for (var i = 0; i < NUM_TRACKS; i++) {
+      var strip = document.getElementById('strip-' + i);
+      strip.classList.toggle('muted', effective[i] === 1);
+      strip.classList.toggle('soloed', soloState[i] === 1);
+    }
+  }
+
+  for (var t = 0; t < NUM_TRACKS; t++) {
+    (function(track) {
+      var strip = document.createElement('div');
+      strip.className = 'track-strip';
+      strip.id = 'strip-' + track;
+
+      // Label
+      var lbl = document.createElement('div');
+      lbl.className = 'track-label';
+      lbl.textContent = TRACK_NAMES[track];
+      strip.appendChild(lbl);
+
+      // Volume slider (vertical)
+      var volSlider = document.createElement('input');
+      volSlider.type = 'range';
+      volSlider.className = 'vol-slider';
+      volSlider.min = '0';
+      volSlider.max = '100';
+      volSlider.value = '100';
+      volSlider.title = 'Volume';
+      strip.appendChild(volSlider);
+
+      // Volume value display
+      var volVal = document.createElement('div');
+      volVal.className = 'vol-value';
+      volVal.textContent = '100%';
+      strip.appendChild(volVal);
+
+      volSlider.addEventListener('input', function() {
+        var v = parseInt(volSlider.value) / 100;
+        PadDawEngine.setTrackVolume(track, v);
+        volVal.textContent = volSlider.value + '%';
+      });
+
+      // Pan slider (horizontal)
+      var panSlider = document.createElement('input');
+      panSlider.type = 'range';
+      panSlider.className = 'pan-slider';
+      panSlider.min = '-100';
+      panSlider.max = '100';
+      panSlider.value = '0';
+      panSlider.title = 'Pan';
+      strip.appendChild(panSlider);
+
+      // Pan value display
+      var panVal = document.createElement('div');
+      panVal.className = 'pan-value';
+      panVal.textContent = 'C';
+      strip.appendChild(panVal);
+
+      panSlider.addEventListener('input', function() {
+        var p = parseInt(panSlider.value) / 100;
+        PadDawEngine.setTrackPan(track, p);
+        if (p < -0.01) panVal.textContent = 'L' + Math.abs(parseInt(panSlider.value));
+        else if (p > 0.01) panVal.textContent = 'R' + parseInt(panSlider.value);
+        else panVal.textContent = 'C';
+      });
+
+      // Mute button
+      var muteBtn = document.createElement('button');
+      muteBtn.className = 'mute-btn';
+      muteBtn.textContent = 'M';
+      muteBtn.title = 'Mute';
+      muteBtn.addEventListener('click', function() {
+        muteState[track] = muteState[track] ? 0 : 1;
+        muteBtn.classList.toggle('active', muteState[track] === 1);
+        sendMuteState();
+        log('Track ' + track + ' mute: ' + (muteState[track] ? 'ON' : 'OFF'));
+      });
+      strip.appendChild(muteBtn);
+
+      // Solo button
+      var soloBtn = document.createElement('button');
+      soloBtn.className = 'solo-btn';
+      soloBtn.textContent = 'S';
+      soloBtn.title = 'Solo';
+      soloBtn.addEventListener('click', function() {
+        soloState[track] = soloState[track] ? 0 : 1;
+        soloBtn.classList.toggle('active', soloState[track] === 1);
+        sendMuteState();
+        log('Track ' + track + ' solo: ' + (soloState[track] ? 'ON' : 'OFF'));
+      });
+      strip.appendChild(soloBtn);
+
+      mixerEl.appendChild(strip);
+    })(t);
+  }
 </script>
 </body>
 </html>

@@ -31,7 +31,7 @@
             // Route to DAW engine with pitch ratio
             // Use single base sample, adjust pitch via ratio
             var pitchRatio = Math.pow(2, (midi - 60) / 12); // A4=440Hz reference at MIDI 60
-            PadDawEngine.noteOn(0, velocity || 0.8, pitchRatio);
+            PadDawEngine.noteOn(0, velocity || 0.8, pitchRatio, 0);
           } else {
             // Fallback to WebAudioFont
             self._origNoteOn(midi, velocity, poly, _retries);

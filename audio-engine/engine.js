@@ -1,9 +1,10 @@
 // PAD DAW Engine — Main thread controller
 // Manages AudioContext + AudioWorkletNode.
 // Dual path: SharedArrayBuffer (low latency) or MessagePort (fallback).
+// Phase 3: track parameter added to noteOn/sequence, mixer control API.
 
 // --- RingBuffer constants (duplicated, ring-buffer.js has full impl) ---
-var RING_FLOATS_PER_CMD = 3;
+var RING_FLOATS_PER_CMD = 4;
 var RING_CAPACITY = 64;
 var RING_DATA_FLOATS = RING_CAPACITY * RING_FLOATS_PER_CMD;
 var RING_HEADER_BYTES = 8;
@@ -80,9 +81,10 @@ var PadDawEngine = {
     this.node.port.postMessage({ type: 'loadSamples', samples: sampleArrays });
   },
 
-  noteOn: function(sampleIndex, velocity, pitchRatio) {
+  noteOn: function(sampleIndex, velocity, pitchRatio, track) {
     if (!this.ready) return;
     pitchRatio = pitchRatio || 1.0;
+    track = track || 0;
 
     if (this.useSAB && this.ring) {
       // SAB path — write directly to ring buffer, no MessagePort round-trip
@@ -92,9 +94,10 @@ var PadDawEngine = {
       var r = Atomics.load(this.ring.header, 1);
       if (next !== r) {
         var offset = w * RING_FLOATS_PER_CMD;
-        this.ring.data[offset]     = sampleIndex;
-        this.ring.data[offset + 1] = velocity;
-        this.ring.data[offset + 2] = pitchRatio;
+        this.ring.data[offset]     = track;
+        this.ring.data[offset + 1] = sampleIndex;
+        this.ring.data[offset + 2] = velocity;
+        this.ring.data[offset + 3] = pitchRatio;
         Atomics.store(this.ring.header, 0, next);
       }
       // For jitter measurement: record send time, receive = next process() cycle
@@ -107,6 +110,7 @@ var PadDawEngine = {
       var triggerTime = performance.now();
       this.node.port.postMessage({
         type: 'noteOn',
+        track: track,
         sampleIndex: sampleIndex,
         velocity: velocity,
         pitchRatio: pitchRatio,
@@ -158,7 +162,24 @@ var PadDawEngine = {
     };
   },
 
-  // --- Sequence API (Phase 2) ---
+  // --- Track mixer control (Phase 3) ---
+
+  setTrackVolume: function(track, volume) {
+    if (!this.node) return;
+    this.node.port.postMessage({ type: 'setTrackVolume', track: track, volume: volume });
+  },
+
+  setTrackPan: function(track, pan) {
+    if (!this.node) return;
+    this.node.port.postMessage({ type: 'setTrackPan', track: track, pan: pan });
+  },
+
+  updateMuteState: function(muteArray) {
+    if (!this.node) return;
+    this.node.port.postMessage({ type: 'updateMute', muted: muteArray });
+  },
+
+  // --- Sequence API (Phase 2 + Phase 3 track) ---
 
   loadSequence: function(events, loopEndSample) {
     if (!this.node) return;
@@ -168,11 +189,13 @@ var PadDawEngine = {
     var sampleIndices = new Uint16Array(count);
     var velocities = new Float32Array(count);
     var pitchRatios = new Float32Array(count);
+    var tracks = new Uint8Array(count);
     for (var i = 0; i < count; i++) {
       startSamples[i] = events[i].startSample;
       sampleIndices[i] = events[i].sampleIndex;
       velocities[i] = events[i].velocity;
       pitchRatios[i] = events[i].pitchRatio;
+      tracks[i] = events[i].track || 0;
     }
     this.node.port.postMessage({
       type: 'loadSequence',
@@ -180,6 +203,7 @@ var PadDawEngine = {
       sampleIndices: sampleIndices,
       velocities: velocities,
       pitchRatios: pitchRatios,
+      tracks: tracks,
       count: count,
       loopEndSample: loopEndSample || 0
     });
@@ -205,6 +229,7 @@ var PadDawEngine = {
       var ev = tickEvents[i];
       result.push({
         startSample: this.tickToSample(ev.tick, bpm),
+        track: ev.track || 0,
         sampleIndex: ev.sampleIndex,
         velocity: ev.velocity || 0.8,
         pitchRatio: ev.pitchRatio || 1.0

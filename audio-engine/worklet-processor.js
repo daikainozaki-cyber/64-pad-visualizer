@@ -2,9 +2,10 @@
 // Runs on audio thread. No imports, no GC, no new/filter/forEach in process().
 // Single clock: currentSample++ only.
 // Dual path: SharedArrayBuffer (SAB) or MessagePort fallback.
+// Phase 3: 8 tracks × 16 voices = 128 voices, stereo pan, volume, mute.
 
 // --- RingBuffer constants (duplicated from ring-buffer.js, no import in worklet) ---
-var RING_FLOATS_PER_CMD = 3;
+var RING_FLOATS_PER_CMD = 4;
 var RING_CAPACITY = 64;
 var RING_DATA_FLOATS = RING_CAPACITY * RING_FLOATS_PER_CMD;
 var RING_HEADER_BYTES = 8;
@@ -14,16 +15,32 @@ var MAX_EVENTS = 4096;
 var STATE_STOPPED = 0;
 var STATE_PLAYING = 1;
 
+// --- Track constants ---
+var NUM_TRACKS = 8;
+var VOICES_PER_TRACK = 16;
+var TOTAL_VOICES = NUM_TRACKS * VOICES_PER_TRACK; // 128
+
 class PadDawProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
 
-    // 16 voices, SoA (Structure of Arrays) — no objects, no GC
-    this.voiceActive     = new Uint8Array(16);
-    this.voicePosition   = new Float64Array(16);  // float for pitchRatio interpolation
-    this.voiceGain       = new Float32Array(16);
-    this.voiceSampleIdx  = new Uint16Array(16);
-    this.voicePitchRatio = new Float32Array(16);  // playback speed multiplier
+    // 128 voices (8 tracks × 16), SoA (Structure of Arrays) — no objects, no GC
+    this.voiceActive     = new Uint8Array(TOTAL_VOICES);
+    this.voicePosition   = new Float64Array(TOTAL_VOICES);  // float for pitchRatio interpolation
+    this.voiceGain       = new Float32Array(TOTAL_VOICES);
+    this.voiceSampleIdx  = new Uint16Array(TOTAL_VOICES);
+    this.voicePitchRatio = new Float32Array(TOTAL_VOICES);  // playback speed multiplier
+
+    // Track parameters
+    this.trackVolume = new Float32Array(NUM_TRACKS);
+    this.trackPan    = new Float32Array(NUM_TRACKS);   // -1.0 (L) to 1.0 (R), 0.0 = center
+    this.trackMuted  = new Uint8Array(NUM_TRACKS);     // 0 = not muted, 1 = muted
+
+    // Initialize trackVolume to 1.0 (Float32Array defaults to 0.0 = silence)
+    for (var t = 0; t < NUM_TRACKS; t++) this.trackVolume[t] = 1.0;
+
+    // Per-track round-robin voice stealing index
+    this.nextVoice = new Uint8Array(NUM_TRACKS);
 
     // Sample storage (populated via MessagePort)
     this.samples = [];
@@ -32,14 +49,12 @@ class PadDawProcessor extends AudioWorkletProcessor {
     // Single master clock
     this.currentSample = 0;
 
-    // Round-robin voice index for stealing
-    this.nextVoice = 0;
-
     // Sequence event SoA (populated via loadSequence, read in process())
     this.evStartSample = new Uint32Array(MAX_EVENTS);
     this.evSampleIndex = new Uint16Array(MAX_EVENTS);
     this.evVelocity = new Float32Array(MAX_EVENTS);
     this.evPitchRatio = new Float32Array(MAX_EVENTS);
+    this.evTrack = new Uint8Array(MAX_EVENTS);
     this.eventCount = 0;
     this.eventIndex = 0;
 
@@ -76,7 +91,7 @@ class PadDawProcessor extends AudioWorkletProcessor {
           this.sampleLengths[i] = d.samples[i].length;
         }
       } else if (d.type === 'noteOn') {
-        this._startVoice(d.sampleIndex, d.velocity, d.pitchRatio || 1.0);
+        this._startVoice(d.track || 0, d.sampleIndex, d.velocity, d.pitchRatio || 1.0);
         this.port.postMessage({
           type: 'voiceStarted',
           triggerTime: d.triggerTime
@@ -89,6 +104,7 @@ class PadDawProcessor extends AudioWorkletProcessor {
           this.evSampleIndex[j] = d.sampleIndices[j];
           this.evVelocity[j] = d.velocities[j];
           this.evPitchRatio[j] = d.pitchRatios[j];
+          this.evTrack[j] = d.tracks ? d.tracks[j] : 0;
         }
         this.eventCount = count;
         this.eventIndex = 0;
@@ -105,22 +121,34 @@ class PadDawProcessor extends AudioWorkletProcessor {
         this.playState = STATE_STOPPED;
         this.schedulerSample = 0;
         this.eventIndex = 0;
+      } else if (d.type === 'setTrackVolume') {
+        this.trackVolume[d.track] = d.volume;
+      } else if (d.type === 'setTrackPan') {
+        this.trackPan[d.track] = d.pan;
+      } else if (d.type === 'updateMute') {
+        // Bulk copy mute state (solo calculation done on UI side)
+        var muteArr = d.muted;
+        for (var m = 0; m < NUM_TRACKS; m++) {
+          this.trackMuted[m] = muteArr[m] || 0;
+        }
       }
     };
   }
 
-  _startVoice(sampleIndex, velocity, pitchRatio) {
+  _startVoice(track, sampleIndex, velocity, pitchRatio) {
     if (sampleIndex >= this.samples.length) return;
+    if (track >= NUM_TRACKS) track = 0;
 
-    // Find free voice
+    // Search within track's voice range: [base, base+16)
+    var base = track * VOICES_PER_TRACK;
     var idx = -1;
-    for (var v = 0; v < 16; v++) {
-      if (!this.voiceActive[v]) { idx = v; break; }
+    for (var v = 0; v < VOICES_PER_TRACK; v++) {
+      if (!this.voiceActive[base + v]) { idx = base + v; break; }
     }
-    // If all active, steal round-robin
+    // If all active in this track, steal round-robin within track
     if (idx === -1) {
-      idx = this.nextVoice;
-      this.nextVoice = (this.nextVoice + 1) & 15;
+      idx = base + this.nextVoice[track];
+      this.nextVoice[track] = (this.nextVoice[track] + 1) & 15;
     }
 
     this.voiceActive[idx] = 1;
@@ -146,8 +174,9 @@ class PadDawProcessor extends AudioWorkletProcessor {
         var offset = r * RING_FLOATS_PER_CMD;
         this._startVoice(
           ring.data[offset] | 0,
-          ring.data[offset + 1],
-          ring.data[offset + 2]
+          ring.data[offset + 1] | 0,
+          ring.data[offset + 2],
+          ring.data[offset + 3]
         );
         r = (r + 1) % RING_CAPACITY;
         drained++;
@@ -162,13 +191,12 @@ class PadDawProcessor extends AudioWorkletProcessor {
     var samplesReady = this.samples.length > 0;
 
     for (var i = 0; i < 128; i++) {
-      var mix = 0;
-
       // Scheduled events: sample-accurate trigger (only when playing)
       if (this.playState === STATE_PLAYING && samplesReady) {
         while (this.eventIndex < this.eventCount &&
                this.evStartSample[this.eventIndex] <= this.schedulerSample) {
           this._startVoice(
+            this.evTrack[this.eventIndex],
             this.evSampleIndex[this.eventIndex],
             this.evVelocity[this.eventIndex],
             this.evPitchRatio[this.eventIndex]
@@ -177,29 +205,45 @@ class PadDawProcessor extends AudioWorkletProcessor {
         }
       }
 
+      var mixL = 0;
+      var mixR = 0;
+
       if (samplesReady) {
-        for (var v = 0; v < 16; v++) {
-          if (!this.voiceActive[v]) continue;
-          var si = this.voiceSampleIdx[v];
-          var pos = this.voicePosition[v];
-          var len = this.sampleLengths[si];
-          if (pos >= len) {
-            this.voiceActive[v] = 0;
-            continue;
+        for (var t = 0; t < NUM_TRACKS; t++) {
+          if (this.trackMuted[t]) continue;
+          var trackSample = 0;
+          var base = t * VOICES_PER_TRACK;
+          for (var v = 0; v < VOICES_PER_TRACK; v++) {
+            var idx = base + v;
+            if (!this.voiceActive[idx]) continue;
+            var si = this.voiceSampleIdx[idx];
+            var pos = this.voicePosition[idx];
+            var len = this.sampleLengths[si];
+            if (pos >= len) {
+              this.voiceActive[idx] = 0;
+              continue;
+            }
+            // Linear interpolation for non-integer positions (pitchRatio != 1.0)
+            var posInt = pos | 0;
+            var frac = pos - posInt;
+            var samp = this.samples[si];
+            var s0 = samp[posInt];
+            var s1 = posInt + 1 < len ? samp[posInt + 1] : 0;
+            trackSample += (s0 + (s1 - s0) * frac) * this.voiceGain[idx];
+            this.voicePosition[idx] = pos + this.voicePitchRatio[idx];
           }
-          // Linear interpolation for non-integer positions (pitchRatio != 1.0)
-          var posInt = pos | 0;
-          var frac = pos - posInt;
-          var samp = this.samples[si];
-          var s0 = samp[posInt];
-          var s1 = posInt + 1 < len ? samp[posInt + 1] : 0;
-          mix += (s0 + (s1 - s0) * frac) * this.voiceGain[v];
-          this.voicePosition[v] = pos + this.voicePitchRatio[v];
+          // Equal-power pan law: cos/sin mapping
+          // pan: -1.0 = full left, 0.0 = center, 1.0 = full right
+          var vol = this.trackVolume[t];
+          var p = this.trackPan[t];
+          var angle = (p + 1) * 0.25 * Math.PI; // 0 to PI/2
+          mixL += trackSample * vol * Math.cos(angle);
+          mixR += trackSample * vol * Math.sin(angle);
         }
       }
 
-      outL[i] = mix;
-      if (outR) outR[i] = mix;
+      outL[i] = mixL;
+      if (outR) outR[i] = mixR;
 
       this.currentSample++;
 

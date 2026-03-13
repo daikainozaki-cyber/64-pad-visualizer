@@ -36,8 +36,20 @@ class PadDawProcessor extends AudioWorkletProcessor {
     this.trackPan    = new Float32Array(NUM_TRACKS);   // -1.0 (L) to 1.0 (R), 0.0 = center
     this.trackMuted  = new Uint8Array(NUM_TRACKS);     // 0 = not muted, 1 = muted
 
-    // Initialize trackVolume to 1.0 (Float32Array defaults to 0.0 = silence)
-    for (var t = 0; t < NUM_TRACKS; t++) this.trackVolume[t] = 1.0;
+    // Pre-computed pan coefficients (vol × cos/sin) — updated on pan/volume change only
+    this.trackPanL = new Float32Array(NUM_TRACKS);
+    this.trackPanR = new Float32Array(NUM_TRACKS);
+
+    // Per-track active voice flag — scanned once per process() frame
+    this.trackHasActive = new Uint8Array(NUM_TRACKS);
+
+    // Initialize trackVolume to 1.0 and compute initial pan coefficients
+    for (var t = 0; t < NUM_TRACKS; t++) {
+      this.trackVolume[t] = 1.0;
+      // center pan: angle = PI/4, cos = sin = ~0.707
+      this.trackPanL[t] = Math.cos(0.25 * Math.PI);
+      this.trackPanR[t] = Math.sin(0.25 * Math.PI);
+    }
 
     // Per-track round-robin voice stealing index
     this.nextVoice = new Uint8Array(NUM_TRACKS);
@@ -123,8 +135,10 @@ class PadDawProcessor extends AudioWorkletProcessor {
         this.eventIndex = 0;
       } else if (d.type === 'setTrackVolume') {
         this.trackVolume[d.track] = d.volume;
+        this._recomputePan(d.track);
       } else if (d.type === 'setTrackPan') {
         this.trackPan[d.track] = d.pan;
+        this._recomputePan(d.track);
       } else if (d.type === 'updateMute') {
         // Bulk copy mute state (solo calculation done on UI side)
         var muteArr = d.muted;
@@ -133,6 +147,13 @@ class PadDawProcessor extends AudioWorkletProcessor {
         }
       }
     };
+  }
+
+  _recomputePan(track) {
+    var vol = this.trackVolume[track];
+    var angle = (this.trackPan[track] + 1) * 0.25 * Math.PI; // 0 to PI/2
+    this.trackPanL[track] = vol * Math.cos(angle);
+    this.trackPanR[track] = vol * Math.sin(angle);
   }
 
   _startVoice(track, sampleIndex, velocity, pitchRatio) {
@@ -190,17 +211,28 @@ class PadDawProcessor extends AudioWorkletProcessor {
 
     var samplesReady = this.samples.length > 0;
 
+    // Scan which tracks have active voices (once per frame, not per sample)
+    for (var t = 0; t < NUM_TRACKS; t++) {
+      this.trackHasActive[t] = 0;
+      var base = t * VOICES_PER_TRACK;
+      for (var v = 0; v < VOICES_PER_TRACK; v++) {
+        if (this.voiceActive[base + v]) { this.trackHasActive[t] = 1; break; }
+      }
+    }
+
     for (var i = 0; i < 128; i++) {
       // Scheduled events: sample-accurate trigger (only when playing)
       if (this.playState === STATE_PLAYING && samplesReady) {
         while (this.eventIndex < this.eventCount &&
                this.evStartSample[this.eventIndex] <= this.schedulerSample) {
+          var evTrack = this.evTrack[this.eventIndex];
           this._startVoice(
-            this.evTrack[this.eventIndex],
+            evTrack,
             this.evSampleIndex[this.eventIndex],
             this.evVelocity[this.eventIndex],
             this.evPitchRatio[this.eventIndex]
           );
+          this.trackHasActive[evTrack] = 1; // mark immediately
           this.eventIndex++;
         }
       }
@@ -211,6 +243,7 @@ class PadDawProcessor extends AudioWorkletProcessor {
       if (samplesReady) {
         for (var t = 0; t < NUM_TRACKS; t++) {
           if (this.trackMuted[t]) continue;
+          if (!this.trackHasActive[t]) continue;
           var trackSample = 0;
           var base = t * VOICES_PER_TRACK;
           for (var v = 0; v < VOICES_PER_TRACK; v++) {
@@ -232,13 +265,9 @@ class PadDawProcessor extends AudioWorkletProcessor {
             trackSample += (s0 + (s1 - s0) * frac) * this.voiceGain[idx];
             this.voicePosition[idx] = pos + this.voicePitchRatio[idx];
           }
-          // Equal-power pan law: cos/sin mapping
-          // pan: -1.0 = full left, 0.0 = center, 1.0 = full right
-          var vol = this.trackVolume[t];
-          var p = this.trackPan[t];
-          var angle = (p + 1) * 0.25 * Math.PI; // 0 to PI/2
-          mixL += trackSample * vol * Math.cos(angle);
-          mixR += trackSample * vol * Math.sin(angle);
+          // Pre-computed pan coefficients (vol × cos/sin) — no trig in hot loop
+          mixL += trackSample * this.trackPanL[t];
+          mixR += trackSample * this.trackPanR[t];
         }
       }
 

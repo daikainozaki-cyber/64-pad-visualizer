@@ -506,6 +506,8 @@ TutorialRegistry.add('tasty', {
   titleKey: 'tut.tasty_title',
   descKey: 'tut.tasty_desc',
   category: 'advanced',
+  requireEl: '#tasty-bar',
+
   steps: [
     {
       type: 'info',
@@ -546,6 +548,27 @@ TutorialRegistry.add('tasty', {
       msgKey: 'tut.tasty.step4_msg',
       waitFor: 'close',
     },
+  ],
+  // Fallback steps when ?hps is not active (TASTY bar not visible)
+  fallbackSteps: [
+    {
+      type: 'info',
+      id: 'what_is_tasty',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.tasty.fb_step1_title',
+      msgKey: 'tut.tasty.fb_step1_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'how_to_access',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.tasty.fb_step2_title',
+      msgKey: 'tut.tasty.fb_step2_msg',
+      waitFor: 'close',
+    },
   ]
 });
 
@@ -556,6 +579,8 @@ TutorialRegistry.add('stock', {
   titleKey: 'tut.stock_title',
   descKey: 'tut.stock_desc',
   category: 'advanced',
+  requireEl: '#stock-bar',
+
   steps: [
     {
       type: 'info',
@@ -594,6 +619,27 @@ TutorialRegistry.add('stock', {
       highlight: '#stock-reflect-btn',
       titleKey: 'tut.stock.step4_title',
       msgKey: 'tut.stock.step4_msg',
+      waitFor: 'close',
+    },
+  ],
+  // Fallback steps when ?hps is not active (STOCK bar not visible)
+  fallbackSteps: [
+    {
+      type: 'info',
+      id: 'what_is_stock',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.stock.fb_step1_title',
+      msgKey: 'tut.stock.fb_step1_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'how_to_access',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.stock.fb_step2_title',
+      msgKey: 'tut.stock.fb_step2_msg',
       waitFor: 'close',
     },
   ]
@@ -639,6 +685,138 @@ TutorialRegistry.add('circle', {
       highlight: '#circle-of-fifths',
       titleKey: 'tut.circle.step3_title',
       msgKey: 'tut.circle.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'action',
+      id: 'minor_select',
+      targets: ['#circle-of-fifths'],
+      highlight: '#circle-of-fifths',
+      titleKey: 'tut.circle.step4_title',
+      msgKey: 'tut.circle.step4_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'minor_modes',
+      targets: ['#circle-of-fifths'],
+      highlight: '#circle-of-fifths',
+      titleKey: 'tut.circle.step5_title',
+      msgKey: 'tut.circle.step5_msg',
+      waitFor: 'close',
+    },
+  ]
+});
+
+// =============================================
+// GUITAR — independent tutorial (#1332)
+// =============================================
+TutorialRegistry.add('guitar', {
+  titleKey: 'tut.guitar_title',
+  descKey: 'tut.guitar_desc',
+  category: 'features',
+
+  steps: [
+    {
+      type: 'highlight',
+      id: 'toggle',
+      targets: ['#inst-toggle-guitar'],
+      highlight: '#inst-toggle-guitar',
+      titleKey: 'tut.guitar.step1_title',
+      msgKey: 'tut.guitar.step1_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        if (typeof setMode === 'function') setMode('chord');
+        var wrap = document.getElementById('guitar-wrap');
+        if (wrap && wrap.style.display === 'none') {
+          if (typeof toggleInstrument === 'function') toggleInstrument('guitar');
+        }
+      }
+    },
+    {
+      type: 'highlight',
+      id: 'fretboard',
+      targets: ['#guitar-wrap'],
+      highlight: '#guitar-wrap',
+      titleKey: 'tut.guitar.step2_title',
+      msgKey: 'tut.guitar.step2_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'input',
+      targets: ['#guitar-wrap'],
+      highlight: '#guitar-wrap',
+      titleKey: 'tut.guitar.step3_title',
+      msgKey: 'tut.guitar.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'reflect',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.guitar.step4_title',
+      msgKey: 'tut.guitar.step4_msg',
+      waitFor: 'close',
+    },
+  ]
+});
+
+// =============================================
+// KEYBOARD SHORTCUTS — walkthrough (#1329)
+// =============================================
+TutorialRegistry.add('shortcuts', {
+  titleKey: 'tut.shortcuts_title',
+  descKey: 'tut.shortcuts_desc',
+  category: 'advanced',
+  steps: [
+    {
+      type: 'info',
+      id: 'modes',
+      targets: ['#mode-scale', '#mode-chord', '#mode-input'],
+      highlight: null,
+      titleKey: 'tut.shortcuts.step1_title',
+      msgKey: 'tut.shortcuts.step1_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'chord_nav',
+      targets: ['#diatonic-bar'],
+      highlight: '#diatonic-bar',
+      titleKey: 'tut.shortcuts.step2_title',
+      msgKey: 'tut.shortcuts.step2_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        if (typeof setMode === 'function') setMode('scale');
+      }
+    },
+    {
+      type: 'info',
+      id: 'voicing_keys',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.shortcuts.step3_title',
+      msgKey: 'tut.shortcuts.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'memory_keys',
+      targets: ['#memory-slots'],
+      highlight: '#memory-slots',
+      titleKey: 'tut.shortcuts.step4_title',
+      msgKey: 'tut.shortcuts.step4_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'help_key',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.shortcuts.step5_title',
+      msgKey: 'tut.shortcuts.step5_msg',
       waitFor: 'close',
     },
   ]

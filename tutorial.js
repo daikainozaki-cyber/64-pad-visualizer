@@ -31,7 +31,17 @@ var TutorialEngine = {
     // Close selector if open
     this._closeSelector();
     this._currentTutorialId = id;
-    this._currentSteps = tut.steps;
+    // #1331: Use fallback steps if requireEl is not visible
+    if (tut.fallbackSteps && tut.requireEl) {
+      var reqEl = document.querySelector(tut.requireEl);
+      if (!reqEl || reqEl.offsetParent === null) {
+        this._currentSteps = tut.fallbackSteps;
+      } else {
+        this._currentSteps = tut.steps;
+      }
+    } else {
+      this._currentSteps = tut.steps;
+    }
     this.active = true;
     this.step = -1;
     this._presetChanged = false;
@@ -191,9 +201,8 @@ var TutorialEngine = {
       html += '<button class="tutorial-next-btn" style="' + (this._presetChanged ? '' : 'display:none') + '" onclick="TutorialEngine.next()">' + t('tut.next') + '</button>';
       html += '<button class="tutorial-skip-btn" onclick="TutorialEngine.next()">' + t('tut.skip_step') + '</button>';
     } else if (stepDef.waitFor === 'close') {
-      if (this._currentTutorialId === 'onboarding') {
-        html += '<a class="tutorial-guide-link" href="guide.html" target="_blank">' + t('tut.open_guide') + '</a>';
-      }
+      // #1330: Show guide link for all tutorials
+      html += '<a class="tutorial-guide-link" href="guide.html" target="_blank">' + t('tut.open_guide') + '</a>';
       html += '<button class="tutorial-next-btn" onclick="TutorialEngine.complete()">' + t('tut.close') + '</button>';
     } else {
       html += '<button class="tutorial-next-btn" onclick="TutorialEngine.next()">' + t('tut.next') + '</button>';
@@ -289,8 +298,8 @@ var TutorialEngine = {
 
       for (var ti = 0; ti < tuts.length; ti++) {
         var tut = tuts[ti];
-        // Hide tutorials whose required element is not visible (e.g. HPS-only features)
-        if (tut.requireEl) {
+        // Hide tutorials whose required element is not visible, unless they have fallback steps
+        if (tut.requireEl && !tut.fallbackSteps) {
           var reqEl = document.querySelector(tut.requireEl);
           if (!reqEl || reqEl.offsetParent === null) continue;
         }
@@ -426,6 +435,7 @@ var TutorialHints = {
     { sel: '#tasty-bar', id: 'tasty' },
     { sel: '#stock-bar', id: 'stock' },
     { sel: '#inst-toggle-circle', id: 'circle' },
+    { sel: '#inst-toggle-guitar', id: 'guitar' },
     { sel: '#inst-toggle-bar', id: 'settings' }
   ],
   _toastTimer: null,

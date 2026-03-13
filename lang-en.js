@@ -438,10 +438,10 @@ I18N.addLang('en', {
     },
     // Input Mode tutorial
     input_mode_title: 'Input Mode',
-    input_mode_desc: 'Tap pads freely — chords detected in real time',
+    input_mode_desc: 'Input chords via MIDI controller, pads, fretboard, or keyboard',
     input_mode: {
       step1_title: 'Switch to Input Mode',
-      step1_msg: 'A mode that displays what you input, rather than selecting scales or chords.\nConvenient for saving to memory slots.',
+      step1_msg: 'Input chords via MIDI controller, clicking pads, fretboard, or keyboard.\nChord detection works in all modes.',
       step2_title: 'Tap Some Pads',
       step2_msg: 'Click any pads on the grid.\nEach tap toggles a note on or off.',
       step3_title: 'Chord Detection',

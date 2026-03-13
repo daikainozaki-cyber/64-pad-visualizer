@@ -288,7 +288,7 @@
     <li data-i18n="guide.feat_dimming"><strong>テンション実用性表示</strong> — ドミナント7以外のコードでは、実践で使われにくいテンション（b9, #9, b13等）が薄く表示されます。選択は可能です</li>
     <li data-i18n="guide.feat_circle"><strong>五度圏表示</strong> — Circle of Fifths を表示。キー選択と連動し、ダイアトニックコード・機能（T/SD/D）を表示。マイナースケールモード切替対応</li>
     <li data-i18n="guide.feat_banks"><strong>メモリーバンク</strong> — 16スロット×最大16バンクでコード進行を管理。バンクの切替・複製・リネームに対応。<kbd>[</kbd> <kbd>]</kbd>キーで切替</li>
-    <li data-i18n="guide.feat_autofilter"><strong>オートフィルター</strong> — エンベロープフィルター（Auto-Wah）。Cry Baby / Mu-Tron / Moog の3タイプ、周波数・レゾナンス・感度・ディケイを調整可能</li>
+    <li data-i18n="guide.feat_autofilter"><strong>オートフィルター（Auto-Wah）</strong> — エンベロープフィルター。FREQ・RESO・SENS・DECAYを調整できます</li>
     <li data-i18n="guide.feat_drive"><strong>ドライブ</strong> — アナログサチュレーション。温かみのある歪みをサウンドに追加</li>
     <li data-i18n="guide.feat_clav"><strong>クラヴィネット音源</strong> — E.PIANOに2種追加（Clav Muted, Clav Bright）。ファンクに最適</li>
     <li data-i18n="guide.feat_midi_sens"><strong>MIDI感度調整</strong> — Push 3風の4パラメータ（Threshold, Drive, Compand, Range）でベロシティカーブを調整。カーブをリアルタイムに可視化。全MIDIコントローラー対応</li>
@@ -316,7 +316,7 @@
   </div>
 
   <h3 data-i18n="guide.ss_input"><span class="mode-badge input">Input</span> Inputモード</h3>
-  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_input_desc">パッドを自由にクリックしてコード名をリアルタイム判定。理論を知らなくてもコードがわかります。</p>
+  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_input_desc">MIDIコントローラー、パッドをクリック、指板、鍵盤などからコードを入力できます。コードの判定は基本的にどのモードでも動作します。</p>
   <div class="screenshot-wrap">
     <img src="img/screenshot-plain.png" alt="Input Mode" data-i18n="guide.ss_input_alt" data-i18n-attr="alt" loading="lazy">
     <p class="caption" data-i18n="guide.ss_input_caption">C7 — パッドをクリックするだけでコード名を自動判定。複数候補も表示</p>
@@ -333,7 +333,7 @@
   </div>
 
   <h3 data-i18n="guide.ss_velocity">MIDI感度調整（Velocity Sensitivity）</h3>
-  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_velocity_desc">MIDIコントローラーのベロシティ感度をPush 3風の4パラメータで調整できます。サウンドパネル内のVELOCITY SENSITIVITYセクションで設定。カーブがリアルタイムに可視化されます。</p>
+  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_velocity_desc">MIDIコントローラーのベロシティ感度をPush 3風の4パラメータで調整できます。サウンドパネル内のVELOCITY SENSITIVITYセクションで設定。カーブがリアルタイムに可視化されます。感度調整がないMIDI機器に便利です。</p>
   <ul class="feature-list" style="margin-bottom:16px;">
     <li><strong>THRESH (Threshold)</strong> — 最低入力ベロシティ。これ以下のタッチは無音になります（0〜64）</li>
     <li><strong>DRIVE</strong> — カーブの立ち上がり。+で弱いタッチでも大きな音に、-で強く叩かないと鳴らない（-64〜+64）</li>
@@ -364,7 +364,7 @@
   <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px;" data-i18n="guide.ss_hps_voicing_intro">HPS会員は3種類のボイシング機能を使えます。それぞれ異なる楽器・分類軸からボイシングを提供し、すべて「パッドに反映」で64パッドの配置に変換できます。</p>
 
   <h4 style="margin-top:16px;font-size:0.85rem;" data-i18n="guide.ss_tasty">TASTY Voicing — トップノートから分類</h4>
-  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_tasty_desc">129種類のプロフェッショナル・ボイシングを度数配列で表示。コードを選んで <kbd>T</kbd> キーで起動し、連打でレシピを巡回。パッドに全音が収まる最適ポジションを自動選択します。</p>
+  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_tasty_desc">129種類の洗練されたボイシングを度数配列で表示。コードを選んで <kbd>T</kbd> キーで起動し、連打でレシピを巡回。パッドに反映することも可能。コードのボキャブラリーを強化、ホーンアレンジなどにも役立ちます。</p>
   <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_tasty_target">対象: Maj7 / Dom7 / Min7</p>
   <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_tasty_degrees">info欄に度数の積み順（例: <code>m9 (b3-b7-9-5-1)</code>）が表示されます。これがボイシングの構造——下からどの順番で音を積むかを示しています。</p>
   <h5 style="margin-top:12px;font-size:0.8rem;" data-i18n="guide.ss_tasty_labels_title">ラベルの意味</h5>
@@ -382,7 +382,7 @@
   </ul>
 
   <h4 style="margin-top:20px;font-size:0.85rem;" data-i18n="guide.ss_stock">STOCK Voicing — ピアノボイシング集</h4>
-  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_stock_desc">教材から収集した154種類のピアノボイシングを度数表記で収録。Major / Minor / Dominant / Half-diminished / Diminished / Suspended / Rootless / Spread の全コードタイプに対応。鍵盤表示で実際のポジションを確認し、「パッドに反映」でパッド配置に変換できます。</p>
+  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_stock_desc">多数の教材、採譜したものから収集した154種類のピアノボイシングを度数表記で収録しました。良く使われるボイシングです。Major / Minor / Dominant / Half-diminished / Diminished / Suspended / Rootless / Spread の全コードタイプに対応。鍵盤表示で実際のポジションを確認し、「パッドに反映」でパッド配置に変換できます。</p>
   <h5 style="margin-top:12px;font-size:0.8rem;" data-i18n="guide.ss_stock_ops_title">操作</h5>
   <ul style="font-size:0.85rem;color:var(--text-muted);line-height:1.8;">
     <li><kbd>K</kbd> — STOCK起動 / 次のボイシングへ</li>
@@ -391,7 +391,7 @@
   </ul>
 
   <h4 style="margin-top:20px;font-size:0.85rem;" data-i18n="guide.ss_guitar_pos">Guitar Position — ギターボイシング</h4>
-  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_guitar_pos_desc">ギターのフレットボード上でコードのポジションを自動算出。フレットボードをクリックして手動入力もできます。<kbd>V</kbd>の「パッドに反映」でギターボイシングをパッド配置に変換。ギターライク / コンパクト配置を選択できます。</p>
+  <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:8px;" data-i18n="guide.ss_guitar_pos_desc">ギターのフレットボード上でコードのポジションを自動算出。アルゴリズムだけではなく、実際に演奏可能なフィンガリングが表示されます。フレットボードをクリックして手動入力もできます。<kbd>V</kbd>の「パッドに反映」でギターボイシングをパッド配置に変換。ギターライク / コンパクト配置を選択できます。非ギタリストがギターのボイシングを学ぶのにも、ギタリストがパッドの習得コストを減らすのにも役立ちます。</p>
 </section>
 
 <!-- Use Cases -->
@@ -401,6 +401,10 @@
     <li>
       <span class="usecase-q" data-i18n="guide.uc1_q">「このコードの押さえ方を調べたい」</span>
       <span class="usecase-a" data-i18n="guide.uc1_a">→ <span class="mode-badge chord">Chord</span> モードでRoot・Quality・Tensionを選択 → ボイシングボックスで配置を確認</span>
+    </li>
+    <li>
+      <span class="usecase-q" data-i18n="guide.uc9_q">「ダイアトニック・コードを覚えたい」</span>
+      <span class="usecase-a" data-i18n="guide.uc9_a">→ 5度圏でキーを選択すれば、ダイアトニック・バーに反映されます</span>
     </li>
     <li>
       <span class="usecase-q" data-i18n="guide.uc2_q">「レッスンで出てきたスケールをパッド上で確認したい」</span>
@@ -427,8 +431,8 @@
       <span class="usecase-a" data-i18n="guide.uc6_a">→ ギターフレットボードをクリックして入力 → <kbd>V</kbd>で「パッドに反映」→ ギターライク / コンパクト配置を選択</span>
     </li>
     <li>
-      <span class="usecase-q" data-i18n="guide.uc8_q">「プロが使うボイシングを知りたい」</span>
-      <span class="usecase-a" data-i18n="guide.uc8_a">→ <span class="mode-badge chord">Chord</span> モードでコードを作り <kbd>T</kbd> でTASTY（トップノート分類）、<kbd>K</kbd> でSTOCK（ピアノボイシング）を起動。度数付きで確認、「パッドに反映」でパッド配置に変換、メモリーに保存してDAWへ</span>
+      <span class="usecase-q" data-i18n="guide.uc8_q">「洗練されたボイシング、ピアノで良く使われるボイシングを知りたい」</span>
+      <span class="usecase-a" data-i18n="guide.uc8_a">→ <span class="mode-badge chord">Chord</span> モードでコードを作り <kbd>T</kbd> でTASTY（トップノート分類）、<kbd>K</kbd> でSTOCK（ピアノボイシング）を起動。度数付きで確認、「パッドに反映」でパッド配置に変換、メモリーに保存してDAWへ（HPS会員専用機能です）</span>
     </li>
   </ul>
 </section>
@@ -495,7 +499,7 @@
   </ul>
 
   <h3 data-i18n="guide.sound_autofilter">オートフィルター（Auto-Wah）</h3>
-  <p style="font-size:0.9rem;color:var(--text-muted);line-height:1.6;margin-bottom:12px;" data-i18n="guide.sound_autofilter_desc">エンベロープフィルター。3タイプ（Cry Baby / Mu-Tron / Moog）から選択し、FREQ・RESO・SENS・DECAYを調整できます。</p>
+  <p style="font-size:0.9rem;color:var(--text-muted);line-height:1.6;margin-bottom:12px;" data-i18n="guide.sound_autofilter_desc">エンベロープフィルター。FREQ・RESO・SENS・DECAYを調整できます。</p>
 </section>
 
 <!-- Footer -->

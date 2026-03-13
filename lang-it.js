@@ -422,10 +422,10 @@ I18N.addLang('it', {
     },
     // Input Mode tutorial
     input_mode_title: 'Input Mode',
-    input_mode_desc: 'Tocca i pad liberamente — rilevamento accordi in tempo reale',
+    input_mode_desc: 'Inserisci accordi da controller MIDI, pad, manico o tastiera',
     input_mode: {
       step1_title: 'Passa a Input Mode',
-      step1_msg: 'Una modalit\u00E0 che visualizza ci\u00F2 che inserisci, anzich\u00E9 selezionare scale o accordi.\nComoda per salvare negli slot di memoria.',
+      step1_msg: 'Inserisci accordi tramite controller MIDI, cliccando sui pad, dal manico o dalla tastiera.\nIl rilevamento degli accordi funziona in tutte le modalità.',
       step2_title: 'Tocca alcuni pad',
       step2_msg: 'Clicca qualsiasi pad sulla griglia.\nOgni tocco attiva o disattiva una nota.',
       step3_title: 'Rilevamento accordi',

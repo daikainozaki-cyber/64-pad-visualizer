@@ -424,10 +424,10 @@ I18N.addLang('fr', {
     },
     // Input Mode tutorial
     input_mode_title: 'Mode Input',
-    input_mode_desc: 'Cliquez librement \u2014 accords d\u00E9tect\u00E9s en temps r\u00E9el',
+    input_mode_desc: 'Saisissez des accords via contrôleur MIDI, pads, manche ou clavier',
     input_mode: {
       step1_title: 'Passer en mode Input',
-      step1_msg: 'Un mode qui affiche ce que vous saisissez, plut\u00F4t que de s\u00E9lectionner des gammes ou des accords.\nPratique pour sauvegarder dans les emplacements m\u00E9moire.',
+      step1_msg: 'Saisissez des accords via un contrôleur MIDI, en cliquant sur les pads, le manche ou le clavier.\nLa détection d\'accords fonctionne dans tous les modes.',
       step2_title: 'Cliquez sur quelques pads',
       step2_msg: 'Cliquez sur n\u0027importe quels pads de la grille.\nChaque clic active ou d\u00E9sactive une note.',
       step3_title: 'D\u00E9tection d\u0027accords',

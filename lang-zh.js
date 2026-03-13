@@ -422,10 +422,10 @@ I18N.addLang('zh', {
     },
     // Input Mode tutorial
     input_mode_title: 'Input 模式',
-    input_mode_desc: '自由点击打击垫 — 实时识别和弦',
+    input_mode_desc: '通过MIDI控制器、打击垫、指板或键盘输入和弦',
     input_mode: {
       step1_title: '切换到 Input 模式',
-      step1_msg: '一种显示你所输入内容的模式，而非选择音阶或和弦。\n适合保存到记忆插槽。',
+      step1_msg: '通过MIDI控制器、点击打击垫、指板或键盘输入和弦的模式。\n和弦识别功能在所有模式下均可使用。',
       step2_title: '点击一些打击垫',
       step2_msg: '点击网格上的任意打击垫。\n每次点击切换一个音的开/关。',
       step3_title: '和弦识别',

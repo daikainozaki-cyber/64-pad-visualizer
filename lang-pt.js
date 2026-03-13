@@ -422,10 +422,10 @@ I18N.addLang('pt', {
     },
     // Input Mode tutorial
     input_mode_title: 'Modo Input',
-    input_mode_desc: 'Toque nos pads livremente \u2014 acordes detetados em tempo real',
+    input_mode_desc: 'Insira acordes via controlador MIDI, pads, braço ou teclado',
     input_mode: {
       step1_title: 'Mudar para o modo Input',
-      step1_msg: 'Um modo que exibe o que voc\u00EA insere, em vez de selecionar escalas ou acordes.\nConveniente para guardar nos slots de mem\u00F3ria.',
+      step1_msg: 'Insira acordes via controlador MIDI, clicando nos pads, braço ou teclado.\nA deteção de acordes funciona em todos os modos.',
       step2_title: 'Toque em alguns pads',
       step2_msg: 'Clique em quaisquer pads na grelha.\nCada toque ativa ou desativa uma nota.',
       step3_title: 'Dete\u00E7\u00E3o de acordes',

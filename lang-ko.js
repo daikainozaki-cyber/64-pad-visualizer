@@ -422,10 +422,10 @@ I18N.addLang('ko', {
     },
     // Input Mode tutorial
     input_mode_title: 'Input Mode',
-    input_mode_desc: '패드를 자유롭게 탭 — 실시간 코드 판별',
+    input_mode_desc: 'MIDI 컨트롤러, 패드, 지판, 건반으로 코드 입력',
     input_mode: {
       step1_title: 'Input 모드로 전환',
-      step1_msg: '스케일이나 코드를 선택하는 대신 입력한 내용을 표시하는 모드입니다.\n메모리 슬롯에 저장하기에 편리합니다.',
+      step1_msg: 'MIDI 컨트롤러, 패드 클릭, 지판, 건반 등으로 코드를 입력할 수 있는 모드입니다.\n코드 판별 기능은 기본적으로 모든 모드에서 작동합니다.',
       step2_title: '패드를 탭하세요',
       step2_msg: '그리드에서 아무 패드나 클릭하세요.\n탭할 때마다 음이 켜지거나 꺼집니다.',
       step3_title: '코드 감지',

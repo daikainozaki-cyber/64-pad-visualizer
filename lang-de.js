@@ -422,10 +422,10 @@ I18N.addLang('de', {
     },
     // Input Mode tutorial
     input_mode_title: 'Input-Modus',
-    input_mode_desc: 'Pads frei antippen \u2014 Akkorde in Echtzeit erkannt',
+    input_mode_desc: 'Akkorde über MIDI-Controller, Pads, Griffbrett oder Tastatur eingeben',
     input_mode: {
       step1_title: 'In den Input-Modus wechseln',
-      step1_msg: 'Ein Modus, der anzeigt, was du eingibst, anstatt Skalen oder Akkorde auszuw\u00E4hlen.\nPraktisch zum Speichern in Memory-Slots.',
+      step1_msg: 'Gib Akkorde über MIDI-Controller, Pad-Klick, Griffbrett oder Tastatur ein.\nDie Akkorderkennung funktioniert in allen Modi.',
       step2_title: 'Tippe auf einige Pads',
       step2_msg: 'Klicke auf beliebige Pads im Raster.\nJeder Klick schaltet eine Note ein oder aus.',
       step3_title: 'Akkorderkennung',

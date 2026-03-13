@@ -438,10 +438,10 @@ I18N.addLang('ja', {
     },
     // Inputモード
     input_mode_title: 'Inputモード',
-    input_mode_desc: 'パッドを自由にタップ — コードをリアルタイム判定',
+    input_mode_desc: 'MIDIコントローラー・パッド・指板・鍵盤からコードを入力',
     input_mode: {
       step1_title: 'Inputモードへ切替',
-      step1_msg: 'スケールやコードを選択するのではなく、入力したものを表示するモードです。\nメモリースロットへの保存などに便利です。',
+      step1_msg: 'MIDIコントローラー、パッドをクリック、指板、鍵盤などからコードを入力できるモードです。\nコードの判定は基本的にどのモードでも動作します。',
       step2_title: 'パッドをタップ',
       step2_msg: 'グリッド上のパッドをクリック。\nタップするたびに音がON/OFFされます。',
       step3_title: 'コード判定',

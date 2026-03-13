@@ -62,6 +62,12 @@ I18N.updateDOM = function() {
       }
     }
   });
+  // Update title attributes via data-i18n-title
+  document.querySelectorAll('[data-i18n-title]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n-title');
+    var val = t(key);
+    if (val !== key) el.setAttribute('title', val);
+  });
   // Update html lang attribute
   document.documentElement.lang = I18N.current === 'ja' ? 'ja' :
     I18N.current === 'zh' ? 'zh' :

@@ -39,7 +39,7 @@
 <meta name="twitter:description" content="コードがわからなくても大丈夫。64パッドでスケール・コード・ボイシングを可視化。ブラウザだけで動く無料音楽理論ツール。">
 <meta name="twitter:image" content="https://murinaikurashi.com/apps/64-pad/img/screenshot-chord.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"64 Pad Explorer","description":"Visualize scales, chords, and voicings on a 64-pad chromatic grid. Supports Ableton Push and Maschine layouts. MIDI I/O, chord detection, multiple instrument views.","url":"https://murinaikurashi.com/apps/64-pad/","applicationCategory":"MusicApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Organization","name":"HPS (Hardcore Pad Style)","url":"https://murinaikurashi.com"},"screenshot":"https://murinaikurashi.com/apps/64-pad/img/screenshot-scale.png","softwareVersion":"3.35.1","inLanguage":["en","ja","ko","zh","es","pt","fr","de","it"]}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"64 Pad Explorer","description":"Visualize scales, chords, and voicings on a 64-pad chromatic grid. Supports Ableton Push and Maschine layouts. MIDI I/O, chord detection, multiple instrument views.","url":"https://murinaikurashi.com/apps/64-pad/","applicationCategory":"MusicApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Organization","name":"HPS (Hardcore Pad Style)","url":"https://murinaikurashi.com"},"screenshot":"https://murinaikurashi.com/apps/64-pad/img/screenshot-scale.png","softwareVersion":"3.35.2","inLanguage":["en","ja","ko","zh","es","pt","fr","de","it"]}
 </script>
 <script src="error-logger.js"></script>
 <!-- Google Analytics -->
@@ -72,7 +72,7 @@ document.addEventListener('click', function(e) {
   }
 });
 </script>
-<link rel="stylesheet" href="style.css?v=3.35.1">
+<link rel="stylesheet" href="style.css?v=3.35.2">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -90,13 +90,13 @@ document.addEventListener('click', function(e) {
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_GeneralUserGS_sf2_file.js"></script>
 <!-- E.Piano: jRhodes3c velocity-layer sampler (5 layers, 1977 Rhodes Mark I) -->
-<script src="jrhodes3c-samples.js?v=3.35.1"></script>
+<script src="jrhodes3c-samples.js?v=3.35.2"></script>
 </head>
 <body>
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V3.35.1</span>
+  <span class="version-tag">V3.35.2</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -110,7 +110,7 @@ document.addEventListener('click', function(e) {
   </select>
   <button class="help-btn" onclick="saveAppSettings(); showSaveToast();" title="Save Settings" data-i18n-title="ui.save_settings"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
   <button class="help-btn" id="tut-btn" onclick="TutorialEngine.showSelector()" title="Tutorials" data-i18n-title="tut.selector_title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></button>
-  <button class="help-btn" onclick="document.getElementById('help-overlay').classList.add('active');var tc=document.getElementById('tips-toggle');if(tc)tc.checked=AppState.showTips!==false;" title="Help">?</button>
+  <button class="help-btn" onclick="document.getElementById('help-overlay').classList.add('active');var tc=document.getElementById('tips-toggle');if(tc)tc.checked=AppState.showTips!==false;" title="Help" data-i18n-title="ui.help">?</button>
 </div>
 <div class="header-links" id="header-links">
   <a href="guide.html" data-i18n="header.guide">Guide</a>
@@ -331,18 +331,18 @@ document.addEventListener('click', function(e) {
         <div class="legend-item"><div class="legend-swatch" style="background:var(--pad-off)"></div>Off</div>
       </div>
       <div class="octave-switch" style="margin:0;flex-shrink:0;">
-        <button class="oct-btn" id="oct-down" onclick="shiftOctave(-1)" title="Shift octave down">▼</button>
+        <button class="oct-btn" id="oct-down" onclick="shiftOctave(-1)" title="Shift octave down" data-i18n-title="ui.oct_down">▼</button>
         <span class="oct-label" id="oct-label">C1 — F#4</span>
-        <button class="oct-btn" id="oct-up" onclick="shiftOctave(1)" title="Shift octave up">▲</button>
+        <button class="oct-btn" id="oct-up" onclick="shiftOctave(1)" title="Shift octave up" data-i18n-title="ui.oct_up">▲</button>
       </div>
     </div>
     <div id="instrument-row" style="margin-top:4px;display:flex;gap:8px;align-items:flex-start;">
       <!-- Left: Guitar + Piano diagrams -->
       <div id="instrument-diagrams" style="flex:1;display:flex;flex-direction:column;gap:2px;">
         <div id="inst-toggle-bar" style="display:flex;gap:4px;justify-content:center;margin-bottom:2px;">
-          <button id="inst-toggle-guitar" class="inst-toggle" onclick="toggleInstrument('guitar')" title="Show/hide guitar fretboard (Shift+G)"><span class="kbd-hint">Sh+G</span>Guitar</button>
-          <button id="inst-toggle-bass" class="inst-toggle" onclick="toggleInstrument('bass')" title="Show/hide bass fretboard (Shift+B)"><span class="kbd-hint">Sh+B</span>Bass</button>
-          <button id="inst-toggle-piano" class="inst-toggle" onclick="toggleInstrument('piano')" title="Show/hide piano keyboard (Shift+P)"><span class="kbd-hint">Sh+P</span>Piano</button>
+          <button id="inst-toggle-guitar" class="inst-toggle" onclick="toggleInstrument('guitar')" title="Show/hide guitar fretboard (Shift+G)" data-i18n-title="ui.toggle_guitar"><span class="kbd-hint">Sh+G</span>Guitar</button>
+          <button id="inst-toggle-bass" class="inst-toggle" onclick="toggleInstrument('bass')" title="Show/hide bass fretboard (Shift+B)" data-i18n-title="ui.toggle_bass"><span class="kbd-hint">Sh+B</span>Bass</button>
+          <button id="inst-toggle-piano" class="inst-toggle" onclick="toggleInstrument('piano')" title="Show/hide piano keyboard (Shift+P)" data-i18n-title="ui.toggle_piano"><span class="kbd-hint">Sh+P</span>Piano</button>
           <button id="guitar-label-btn" onclick="toggleGuitarLabelMode()" style="font-size:0.6rem;padding:2px 8px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;display:none;" data-i18n="label.note_name">音名</button>
         </div>
         <div id="guitar-wrap" style="display:none;align-items:center;gap:4px;">
@@ -378,10 +378,10 @@ document.addEventListener('click', function(e) {
   <!-- Middle: Control Panel -->
   <div class="control-panel">
     <div class="mode-toggle">
-      <button class="mode-btn active" onclick="setMode('scale')" id="mode-scale" title="Scale mode — view scale notes on the pad (Tab to cycle)"><span class="kbd-hint">⇥</span>Scale</button>
-      <button class="mode-btn" onclick="setMode('chord')" id="mode-chord" title="Chord mode — build chords with voicings (Tab to cycle)"><span class="kbd-hint">⇥</span>Chord</button>
-      <button class="mode-btn" onclick="setMode('input')" id="mode-input" title="Input mode — tap pads freely to detect chords (Tab to cycle)"><span class="kbd-hint">⇥</span>Input</button>
-      <button class="play-btn" onclick="ensureAudioResumed();var n=getCurrentChordMidiNotes();if(n&&n.length)playMidiNotes(n,1.0);" title="Play current chord (Space)" style="position:relative;"><span class="kbd-hint">Sp</span>Play ▶</button>
+      <button class="mode-btn active" onclick="setMode('scale')" id="mode-scale" title="Scale mode — view scale notes on the pad (Tab to cycle)" data-i18n-title="ui.mode_scale"><span class="kbd-hint">⇥</span>Scale</button>
+      <button class="mode-btn" onclick="setMode('chord')" id="mode-chord" title="Chord mode — build chords with voicings (Tab to cycle)" data-i18n-title="ui.mode_chord"><span class="kbd-hint">⇥</span>Chord</button>
+      <button class="mode-btn" onclick="setMode('input')" id="mode-input" title="Input mode — tap pads freely to detect chords (Tab to cycle)" data-i18n-title="ui.mode_input"><span class="kbd-hint">⇥</span>Input</button>
+      <button class="play-btn" onclick="ensureAudioResumed();var n=getCurrentChordMidiNotes();if(n&&n.length)playMidiNotes(n,1.0);" title="Play current chord (Space)" data-i18n-title="ui.play_chord" style="position:relative;"><span class="kbd-hint">Sp</span>Play ▶</button>
     </div>
 
     <!-- Shared Key/Root Buttons -->
@@ -505,9 +505,9 @@ document.addEventListener('click', function(e) {
   <!-- Right: Staff + Memory -->
   <div id="staff-ep-panel" style="display:flex;flex-direction:column;gap:4px;min-width:360px;">
     <div style="display:flex;justify-content:center;gap:4px;">
-      <button id="inst-toggle-staff" class="inst-toggle active" onclick="toggleTheoryView('staff')" title="Show/hide staff notation"><span class="kbd-hint">Sh+S</span>Staff</button>
-      <button id="inst-toggle-circle" class="inst-toggle" onclick="toggleTheoryView('circle')" title="Show/hide circle of fifths (Shift+C)"><span class="kbd-hint">Sh+C</span><span data-i18n="ui.circle">Circle</span></button>
-      <button id="inst-toggle-sound" class="inst-toggle active" onclick="toggleInstrument('sound')" title="Show/hide sound controls — select ORGAN or E.PIANO to play sound">Sound</button>
+      <button id="inst-toggle-staff" class="inst-toggle active" onclick="toggleTheoryView('staff')" title="Show/hide staff notation" data-i18n-title="ui.toggle_staff"><span class="kbd-hint">Sh+S</span>Staff</button>
+      <button id="inst-toggle-circle" class="inst-toggle" onclick="toggleTheoryView('circle')" title="Show/hide circle of fifths (Shift+C)" data-i18n-title="ui.toggle_circle"><span class="kbd-hint">Sh+C</span><span data-i18n="ui.circle">Circle</span></button>
+      <button id="inst-toggle-sound" class="inst-toggle active" onclick="toggleInstrument('sound')" title="Show/hide sound controls — select ORGAN or E.PIANO to play sound" data-i18n-title="ui.toggle_sound">Sound</button>
     </div>
     <div id="staff-area" style="display:flex;justify-content:center;">
       <svg id="staff-notation" width="280" height="0" style="display:none;"></svg>
@@ -522,10 +522,10 @@ document.addEventListener('click', function(e) {
           <select id="midi-device-select" style="font-size:0.6rem;background:var(--surface);color:var(--text);border:1px solid var(--text-muted);border-radius:3px;padding:1px 3px;max-width:140px;"></select>
           <button onclick="midiActiveNotes.clear();updateMidiDisplay();" style="font-size:0.5rem;background:var(--surface);color:var(--text-muted);border:1px solid var(--text-muted);border-radius:3px;padding:1px 3px;cursor:pointer;">Panic</button>
         </span>
-        <button id="sound-mute-btn" onclick="toggleSoundMute()" title="Sound ON/OFF" style="font-size:0.85rem;padding:2px 6px;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;line-height:1;opacity:0.5;">&#x1F507;</button>
+        <button id="sound-mute-btn" onclick="toggleSoundMute()" title="Sound ON/OFF" data-i18n-title="ui.sound_mute" style="font-size:0.85rem;padding:2px 6px;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;line-height:1;opacity:0.5;">&#x1F507;</button>
         <select id="organ-preset" onchange="selectSound(this.value)" style="font-size:0.6rem;background:var(--surface);color:var(--text);border:1px solid var(--text-muted);border-radius:3px;padding:2px 3px;max-width:160px;cursor:pointer;"></select>
         <label class="ep-knob"><span>VOL</span><input type="range" id="snd-volume" min="0" max="1" step="0.01" value="0.6"><span id="snd-vol-val" class="ep-val">0.60</span></label>
-        <button id="sound-expand-btn" onclick="toggleSoundExpand()" title="Show/hide detailed sound settings (preset, reverb, phaser, etc.)" style="font-size:0.7rem;padding:2px 8px;background:transparent;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;cursor:pointer;">&#x25BC;</button>
+        <button id="sound-expand-btn" onclick="toggleSoundExpand()" title="Show/hide detailed sound settings (preset, reverb, phaser, etc.)" data-i18n-title="ui.sound_expand" style="font-size:0.7rem;padding:2px 8px;background:transparent;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;cursor:pointer;">&#x25BC;</button>
       </div>
       <div id="sound-details" style="display:none;margin-top:6px;">
         <div style="display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;">
@@ -727,34 +727,34 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.35.1"></script>
-<script src="lang-en.js?v=3.35.1"></script>
-<script src="lang-ja.js?v=3.35.1"></script>
-<script src="lang-zh.js?v=3.35.1"></script>
-<script src="lang-es.js?v=3.35.1"></script>
-<script src="lang-fr.js?v=3.35.1"></script>
-<script src="lang-pt.js?v=3.35.1"></script>
-<script src="lang-de.js?v=3.35.1"></script>
-<script src="lang-ko.js?v=3.35.1"></script>
-<script src="lang-it.js?v=3.35.1"></script>
+<script src="i18n.js?v=3.35.2"></script>
+<script src="lang-en.js?v=3.35.2"></script>
+<script src="lang-ja.js?v=3.35.2"></script>
+<script src="lang-zh.js?v=3.35.2"></script>
+<script src="lang-es.js?v=3.35.2"></script>
+<script src="lang-fr.js?v=3.35.2"></script>
+<script src="lang-pt.js?v=3.35.2"></script>
+<script src="lang-de.js?v=3.35.2"></script>
+<script src="lang-ko.js?v=3.35.2"></script>
+<script src="lang-it.js?v=3.35.2"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=3.35.1"></script>
-<script src="pad-core/theory.js?v=3.35.1"></script>
-<script src="pad-core/render.js?v=3.35.1"></script>
-<script src="pad-core/circle.js?v=3.35.1"></script>
-<script src="pad-core/builder-ui.js?v=3.35.1"></script>
-<script src="pad-core/incremental.js?v=3.35.1"></script>
+<script src="pad-core/data.js?v=3.35.2"></script>
+<script src="pad-core/theory.js?v=3.35.2"></script>
+<script src="pad-core/render.js?v=3.35.2"></script>
+<script src="pad-core/circle.js?v=3.35.2"></script>
+<script src="pad-core/builder-ui.js?v=3.35.2"></script>
+<script src="pad-core/incremental.js?v=3.35.2"></script>
 <!-- App JS -->
-<script src="data.js?v=3.35.1"></script>
-<script src="audio.js?v=3.35.1"></script>
-<script src="theory.js?v=3.35.1"></script>
-<script src="render.js?v=3.35.1"></script>
-<script src="plain.js?v=3.35.1"></script>
-<script src="perform.js?v=3.35.1"></script>
-<script src="builder.js?v=3.35.1"></script>
-<script src="main.js?v=3.35.1"></script>
-<script src="tutorial-data.js?v=3.35.1"></script>
-<script src="tutorial.js?v=3.35.1"></script>
+<script src="data.js?v=3.35.2"></script>
+<script src="audio.js?v=3.35.2"></script>
+<script src="theory.js?v=3.35.2"></script>
+<script src="render.js?v=3.35.2"></script>
+<script src="plain.js?v=3.35.2"></script>
+<script src="perform.js?v=3.35.2"></script>
+<script src="builder.js?v=3.35.2"></script>
+<script src="main.js?v=3.35.2"></script>
+<script src="tutorial-data.js?v=3.35.2"></script>
+<script src="tutorial.js?v=3.35.2"></script>
 <script>
 if ('serviceWorker' in navigator) {
   // Clean up old ?v= registrations (they create zombie SWs)

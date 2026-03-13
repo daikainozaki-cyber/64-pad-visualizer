@@ -522,7 +522,7 @@ I18N.addLang('ja', {
       fb_step1_title: 'TASTY Voicingとは',
       fb_step1_msg: '129種類のプロフェッショナル・ボイシングをトップノート別に分類。\nMaj7 / Dom7 / Min7に対応。度数配列で表示されます。\nHPS会員限定の機能です。',
       fb_step2_title: 'TASTY Voicingを使うには',
-      fb_step2_msg: 'HPS（Hardcore Pad Style）に参加すると利用できます。\nChordモードでTキーを押して起動。連打でレシピを巡回。\n詳しくはガイドをご覧ください。',
+      fb_step2_msg: 'HPS（Hardcore Pad Style）に参加すると利用できます。\nChordモードでTキーを押して起動。再び押すと、他のボイシングに変換されます。\n詳しくはガイドをご覧ください。',
     },
     // STOCKボイシング
     stock_title: 'STOCK Voicing',
@@ -537,7 +537,7 @@ I18N.addLang('ja', {
       step4_title: 'パッドに反映',
       step4_msg: '「パッドに反映」でボイシングをパッド配置に変換。\nメモリーに保存してDAWへエクスポート。',
       fb_step1_title: 'STOCK Voicingとは',
-      fb_step1_msg: '154種類のピアノボイシングを度数表記で収録。\nMajor / Minor / Dominant / Half-dim / Dim / Sus / Rootless / Spread 全タイプ対応。\nHPS会員限定の機能です。',
+      fb_step1_msg: 'よく使われるピアノのボイシングを提示します。\n度数表記で構造がわかります。\nHPS会員限定の機能です。',
       fb_step2_title: 'STOCK Voicingを使うには',
       fb_step2_msg: 'HPS（Hardcore Pad Style）に参加すると利用できます。\nChordモードでKキーを押して起動。\n詳しくはガイドをご覧ください。',
     },

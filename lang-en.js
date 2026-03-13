@@ -522,7 +522,7 @@ I18N.addLang('en', {
       fb_step1_title: 'What is TASTY Voicing?',
       fb_step1_msg: '129 professional voicings sorted by top note.\nSupports Maj7 / Dom7 / Min7. Displayed in degree notation.\nHPS members only.',
       fb_step2_title: 'How to Access TASTY',
-      fb_step2_msg: 'Available when you join HPS (Hardcore Pad Style).\nPress T in Chord mode to activate. Keep pressing to cycle recipes.\nSee the Guide for details.',
+      fb_step2_msg: 'Available when you join HPS (Hardcore Pad Style).\nPress T in Chord mode to activate. Press again to switch to another voicing.\nSee the Guide for details.',
     },
     // STOCK Voicing tutorial
     stock_title: 'STOCK Voicing',
@@ -537,7 +537,7 @@ I18N.addLang('en', {
       step4_title: 'To Pad',
       step4_msg: 'Click "To Pad" to map the voicing to pad layout.\nSave to memory and export to your DAW.',
       fb_step1_title: 'What is STOCK Voicing?',
-      fb_step1_msg: '154 piano voicings in degree notation.\nCovers Major / Minor / Dominant / Half-dim / Dim / Sus / Rootless / Spread.\nHPS members only.',
+      fb_step1_msg: 'Presents commonly used piano voicings.\nDegree notation shows you the structure.\nHPS members only.',
       fb_step2_title: 'How to Access STOCK',
       fb_step2_msg: 'Available when you join HPS (Hardcore Pad Style).\nPress K in Chord mode to activate.\nSee the Guide for details.',
     },

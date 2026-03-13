@@ -10,7 +10,7 @@ var RING_HEADER_BYTES = 8;
 var RING_DATA_BYTES = RING_DATA_FLOATS * 4;
 var RING_TOTAL_BYTES = RING_HEADER_BYTES + RING_DATA_BYTES;
 
-var PPQ = 24;
+var PPQ = 960;
 
 var PadDawEngine = {
   ctx: null,
@@ -215,7 +215,7 @@ var PadDawEngine = {
   },
 
   getBarEndSample: function(bars, bpm) {
-    return this.tickToSample(bars * 96, bpm);
+    return this.tickToSample(bars * PPQ * 4, bpm);
   },
 
   playSequence: function(tickEvents, bpm, loopBars) {

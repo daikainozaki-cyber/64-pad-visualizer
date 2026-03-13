@@ -1,6 +1,6 @@
 // PAD DAW Phase 2 — Test Sequence Data
 // Tick-based patterns for testing the scheduler.
-// PPQ = 24. 1 bar (4/4) = 96 ticks.
+// PPQ = 960. 1 bar (4/4) = 3840 ticks.
 // Returns arrays of {tick, sampleIndex, velocity, pitchRatio}.
 
 var SequenceTestData = {
@@ -9,10 +9,10 @@ var SequenceTestData = {
   fourOnFloor: function(sampleIdx) {
     sampleIdx = sampleIdx || 0;
     return [
-      { tick: 0,  sampleIndex: sampleIdx, velocity: 0.9, pitchRatio: 1.0 },
-      { tick: 24, sampleIndex: sampleIdx, velocity: 0.9, pitchRatio: 1.0 },
-      { tick: 48, sampleIndex: sampleIdx, velocity: 0.9, pitchRatio: 1.0 },
-      { tick: 72, sampleIndex: sampleIdx, velocity: 0.9, pitchRatio: 1.0 }
+      { tick: 0,    sampleIndex: sampleIdx, velocity: 0.9, pitchRatio: 1.0 },
+      { tick: 960,  sampleIndex: sampleIdx, velocity: 0.9, pitchRatio: 1.0 },
+      { tick: 1920, sampleIndex: sampleIdx, velocity: 0.9, pitchRatio: 1.0 },
+      { tick: 2880, sampleIndex: sampleIdx, velocity: 0.9, pitchRatio: 1.0 }
     ];
   },
 
@@ -21,7 +21,7 @@ var SequenceTestData = {
     sampleIdx = sampleIdx || 0;
     var events = [];
     for (var i = 0; i < 16; i++) {
-      var tick = i * 6; // 6 ticks = 16th note
+      var tick = i * 240; // 240 ticks = 16th note
       var onBeat = (i % 4 === 0);
       events.push({
         tick: tick,
@@ -40,7 +40,7 @@ var SequenceTestData = {
     var events = [];
     for (var i = 0; i < semitones.length; i++) {
       events.push({
-        tick: i * 12, // 12 ticks = 8th note
+        tick: i * 480, // 480 ticks = 8th note
         sampleIndex: sampleIdx,
         velocity: 0.7,
         pitchRatio: Math.pow(2, semitones[i] / 12)

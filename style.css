@@ -14,6 +14,8 @@
   --pad-omitted: #555;
   --pad-overlay: rgba(86, 180, 233, 0.2);
   --pad-overlay-char: rgba(240, 228, 66, 0.3);
+  --pad-overlay-hi: rgba(86, 180, 233, 0.7);
+  --pad-overlay-char-hi: rgba(240, 228, 66, 0.7);
   --text: #e0e0e0;
   --text-muted: #888;
   --accent: #4a9eff;
@@ -471,6 +473,8 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .pad { cursor: pointer; transition: opacity 0.15s; }
 .pad:hover { opacity: 0.8; }
 .pad-label { pointer-events: none; user-select: none; }
+/* Available Scale overlay: brighter when user manually selects a scale */
+.overlay-highlight { --pad-overlay: var(--pad-overlay-hi); --pad-overlay-char: var(--pad-overlay-char-hi); }
 
 /* === Legend & Info === */
 .pad-footer { height: 40px; overflow: hidden; }

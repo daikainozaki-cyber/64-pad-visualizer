@@ -6,7 +6,55 @@
 
 var SEQ_PPQ = 960; // Must match engine.js PPQ
 
-// --- noteOn intercept for recording ---
+// --- BroadcastChannel for cross-tab communication ---
+var _bcSync = new BroadcastChannel('pad-daw-sync');
+var _bcLatencyLog = [];
+var _bcPending = {};
+
+_bcSync.onmessage = function(e) {
+  var d = e.data;
+  if (d.type === 'pong' && _bcPending[d.id]) {
+    var rt = performance.now() - _bcPending[d.id];
+    delete _bcPending[d.id];
+    _bcLatencyLog.push(rt);
+    if (_bcLatencyLog.length > 200) _bcLatencyLog.shift();
+    console.log('[BC Latency] round-trip: ' + rt.toFixed(2) + 'ms');
+  } else if (d.type === 'ping') {
+    _bcSync.postMessage({ type: 'pong', id: d.id, sendTime: d.sendTime });
+  }
+};
+
+// Latency test: call bcPing() or bcBench(100) from console
+function bcPing() {
+  var id = Math.random().toString(36).slice(2);
+  _bcPending[id] = performance.now();
+  _bcSync.postMessage({ type: 'ping', id: id, sendTime: performance.now() });
+}
+
+function bcBench(count) {
+  count = count || 50;
+  _bcLatencyLog = [];
+  var i = 0;
+  var iv = setInterval(function() {
+    if (i >= count) {
+      clearInterval(iv);
+      // Stats
+      var sum = 0, min = Infinity, max = 0;
+      for (var j = 0; j < _bcLatencyLog.length; j++) {
+        sum += _bcLatencyLog[j];
+        if (_bcLatencyLog[j] < min) min = _bcLatencyLog[j];
+        if (_bcLatencyLog[j] > max) max = _bcLatencyLog[j];
+      }
+      var avg = sum / _bcLatencyLog.length;
+      console.log('[BC Bench] ' + _bcLatencyLog.length + ' samples — avg: ' + avg.toFixed(2) + 'ms, min: ' + min.toFixed(2) + 'ms, max: ' + max.toFixed(2) + 'ms, jitter: ' + (max - min).toFixed(2) + 'ms');
+      return;
+    }
+    bcPing();
+    i++;
+  }, 20);
+}
+
+// --- noteOn intercept for recording + cross-tab ---
 var _origNoteOnSeq = noteOn;
 noteOn = function(midi, velocity, poly, _retries) {
   // Always play sound via WebAudioFont
@@ -15,6 +63,16 @@ noteOn = function(midi, velocity, poly, _retries) {
   if (SequenceState.recording) {
     onPadHitDuringRecord(midi, velocity || 0.8);
   }
+  // Forward to other tabs (daw.html) via BroadcastChannel
+  var pitchRatio = Math.pow(2, (midi - 60) / 12);
+  _bcSync.postMessage({
+    type: 'noteOn',
+    midi: midi,
+    sampleIndex: 0,
+    velocity: velocity || 0.8,
+    pitchRatio: pitchRatio,
+    track: SequenceState.currentTrack
+  });
 };
 
 // --- Recording ---

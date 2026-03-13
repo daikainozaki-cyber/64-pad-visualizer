@@ -361,5 +361,36 @@
     })(t);
   }
 </script>
+<!-- BroadcastChannel latency test (Phase 4 verification) -->
+<script>
+(function() {
+  var bc = new BroadcastChannel('pad-daw-sync');
+  var pending = {};
+  bc.onmessage = function(e) {
+    var d = e.data;
+    if (d.type === 'ping') {
+      // Respond immediately with pong
+      bc.postMessage({ type: 'pong', id: d.id, sendTime: d.sendTime });
+    } else if (d.type === 'pong' && pending[d.id]) {
+      // Round-trip complete
+      var rt = performance.now() - pending[d.id];
+      delete pending[d.id];
+      console.log('[BC Latency] round-trip: ' + rt.toFixed(2) + 'ms');
+    } else if (d.type === 'noteOn' && typeof PadDawEngine !== 'undefined' && PadDawEngine.ready) {
+      // Forward noteOn from remote tab to engine
+      PadDawEngine.noteOn(d.sampleIndex || 0, d.velocity || 0.8, d.pitchRatio || 1.0, d.track || 0);
+    }
+  };
+  window._bcSync = bc;
+  window._bcPending = pending;
+  // Ping utility: call bcPing() from console
+  window.bcPing = function() {
+    var id = Math.random().toString(36).slice(2);
+    pending[id] = performance.now();
+    bc.postMessage({ type: 'ping', id: id, sendTime: performance.now() });
+  };
+  console.log('[DAW] BroadcastChannel "pad-daw-sync" ready. Listening for noteOn from other tabs.');
+})();
+</script>
 </body>
 </html>

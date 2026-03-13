@@ -12,13 +12,22 @@ function setMode(mode) {
   if (mode === 'chord' && AppState.mode === 'input' && PlainState.activeNotes.size >= 2) {
     if (transferToChordMode()) return; // transferToChordMode handles everything
   }
+  // Stop sequence transport when leaving sequence mode
+  if (AppState.mode === 'sequence' && mode !== 'sequence') {
+    if (typeof stopAll === 'function') stopAll();
+    if (typeof updateSequenceRecordingVisual === 'function') updateSequenceRecordingVisual(false);
+  }
   AppState.mode = mode;
   document.getElementById('mode-scale').classList.toggle('active', mode === 'scale');
   document.getElementById('mode-chord').classList.toggle('active', mode === 'chord');
   document.getElementById('mode-input').classList.toggle('active', mode === 'input');
+  var seqBtn = document.getElementById('mode-sequence');
+  if (seqBtn) seqBtn.classList.toggle('active', mode === 'sequence');
   document.getElementById('scale-panel').style.display = mode === 'scale' ? '' : 'none';
   document.getElementById('chord-panel').style.display = mode === 'chord' ? '' : 'none';
   document.getElementById('input-panel').style.display = mode === 'input' ? '' : 'none';
+  var seqPanel = document.getElementById('sequence-panel');
+  if (seqPanel) seqPanel.style.display = mode === 'sequence' ? '' : 'none';
   if (mode === 'chord' && BuilderState.step === 0) {
     BuilderState.root = AppState.key; // carry over key
     setBuilderStep(1);

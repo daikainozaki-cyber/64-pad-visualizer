@@ -385,6 +385,7 @@ document.addEventListener('click', function(e) {
       <button class="mode-btn active" onclick="setMode('scale')" id="mode-scale" title="Scale mode — view scale notes on the pad (Tab to cycle)" data-i18n-title="ui.mode_scale"><span class="kbd-hint">⇥</span>Scale</button>
       <button class="mode-btn" onclick="setMode('chord')" id="mode-chord" title="Chord mode — build chords with voicings (Tab to cycle)" data-i18n-title="ui.mode_chord"><span class="kbd-hint">⇥</span>Chord</button>
       <button class="mode-btn" onclick="setMode('input')" id="mode-input" title="Input mode — tap pads freely to detect chords (Tab to cycle)" data-i18n-title="ui.mode_input"><span class="kbd-hint">⇥</span>Input</button>
+      <button class="mode-btn" onclick="setMode('sequence')" id="mode-sequence" title="Sequence mode — record and play back pad hits" data-i18n-title="ui.mode_sequence"><span class="kbd-hint">⇥</span>Seq</button>
       <button class="play-btn" onclick="ensureAudioResumed();var n=getCurrentChordMidiNotes();if(n&&n.length)playMidiNotes(n,1.0);" title="Play current chord (Space)" data-i18n-title="ui.play_chord" style="position:relative;"><span class="kbd-hint">Sp</span>Play ▶</button>
     </div>
 
@@ -502,6 +503,36 @@ document.addEventListener('click', function(e) {
         <button id="btn-midi-export-plain" onclick="exportPlainMidi()" style="font-size:0.65rem;padding:2px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">MIDI Export All</button>
         <button id="btn-chs-export-plain" onclick="exportPlainChs()" style="font-size:0.65rem;padding:2px 10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">CHS Export All</button>
       </div>
+    </div>
+
+    <!-- Sequence Mode -->
+    <div id="sequence-panel" style="display:none;">
+      <div class="seq-transport" style="display:flex;gap:4px;justify-content:center;align-items:center;margin-bottom:6px;">
+        <button id="seq-record" onclick="toggleRecord()" style="font-size:0.7rem;padding:4px 12px;background:#661111;color:#fff;border:1px solid #aa3333;border-radius:4px;cursor:pointer;font-weight:700;">&#9679; REC</button>
+        <button id="seq-play" onclick="togglePlayback()" style="font-size:0.7rem;padding:4px 12px;background:#116611;color:#fff;border:1px solid #33aa33;border-radius:4px;cursor:pointer;font-weight:700;">&#9654; PLAY</button>
+        <button id="seq-stop" onclick="stopAll()" style="font-size:0.7rem;padding:4px 12px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">&#9632; STOP</button>
+        <button id="seq-clear" onclick="clearSequence()" style="font-size:0.7rem;padding:4px 12px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;">CLEAR</button>
+      </div>
+      <div class="seq-info" style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;font-size:0.7rem;">
+        <label>BPM: <input id="seq-bpm" type="number" value="120" min="40" max="300" onchange="setBpm(this.value)" style="width:50px;font-size:0.7rem;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;padding:2px 4px;"></label>
+        <label>Bars: <select id="seq-bars" onchange="setLoopBars(this.value)" style="font-size:0.7rem;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;">
+          <option value="1">1</option><option value="2">2</option>
+          <option value="4" selected>4</option><option value="8">8</option>
+        </select></label>
+        <label>Track: <select id="seq-track" onchange="setCurrentTrack(this.value)" style="font-size:0.7rem;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;">
+          <option value="0">1</option><option value="1">2</option>
+          <option value="2">3</option><option value="3">4</option>
+          <option value="4">5</option><option value="5">6</option>
+          <option value="6">7</option><option value="7">8</option>
+        </select></label>
+        <label>Quantize: <select id="seq-quantize" onchange="setQuantize(this.value)" style="font-size:0.7rem;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;">
+          <option value="0">Off</option>
+          <option value="960">1/4</option>
+          <option value="480">1/8</option>
+          <option value="240">1/16</option>
+        </select></label>
+      </div>
+      <div id="seq-event-count" style="text-align:center;font-size:0.65rem;color:var(--text-muted);margin-top:4px;">Events: 0</div>
     </div>
 
   </div>
@@ -628,6 +659,7 @@ document.addEventListener('click', function(e) {
     <button id="play-mode-scale" class="play-mode-btn active" onclick="setMode('scale')">Scale</button>
     <button id="play-mode-chord" class="play-mode-btn" onclick="setMode('chord')">Chord</button>
     <button id="play-mode-input" class="play-mode-btn" onclick="setMode('input')">Input</button>
+    <button id="play-mode-sequence" class="play-mode-btn" onclick="setMode('sequence')">Seq</button>
     <select id="play-key-select" onchange="AppState.key=+this.value; updateKeyButtons(); render(); saveAppSettings();"></select>
     <select id="play-scale-select" onchange="AppState.scaleIdx=+this.value; render(); saveAppSettings();"></select>
     <span id="play-chord-name" style="font-size:0.75rem;font-weight:700;color:var(--accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
@@ -757,6 +789,7 @@ document.addEventListener('click', function(e) {
 <script src="render.js?v=3.36.0"></script>
 <script src="plain.js?v=3.36.0"></script>
 <script src="perform.js?v=3.36.0"></script>
+<script src="sequence.js?v=3.36.0"></script>
 <script src="builder.js?v=3.36.0"></script>
 <script src="main.js?v=3.36.0"></script>
 <script src="tutorial-data.js?v=3.36.0"></script>

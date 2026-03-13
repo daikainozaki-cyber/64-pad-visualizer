@@ -59,9 +59,13 @@ _landscapeMediaQuery.addEventListener('change', handleLandscapeChange);
   document.getElementById('mode-scale').classList.toggle('active', AppState.mode === 'scale');
   document.getElementById('mode-chord').classList.toggle('active', AppState.mode === 'chord');
   document.getElementById('mode-input').classList.toggle('active', AppState.mode === 'input');
+  var seqBtnR = document.getElementById('mode-sequence');
+  if (seqBtnR) seqBtnR.classList.toggle('active', AppState.mode === 'sequence');
   document.getElementById('scale-panel').style.display = AppState.mode === 'scale' ? '' : 'none';
   document.getElementById('chord-panel').style.display = AppState.mode === 'chord' ? '' : 'none';
   document.getElementById('input-panel').style.display = AppState.mode === 'input' ? '' : 'none';
+  var seqPanelR = document.getElementById('sequence-panel');
+  if (seqPanelR) seqPanelR.style.display = AppState.mode === 'sequence' ? '' : 'none';
   if (AppState.mode === 'chord' && BuilderState.step === 0) {
     BuilderState.root = AppState.key;
     setBuilderStep(1);
@@ -175,6 +179,12 @@ document.addEventListener('keydown', (e) => {
   const key = e.key;
   const lk = key.toLowerCase(); // for letter key matching (case-insensitive)
 
+  // Sequence mode transport shortcuts
+  if (AppState.mode === 'sequence') {
+    if (key === ' ') { e.preventDefault(); ensureAudioResumed(); togglePlayback(); return; }
+    if (lk === 'r') { ensureAudioResumed(); toggleRecord(); return; }
+  }
+
   // /: Focus text chord input (Chord mode)
   if (key === '/' && AppState.mode === 'chord') {
     e.preventDefault();
@@ -230,12 +240,12 @@ document.addEventListener('keydown', (e) => {
     if (lk === 's') { toggleTheoryView('staff'); return; }
   }
 
-  // Tab / Shift+Tab: Mode cycle (Scale → Chord → Input → Scale)
+  // Tab / Shift+Tab: Mode cycle (Scale → Chord → Input → Sequence → Scale)
   if (key === 'Tab') {
     e.preventDefault();
-    const modes = ['scale', 'chord', 'input'];
+    const modes = ['scale', 'chord', 'input', 'sequence'];
     const cur = modes.indexOf(AppState.mode);
-    const next = e.shiftKey ? (cur - 1 + 3) % 3 : (cur + 1) % 3;
+    const next = e.shiftKey ? (cur - 1 + modes.length) % modes.length : (cur + 1) % modes.length;
     document.getElementById('mode-' + modes[next]).click();
     return;
   }

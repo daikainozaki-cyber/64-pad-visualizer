@@ -257,8 +257,15 @@ var PadDawEngine = {
     var len = (sr * duration) | 0;
     var buf = new Float32Array(len);
     var w = 2 * Math.PI * freq / sr;
+    // Attack/release ramp to eliminate click noise
+    var attackSamples = (sr * 0.005) | 0; // 5ms fade-in
+    var releaseSamples = (sr * 0.02) | 0;  // 20ms fade-out
+    var releaseStart = len - releaseSamples;
     for (var i = 0; i < len; i++) {
-      buf[i] = Math.sin(w * i) * 0.3;
+      var env = 1.0;
+      if (i < attackSamples) env = i / attackSamples;
+      else if (i >= releaseStart) env = (len - i) / releaseSamples;
+      buf[i] = Math.sin(w * i) * 0.3 * env;
     }
     return buf;
   }

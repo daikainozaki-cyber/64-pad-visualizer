@@ -25,7 +25,7 @@ function pcName(pc, contextKey) {
 // ======== STATE ========
 const AppState = {
   key: 0,
-  mode: 'scale',  // 'scale' | 'chord' | 'input'
+  mode: 'scale',  // 'scale' | 'chord' | 'input' | 'sequence'
   scaleIdx: 0,
   octaveShift: 0, // -1, 0, +1, +2 — shifts entire grid like Push's octave up/down
   semitoneShift: 0, // -11 to +11 — fine-tune for 32-pad mode
@@ -127,6 +127,18 @@ const StockState = {
   degreeMap: {},         // {midiNote: degreeString}
 };
 
+// ======== SEQUENCE STATE (Phase 4) ========
+var SequenceState = {
+  recording: false,
+  playing: false,
+  bpm: 120,
+  events: [],        // { rawTick, tick, track, midiNote, sampleIndex, velocity, pitchRatio }
+  recordStartTime: 0, // performance.now() at record start
+  currentTrack: 0,    // which track to record into (0-7)
+  loopBars: 4,        // loop length in bars
+  quantize: 0,        // 0=off, 960=quarter, 480=8th, 240=16th (PPQ=960)
+};
+
 // ======== BANK STATE (v2.50) ========
 const BankState = {
   banks: [],         // [{id, name, memory: Array(16)}]
@@ -184,7 +196,7 @@ function loadAppSettings() {
     const s = JSON.parse(raw);
     if (s.key !== undefined && s.key >= 0 && s.key <= 11) AppState.key = s.key;
     if (s.mode === 'plain') s.mode = 'input';
-    if (s.mode && ['scale','chord','input'].includes(s.mode)) AppState.mode = s.mode;
+    if (s.mode && ['scale','chord','input','sequence'].includes(s.mode)) AppState.mode = s.mode;
     if (s.scaleIdx !== undefined && s.scaleIdx >= 0 && s.scaleIdx < SCALES.length) AppState.scaleIdx = s.scaleIdx;
     if (s.octaveShift !== undefined && s.octaveShift >= -1 && s.octaveShift <= 3) AppState.octaveShift = s.octaveShift;
     if (s.showGuitar !== undefined) showGuitar = s.showGuitar;
@@ -237,7 +249,7 @@ if (typeof module !== 'undefined') module.exports = {
   BUILDER_QUALITIES, TENSION_ROWS, SCALE_AVAIL_TENSIONS,
   GRID, ROWS, COLS, BASE_MIDI, ROW_INTERVAL, COL_INTERVAL, PAD_SIZE, PAD_GAP, MARGIN,
   SCALE_DEGREE_NAMES, PC_TO_TENSION_NAME, TENSION_NAME_TO_PC,
-  AppState, BuilderState, VoicingState, PlainState, PerformState, TastyState, StockState, BankState,
+  AppState, BuilderState, VoicingState, PlainState, PerformState, TastyState, StockState, BankState, SequenceState,
   GuitarPositionState, BassPositionState,
   resetVoicingSelection, getParentMajorKey, pcName, onReady, IS_DEV,
   getActiveBank, syncMemoryToActiveBank, loadBankMemory,

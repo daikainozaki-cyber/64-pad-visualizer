@@ -2083,7 +2083,7 @@ function cycleInversion(dir) {
 }
 
 function syncPlayMode() {
-  var modes = ['scale', 'chord', 'input'];
+  var modes = ['scale', 'chord', 'input', 'sequence'];
   modes.forEach(function(m) {
     var btn = document.getElementById('play-mode-' + m);
     if (btn) btn.classList.toggle('active', AppState.mode === m);

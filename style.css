@@ -161,6 +161,9 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .pad-area { flex-shrink: 0; }
 .pad-area svg { touch-action: none; }
 .pad-area svg .pad { cursor: pointer; }
+.pad-area.seq-recording { box-shadow: inset 0 0 12px rgba(255,50,50,0.5); border-radius: 8px; }
+#seq-record.active { background: #cc2222 !important; animation: seq-rec-blink 0.8s ease-in-out infinite; }
+@keyframes seq-rec-blink { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
 .landscape-play-overlay { display: none; }
 .landscape-play-overlay svg { touch-action: none; }
 .control-panel {

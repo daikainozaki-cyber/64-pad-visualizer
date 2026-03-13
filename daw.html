@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PAD DAW — SharedArrayBuffer Test</title>
+<style>
+  body { font-family: monospace; background: #1a1a2e; color: #e0e0e0; padding: 20px; }
+  button { font-size: 16px; padding: 10px 20px; margin: 5px; cursor: pointer;
+           background: #16213e; color: #e0e0e0; border: 1px solid #0f3460; border-radius: 4px; }
+  button:hover { background: #0f3460; }
+  button:active { background: #e94560; }
+  .pad-grid { display: grid; grid-template-columns: repeat(4, 80px); gap: 4px; margin: 16px 0; }
+  .pad { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center;
+         background: #16213e; border: 1px solid #0f3460; border-radius: 4px; cursor: pointer;
+         font-size: 12px; user-select: none; }
+  .pad:active { background: #e94560; }
+  #stats { background: #0d1117; padding: 12px; border-radius: 4px; margin: 16px 0;
+           white-space: pre; font-size: 13px; }
+  .status { padding: 8px; border-radius: 4px; margin: 8px 0; font-weight: bold; }
+  .status-ok { background: #1a4731; color: #4ade80; }
+  .status-warn { background: #4a3728; color: #fbbf24; }
+  h2 { color: #e94560; }
+</style>
+</head>
+<body>
+<h2>PAD DAW — SharedArrayBuffer Engine Test</h2>
+
+<div id="sabStatus" class="status"></div>
+
+<button id="btnInit">1. Init Engine</button>
+<button id="btnLoad">2. Load Test Tones</button>
+<button id="btnStats">Show Jitter Stats</button>
+
+<h3>Pads (click to trigger)</h3>
+<div class="pad-grid" id="pads"></div>
+
+<div id="stats">Jitter stats will appear here after triggering pads...</div>
+<div id="log"></div>
+
+<script src="audio-engine/engine.js"></script>
+<script>
+  // SAB status check
+  var sabEl = document.getElementById('sabStatus');
+  if (typeof SharedArrayBuffer !== 'undefined' && crossOriginIsolated) {
+    sabEl.className = 'status status-ok';
+    sabEl.textContent = 'SharedArrayBuffer: AVAILABLE (crossOriginIsolated = true)';
+  } else {
+    sabEl.className = 'status status-warn';
+    sabEl.textContent = 'SharedArrayBuffer: NOT AVAILABLE — using MessagePort fallback. ' +
+      '(crossOriginIsolated = ' + (typeof crossOriginIsolated !== 'undefined' ? crossOriginIsolated : 'undefined') + ')';
+  }
+
+  var log = function(msg) {
+    var el = document.getElementById('log');
+    el.innerHTML = '<div>' + new Date().toLocaleTimeString() + ': ' + msg + '</div>' + el.innerHTML;
+  };
+
+  var FREQS = [
+    261.63, 293.66, 329.63, 349.23,
+    392.00, 440.00, 493.88, 523.25,
+    587.33, 659.25, 698.46, 783.99,
+    880.00, 987.77, 1046.50, 1174.66
+  ];
+  var NOTE_NAMES = [
+    'C4', 'D4', 'E4', 'F4',
+    'G4', 'A4', 'B4', 'C5',
+    'D5', 'E5', 'F5', 'G5',
+    'A5', 'B5', 'C6', 'D6'
+  ];
+
+  var padGrid = document.getElementById('pads');
+  for (var i = 0; i < 16; i++) {
+    (function(idx) {
+      var pad = document.createElement('div');
+      pad.className = 'pad';
+      pad.textContent = NOTE_NAMES[idx];
+      pad.addEventListener('mousedown', function() {
+        PadDawEngine.noteOn(idx, 0.5);
+        log('noteOn(' + idx + ', 0.5) — ' + NOTE_NAMES[idx] + ' [' + (PadDawEngine.useSAB ? 'SAB' : 'MessagePort') + ']');
+      });
+      padGrid.appendChild(pad);
+    })(i);
+  }
+
+  document.getElementById('btnInit').addEventListener('click', async function() {
+    try {
+      await PadDawEngine.init('audio-engine/worklet-processor.js');
+      log('Engine initialized (48kHz, ' + (PadDawEngine.useSAB ? 'SharedArrayBuffer' : 'MessagePort') + ')');
+    } catch (e) {
+      log('ERROR: ' + e.message);
+    }
+  });
+
+  document.getElementById('btnLoad').addEventListener('click', function() {
+    var tones = FREQS.map(function(f) { return PadDawEngine.generateTestTone(f, 0.5); });
+    PadDawEngine.loadSamples(tones);
+    log('Loaded ' + tones.length + ' test tones');
+  });
+
+  document.getElementById('btnStats').addEventListener('click', function() {
+    var s = PadDawEngine.getJitterStats();
+    if (!s) {
+      document.getElementById('stats').textContent = 'No data yet. Trigger some pads first.';
+      return;
+    }
+    document.getElementById('stats').textContent =
+      'Jitter Stats (' + s.count + ' samples) [' + s.mode + ']\n' +
+      '  Avg latency: ' + s.avg.toFixed(2) + ' ms\n' +
+      '  Min latency: ' + s.min.toFixed(2) + ' ms\n' +
+      '  Max latency: ' + s.max.toFixed(2) + ' ms\n' +
+      '  Jitter:      ' + s.jitter.toFixed(2) + ' ms\n' +
+      '  Target:      < 5ms jitter, < 20ms avg';
+  });
+</script>
+</body>
+</html>

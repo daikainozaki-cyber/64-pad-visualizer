@@ -12,3 +12,10 @@
 <Files "index.html">
     Header set Clear-Site-Data "\"cache\""
 </Files>
+
+# COEP/COOP for daw.html — enables SharedArrayBuffer (PAD DAW engine)
+# Scoped to daw.html only to avoid breaking ads/embeds on index.html
+<Files "daw.html">
+    Header set Cross-Origin-Embedder-Policy "require-corp"
+    Header set Cross-Origin-Opener-Policy "same-origin"
+</Files>

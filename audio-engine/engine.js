@@ -1,11 +1,21 @@
 // PAD DAW Engine — Main thread controller
 // Manages AudioContext + AudioWorkletNode.
-// Phase 1: MessagePort communication (SharedArrayBuffer in Step 2).
+// Dual path: SharedArrayBuffer (low latency) or MessagePort (fallback).
 
-const PadDawEngine = {
+// --- RingBuffer constants (duplicated, ring-buffer.js has full impl) ---
+var RING_FLOATS_PER_CMD = 3;
+var RING_CAPACITY = 64;
+var RING_DATA_FLOATS = RING_CAPACITY * RING_FLOATS_PER_CMD;
+var RING_HEADER_BYTES = 8;
+var RING_DATA_BYTES = RING_DATA_FLOATS * 4;
+var RING_TOTAL_BYTES = RING_HEADER_BYTES + RING_DATA_BYTES;
+
+var PadDawEngine = {
   ctx: null,
   node: null,
   ready: false,
+  useSAB: false,
+  ring: null,
 
   // Jitter measurement
   _latencyLog: [],
@@ -16,69 +26,117 @@ const PadDawEngine = {
 
     this.ctx = new AudioContext({ sampleRate: 48000 });
     await this.ctx.audioWorklet.addModule(workletPath || 'audio-engine/worklet-processor.js');
+
+    // Detect SharedArrayBuffer availability
+    this.useSAB = typeof SharedArrayBuffer !== 'undefined' && crossOriginIsolated === true;
+
+    var processorOptions = {};
+    if (this.useSAB) {
+      var sab = new SharedArrayBuffer(RING_TOTAL_BYTES);
+      this.ring = {
+        sab: sab,
+        header: new Int32Array(sab, 0, 2),
+        data: new Float32Array(sab, RING_HEADER_BYTES, RING_DATA_FLOATS)
+      };
+      processorOptions.ringBufferSab = sab;
+    }
+
     this.node = new AudioWorkletNode(this.ctx, 'pad-daw-processor', {
-      outputChannelCount: [2]
+      outputChannelCount: [2],
+      processorOptions: processorOptions
     });
     this.node.connect(this.ctx.destination);
 
-    // Listen for voice-started reports (jitter measurement)
-    // Round-trip: main→worklet→main, both timestamps from performance.now()
-    this.node.port.onmessage = (e) => {
-      const d = e.data;
+    // Listen for worklet reports (jitter measurement)
+    this.node.port.onmessage = function(e) {
+      var d = e.data;
       if (d.type === 'voiceStarted') {
-        this._recordLatency(d.triggerTime, performance.now());
+        // MessagePort path: round-trip complete
+        PadDawEngine._recordLatency(d.triggerTime, performance.now());
+      } else if (d.type === 'sabDrained') {
+        // SAB path: worklet drained the ring buffer — mark most recent pending entry
+        var now = performance.now();
+        for (var i = PadDawEngine._latencyLog.length - 1; i >= 0; i--) {
+          if (PadDawEngine._latencyLog[i].receiveTime === null) {
+            PadDawEngine._latencyLog[i].receiveTime = now;
+            break;
+          }
+        }
       }
     };
 
     this.ready = true;
   },
 
-  loadSamples(sampleArrays) {
-    // sampleArrays: Float32Array[] (pre-decoded PCM)
+  loadSamples: function(sampleArrays) {
     if (!this.node) return;
     this.node.port.postMessage({ type: 'loadSamples', samples: sampleArrays });
   },
 
-  noteOn(sampleIndex, velocity) {
+  noteOn: function(sampleIndex, velocity, pitchRatio) {
     if (!this.ready) return;
-    const triggerTime = performance.now();
-    this.node.port.postMessage({
-      type: 'noteOn',
-      sampleIndex: sampleIndex,
-      velocity: velocity,
-      triggerTime: triggerTime
-    });
-    this._latencyLog.push({ triggerTime: triggerTime, receiveTime: null });
-    if (this._latencyLog.length > this._maxLog) {
-      this._latencyLog.shift();
+    pitchRatio = pitchRatio || 1.0;
+
+    if (this.useSAB && this.ring) {
+      // SAB path — write directly to ring buffer, no MessagePort round-trip
+      var triggerTime = performance.now();
+      var w = Atomics.load(this.ring.header, 0);
+      var next = (w + 1) % RING_CAPACITY;
+      var r = Atomics.load(this.ring.header, 1);
+      if (next !== r) {
+        var offset = w * RING_FLOATS_PER_CMD;
+        this.ring.data[offset]     = sampleIndex;
+        this.ring.data[offset + 1] = velocity;
+        this.ring.data[offset + 2] = pitchRatio;
+        Atomics.store(this.ring.header, 0, next);
+      }
+      // For jitter measurement: record send time, receive = next process() cycle
+      this._latencyLog.push({ triggerTime: triggerTime, receiveTime: null });
+      if (this._latencyLog.length > this._maxLog) {
+        this._latencyLog.shift();
+      }
+    } else {
+      // MessagePort fallback
+      var triggerTime = performance.now();
+      this.node.port.postMessage({
+        type: 'noteOn',
+        sampleIndex: sampleIndex,
+        velocity: velocity,
+        pitchRatio: pitchRatio,
+        triggerTime: triggerTime
+      });
+      this._latencyLog.push({ triggerTime: triggerTime, receiveTime: null });
+      if (this._latencyLog.length > this._maxLog) {
+        this._latencyLog.shift();
+      }
     }
   },
 
   // --- Jitter measurement ---
 
-  _recordLatency(triggerTime, processTime) {
-    for (let i = this._latencyLog.length - 1; i >= 0; i--) {
-      if (this._latencyLog[i].triggerTime === triggerTime) {
-        this._latencyLog[i].receiveTime = processTime;
+  _recordLatency: function(triggerTime, processTime) {
+    for (var i = PadDawEngine._latencyLog.length - 1; i >= 0; i--) {
+      if (PadDawEngine._latencyLog[i].triggerTime === triggerTime) {
+        PadDawEngine._latencyLog[i].receiveTime = processTime;
         break;
       }
     }
   },
 
-  getJitterStats() {
-    const deltas = [];
-    for (let i = 0; i < this._latencyLog.length; i++) {
-      const e = this._latencyLog[i];
+  getJitterStats: function() {
+    var deltas = [];
+    for (var i = 0; i < this._latencyLog.length; i++) {
+      var e = this._latencyLog[i];
       if (e.receiveTime !== null) {
         deltas.push(e.receiveTime - e.triggerTime);
       }
     }
     if (deltas.length === 0) return null;
 
-    let sum = 0;
-    let max = deltas[0];
-    let min = deltas[0];
-    for (let i = 0; i < deltas.length; i++) {
+    var sum = 0;
+    var max = deltas[0];
+    var min = deltas[0];
+    for (var i = 0; i < deltas.length; i++) {
       sum += deltas[i];
       if (deltas[i] > max) max = deltas[i];
       if (deltas[i] < min) min = deltas[i];
@@ -88,18 +146,19 @@ const PadDawEngine = {
       max: max,
       min: min,
       jitter: max - min,
-      count: deltas.length
+      count: deltas.length,
+      mode: this.useSAB ? 'SharedArrayBuffer' : 'MessagePort'
     };
   },
 
   // --- Test utilities ---
 
-  generateTestTone(freq, duration) {
-    const sr = 48000;
-    const len = (sr * duration) | 0;
-    const buf = new Float32Array(len);
-    const w = 2 * Math.PI * freq / sr;
-    for (let i = 0; i < len; i++) {
+  generateTestTone: function(freq, duration) {
+    var sr = 48000;
+    var len = (sr * duration) | 0;
+    var buf = new Float32Array(len);
+    var w = 2 * Math.PI * freq / sr;
+    for (var i = 0; i < len; i++) {
       buf[i] = Math.sin(w * i) * 0.3;
     }
     return buf;

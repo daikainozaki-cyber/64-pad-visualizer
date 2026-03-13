@@ -2,28 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>PAD DAW — SharedArrayBuffer Test</title>
+<title>PAD DAW — Engine Test (Phase 1+2)</title>
 <style>
   body { font-family: monospace; background: #1a1a2e; color: #e0e0e0; padding: 20px; }
   button { font-size: 16px; padding: 10px 20px; margin: 5px; cursor: pointer;
            background: #16213e; color: #e0e0e0; border: 1px solid #0f3460; border-radius: 4px; }
   button:hover { background: #0f3460; }
   button:active { background: #e94560; }
+  button.active { background: #e94560; }
   .pad-grid { display: grid; grid-template-columns: repeat(4, 80px); gap: 4px; margin: 16px 0; }
   .pad { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center;
          background: #16213e; border: 1px solid #0f3460; border-radius: 4px; cursor: pointer;
          font-size: 12px; user-select: none; }
   .pad:active { background: #e94560; }
-  #stats { background: #0d1117; padding: 12px; border-radius: 4px; margin: 16px 0;
+  #stats, #seqInfo { background: #0d1117; padding: 12px; border-radius: 4px; margin: 16px 0;
            white-space: pre; font-size: 13px; }
   .status { padding: 8px; border-radius: 4px; margin: 8px 0; font-weight: bold; }
   .status-ok { background: #1a4731; color: #4ade80; }
   .status-warn { background: #4a3728; color: #fbbf24; }
+  .status-play { background: #1a3147; color: #60a5fa; }
   h2 { color: #e94560; }
+  h3 { color: #a78bfa; margin-top: 24px; }
+  .bpm-input { width: 60px; font-size: 16px; padding: 8px; background: #0d1117;
+               color: #e0e0e0; border: 1px solid #0f3460; border-radius: 4px; text-align: center; }
+  .pattern-btn { font-size: 14px; padding: 8px 16px; }
+  label { margin-right: 12px; }
 </style>
 </head>
 <body>
-<h2>PAD DAW — SharedArrayBuffer Engine Test</h2>
+<h2>PAD DAW — Engine Test (Phase 1+2)</h2>
 
 <div id="sabStatus" class="status"></div>
 
@@ -35,9 +42,33 @@
 <div class="pad-grid" id="pads"></div>
 
 <div id="stats">Jitter stats will appear here after triggering pads...</div>
+
+<h3>Phase 2: Sequencer</h3>
+<div id="seqState" class="status status-warn">Not loaded</div>
+
+<div style="margin: 12px 0;">
+  <label>BPM: <input type="number" id="bpmInput" class="bpm-input" value="120" min="40" max="300"></label>
+  <label><input type="checkbox" id="loopCheck" checked> Loop</label>
+</div>
+
+<div>
+  <button id="btnFourOnFloor" class="pattern-btn">4 on Floor</button>
+  <button id="btnSixteenthHat" class="pattern-btn">16th Hat</button>
+  <button id="btnScaleRun" class="pattern-btn">Scale Run</button>
+  <button id="btnCombined" class="pattern-btn">Kick+Hat</button>
+</div>
+
+<div style="margin: 12px 0;">
+  <button id="btnPlay" style="background:#1a4731; border-color:#4ade80;">&#9654; Play</button>
+  <button id="btnStop" style="background:#4a2828; border-color:#f87171;">&#9632; Stop</button>
+</div>
+
+<div id="seqInfo">Select a pattern to see sequence info...</div>
+
 <div id="log"></div>
 
 <script src="audio-engine/engine.js"></script>
+<script src="audio-engine/sequence-test-data.js"></script>
 <script>
   // SAB status check
   var sabEl = document.getElementById('sabStatus');
@@ -111,6 +142,72 @@
       '  Jitter:      ' + s.jitter.toFixed(2) + ' ms\n' +
       '  Target:      < 5ms jitter, < 20ms avg';
   });
+
+  // ========== Phase 2: Sequencer ==========
+
+  var seqState = document.getElementById('seqState');
+  var seqInfo = document.getElementById('seqInfo');
+  var bpmInput = document.getElementById('bpmInput');
+  var loopCheck = document.getElementById('loopCheck');
+  var currentPattern = null;
+
+  function updateSeqState(text, cls) {
+    seqState.textContent = text;
+    seqState.className = 'status ' + (cls || '');
+  }
+
+  function loadAndShowPattern(name, tickEvents) {
+    var bpm = parseInt(bpmInput.value) || 120;
+    var loop = loopCheck.checked;
+    currentPattern = { name: name, events: tickEvents, bpm: bpm, loop: loop };
+
+    var events = PadDawEngine.buildSequence(tickEvents, bpm);
+    var loopEndSample = loop ? PadDawEngine.getBarEndSample(1, bpm) : 0;
+    var durationSec = loop ? 'loop' : ((events.length > 0 ? events[events.length - 1].startSample / 48000 : 0) + 1).toFixed(2) + 's';
+
+    PadDawEngine.loadSequence(events, loopEndSample);
+
+    seqInfo.textContent =
+      'Pattern: ' + name + '\n' +
+      'Events:  ' + events.length + '\n' +
+      'BPM:     ' + bpm + '\n' +
+      'Duration: ' + durationSec + '\n' +
+      (loop ? 'Loop:    1 bar (' + (PadDawEngine.getBarEndSample(1, bpm) / 48000).toFixed(3) + 's)\n' : '') +
+      (events.length > 0 ? 'First startSample: ' + events[0].startSample + '\n' : '') +
+      (events.length > 1 ? 'Last startSample:  ' + events[events.length - 1].startSample : '');
+
+    updateSeqState('Loaded: ' + name + ' — press Play', 'status-warn');
+    log('Loaded pattern: ' + name + ' (' + events.length + ' events, ' + bpm + ' BPM' + (loop ? ', loop' : '') + ')');
+  }
+
+  document.getElementById('btnFourOnFloor').addEventListener('click', function() {
+    loadAndShowPattern('Four on Floor', SequenceTestData.fourOnFloor(0));
+  });
+  document.getElementById('btnSixteenthHat').addEventListener('click', function() {
+    loadAndShowPattern('16th Hat', SequenceTestData.sixteenthHat(0));
+  });
+  document.getElementById('btnScaleRun').addEventListener('click', function() {
+    loadAndShowPattern('Scale Run (C major)', SequenceTestData.scaleRun(0));
+  });
+  document.getElementById('btnCombined').addEventListener('click', function() {
+    loadAndShowPattern('Combined (Kick+Hat)', SequenceTestData.combined(0, 7));
+  });
+
+  document.getElementById('btnPlay').addEventListener('click', function() {
+    PadDawEngine.play();
+    updateSeqState('PLAYING', 'status-play');
+    log('Play');
+  });
+  document.getElementById('btnStop').addEventListener('click', function() {
+    PadDawEngine.stop();
+    updateSeqState('STOPPED', 'status-warn');
+    log('Stop');
+  });
+
+  PadDawEngine.onPlaybackEnd = function() {
+    updateSeqState('STOPPED (playback ended)', 'status-warn');
+    log('Playback ended (auto-stop)');
+  };
 </script>
 </body>
 </html>

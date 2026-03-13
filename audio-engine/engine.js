@@ -10,6 +10,8 @@ var RING_HEADER_BYTES = 8;
 var RING_DATA_BYTES = RING_DATA_FLOATS * 4;
 var RING_TOTAL_BYTES = RING_HEADER_BYTES + RING_DATA_BYTES;
 
+var PPQ = 24;
+
 var PadDawEngine = {
   ctx: null,
   node: null,
@@ -20,6 +22,9 @@ var PadDawEngine = {
   // Jitter measurement
   _latencyLog: [],
   _maxLog: 200,
+
+  // Playback callback
+  onPlaybackEnd: null,
 
   async init(workletPath) {
     if (this.ready) return;
@@ -47,7 +52,7 @@ var PadDawEngine = {
     });
     this.node.connect(this.ctx.destination);
 
-    // Listen for worklet reports (jitter measurement)
+    // Listen for worklet reports (jitter measurement + playback end)
     this.node.port.onmessage = function(e) {
       var d = e.data;
       if (d.type === 'voiceStarted') {
@@ -62,6 +67,8 @@ var PadDawEngine = {
             break;
           }
         }
+      } else if (d.type === 'playbackEnd') {
+        if (PadDawEngine.onPlaybackEnd) PadDawEngine.onPlaybackEnd();
       }
     };
 
@@ -149,6 +156,73 @@ var PadDawEngine = {
       count: deltas.length,
       mode: this.useSAB ? 'SharedArrayBuffer' : 'MessagePort'
     };
+  },
+
+  // --- Sequence API (Phase 2) ---
+
+  loadSequence: function(events, loopEndSample) {
+    if (!this.node) return;
+    var count = events.length;
+    if (count > 4096) count = 4096;
+    var startSamples = new Uint32Array(count);
+    var sampleIndices = new Uint16Array(count);
+    var velocities = new Float32Array(count);
+    var pitchRatios = new Float32Array(count);
+    for (var i = 0; i < count; i++) {
+      startSamples[i] = events[i].startSample;
+      sampleIndices[i] = events[i].sampleIndex;
+      velocities[i] = events[i].velocity;
+      pitchRatios[i] = events[i].pitchRatio;
+    }
+    this.node.port.postMessage({
+      type: 'loadSequence',
+      startSamples: startSamples,
+      sampleIndices: sampleIndices,
+      velocities: velocities,
+      pitchRatios: pitchRatios,
+      count: count,
+      loopEndSample: loopEndSample || 0
+    });
+  },
+
+  play: function() {
+    if (!this.ready) return;
+    this.node.port.postMessage({ type: 'play' });
+  },
+
+  stop: function() {
+    if (!this.ready) return;
+    this.node.port.postMessage({ type: 'stop' });
+  },
+
+  tickToSample: function(tick, bpm) {
+    return Math.round(tick / PPQ * 60 / bpm * 48000);
+  },
+
+  buildSequence: function(tickEvents, bpm) {
+    var result = [];
+    for (var i = 0; i < tickEvents.length; i++) {
+      var ev = tickEvents[i];
+      result.push({
+        startSample: this.tickToSample(ev.tick, bpm),
+        sampleIndex: ev.sampleIndex,
+        velocity: ev.velocity || 0.8,
+        pitchRatio: ev.pitchRatio || 1.0
+      });
+    }
+    result.sort(function(a, b) { return a.startSample - b.startSample; });
+    return result;
+  },
+
+  getBarEndSample: function(bars, bpm) {
+    return this.tickToSample(bars * 96, bpm);
+  },
+
+  playSequence: function(tickEvents, bpm, loopBars) {
+    var events = this.buildSequence(tickEvents, bpm);
+    var loopEndSample = loopBars ? this.getBarEndSample(loopBars, bpm) : 0;
+    this.loadSequence(events, loopEndSample);
+    this.play();
   },
 
   // --- Test utilities ---

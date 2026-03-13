@@ -9,6 +9,11 @@ var RING_CAPACITY = 64;
 var RING_DATA_FLOATS = RING_CAPACITY * RING_FLOATS_PER_CMD;
 var RING_HEADER_BYTES = 8;
 
+// --- Sequence constants ---
+var MAX_EVENTS = 4096;
+var STATE_STOPPED = 0;
+var STATE_PLAYING = 1;
+
 class PadDawProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
@@ -29,6 +34,25 @@ class PadDawProcessor extends AudioWorkletProcessor {
 
     // Round-robin voice index for stealing
     this.nextVoice = 0;
+
+    // Sequence event SoA (populated via loadSequence, read in process())
+    this.evStartSample = new Uint32Array(MAX_EVENTS);
+    this.evSampleIndex = new Uint16Array(MAX_EVENTS);
+    this.evVelocity = new Float32Array(MAX_EVENTS);
+    this.evPitchRatio = new Float32Array(MAX_EVENTS);
+    this.eventCount = 0;
+    this.eventIndex = 0;
+
+    // Playback state (separate from currentSample — PAD input keeps running)
+    this.playState = STATE_STOPPED;
+    this.schedulerSample = 0;
+
+    // Loop
+    this.loopEnabled = false;
+    this.loopEndSample = 0;
+
+    // Auto-stop: last event + 1 second
+    this.sequenceEndSample = 0;
 
     // SAB ring buffer (set up if processorOptions.ringBufferSab is provided)
     this.ring = null;
@@ -57,6 +81,30 @@ class PadDawProcessor extends AudioWorkletProcessor {
           type: 'voiceStarted',
           triggerTime: d.triggerTime
         });
+      } else if (d.type === 'loadSequence') {
+        var count = d.count;
+        if (count > MAX_EVENTS) count = MAX_EVENTS;
+        for (var j = 0; j < count; j++) {
+          this.evStartSample[j] = d.startSamples[j];
+          this.evSampleIndex[j] = d.sampleIndices[j];
+          this.evVelocity[j] = d.velocities[j];
+          this.evPitchRatio[j] = d.pitchRatios[j];
+        }
+        this.eventCount = count;
+        this.eventIndex = 0;
+        this.schedulerSample = 0;
+        this.playState = STATE_STOPPED;
+        this.loopEndSample = d.loopEndSample || 0;
+        this.loopEnabled = d.loopEndSample > 0;
+        this.sequenceEndSample = count > 0 ? d.startSamples[count - 1] + 48000 : 0;
+      } else if (d.type === 'play') {
+        this.playState = STATE_PLAYING;
+        this.schedulerSample = 0;
+        this.eventIndex = 0;
+      } else if (d.type === 'stop') {
+        this.playState = STATE_STOPPED;
+        this.schedulerSample = 0;
+        this.eventIndex = 0;
       }
     };
   }
@@ -116,6 +164,19 @@ class PadDawProcessor extends AudioWorkletProcessor {
     for (var i = 0; i < 128; i++) {
       var mix = 0;
 
+      // Scheduled events: sample-accurate trigger (only when playing)
+      if (this.playState === STATE_PLAYING && samplesReady) {
+        while (this.eventIndex < this.eventCount &&
+               this.evStartSample[this.eventIndex] <= this.schedulerSample) {
+          this._startVoice(
+            this.evSampleIndex[this.eventIndex],
+            this.evVelocity[this.eventIndex],
+            this.evPitchRatio[this.eventIndex]
+          );
+          this.eventIndex++;
+        }
+      }
+
       if (samplesReady) {
         for (var v = 0; v < 16; v++) {
           if (!this.voiceActive[v]) continue;
@@ -141,6 +202,21 @@ class PadDawProcessor extends AudioWorkletProcessor {
       if (outR) outR[i] = mix;
 
       this.currentSample++;
+
+      // Advance scheduler (only when playing)
+      if (this.playState === STATE_PLAYING) {
+        this.schedulerSample++;
+        // Loop reset
+        if (this.loopEnabled && this.schedulerSample >= this.loopEndSample) {
+          this.schedulerSample = 0;
+          this.eventIndex = 0;
+        }
+        // Auto-stop (no loop): stop after last event + 1 second
+        else if (!this.loopEnabled && this.schedulerSample >= this.sequenceEndSample) {
+          this.playState = STATE_STOPPED;
+          this.port.postMessage({ type: 'playbackEnd' });
+        }
+      }
     }
 
     return true;

@@ -971,3 +971,4 @@ function handleTextChordKeydown(e) {
 if (typeof module !== 'undefined') module.exports = {
   detectChord, CHORD_DB, TRIAD_DB, TETRAD_DB,
 };
+// test

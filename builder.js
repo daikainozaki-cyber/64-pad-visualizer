@@ -645,6 +645,7 @@ function highlightPlaybackPads(midiNotes) {
 }
 
 let selectedMidiInputId = null; // null = all inputs
+var _lastOctCC = 0; // debounce: Push 3 multi-port duplicate CC
 
 function initWebMIDI() {
   if (!navigator.requestMIDIAccess) return;
@@ -703,9 +704,13 @@ function initWebMIDI() {
           const [status, rawNote, velocity] = e.data;
           const cmd = status & 0xf0;
           // Push octave buttons: CC#55=▲, CC#54=▼ (data2=127 press, 0 release)
-          if (isPush && cmd === 0xb0 && velocity === 127) {
-            if (rawNote === 55) { shiftOctave(1); return; }
-            if (rawNote === 54) { shiftOctave(-1); return; }
+          // Debounce: Push 3 sends same CC on multiple ports → shiftOctave called twice → skips octave
+          if (isPush && cmd === 0xb0 && velocity === 127 && (rawNote === 55 || rawNote === 54)) {
+            var now = performance.now();
+            if (now - _lastOctCC < 100) return;
+            _lastOctCC = now;
+            shiftOctave(rawNote === 55 ? 1 : -1);
+            return;
           }
           // Push perform mode: serial 4x4 → slots directly (bypass fourths conversion)
           if (isPush && memoryViewMode === 'perform' && cmd === 0x90 && velocity > 0) {

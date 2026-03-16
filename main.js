@@ -408,7 +408,8 @@ document.addEventListener('keydown', (e) => {
     const num = parseInt(key);
     const scale = SCALES[AppState.scaleIdx];
     if (scale.pcs.length === 7) {
-      const tetrads = getDiatonicTetrads(scale.pcs, AppState.key);
+      const noteCount = AppState.diatonicMode === 'triad' ? 3 : 4;
+      const tetrads = getDiatonicTetrads(scale.pcs, AppState.key, noteCount);
       if (num - 1 < tetrads.length) {
         onDiatonicClick(tetrads[num - 1]);
       }

@@ -22,6 +22,9 @@ function performPadTap(idx) {
   playMidiNotes(slot.midiNotes, 1.0);
   // Show chord on pad grid + staff (same as Input mode display)
   PlainState.activeNotes = new Set(slot.midiNotes);
+  // Sync BuilderState so guitar diagram, chord name, degree labels update
+  BuilderState._fromDiatonic = true;
+  applyNotesToBuilder(slot.midiNotes);
   updatePlainDisplay();
   render();
   highlightPlaybackPads(slot.midiNotes);

@@ -340,6 +340,9 @@ I18N.addLang('ko', {
     root_2: '2현R',
     open: '개방현',
     all: '전체',
+    voice_3: '3v',
+    voice_4: '4v',
+    voice_5: '5v',
     to_pad: '패드에 반영',
   },
   tips: [

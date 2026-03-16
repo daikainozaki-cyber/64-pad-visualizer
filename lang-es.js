@@ -341,6 +341,9 @@ I18N.addLang('es', {
     root_2: '2ªR',
     open: 'Abierta',
     all: 'Todas',
+    voice_3: '3v',
+    voice_4: '4v',
+    voice_5: '5v',
     to_pad: 'Al Pad',
   },
   tips: [

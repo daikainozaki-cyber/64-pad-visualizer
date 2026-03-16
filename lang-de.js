@@ -340,6 +340,9 @@ I18N.addLang('de', {
     root_2: '2.S R',
     open: 'Offen',
     all: 'Alle',
+    voice_3: '3v',
+    voice_4: '4v',
+    voice_5: '5v',
     to_pad: 'Auf Pad',
   },
   tips: [

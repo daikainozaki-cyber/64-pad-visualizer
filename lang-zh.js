@@ -342,6 +342,9 @@ I18N.addLang('zh', {
     root_2: '2弦R',
     open: '开放弦',
     all: '全部',
+    voice_3: '3v',
+    voice_4: '4v',
+    voice_5: '5v',
     to_pad: '映射到Pad',
   },
   tips: [

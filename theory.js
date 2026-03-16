@@ -449,6 +449,16 @@ function groupGuitarForms(alternatives, openMidi, rootPC) {
   if (openForms.length > 0) {
     groups.push({ labelKey: 'pos.open', forms: openForms });
   }
+  // Voice count groups (3-voice, 4-voice, 5-voice)
+  for (var vc = 3; vc <= 5; vc++) {
+    var vcForms = [];
+    for (var i = 0; i < alternatives.length; i++) {
+      if (alternatives[i].stringCount === vc) vcForms.push(alternatives[i]);
+    }
+    if (vcForms.length > 0) {
+      groups.push({ labelKey: 'pos.voice_' + vc, forms: vcForms });
+    }
+  }
   return groups;
 }
 

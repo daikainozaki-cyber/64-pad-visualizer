@@ -355,6 +355,9 @@ I18N.addLang('ja', {
     root_2: '2弦R',
     open: '開放弦あり',
     all: '全て',
+    voice_3: '3声',
+    voice_4: '4声',
+    voice_5: '5声',
     to_pad: 'パッドに反映',
   },
   tips: [

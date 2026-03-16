@@ -340,6 +340,9 @@ I18N.addLang('it', {
     root_2: '2ªR',
     open: 'Aperta',
     all: 'Tutte',
+    voice_3: '3v',
+    voice_4: '4v',
+    voice_5: '5v',
     to_pad: 'Su Pad',
   },
   tips: [

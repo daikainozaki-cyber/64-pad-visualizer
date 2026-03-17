@@ -315,14 +315,15 @@ function renderPads(svg, state, grid) {
         }
         rect.setAttribute('stroke', 'none');
       }
-      // TASTY mode: fade off pads; white border on all voicing pads, thicker on TOP
+      // TASTY mode: fade off non-voicing pads completely
       const isTastyActive = tastyMidiSet && tastyMidiSet.size > 0;
-      // debug removed
-      const isTastyDimmed = isTastyActive && fill === 'var(--pad-off)';
-      if (isTastyActive) {
+      if (isTastyActive && _isTastyMiss) {
+        rect.setAttribute('fill', 'var(--pad-off)');
+        rect.setAttribute('stroke', 'none');
+        rect.setAttribute('opacity', '0.05');
+      } else if (isTastyActive) {
         rect.setAttribute('stroke', 'none');
       }
-      if (isTastyDimmed) rect.setAttribute('opacity', '0.05');
       // TASTY hit: highlight pad. Each MIDI note appears 1-2 times on the grid;
       // only highlight the LOWEST row occurrence (closest to bass = most natural fingering)
       const isTastyHit = isTastyActive && tastyMidiSet.has(midi);

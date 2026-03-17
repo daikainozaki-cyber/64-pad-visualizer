@@ -1271,11 +1271,7 @@ function toggleVoicingReflect() {
       var gridRange = (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
       var padMid = BASE_MIDI + gridRange / 2;
       var needed = Math.round((mid - padMid) / 12);
-      var clamped = Math.max(-1, Math.min(3, needed));
-      if (clamped !== AppState.octaveShift && !TastyState.enabled && !StockState.enabled) {
-        AppState.octaveShift = clamped;
-        updateOctaveLabel();
-      }
+      setOctaveShift(Math.round((mid - padMid) / 12));
     }
     if (btn) { btn.style.display = 'inline-block'; btn.style.background = 'var(--accent, #f80)'; btn.style.color = '#000'; btn.style.borderColor = 'var(--accent, #f80)'; }
   }
@@ -1314,12 +1310,7 @@ function toggleStockReflect() {
       var mid = Math.round((notes[0] + notes[notes.length - 1]) / 2);
       var gridRange = (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
       var padMid = BASE_MIDI + gridRange / 2;
-      var needed = Math.round((mid - padMid) / 12);
-      var clamped = Math.max(-1, Math.min(3, needed));
-      if (clamped !== AppState.octaveShift && !TastyState.enabled && !StockState.enabled) {
-        AppState.octaveShift = clamped;
-        updateOctaveLabel();
-      }
+      setOctaveShift(Math.round((mid - padMid) / 12));
     }
     if (btn) { btn.style.background = 'var(--accent, #f80)'; btn.style.color = '#000'; btn.style.borderColor = 'var(--accent, #f80)'; }
   }
@@ -1479,12 +1470,7 @@ function updateInstrumentInput() {
         // Center the instrument notes on the pad grid
         const mid = Math.round((loNote + hiNote) / 2);
         const padMid = BASE_MIDI + (ROWS - 1) * ROW_INTERVAL / 2 + (COLS - 1) / 2;
-        const needed = Math.round((mid - padMid) / 12);
-        const clamped = Math.max(-1, Math.min(3, needed));
-        if (clamped !== AppState.octaveShift && !TastyState.enabled && !StockState.enabled) {
-          AppState.octaveShift = clamped;
-          updateOctaveLabel();
-        }
+        setOctaveShift(Math.round((mid - padMid) / 12));
       }
 
       render();

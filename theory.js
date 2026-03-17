@@ -30,13 +30,18 @@ function setGenrePreset(genre) {
 // ========================================
 function baseMidi() { return BASE_MIDI + AppState.octaveShift * 12 + AppState.semitoneShift; }
 
-function shiftOctave(delta) {
-  if (TastyState.enabled || StockState.enabled) return;
-  const next = AppState.octaveShift + delta;
-  if (next < -1 || next > 3) return;
-  AppState.octaveShift = next;
-  resetVoicingSelection();
+function setOctaveShift(value) {
+  if (TastyState.enabled || StockState.enabled) return false;
+  var clamped = Math.max(-1, Math.min(3, value));
+  if (clamped === AppState.octaveShift) return false;
+  AppState.octaveShift = clamped;
   updateOctaveLabel();
+  return true;
+}
+
+function shiftOctave(delta) {
+  if (!setOctaveShift(AppState.octaveShift + delta)) return;
+  resetVoicingSelection();
   render();
   playCurrentChord();
   saveAppSettings();

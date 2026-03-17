@@ -732,6 +732,8 @@ function initWebMIDI() {
               return;
             }
           }
+          // Push: block notes outside pad range (touch strip sends low notes)
+          if (isPush && (cmd === 0x90 || cmd === 0x80) && (rawNote < 36 || rawNote > 99)) return;
           const note = isPush ? pushSerialToFourths(rawNote) : rawNote;
           if (cmd === 0x90 && velocity > 0) onMidiNoteOn(note, velocity);
           else if (cmd === 0x80 || (cmd === 0x90 && velocity === 0)) onMidiNoteOff(note);

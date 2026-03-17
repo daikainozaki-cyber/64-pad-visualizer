@@ -318,9 +318,9 @@ function renderPads(svg, state, grid) {
       // TASTY mode: fade off non-voicing pads completely
       const isTastyActive = tastyMidiSet && tastyMidiSet.size > 0;
       if (isTastyActive && _isTastyMiss) {
-        rect.setAttribute('fill', 'var(--pad-off)');
+        rect.setAttribute('fill', 'none');
         rect.setAttribute('stroke', 'none');
-        rect.setAttribute('opacity', '0.05');
+        rect.setAttribute('opacity', '0');
       } else if (isTastyActive) {
         rect.setAttribute('stroke', 'none');
       }

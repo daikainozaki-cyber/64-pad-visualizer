@@ -994,10 +994,10 @@ function findBestPosition(rootMidi, degrees) {
   var hi = lo + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
   var bestRoot = rootMidi, bestCount = -1, bestNotes = [];
   // Search LOW to HIGH — prefer lowest position where most notes fit
-  // Lower bound C2 (36) to avoid low interval limit violations
+  // Compound intervals in TASTY_DEGREE_MAP ensure open voicing spacing
   for (var shift = -4; shift <= 2; shift++) {
     var r = rootMidi + shift * 12;
-    if (r < 36) continue;
+    if (r < 0) continue;
     var notes = buildTastyVoicing(r, degrees);
     if (notes.length === 0) continue;
     var count = 0;

@@ -320,7 +320,7 @@ function renderPads(svg, state, grid) {
       if (isTastyActive && _isTastyMiss) {
         rect.setAttribute('fill', 'var(--pad-off)');
         rect.setAttribute('stroke', 'none');
-        rect.setAttribute('opacity', '0.15');
+        rect.setAttribute('opacity', '0.4');
       } else if (isTastyActive) {
         rect.setAttribute('stroke', 'none');
       }

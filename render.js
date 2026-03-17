@@ -303,18 +303,18 @@ function renderPads(svg, state, grid) {
         }
         rect.setAttribute('stroke', 'none');
       }
-      // TASTY mode: fade off pads so chord tones pop; top note gets glow border
+      // TASTY mode: fade off pads; white border on all voicing pads, thicker on TOP
       const isTastyActive = tastyMidiSet && tastyMidiSet.size > 0;
       const isTastyDimmed = isTastyActive && fill === 'var(--pad-off)';
       if (isTastyActive) {
-        // TASTY mode: remove all strokes (color coding + TOP border only)
         rect.setAttribute('stroke', 'none');
       }
       if (isTastyDimmed) rect.setAttribute('opacity', '0.05');
-      const isTastyTop = tastyTopMidi !== null && midi === tastyTopMidi && isTastyActive && tastyMidiSet.has(midi);
-      if (isTastyTop) {
+      const isTastyHit = isTastyActive && tastyMidiSet.has(midi);
+      const isTastyTop = isTastyHit && tastyTopMidi !== null && midi === tastyTopMidi;
+      if (isTastyHit) {
         rect.setAttribute('stroke', '#fff');
-        rect.setAttribute('stroke-width', 2.5);
+        rect.setAttribute('stroke-width', isTastyTop ? 3 : 1.5);
       }
       svg.appendChild(rect);
 
@@ -377,40 +377,10 @@ function renderPads(svg, state, grid) {
 
 function renderVoicingBoxes(svg, state) {
   const { activePCS, rootPC, qualityPCS } = state;
-  // TASTY mode: single bounding box around exact pad positions of voicing notes
+  // TASTY mode: white border on each voicing pad (no bounding box)
   if (TastyState.enabled && TastyState.midiNotes.length > 0) {
-    var bm = baseMidi();
-    var minRow = ROWS, maxRow = -1, minCol = COLS, maxCol = -1;
-    var found = 0;
-    for (var ti = 0; ti < TastyState.midiNotes.length; ti++) {
-      var m = TastyState.midiNotes[ti];
-      for (var r = 0; r < ROWS; r++) {
-        for (var c = 0; c < COLS; c++) {
-          if (bm + r * ROW_INTERVAL + c === m) {
-            if (r < minRow) minRow = r;
-            if (r > maxRow) maxRow = r;
-            if (c < minCol) minCol = c;
-            if (c > maxCol) maxCol = c;
-            found++;
-          }
-        }
-      }
-    }
-    if (found > 0) {
-      var x = MARGIN + minCol * (PAD_SIZE + PAD_GAP) - 2;
-      var y = MARGIN + (ROWS - 1 - maxRow) * (PAD_SIZE + PAD_GAP) - 2;
-      var w = (maxCol - minCol + 1) * (PAD_SIZE + PAD_GAP) - PAD_GAP + 4;
-      var h = (maxRow - minRow + 1) * (PAD_SIZE + PAD_GAP) - PAD_GAP + 4;
-      var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('x', x); rect.setAttribute('y', y);
-      rect.setAttribute('width', w); rect.setAttribute('height', h);
-      rect.setAttribute('rx', 4);
-      rect.setAttribute('fill', 'none');
-      rect.setAttribute('stroke', '#fff');
-      rect.setAttribute('stroke-width', 2);
-      rect.setAttribute('stroke-dasharray', '6,3');
-      svg.appendChild(rect);
-    }
+    // Individual pad highlights are drawn in the main pad loop via tastyMidiSet
+    // No voicing boxes needed — TASTY voicings span too wide for a useful rectangle
     VoicingState.lastBoxes = [];
     return;
   }

@@ -31,6 +31,7 @@ function setGenrePreset(genre) {
 function baseMidi() { return BASE_MIDI + AppState.octaveShift * 12 + AppState.semitoneShift; }
 
 function shiftOctave(delta) {
+  if (TastyState.enabled || StockState.enabled) return;
   const next = AppState.octaveShift + delta;
   if (next < -1 || next > 3) return;
   AppState.octaveShift = next;
@@ -42,6 +43,7 @@ function shiftOctave(delta) {
 }
 
 function shiftSemitone(delta) {
+  if (TastyState.enabled || StockState.enabled) return;
   var next = AppState.semitoneShift + delta;
   if (next < -11 || next > 11) return;
   AppState.semitoneShift = next;

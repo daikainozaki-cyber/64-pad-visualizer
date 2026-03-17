@@ -305,17 +305,29 @@ function renderPads(svg, state, grid) {
       }
       // TASTY mode: fade off pads; white border on all voicing pads, thicker on TOP
       const isTastyActive = tastyMidiSet && tastyMidiSet.size > 0;
-      if (isTastyActive && (midi === 24 || midi === 36)) console.log('[TASTY-DBG] midi:', midi, 'fill:', fill, 'miss:', _isTastyMiss, 'set:', [...tastyMidiSet]);
+      // debug removed
       const isTastyDimmed = isTastyActive && fill === 'var(--pad-off)';
       if (isTastyActive) {
         rect.setAttribute('stroke', 'none');
       }
       if (isTastyDimmed) rect.setAttribute('opacity', '0.05');
+      // TASTY hit: highlight pad. Each MIDI note appears 1-2 times on the grid;
+      // only highlight the LOWEST row occurrence (closest to bass = most natural fingering)
       const isTastyHit = isTastyActive && tastyMidiSet.has(midi);
       const isTastyTop = isTastyHit && tastyTopMidi !== null && midi === tastyTopMidi;
       if (isTastyHit) {
-        rect.setAttribute('stroke', '#fff');
-        rect.setAttribute('stroke-width', isTastyTop ? 3 : 1.5);
+        // Check if this MIDI note has a LOWER row occurrence (skip this one if so)
+        var isLowestRow = true;
+        for (var pr = 0; pr < row; pr++) {
+          if (bm + pr * ri + (midi - bm - pr * ri) === midi) {
+            var pc2 = midi - bm - pr * ri;
+            if (pc2 >= 0 && pc2 < cols) { isLowestRow = false; break; }
+          }
+        }
+        if (isLowestRow) {
+          rect.setAttribute('stroke', '#fff');
+          rect.setAttribute('stroke-width', isTastyTop ? 3 : 1.5);
+        }
       }
       svg.appendChild(rect);
 

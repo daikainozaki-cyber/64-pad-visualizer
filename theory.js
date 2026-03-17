@@ -1343,7 +1343,7 @@ function updateTastyUI() {
 
   if (TastyState.enabled && TastyState.currentIndex >= 0) {
     if (counter) counter.textContent = (TastyState.currentIndex + 1) + '/' + TastyState.currentMatches.length;
-    if (info) info.textContent = getTastyDiffText() + ' [MIDI:' + TastyState.midiNotes.join(',') + ']';
+    if (info) info.textContent = getTastyDiffText();
     if (prevBtn) prevBtn.style.display = '';
     if (nextBtn) nextBtn.style.display = '';
   } else {

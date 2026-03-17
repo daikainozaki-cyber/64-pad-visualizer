@@ -136,6 +136,12 @@ function computeRenderState() {
       topNote: TastyState.topNote,
       boxSelected: VoicingState.selectedBoxIdx !== null
     },
+    stock: {
+      enabled: StockState.enabled && StockState.currentIndex >= 0,
+      midiNotes: StockState.enabled ? (StockState.lhMidi || []).concat(StockState.rhMidi || []) : [],
+      degreeMap: StockState.degreeMap || {},
+      topNote: StockState.rhMidi && StockState.rhMidi.length > 0 ? StockState.rhMidi[StockState.rhMidi.length - 1] : null
+    },
     extNotes: extNotesArr,
     selectedPS: _selectedPS || null,
     noRootLabel: t('builder.select_root')
@@ -408,10 +414,9 @@ function renderPads(svg, state, grid) {
 
 function renderVoicingBoxes(svg, state) {
   const { activePCS, rootPC, qualityPCS } = state;
-  // TASTY mode: white border on each voicing pad (no bounding box)
-  if (TastyState.enabled && TastyState.midiNotes.length > 0) {
-    // Individual pad highlights are drawn in the main pad loop via tastyMidiSet
-    // No voicing boxes needed — TASTY voicings span too wide for a useful rectangle
+  // TASTY/Stock mode: no voicing boxes (pad highlights via tastyMidiSet in render loop)
+  if ((TastyState.enabled && TastyState.midiNotes.length > 0) ||
+      (StockState.enabled && StockState.currentIndex >= 0)) {
     VoicingState.lastBoxes = [];
     return;
   }

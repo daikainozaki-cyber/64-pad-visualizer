@@ -224,7 +224,7 @@ function renderPads(svg, state, grid) {
           }
         }
         if (_isTastyMiss) {
-          fill = 'var(--pad-off)';
+          // Keep original chord tone color — opacity reduction applied later
           textColor = 'var(--text-muted)';
         }
       }
@@ -318,9 +318,9 @@ function renderPads(svg, state, grid) {
       // TASTY mode: fade off non-voicing pads completely
       const isTastyActive = tastyMidiSet && tastyMidiSet.size > 0;
       if (isTastyActive && _isTastyMiss) {
-        rect.setAttribute('fill', 'var(--pad-off)');
+        // Keep chord tone colors visible at low opacity for orientation
         rect.setAttribute('stroke', 'none');
-        rect.setAttribute('opacity', '0.4');
+        rect.setAttribute('opacity', '0.2');
       } else if (isTastyActive) {
         rect.setAttribute('stroke', 'none');
       }

@@ -210,11 +210,22 @@ function renderPads(svg, state, grid) {
         textColor = 'var(--text-muted)';
       }
 
-      // TASTY voicing: only highlight pads with exact MIDI match
-      const _isTastyMiss = tastyMidiSet && tastyMidiSet.size > 0 && !tastyMidiSet.has(midi);
-      if (_isTastyMiss) {
-        fill = 'var(--pad-off)';
-        textColor = 'var(--text-muted)';
+      // TASTY voicing: only highlight pads with exact MIDI match AND lowest row only
+      var _isTastyMiss = false;
+      if (tastyMidiSet && tastyMidiSet.size > 0) {
+        if (!tastyMidiSet.has(midi)) {
+          _isTastyMiss = true;
+        } else {
+          // MIDI match but check if there's a lower-row occurrence (skip this one)
+          for (var pr = 0; pr < row; pr++) {
+            var pc2 = midi - bm - pr * ri;
+            if (pc2 >= 0 && pc2 < cols) { _isTastyMiss = true; break; }
+          }
+        }
+        if (_isTastyMiss) {
+          fill = 'var(--pad-off)';
+          textColor = 'var(--text-muted)';
+        }
       }
 
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');

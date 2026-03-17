@@ -267,7 +267,10 @@ function renderPads(svg, state, grid) {
         r.addEventListener('touchstart', (e) => {
           e.preventDefault();
           if (AppState.mode === 'input') { togglePlainNote(m); }
-          else {
+          else if (TastyState.enabled || StockState.enabled) {
+            for (const t of e.changedTouches) { _heldTouches.set(t.identifier, m); }
+            noteOn(m);
+          } else {
             for (const t of e.changedTouches) { _heldTouches.set(t.identifier, m); }
             noteOn(m);
             if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {

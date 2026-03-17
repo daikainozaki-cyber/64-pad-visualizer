@@ -240,7 +240,10 @@ function renderPads(svg, state, grid) {
         r.addEventListener('mousedown', (e) => {
           e.preventDefault();
           if (AppState.mode === 'input') { togglePlainNote(m); }
-          else {
+          else if (TastyState.enabled || StockState.enabled) {
+            // TASTY/Stock mode: play note only, don't modify chord builder
+            _heldMidi = m; noteOn(m);
+          } else {
             _heldMidi = m; noteOn(m);
             if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality) {
               if (padExtNotes.size === 0) {

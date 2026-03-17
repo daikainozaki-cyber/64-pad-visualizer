@@ -310,6 +310,8 @@ I18N.addLang('es', {
     sound_autofilter: 'Auto-Filtro (Auto-Wah)',
     sound_autofilter_desc: 'Filtro de envolvente. Ajusta FREQ, RESO, SENS y DECAY.',
     version_history: 'Historial de versiones',
+    vh_340: '<b>V3.40</b> \u2014 Posicionamiento compacto TASTY/Stock: disposici\u00F3n \u00F3ptima autom\u00E1tica en la cuadr\u00EDcula de 64 pads. Bot\u00F3n "To Pad" eliminado. Cajas de voicing ocultas durante modo TASTY/Stock',
+    vh_336: '<b>V3.36</b> \u2014 Motor de voicing guitarra v2: presets de g\u00E9nero (Jazz/Bossa/Funk), tabla de referencia (120 tipos \u00D7 12 tonos), asignaci\u00F3n autom\u00E1tica de dedos con detecci\u00F3n de cejilla',
     vh_335: '<b>V3.35</b> \u2014 Mejoras UX de tutoriales (revisi\u00F3n para principiantes). Todos los tooltips traducidos a 9 idiomas. Gu\u00EDa: secciones de panel de sonido e iconos de encabezado a\u00F1adidas',
     vh_333: '<b>V3.33</b> \u2014 Tutoriales interactivos. 11 temas \u00D7 9 idiomas. Sugerencias contextuales en la primera interacci\u00F3n con cada funci\u00F3n',
     vh_332: '<b>V3.32</b> \u2014 STOCK Voicing: 154 voicings de piano con pantalla de teclado espec\u00EDfica MIDI + reflejo "To Pad". Gu\u00EDa actualizada con secci\u00F3n de funciones de voicing HPS',

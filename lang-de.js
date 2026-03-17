@@ -309,6 +309,8 @@ I18N.addLang('de', {
     sound_autofilter: 'Auto-Filter (Auto-Wah)',
     sound_autofilter_desc: 'Hüllkurvenfilter. Stelle FREQ, RESO, SENS und DECAY ein.',
     version_history: 'Versionshistorie',
+    vh_340: '<b>V3.40</b> \u2014 TASTY/Stock Kompaktpositionierung: automatisches optimales Voicing-Layout auf dem 64-Pad-Raster. \u201ETo Pad\u201C-Button entfernt. Voicing-Boxen im TASTY/Stock-Modus ausgeblendet',
+    vh_336: '<b>V3.36</b> \u2014 Gitarren-Voicing-Engine v2: Genre-Presets (Jazz/Bossa/Funk), Referenztabelle (120 Typen \u00D7 12 Tonarten), automatische Fingerzuordnung mit Barr\u00E9-Erkennung',
     vh_335: '<b>V3.35</b> \u2014 Tutorial-UX-Verbesserungen (Anf\u00E4nger-Review). Alle Tooltips in 9 Sprachen \u00FCbersetzt. Anleitung: Abschnitte f\u00FCr Sound-Panel und Header-Icons hinzugef\u00FCgt',
     vh_333: '<b>V3.33</b> \u2014 Interaktive Tutorials. 11 Themen \u00D7 9 Sprachen. Kontexthinweise bei erster Funktionsinteraktion',
     vh_332: '<b>V3.32</b> \u2014 STOCK Voicing: 154 Klavier-Voicings mit MIDI-spezifischer Tastaturanzeige + "To Pad"-Spiegelung. Anleitung um HPS-Voicing-Funktionen erg\u00E4nzt',

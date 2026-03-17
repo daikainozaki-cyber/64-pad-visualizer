@@ -309,6 +309,8 @@ I18N.addLang('it', {
     sound_autofilter: 'Auto-Filtro (Auto-Wah)',
     sound_autofilter_desc: 'Filtro a inviluppo. Regola FREQ, RESO, SENS e DECAY.',
     version_history: 'Cronologia delle versioni',
+    vh_340: '<b>V3.40</b> \u2014 Posizionamento compatto TASTY/Stock: layout ottimale automatico sulla griglia 64 pad. Pulsante "To Pad" rimosso. Box voicing nascosti durante modalit\u00E0 TASTY/Stock',
+    vh_336: '<b>V3.36</b> \u2014 Motore voicing chitarra v2: preset di genere (Jazz/Bossa/Funk), tabella di riferimento (120 tipi \u00D7 12 tonalit\u00E0), assegnazione automatica delle dita con rilevamento del barr\u00E9',
     vh_335: '<b>V3.35</b> \u2014 Miglioramenti UX dei tutorial (revisione per principianti). Tutti i tooltip tradotti in 9 lingue. Guida: sezioni pannello audio e icone intestazione aggiunte',
     vh_333: '<b>V3.33</b> \u2014 Tutorial interattivi. 11 argomenti \u00D7 9 lingue. Suggerimenti contestuali alla prima interazione con ogni funzionalit\u00E0',
     vh_332: '<b>V3.32</b> \u2014 STOCK Voicing: 154 voicing per pianoforte con tastiera specifica MIDI + riflesso "To Pad". Guida aggiornata con sezione funzioni di voicing HPS',

@@ -324,6 +324,8 @@ I18N.addLang('en', {
     sound_autofilter: 'Auto-Filter (Auto-Wah)',
     sound_autofilter_desc: 'Envelope filter. Adjust FREQ, RESO, SENS, and DECAY.',
     version_history: 'Version History',
+    vh_340: '<b>V3.40</b> \u2014 TASTY/Stock compact positioning: automatic optimal voicing layout on 64-pad grid. "To Pad" button removed. Voicing boxes hidden during TASTY/Stock mode',
+    vh_336: '<b>V3.36</b> \u2014 Guitar voicing engine v2: genre presets (Jazz/Bossa/Funk), reference table (120 types \u00D7 12 keys), auto finger assignment with barre detection',
     vh_335: '<b>V3.35</b> \u2014 Tutorial UX improvements (beginner review). All tooltips translated to 9 languages. Guide: sound panel & header icon sections added',
     vh_333: '<b>V3.33</b> \u2014 Interactive tutorials. 11 topics \u00D7 9 languages. Context hints on first feature interaction',
     vh_332: '<b>V3.32</b> \u2014 STOCK Voicing: 154 piano voicings with MIDI-specific keyboard display + "To Pad" reflect. Guide updated with HPS voicing features section',

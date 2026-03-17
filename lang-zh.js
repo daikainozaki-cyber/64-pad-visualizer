@@ -311,6 +311,8 @@ I18N.addLang('zh', {
     sound_autofilter: '自动滤波器（Auto-Wah）',
     sound_autofilter_desc: '包络滤波器。可调整FREQ、RESO、SENS和DECAY。',
     version_history: '\u7248\u672C\u5386\u53F2',
+    vh_340: '<b>V3.40</b> \u2014 TASTY/Stock紧凑布局：和弦音自动最优排列在64键盘上。移除"映射到键盘"按钮。TASTY/Stock模式下隐藏和弦框',
+    vh_336: '<b>V3.36</b> \u2014 吉他和弦引擎v2：风格预设（Jazz/Bossa/Funk）、参考指法库（120种\u00D712调）、自动指法分配（横按检测）',
     vh_335: '<b>V3.35</b> \u2014 教程UX改善（初学者评审）。所有工具提示翻译为9种语言。指南：新增音色面板和标题栏图标章节',
     vh_333: '<b>V3.33</b> \u2014 交互式教程。11个主题\u00D79种语言。首次功能交互时显示上下文提示',
     vh_332: '<b>V3.32</b> \u2014 STOCK Voicing: 154种钢琴声位（MIDI专用键盘显示+\u201C映射到打击垫\u201D）。指南新增HPS Voicing功能章节',

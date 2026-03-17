@@ -344,6 +344,10 @@ I18N.addLang('de', {
     voice_4: '4v',
     voice_5: '5v',
     to_pad: 'Auf Pad',
+    genre_default: 'Standard',
+    genre_jazz: 'Jazz',
+    genre_bossa: 'Bossa',
+    genre_funk: 'Funk',
   },
   tips: [
     'Drücke C um den aktuellen Akkord im Memory zu speichern',

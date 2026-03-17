@@ -344,6 +344,10 @@ I18N.addLang('it', {
     voice_4: '4v',
     voice_5: '5v',
     to_pad: 'Su Pad',
+    genre_default: 'Standard',
+    genre_jazz: 'Jazz',
+    genre_bossa: 'Bossa',
+    genre_funk: 'Funk',
   },
   tips: [
     'Premi C per salvare l\'accordo attuale in Memory',

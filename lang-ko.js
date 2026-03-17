@@ -344,6 +344,10 @@ I18N.addLang('ko', {
     voice_4: '4v',
     voice_5: '5v',
     to_pad: '패드에 반영',
+    genre_default: '표준',
+    genre_jazz: 'Jazz',
+    genre_bossa: 'Bossa',
+    genre_funk: 'Funk',
   },
   tips: [
     'C 키를 눌러 현재 코드를 Memory에 저장',

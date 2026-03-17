@@ -14,6 +14,16 @@ var _presetParam = (typeof URLSearchParams !== 'undefined') ? new URLSearchParam
 var _presetWeights = _presetParam && GENRE_WEIGHTS[_presetParam] ? GENRE_WEIGHTS[_presetParam] : null;
 var _presetNoOpen = _presetParam === 'funk';
 
+function setGenrePreset(genre) {
+  _presetWeights = genre && GENRE_WEIGHTS[genre] ? GENRE_WEIGHTS[genre] : null;
+  _presetNoOpen = genre === 'funk';
+  // Invalidate cache to force re-enumeration
+  GuitarPositionState._lastKey = null;
+  BassPositionState._lastKey = null;
+  updateGuitarPositions();
+  updateBassPositions();
+}
+
 // ========================================
 // PAD GRID FUNCTIONS
 // ========================================

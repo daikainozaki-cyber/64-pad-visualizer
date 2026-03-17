@@ -346,6 +346,10 @@ I18N.addLang('zh', {
     voice_4: '4v',
     voice_5: '5v',
     to_pad: '映射到Pad',
+    genre_default: '标准',
+    genre_jazz: 'Jazz',
+    genre_bossa: 'Bossa',
+    genre_funk: 'Funk',
   },
   tips: [
     '按 C 键将当前和弦保存到 Memory',

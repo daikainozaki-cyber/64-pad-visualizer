@@ -359,6 +359,10 @@ I18N.addLang('en', {
     voice_4: '4v',
     voice_5: '5v',
     to_pad: 'To Pad',
+    genre_default: 'Standard',
+    genre_jazz: 'Jazz',
+    genre_bossa: 'Bossa',
+    genre_funk: 'Funk',
   },
   tips: [
     'Press C to save the current chord to Memory',

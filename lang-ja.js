@@ -359,6 +359,10 @@ I18N.addLang('ja', {
     voice_4: '4声',
     voice_5: '5声',
     to_pad: 'パッドに反映',
+    genre_default: 'スタンダード',
+    genre_jazz: 'Jazz',
+    genre_bossa: 'Bossa',
+    genre_funk: 'Funk',
   },
   tips: [
     'Cキーで今のコードをMemoryに保存できます',

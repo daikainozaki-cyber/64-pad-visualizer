@@ -345,6 +345,10 @@ I18N.addLang('es', {
     voice_4: '4v',
     voice_5: '5v',
     to_pad: 'Al Pad',
+    genre_default: 'Estándar',
+    genre_jazz: 'Jazz',
+    genre_bossa: 'Bossa',
+    genre_funk: 'Funk',
   },
   tips: [
     'Pulsa C para guardar el acorde actual en Memory',

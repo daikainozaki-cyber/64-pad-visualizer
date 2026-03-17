@@ -27,6 +27,16 @@ if (StockState.hpsUnlocked) {
   }).catch(function() {});
 }
 
+// Genre Preset: HPS-only UI (Desktop paid version always has ?hps)
+(function() {
+  var hps = new URLSearchParams(window.location.search).has('hps');
+  var sel = document.getElementById('genre-preset-select');
+  if (sel && hps) {
+    sel.style.display = '';
+    if (_presetParam && GENRE_WEIGHTS[_presetParam]) sel.value = _presetParam;
+  }
+})();
+
 initKeyButtons();
 initScaleSelect();
 initQualityGrid();

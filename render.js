@@ -1272,7 +1272,7 @@ function toggleVoicingReflect() {
       var padMid = BASE_MIDI + gridRange / 2;
       var needed = Math.round((mid - padMid) / 12);
       var clamped = Math.max(-1, Math.min(3, needed));
-      if (clamped !== AppState.octaveShift) {
+      if (clamped !== AppState.octaveShift && !TastyState.enabled && !StockState.enabled) {
         AppState.octaveShift = clamped;
         updateOctaveLabel();
       }
@@ -1316,7 +1316,7 @@ function toggleStockReflect() {
       var padMid = BASE_MIDI + gridRange / 2;
       var needed = Math.round((mid - padMid) / 12);
       var clamped = Math.max(-1, Math.min(3, needed));
-      if (clamped !== AppState.octaveShift) {
+      if (clamped !== AppState.octaveShift && !TastyState.enabled && !StockState.enabled) {
         AppState.octaveShift = clamped;
         updateOctaveLabel();
       }
@@ -1481,7 +1481,7 @@ function updateInstrumentInput() {
         const padMid = BASE_MIDI + (ROWS - 1) * ROW_INTERVAL / 2 + (COLS - 1) / 2;
         const needed = Math.round((mid - padMid) / 12);
         const clamped = Math.max(-1, Math.min(3, needed));
-        if (clamped !== AppState.octaveShift) {
+        if (clamped !== AppState.octaveShift && !TastyState.enabled && !StockState.enabled) {
           AppState.octaveShift = clamped;
           updateOctaveLabel();
         }

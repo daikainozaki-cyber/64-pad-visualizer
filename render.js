@@ -377,15 +377,41 @@ function renderPads(svg, state, grid) {
 
 function renderVoicingBoxes(svg, state) {
   const { activePCS, rootPC, qualityPCS } = state;
-  // TASTY mode: voicing boxes anchored to lowest MIDI note
+  // TASTY mode: single bounding box around exact pad positions of voicing notes
   if (TastyState.enabled && TastyState.midiNotes.length > 0) {
-    var tastyNotes = TastyState.midiNotes.slice().sort(function(a, b) { return a - b; });
-    var lowestMidi = tastyNotes[0];
-    var lowestPC = lowestMidi % 12;
-    var tastyOffsets = tastyNotes.map(function(n) { return n - lowestMidi; });
-    var maxRS = tastyNotes.length <= 3 ? 4 : 5;
-    var maxCS = tastyNotes.length <= 3 ? 5 : 6;
-    computeAndDrawVoicingBoxes(svg, tastyOffsets, lowestPC, '#fff', '#fff', maxRS, maxCS);
+    var bm = baseMidi();
+    var minRow = ROWS, maxRow = -1, minCol = COLS, maxCol = -1;
+    var found = 0;
+    for (var ti = 0; ti < TastyState.midiNotes.length; ti++) {
+      var m = TastyState.midiNotes[ti];
+      for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+          if (bm + r * ROW_INTERVAL + c === m) {
+            if (r < minRow) minRow = r;
+            if (r > maxRow) maxRow = r;
+            if (c < minCol) minCol = c;
+            if (c > maxCol) maxCol = c;
+            found++;
+          }
+        }
+      }
+    }
+    if (found > 0) {
+      var x = MARGIN + minCol * (PAD_SIZE + PAD_GAP) - 2;
+      var y = MARGIN + (ROWS - 1 - maxRow) * (PAD_SIZE + PAD_GAP) - 2;
+      var w = (maxCol - minCol + 1) * (PAD_SIZE + PAD_GAP) - PAD_GAP + 4;
+      var h = (maxRow - minRow + 1) * (PAD_SIZE + PAD_GAP) - PAD_GAP + 4;
+      var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', x); rect.setAttribute('y', y);
+      rect.setAttribute('width', w); rect.setAttribute('height', h);
+      rect.setAttribute('rx', 4);
+      rect.setAttribute('fill', 'none');
+      rect.setAttribute('stroke', '#fff');
+      rect.setAttribute('stroke-width', 2);
+      rect.setAttribute('stroke-dasharray', '6,3');
+      svg.appendChild(rect);
+    }
+    VoicingState.lastBoxes = [];
     return;
   }
   // Reset computed boxes (will be populated if any chord bounding boxes are drawn)

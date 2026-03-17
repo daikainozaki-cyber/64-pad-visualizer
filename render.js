@@ -968,7 +968,7 @@ function renderPianoDisplay(state) {
 
   const stockPinned = StockState.enabled && StockState.lhMidi && StockState.rhMidi;
   const pianoBaseMidi = baseMidi();
-  const pianoMidiBase = stockPinned ? 24 : (Math.floor(pianoBaseMidi / 12) - 2 + 2) * 12;
+  const pianoMidiBase = stockPinned ? 36 : (Math.floor(pianoBaseMidi / 12) - 2 + 2) * 12;
 
   // Stock mode: build keyColorFn override
   var stockMidiSet = null;

@@ -1558,6 +1558,7 @@ function highlightInstrumentPads(midiNotes) {
   // Hide instrument highlights when a voicing box is selected or TASTY is active
   if (VoicingState.selectedBoxIdx !== null) return;
   if (TastyState.enabled && TastyState.midiNotes.length > 0) return;
+  if (StockState.enabled && StockState.currentIndex >= 0) return;
   const svg = document.getElementById('pad-grid');
   const bm = baseMidi();
   const noteSet = new Set(midiNotes);

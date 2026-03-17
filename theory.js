@@ -3,7 +3,7 @@
 // ========================================
 var GENRE_WEIGHTS = {
   jazz:  { rootBass:60, fifthBass:0, rootStr6:20, rootStr5:30, rootStr4:40,
-           top4:100, guideTone:50, openStr:5, stringCount:20, avgFret:6,
+           top4:100, guideTone:50, openStr:0, stringCount:20, avgFret:6,
            span:10, gaps:15, fullFret:20 },
   bossa: { rootBass:70, fifthBass:60, openStr:25, top4:60, guideTone:40,
            avgFret:12, stringCount:35 },
@@ -22,6 +22,7 @@ function setGenrePreset(genre) {
   BassPositionState._lastKey = null;
   updateGuitarPositions();
   updateBassPositions();
+  render();
 }
 
 // ========================================

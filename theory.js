@@ -991,9 +991,10 @@ function findBestPosition(rootMidi, degrees) {
   var hi = lo + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
   var bestRoot = rootMidi, bestCount = -1, bestNotes = [];
   // Search LOW to HIGH — prefer lowest position where most notes fit
+  // Lower bound C2 (36) to avoid low interval limit violations
   for (var shift = -4; shift <= 2; shift++) {
     var r = rootMidi + shift * 12;
-    if (r < 0) continue;
+    if (r < 36) continue;
     var notes = buildTastyVoicing(r, degrees);
     if (notes.length === 0) continue;
     var count = 0;
@@ -1481,10 +1482,10 @@ function cycleStock(reverse) {
   var entry = StockState.currentMatches[StockState.currentIndex];
 
   // Convert LH/RH degrees to MIDI notes
-  // LH starts from root C1 (24), RH from root C2 (36) — fixed positions for piano display
+  // LH starts from root C2 (36), RH from root C3 (48) — avoid low interval limit violations
   var rootPC = BuilderState.root;
-  var lhRoot = 24 + rootPC;
-  var rhRoot = 36 + rootPC;
+  var lhRoot = 36 + rootPC;
+  var rhRoot = 48 + rootPC;
   StockState.lhMidi = entry.LH && entry.LH.length > 0 ? stockDegreesToMidi(lhRoot, entry.LH) : [];
   StockState.rhMidi = entry.RH && entry.RH.length > 0 ? stockDegreesToMidi(rhRoot, entry.RH) : [];
 

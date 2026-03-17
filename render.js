@@ -354,7 +354,7 @@ function renderPads(svg, state, grid) {
       text.setAttribute('font-weight', showDegree ? '600' : '400');
       text.textContent = pcName(pc);
       if (isDimmed) text.setAttribute('opacity', isDimChordTone ? '0' : (isOverlayPad ? '0.9' : '0.4'));
-      if (isTastyDimmed) text.setAttribute('opacity', '0.05');
+      if (isTastyActive && _isTastyMiss) text.setAttribute('opacity', '0.05');
       svg.appendChild(text);
 
       if (showDegree) {

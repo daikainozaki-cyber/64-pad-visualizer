@@ -918,10 +918,13 @@ function onDiatonicClick(tetrad) {
 // TASTY VOICING ENGINE — degree → MIDI conversion
 // ========================================
 
+// Tensions (9th, 11th, 13th) use COMPOUND intervals (octave + simple)
+// so voicings spread properly as open voicings, not close position.
+// Chord tones (1, b3, 3, b5, 5, #5, 6, bb7, b7, 7) stay simple.
 var TASTY_DEGREE_MAP = {
-  '1':0, 'b9':1, '9':2, '#9':3, 'b3':3, '3':4,
-  '11':5, '#11':6, 'b5':6, '5':7, '#5':8, 'b13':8,
-  '6':9, '13':9, 'bb7':9, 'b7':10, '7':11
+  '1':0, 'b9':13, '9':14, '#9':15, 'b3':3, '3':4,
+  '11':17, '#11':18, 'b5':6, '5':7, '#5':8, 'b13':20,
+  '6':9, '13':21, 'bb7':9, 'b7':10, '7':11
 };
 
 // Build MIDI note array from degree array (bottom to top, each note above previous)

@@ -305,7 +305,7 @@ function renderPads(svg, state, grid) {
       }
       // TASTY mode: fade off pads; white border on all voicing pads, thicker on TOP
       const isTastyActive = tastyMidiSet && tastyMidiSet.size > 0;
-      if (isTastyActive && (midi === 24 || midi === 36)) console.log('[TASTY-DBG] midi:', midi, 'fill:', fill, 'miss:', _isTastyMiss, 'dimmed:', isTastyDimmed, 'hit:', isTastyHit, 'set:', [...tastyMidiSet]);
+      if (isTastyActive && (midi === 24 || midi === 36)) console.log('[TASTY-DBG] midi:', midi, 'fill:', fill, 'miss:', _isTastyMiss, 'set:', [...tastyMidiSet]);
       const isTastyDimmed = isTastyActive && fill === 'var(--pad-off)';
       if (isTastyActive) {
         rect.setAttribute('stroke', 'none');

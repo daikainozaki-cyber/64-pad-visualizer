@@ -1,4 +1,20 @@
 // ========================================
+// GENRE PRESET WEIGHTS (URL ?preset=jazz|bossa|funk)
+// ========================================
+var GENRE_WEIGHTS = {
+  jazz:  { rootBass:60, fifthBass:0, rootStr6:20, rootStr5:30, rootStr4:40,
+           top4:100, guideTone:50, openStr:5, stringCount:20, avgFret:6,
+           span:10, gaps:15, fullFret:20 },
+  bossa: { rootBass:70, fifthBass:60, openStr:25, top4:60, guideTone:40,
+           avgFret:12, stringCount:35 },
+  funk:  { rootBass:20, fifthBass:0, openStr:0, top4:120, guideTone:40,
+           stringCount:20, span:20, gaps:25 }
+};
+var _presetParam = (typeof URLSearchParams !== 'undefined') ? new URLSearchParams(location.search).get('preset') : null;
+var _presetWeights = _presetParam && GENRE_WEIGHTS[_presetParam] ? GENRE_WEIGHTS[_presetParam] : null;
+var _presetNoOpen = _presetParam === 'funk';
+
+// ========================================
 // PAD GRID FUNCTIONS
 // ========================================
 function baseMidi() { return BASE_MIDI + AppState.octaveShift * 12 + AppState.semitoneShift; }
@@ -495,7 +511,7 @@ function updateGuitarPositions() {
   var key = BuilderState.root + ':' + pcs.join(',');
   if (key !== GuitarPositionState._lastKey) {
     GuitarPositionState._lastKey = key;
-    GuitarPositionState.alternatives = padEnumGuitarChordForms(pcs, BuilderState.root, GUITAR_OPEN_MIDI, 21, 4, { maxResults: 30 });
+    GuitarPositionState.alternatives = padEnumGuitarChordForms(pcs, BuilderState.root, GUITAR_OPEN_MIDI, 21, 4, { maxResults: 30, weights: _presetWeights, noOpen: _presetNoOpen });
     GuitarPositionState.groups = groupGuitarForms(GuitarPositionState.alternatives, GUITAR_OPEN_MIDI, BuilderState.root);
     _resetPositionState(GuitarPositionState);
     GuitarPositionState.enabled = GuitarPositionState.alternatives.length > 0;
@@ -526,7 +542,7 @@ function updateBassPositions() {
   var key = BuilderState.root + ':' + pcs.join(',');
   if (key !== BassPositionState._lastKey) {
     BassPositionState._lastKey = key;
-    BassPositionState.alternatives = padEnumGuitarChordForms(pcs, BuilderState.root, PAD_BASS_TUNING, 21, 4, { maxResults: 30 });
+    BassPositionState.alternatives = padEnumGuitarChordForms(pcs, BuilderState.root, PAD_BASS_TUNING, 21, 4, { maxResults: 30, weights: _presetWeights, noOpen: _presetNoOpen });
     BassPositionState.groups = groupGuitarForms(BassPositionState.alternatives, PAD_BASS_TUNING, BuilderState.root);
     _resetPositionState(BassPositionState);
     BassPositionState.enabled = BassPositionState.alternatives.length > 0;

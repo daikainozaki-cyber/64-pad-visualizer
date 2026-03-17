@@ -134,13 +134,15 @@ function computeRenderState() {
       midiNotes: TastyState.midiNotes,
       degreeMap: TastyState.degreeMap,
       topNote: TastyState.topNote,
-      boxSelected: VoicingState.selectedBoxIdx !== null
+      boxSelected: VoicingState.selectedBoxIdx !== null,
+      padPositions: TastyState.padPositions
     },
     stock: {
       enabled: StockState.enabled && StockState.currentIndex >= 0,
       midiNotes: StockState.enabled ? (StockState.lhMidi || []).concat(StockState.rhMidi || []) : [],
       degreeMap: StockState.degreeMap || {},
-      topNote: StockState.rhMidi && StockState.rhMidi.length > 0 ? StockState.rhMidi[StockState.rhMidi.length - 1] : null
+      topNote: StockState.rhMidi && StockState.rhMidi.length > 0 ? StockState.rhMidi[StockState.rhMidi.length - 1] : null,
+      padPositions: StockState.padPositions
     },
     extNotes: extNotesArr,
     selectedPS: _selectedPS || null,
@@ -154,7 +156,12 @@ function renderPads(svg, state, grid) {
   var padSize = grid ? grid.PAD_SIZE : PAD_SIZE;
   var padGap = grid ? grid.PAD_GAP : PAD_GAP;
   var margin = grid ? grid.MARGIN : MARGIN;
-  const { activePCS, activeIvPCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS, tastyMidiSet, tastyDegreeMap, tastyTopMidi } = state;
+  const { activePCS, activeIvPCS, rootPC, bassPC, charPCS, omittedPCS, guide3PCS, guide7PCS, tensionPCS, qualityPCS, avoidPCS, overlayPCS, overlayCharPCS, tastyMidiSet, tastyDegreeMap, tastyTopMidi, tastyPadPositions } = state;
+  // Build compact position set for TASTY/Stock pad positioning
+  var tastyPadPosSet = null;
+  if (tastyPadPositions && tastyPadPositions.length > 0) {
+    tastyPadPosSet = new Set(tastyPadPositions.map(function(p) { return p.row + ',' + p.col; }));
+  }
   // Build position set for selected voicing box (for dimming non-selected pads)
   const selBox = !grid && VoicingState.selectedBoxIdx !== null ? VoicingState.lastBoxes[VoicingState.selectedBoxIdx] : null;
   const selMidi = selBox ? new Set(selBox.midiNotes) : null;
@@ -216,13 +223,16 @@ function renderPads(svg, state, grid) {
         textColor = 'var(--text-muted)';
       }
 
-      // TASTY voicing: only highlight pads with exact MIDI match AND lowest row only
+      // TASTY voicing: only highlight pads at compact positions (or lowest-row fallback)
       var _isTastyMiss = false;
       if (tastyMidiSet && tastyMidiSet.size > 0) {
-        if (!tastyMidiSet.has(midi)) {
+        if (tastyPadPosSet) {
+          // Compact position set: exact (row,col) match
+          _isTastyMiss = !tastyPadPosSet.has(row + ',' + col);
+        } else if (!tastyMidiSet.has(midi)) {
           _isTastyMiss = true;
         } else {
-          // MIDI match but check if there's a lower-row occurrence (skip this one)
+          // Fallback: MIDI match but check if there's a lower-row occurrence (skip this one)
           var _bm = baseMidi(), _ri = ROW_INTERVAL;
           for (var pr = 0; pr < row; pr++) {
             var pc2 = midi - _bm - pr * _ri;
@@ -338,20 +348,11 @@ function renderPads(svg, state, grid) {
       }
       // TASTY hit: highlight pad. Each MIDI note appears 1-2 times on the grid;
       // only highlight the LOWEST row occurrence (closest to bass = most natural fingering)
-      const isTastyHit = isTastyActive && tastyMidiSet.has(midi);
+      const isTastyHit = isTastyActive && !_isTastyMiss;
       const isTastyTop = isTastyHit && tastyTopMidi !== null && midi === tastyTopMidi;
       if (isTastyHit) {
-        // Check if this MIDI note has a LOWER row occurrence (skip this one if so)
-        var isLowestRow = true;
-        var _bm2 = baseMidi(), _ri2 = ROW_INTERVAL;
-        for (var pr = 0; pr < row; pr++) {
-          var _c = midi - _bm2 - pr * _ri2;
-          if (_c >= 0 && _c < cols) { isLowestRow = false; break; }
-        }
-        if (isLowestRow) {
-          rect.setAttribute('stroke', '#fff');
-          rect.setAttribute('stroke-width', isTastyTop ? 3 : 1.5);
-        }
+        rect.setAttribute('stroke', '#fff');
+        rect.setAttribute('stroke-width', isTastyTop ? 3 : 1.5);
       }
       svg.appendChild(rect);
 
@@ -629,7 +630,7 @@ function render() {
 
   const state = computeRenderState();
   renderPads(svg, state);
-  if (AppState.mode !== 'input' && !(_voicingReflectMode && _guitarSyncSource === 'position') && !_stockReflectMode) {
+  if (AppState.mode !== 'input' && !TastyState.enabled && !StockState.enabled && !(_voicingReflectMode && _guitarSyncSource === 'position') && !_stockReflectMode) {
     renderVoicingBoxes(svg, state);
   }
   renderLegend(state);

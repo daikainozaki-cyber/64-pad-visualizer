@@ -111,6 +111,7 @@ const TastyState = {
   degreeMap: {},         // {midiNote: degreeString} — recipe degree per note
   topNote: null,         // highest MIDI note in current voicing
   topFilter: null,       // top-note degree filter (e.g. '1', '3', 'b7') or null = all
+  padPositions: [],      // compact pad positions from padFindCompactPositions
 };
 
 // ======== STOCK VOICING STATE ========
@@ -125,6 +126,7 @@ const StockState = {
   lhMidi: [],            // left hand MIDI notes
   rhMidi: [],            // right hand MIDI notes
   degreeMap: {},         // {midiNote: degreeString}
+  padPositions: [],      // compact pad positions from padFindCompactPositions
 };
 
 // ======== BANK STATE (v2.50) ========

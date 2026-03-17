@@ -1138,6 +1138,7 @@ function cycleTasty(reverse) {
   TastyState.outOfRange = split.outOfRange;
   TastyState.degreeMap = buildTastyDegreeMap(midiNotes, recipe.v);
   TastyState.topNote = midiNotes.length > 0 ? Math.max.apply(null, midiNotes) : null;
+  TastyState.padPositions = padFindCompactPositions(midiNotes, ROWS, COLS, baseMidi(), ROW_INTERVAL);
 
   updateTastyUI();
   render();
@@ -1174,6 +1175,7 @@ function disableTasty() {
   TastyState.degreeMap = {};
   TastyState.topNote = null;
   TastyState.topFilter = null;
+  TastyState.padPositions = [];
 
   updateTastyUI();
   render();
@@ -1192,6 +1194,7 @@ function setTastyTopFilter(top) {
     TastyState.outOfRange = [];
     TastyState.degreeMap = {};
     TastyState.topNote = null;
+    TastyState.padPositions = [];
     updateTastyUI();
     render();
   }
@@ -1512,11 +1515,12 @@ function cycleStock(reverse) {
     }
   }
   StockState.degreeMap = degMap;
+  var allNotes = StockState.lhMidi.concat(StockState.rhMidi);
+  StockState.padPositions = padFindCompactPositions(allNotes, ROWS, COLS, baseMidi(), ROW_INTERVAL);
 
   updateStockUI();
   render();
   // Play all notes
-  var allNotes = StockState.lhMidi.concat(StockState.rhMidi);
   playMidiNotes(allNotes);
 }
 
@@ -1547,6 +1551,7 @@ function disableStock() {
   StockState.lhMidi = [];
   StockState.rhMidi = [];
   StockState.degreeMap = {};
+  StockState.padPositions = [];
   // Clean up Stock reflect
   if (typeof _stockReflectMode !== 'undefined' && _stockReflectMode) {
     _stockReflectMode = false;
@@ -1583,18 +1588,17 @@ function updateStockUI() {
   var nextBtn = document.getElementById('btn-stock-next');
 
   var reflectBtn = document.getElementById('stock-reflect-btn');
+  if (reflectBtn) reflectBtn.style.display = 'none';
   if (StockState.enabled && StockState.currentIndex >= 0) {
     if (counter) counter.textContent = (StockState.currentIndex + 1) + '/' + StockState.currentMatches.length;
     if (info) info.textContent = getStockInfoText();
     if (prevBtn) prevBtn.style.display = '';
     if (nextBtn) nextBtn.style.display = '';
-    if (reflectBtn) reflectBtn.style.display = 'inline-block';
   } else {
     if (counter) counter.textContent = '';
     if (info) info.textContent = '';
     if (prevBtn) prevBtn.style.display = 'none';
     if (nextBtn) nextBtn.style.display = 'none';
-    if (reflectBtn) reflectBtn.style.display = 'none';
   }
 }
 

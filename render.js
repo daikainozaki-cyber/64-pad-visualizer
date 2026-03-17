@@ -1497,6 +1497,11 @@ function updateInstrumentInput() {
   }
 
   const detectEl = document.getElementById('midi-detect');
+  // Hide chord detection during TASTY/Stock (voicing info is in the TASTY/Stock bar)
+  if (TastyState.enabled || StockState.enabled) {
+    detectEl.innerHTML = '';
+    return;
+  }
   const noteNames = notesForDetect.map(n => NOTE_NAMES_SHARP[n % 12]);
   const candidates = detectChord(notesForDetect);
   lastDetectedNotes = notesForDetect;

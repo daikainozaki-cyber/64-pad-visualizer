@@ -305,6 +305,7 @@ function renderPads(svg, state, grid) {
       }
       // TASTY mode: fade off pads; white border on all voicing pads, thicker on TOP
       const isTastyActive = tastyMidiSet && tastyMidiSet.size > 0;
+      if (row === 0 && col === 0) console.log('[TASTY-DBG] tastyMidiSet:', tastyMidiSet ? [...tastyMidiSet] : 'null', 'active:', isTastyActive);
       const isTastyDimmed = isTastyActive && fill === 'var(--pad-off)';
       if (isTastyActive) {
         rect.setAttribute('stroke', 'none');

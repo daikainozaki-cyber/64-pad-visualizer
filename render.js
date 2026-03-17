@@ -217,8 +217,9 @@ function renderPads(svg, state, grid) {
           _isTastyMiss = true;
         } else {
           // MIDI match but check if there's a lower-row occurrence (skip this one)
+          var _bm = baseMidi(), _ri = ROW_INTERVAL;
           for (var pr = 0; pr < row; pr++) {
-            var pc2 = midi - bm - pr * ri;
+            var pc2 = midi - _bm - pr * _ri;
             if (pc2 >= 0 && pc2 < cols) { _isTastyMiss = true; break; }
           }
         }
@@ -329,11 +330,10 @@ function renderPads(svg, state, grid) {
       if (isTastyHit) {
         // Check if this MIDI note has a LOWER row occurrence (skip this one if so)
         var isLowestRow = true;
+        var _bm2 = baseMidi(), _ri2 = ROW_INTERVAL;
         for (var pr = 0; pr < row; pr++) {
-          if (bm + pr * ri + (midi - bm - pr * ri) === midi) {
-            var pc2 = midi - bm - pr * ri;
-            if (pc2 >= 0 && pc2 < cols) { isLowestRow = false; break; }
-          }
+          var _c = midi - _bm2 - pr * _ri2;
+          if (_c >= 0 && _c < cols) { isLowestRow = false; break; }
         }
         if (isLowestRow) {
           rect.setAttribute('stroke', '#fff');

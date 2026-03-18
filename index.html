@@ -365,8 +365,8 @@ document.addEventListener('click', function(e) {
             <button class="pos-nav-btn" onclick="cycleGuitarPosition(-1)"><span class="kbd-hint">,</span>&#9664;</button>
             <span id="guitar-pos-label">A 1/1</span>
             <button class="pos-nav-btn" onclick="cycleGuitarPosition(1)">&#9654;<span class="kbd-hint">.</span></button>
+            <button id="voicing-reflect-btn" onclick="toggleVoicingReflect()" data-i18n="pos.to_pad" style="display:none;font-size:0.65rem;padding:4px 10px;background:var(--surface);color:var(--text);border:2px solid var(--accent, #f80);border-radius:6px;cursor:pointer;font-weight:700;white-space:nowrap;position:relative;"><span class="kbd-hint">V</span>To Pad</button>
           </div>
-          <button id="voicing-reflect-btn" onclick="toggleVoicingReflect()" data-i18n="pos.to_pad" style="display:none;font-size:0.65rem;padding:4px 10px;background:var(--surface);color:var(--text);border:2px solid var(--accent, #f80);border-radius:6px;cursor:pointer;font-weight:700;white-space:nowrap;position:relative;"><span class="kbd-hint">V</span>To Pad</button>
         </div>
         <div id="bass-wrap" style="display:none;align-items:center;gap:4px;">
           <svg id="bass-diagram" style="flex:1;"></svg>
@@ -470,8 +470,8 @@ document.addEventListener('click', function(e) {
       </div>
       <div class="voicing-bar">
         <button class="voicing-btn active" id="btn-inv0" onclick="setInversion(0)"><span class="kbd-hint">↓</span>Root</button>
-        <button class="voicing-btn" id="btn-inv1" onclick="setInversion(1)">1st</button>
-        <button class="voicing-btn" id="btn-inv2" onclick="setInversion(2)">2nd</button>
+        <button class="voicing-btn" id="btn-inv1" onclick="setInversion(1)"><span class="kbd-hint">↑↓</span>1st</button>
+        <button class="voicing-btn" id="btn-inv2" onclick="setInversion(2)"><span class="kbd-hint">↑↓</span>2nd</button>
         <button class="voicing-btn" id="btn-inv3" onclick="setInversion(3)"><span class="kbd-hint">↑</span>3rd</button>
       </div>
       <div class="voicing-bar" id="drop-bar">

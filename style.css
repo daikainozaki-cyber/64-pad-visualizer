@@ -77,8 +77,8 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   content: none;
 }
 @keyframes tut-btn-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(74,158,255,0.4); }
-  50% { box-shadow: 0 0 8px 2px rgba(74,158,255,0.6); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(160,160,160,0.4); }
+  50% { box-shadow: 0 0 8px 2px rgba(160,160,160,0.6); }
 }
 @keyframes tut-label-fade {
   0%, 100% { opacity: 0.7; }
@@ -621,8 +621,8 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 /* === Tutorial (first-time onboarding) === */
 .tutorial-card {
   padding: 10px 14px;
-  background: linear-gradient(135deg, rgba(74,158,255,0.12), rgba(74,158,255,0.04));
-  border: 1px solid rgba(74,158,255,0.3);
+  background: linear-gradient(135deg, rgba(160,160,160,0.12), rgba(160,160,160,0.04));
+  border: 1px solid rgba(160,160,160,0.3);
   border-radius: 8px;
   margin-bottom: 6px;
   animation: tip-in 0.3s ease-out;
@@ -694,7 +694,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   font-weight: 700;
   text-decoration: none;
 }
-.tutorial-guide-link:hover { background: rgba(74,158,255,0.1); }
+.tutorial-guide-link:hover { background: rgba(160,160,160,0.1); }
 .tutorial-highlight {
   outline: 2px solid var(--accent) !important;
   outline-offset: 2px;
@@ -702,8 +702,8 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   animation: tutorial-glow 1.5s ease-in-out infinite;
 }
 @keyframes tutorial-glow {
-  0%, 100% { box-shadow: 0 0 4px rgba(74,158,255,0.3); }
-  50% { box-shadow: 0 0 12px rgba(74,158,255,0.6); }
+  0%, 100% { box-shadow: 0 0 4px rgba(160,160,160,0.3); }
+  50% { box-shadow: 0 0 12px rgba(160,160,160,0.6); }
 }
 .tutorial-target {
   position: relative;
@@ -713,7 +713,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   content: '';
   position: absolute;
   inset: -2px;
-  border: 2px solid rgba(74,158,255,0.5);
+  border: 2px solid rgba(160,160,160,0.5);
   border-radius: 4px;
   pointer-events: none;
   animation: tutorial-target-border 1.5s ease-in-out infinite;
@@ -723,8 +723,8 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   50% { filter: brightness(1.2); }
 }
 @keyframes tutorial-target-border {
-  0%, 100% { border-color: rgba(74,158,255,0.3); box-shadow: 0 0 4px rgba(74,158,255,0.2); }
-  50% { border-color: rgba(74,158,255,0.8); box-shadow: 0 0 10px rgba(74,158,255,0.5); }
+  0%, 100% { border-color: rgba(160,160,160,0.3); box-shadow: 0 0 4px rgba(160,160,160,0.2); }
+  50% { border-color: rgba(160,160,160,0.8); box-shadow: 0 0 10px rgba(160,160,160,0.5); }
 }
 /* Tutorial media (screenshots/video in steps) */
 .tutorial-media { margin: 6px 0 4px; }
@@ -770,8 +770,8 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   align-items: flex-start;
   gap: 2px;
   padding: 8px 10px;
-  background: rgba(74,158,255,0.06);
-  border: 1px solid rgba(74,158,255,0.2);
+  background: rgba(160,160,160,0.06);
+  border: 1px solid rgba(160,160,160,0.2);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
@@ -779,11 +779,11 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   color: var(--text);
 }
 .tut-card:hover {
-  background: rgba(74,158,255,0.14);
+  background: rgba(160,160,160,0.14);
   border-color: var(--accent);
 }
 .tut-card-done {
-  border-color: rgba(74,158,255,0.1);
+  border-color: rgba(160,160,160,0.1);
   opacity: 0.7;
 }
 .tut-card-done:hover { opacity: 1; }
@@ -823,8 +823,8 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  background: rgba(74,158,255,0.10);
-  border: 1px solid rgba(74,158,255,0.25);
+  background: rgba(160,160,160,0.10);
+  border: 1px solid rgba(160,160,160,0.25);
   border-radius: 6px;
   margin-bottom: 4px;
   animation: tip-in 0.3s ease-out;
@@ -979,7 +979,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 }
 .slot-btn.selected {
   border-color: var(--accent);
-  background: rgba(74,158,255,0.15);
+  background: rgba(160,160,160,0.15);
   color: var(--text);
 }
 .slot-btn.capture-target {
@@ -1078,7 +1078,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.bank-label:hover { background: rgba(74,158,255,0.1); }
+.bank-label:hover { background: rgba(160,160,160,0.1); }
 .bank-popup-item {
   display: block; width: 100%;
   font-size: 0.65rem; padding: 4px 10px;
@@ -1086,7 +1086,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   border: none; border-radius: 3px;
   cursor: pointer; text-align: left;
 }
-.bank-popup-item:hover { background: rgba(74,158,255,0.15); }
+.bank-popup-item:hover { background: rgba(160,160,160,0.15); }
 .bank-popup-danger { color: #e57373; }
 .bank-popup-danger:hover { background: rgba(229,115,115,0.15); }
 
@@ -1149,8 +1149,8 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   cursor: pointer;
   border-radius: 3px;
 }
-.ps-row:hover { background: rgba(74,158,255,0.1); }
-.ps-row.ps-selected { background: rgba(74,158,255,0.3); border-left: 3px solid var(--accent); padding-left: 3px; }
+.ps-row:hover { background: rgba(160,160,160,0.1); }
+.ps-row.ps-selected { background: rgba(160,160,160,0.3); border-left: 3px solid var(--accent); padding-left: 3px; }
 .ps-row.ps-selected .ps-scale { color: var(--accent); font-weight: 700; }
 .ps-row.ps-selected .ps-avail { opacity: 1; font-weight: 700; }
 .ps-row.ps-partial { opacity: 0.65; font-style: italic; }
@@ -1159,7 +1159,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .ps-row.ps-avoid { opacity: 0.6; }
 .ps-row.ps-avoid .ps-scale::after { content: ' avoid'; color: #ff5722; font-size: 0.7rem; font-weight: 700; margin-left: 4px; }
 .ps-cat { width: 22px; font-weight: 700; font-size: 0.85rem; }
-.ps-cat-dia { color: #4a9eff; }
+.ps-cat-dia { color: var(--accent); }
 .ps-cat-hm { color: #ff7043; }
 .ps-cat-mm { color: #66bb6a; }
 .ps-scale { flex: 1; font-weight: 600; font-size: 0.8rem; }
@@ -1178,7 +1178,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   color: var(--accent); font-weight: 700; font-size: 1.1rem;
   transition: background 0.1s, transform 0.1s; user-select: none;
 }
-.detect-candidate-best:hover { background: rgba(74,158,255,0.15); transform: scale(1.05); }
+.detect-candidate-best:hover { background: rgba(160,160,160,0.15); transform: scale(1.05); }
 .detect-candidate {
   display: inline-block; cursor: pointer;
   font-size: 0.6rem; padding: 1px 5px; border-radius: 3px;
@@ -1186,7 +1186,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   border: 1px solid transparent;
   transition: background 0.1s, border-color 0.1s, color 0.1s; user-select: none;
 }
-.detect-candidate:hover { background: rgba(74,158,255,0.15); border-color: var(--accent); color: var(--text); }
+.detect-candidate:hover { background: rgba(160,160,160,0.15); border-color: var(--accent); color: var(--text); }
 @keyframes detect-flash {
   0%   { filter: brightness(1); transform: scale(1); }
   30%  { filter: brightness(2.5) saturate(1.5); transform: scale(1.15); }
@@ -1194,9 +1194,9 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 }
 .detect-flashing { animation: detect-flash 0.3s ease-out forwards; pointer-events: none; }
 @keyframes quality-pulse {
-  0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(74,158,255,0.7); }
-  50%  { transform: scale(1.08); box-shadow: 0 0 8px 4px rgba(74,158,255,0.4); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74,158,255,0); }
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(160,160,160,0.7); }
+  50%  { transform: scale(1.08); box-shadow: 0 0 8px 4px rgba(160,160,160,0.4); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(160,160,160,0); }
 }
 .quality-btn.transfer-flash { animation: quality-pulse 0.4s ease-out; }
 

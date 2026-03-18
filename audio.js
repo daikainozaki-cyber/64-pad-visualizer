@@ -467,7 +467,7 @@ function _showFirstTimeHint() {
   var hint = document.createElement('div');
   hint.id = 'sound-first-hint';
   hint.textContent = typeof t === 'function' ? t('ui.sound_hint') : 'Select a preset to enable sound';
-  hint.style.cssText = 'font-size:0.65rem;color:#4a9eff;text-align:center;padding:2px 0;animation:hint-pulse 2s ease-in-out infinite';
+  hint.style.cssText = 'font-size:0.65rem;color:#a0a0a0;text-align:center;padding:2px 0;animation:hint-pulse 2s ease-in-out infinite';
   header.parentNode.insertBefore(hint, header);
   // Also show the fullscreen audio overlay for first-time users
   _showAudioOverlay();

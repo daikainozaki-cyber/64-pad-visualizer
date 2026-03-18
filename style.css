@@ -242,6 +242,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; cursor: pointer;
 }
 .chord-key-change:hover { border-color: var(--accent); }
+.chord-key-hint { font-size: 0.7rem; color: var(--text-muted); margin-left: 6px; }
 .chord-key-picker {
   display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px;
   background: var(--panel-bg); border: 1px solid var(--border); border-radius: 6px;
@@ -419,21 +420,24 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
 }
 .quality-btn {
-  min-height: 50px;
+  min-height: 30px;
   background: var(--surface); color: var(--text); border: 1px solid var(--border);
-  border-radius: 6px; font-size: 1.1rem; font-weight: 600; cursor: pointer;
+  border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
 .quality-btn:hover { background: #3a3a3a; border-color: var(--accent); }
 .quality-btn.selected { background: var(--accent); color: #000; }
 .quality-btn.empty { visibility: hidden; }
 
-/* === Tension Grid (Step 3) === */
-.tension-grid {
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
-  grid-auto-rows: min-content;
+/* === Quality/Tension shared container (match Quality grid height) === */
+.builder-step-container {
+  min-height: 151px;
 }
-.tension-grid.wide { grid-template-columns: repeat(8, 1fr); }
+
+/* === Tension Grid (Flat flow layout) === */
+.tension-grid {
+  display: flex; flex-wrap: wrap; gap: 3px;
+}
 .tension-btn {
   min-height: 34px; padding: 2px 1px;
   background: var(--surface); color: var(--text); border: 1px solid var(--border);
@@ -443,8 +447,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 }
 .tension-btn:hover { background: #3a3a3a; border-color: var(--accent); }
 .tension-btn.selected { background: var(--pad-chord); color: #000; border-color: var(--pad-chord); }
-.tension-btn.empty { visibility: hidden; min-height: 0; height: 0; padding: 0; border-width: 0; font-size: 0; line-height: 0; }
-.tension-btn.quality-hidden { visibility: hidden; pointer-events: none; }
+.tension-btn.quality-hidden { display: none; }
 .tension-btn.tension-uncommon { opacity: 0.35; }
 .voicing-bar.hidden { display: none; }
 .voicing-btn.hidden { display: none; }
@@ -1392,7 +1395,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   .key-btn { width: 28px; height: 24px; font-size: 0.6rem; }
   .diatonic-btn { padding: 4px 1px; font-size: 0.6rem; }
   .voicing-btn { padding: 3px 2px; font-size: 0.6rem; }
-  .quality-btn { min-height: 38px; font-size: 0.85rem; }
+  .quality-btn { min-height: 32px; font-size: 0.85rem; }
   .tension-btn { min-height: 28px; font-size: 0.6rem; }
   .mode-btn { padding: 5px 0; font-size: 0.75rem; }
   .chord-name { font-size: 1.4rem; }

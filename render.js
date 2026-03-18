@@ -1774,7 +1774,7 @@ function renderParentScales() {
   }
 
   const show = psRoot !== null && qualityIntervals !== null;
-  toggleWrap.style.display = show ? '' : 'none';
+  toggleWrap.style.visibility = show ? '' : 'hidden';
 
   if (!show) {
     panel.style.display = 'none';

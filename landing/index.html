@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>64 Pad Explorer — Free Music Theory Tool for 64-Pad Controllers</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+<meta name="description" content="Explore scales, chords, voicings, and MIDI on a 64-pad grid. Free, browser-based, no account needed. Supports Ableton Push, Launchpad Pro, and all 64-pad controllers. 9 languages.">
+<meta property="og:title" content="64 Pad Explorer — Free Music Theory Tool for 64-Pad Controllers">
+<meta property="og:description" content="Scales, chords, voicings, and MIDI visualized on a 64-pad grid. Free, browser-based, 9 languages.">
+<meta property="og:image" content="https://murinaikurashi.com/apps/64-pad/landing/img/og-landing.png">
+<meta property="og:url" content="https://murinaikurashi.com/apps/64-pad/landing/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+
+<!-- hreflang -->
+<link rel="alternate" hreflang="en" href="https://murinaikurashi.com/apps/64-pad/landing/">
+<link rel="alternate" hreflang="ja" href="https://murinaikurashi.com/apps/64-pad/landing/">
+<link rel="alternate" hreflang="zh" href="https://murinaikurashi.com/apps/64-pad/landing/">
+<link rel="alternate" hreflang="es" href="https://murinaikurashi.com/apps/64-pad/landing/">
+<link rel="alternate" hreflang="fr" href="https://murinaikurashi.com/apps/64-pad/landing/">
+<link rel="alternate" hreflang="pt" href="https://murinaikurashi.com/apps/64-pad/landing/">
+<link rel="alternate" hreflang="de" href="https://murinaikurashi.com/apps/64-pad/landing/">
+<link rel="alternate" hreflang="ko" href="https://murinaikurashi.com/apps/64-pad/landing/">
+<link rel="alternate" hreflang="it" href="https://murinaikurashi.com/apps/64-pad/landing/">
+<link rel="alternate" hreflang="x-default" href="https://murinaikurashi.com/apps/64-pad/landing/">
+
+<!-- JSON-LD -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "64 Pad Explorer",
+  "applicationCategory": "MultimediaApplication",
+  "operatingSystem": "Web Browser",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "url": "https://murinaikurashi.com/apps/64-pad/",
+  "screenshot": [
+    "https://murinaikurashi.com/apps/64-pad/img/screenshot-scale.png",
+    "https://murinaikurashi.com/apps/64-pad/img/screenshot-chord.png",
+    "https://murinaikurashi.com/apps/64-pad/img/screenshot-plain.png",
+    "https://murinaikurashi.com/apps/64-pad/img/screenshot-perform.png"
+  ],
+  "featureList": [
+    "31 scales x 12 keys visualization",
+    "41 chord qualities with tensions",
+    "Drop 2, Drop 3, Shell voicing",
+    "Real-time chord detection",
+    "Guitar fretboard input",
+    "MIDI I/O with WebMIDI",
+    "Built-in organ and Rhodes piano sounds",
+    "Perform mode with 16 memory slots",
+    "MIDI file export",
+    "9 language support",
+    "Color-vision accessible (Okabe-Ito palette)",
+    "Available Scale reverse lookup",
+    "Push 3 velocity sensitivity",
+    "Completely free, no account required"
+  ],
+  "description": "A free browser-based music theory tool for 64-pad controllers. Visualize scales, chords, voicings, and MIDI on a 64-pad grid.",
+  "author": {
+    "@type": "Person",
+    "name": "urinami",
+    "url": "https://murinaikurashi.com/"
+  }
+}
+</script>
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZWTBLDWP7P"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-ZWTBLDWP7P');
+</script>
+
+<link rel="stylesheet" href="../style.css?v=3.7.0">
+<link rel="stylesheet" href="landing.css?v=1.0.0">
+</head>
+<body>
+<div class="landing-container">
+
+<!-- Header -->
+<header class="landing-header">
+  <select id="lang-select" onchange="I18N.setLang(this.value)">
+    <option value="en">EN</option>
+    <option value="ja">JA</option>
+    <option value="zh">ZH</option>
+    <option value="es">ES</option>
+    <option value="fr">FR</option>
+    <option value="pt">PT</option>
+    <option value="de">DE</option>
+    <option value="ko">KO</option>
+    <option value="it">IT</option>
+  </select>
+</header>
+
+<!-- 1. Hero -->
+<section class="hero">
+  <div class="hero-badge" data-i18n="landing.hero_badge">Free</div>
+  <h1 data-i18n="landing.hero_headline">See Music Theory on Your <span>Pads</span></h1>
+  <p class="hero-sub" data-i18n="landing.hero_sub">Scales, chords, voicings, and MIDI — visualized on a 64-pad grid. Right in your browser.</p>
+  <a href="../" class="hero-cta" data-i18n="landing.hero_cta" data-cta="hero">Try It Free</a>
+  <div class="hero-trust">
+    <span data-i18n="landing.trust_free">Free</span>
+    <span data-i18n="landing.trust_no_account">No Account</span>
+    <span data-i18n="landing.trust_browser">Browser Only</span>
+    <span data-i18n="landing.trust_languages">9 Languages</span>
+  </div>
+  <div class="hero-grid" id="hero-pad-grid"></div>
+</section>
+
+<!-- 2. Persona Tabs -->
+<section class="landing-section">
+  <h2 data-i18n="landing.persona_title">Built for How You Make Music</h2>
+
+  <!-- Desktop tabs -->
+  <div class="persona-tabs">
+    <button class="persona-tab active" data-persona="beatmaker" data-i18n="landing.tab_beatmaker">Beatmaker</button>
+    <button class="persona-tab" data-persona="guitarist" data-i18n="landing.tab_guitarist">Guitarist</button>
+    <button class="persona-tab" data-persona="push" data-i18n="landing.tab_push_user">Push User</button>
+  </div>
+
+  <!-- Beatmaker -->
+  <div class="persona-panel active" id="persona-beatmaker">
+    <p class="pain" data-i18n="landing.persona_beatmaker_pain">"I can tap rhythms but I can't play chords on pads."</p>
+    <p class="solution" data-i18n="landing.persona_beatmaker_solution">Build chords in 3 steps. Save to memory slots. Play them back in real time. Export to your DAW as MIDI.</p>
+    <ul class="features-list">
+      <li data-i18n="landing.persona_beatmaker_feat1">Memory slots — save and recall chords instantly</li>
+      <li data-i18n="landing.persona_beatmaker_feat2">Chord detection — tap pads and see what chord you're playing</li>
+      <li data-i18n="landing.persona_beatmaker_feat3">41 chord qualities with tensions, omit, slash chords</li>
+      <li data-i18n="landing.persona_beatmaker_feat4">Perform mode — play chord progressions live from 16 pads</li>
+    </ul>
+  </div>
+
+  <!-- Guitarist -->
+  <div class="persona-panel" id="persona-guitarist">
+    <p class="pain" data-i18n="landing.persona_guitarist_pain">"My guitar voicings don't translate to pads."</p>
+    <p class="solution" data-i18n="landing.persona_guitarist_solution">Input chords on the fretboard. See them mapped to the 64-pad grid. Discover new voicings through Drop 2, Drop 3, and Shell voicings.</p>
+    <ul class="features-list">
+      <li data-i18n="landing.persona_guitarist_feat1">Guitar fretboard input — click strings to enter chords</li>
+      <li data-i18n="landing.persona_guitarist_feat2">Drop 2 / Drop 3 / Shell voicing — familiar territory for guitarists</li>
+      <li data-i18n="landing.persona_guitarist_feat3">Automatic chord detection from fretboard input</li>
+      <li data-i18n="landing.persona_guitarist_feat4">Available Scale — find which scales fit your chord</li>
+    </ul>
+  </div>
+
+  <!-- Push User -->
+  <div class="persona-panel" id="persona-push">
+    <p class="pain" data-i18n="landing.persona_push_user_pain">"Push only works inside Ableton Live."</p>
+    <p class="solution" data-i18n="landing.persona_push_user_solution">Connect your Push via MIDI and see scales, chords, and theory directly on the 64-pad grid. Works with any DAW. Push Universal Translator coming soon.</p>
+    <ul class="features-list">
+      <li data-i18n="landing.persona_push_user_feat1">MIDI I/O — connect any 64-pad controller</li>
+      <li data-i18n="landing.persona_push_user_feat2">Push serial MIDI output supported</li>
+      <li data-i18n="landing.persona_push_user_feat3">Chromatic fourths layout (same as Push)</li>
+      <li data-i18n="landing.persona_push_user_feat4">Velocity sensitivity with Push 3-style curve controls</li>
+    </ul>
+  </div>
+
+  <!-- Mobile accordion -->
+  <div class="persona-accordion">
+    <button class="accordion-trigger active" data-persona="beatmaker" data-i18n="landing.tab_beatmaker">Beatmaker</button>
+    <div class="accordion-content active" id="accordion-beatmaker">
+      <p class="pain" data-i18n="landing.persona_beatmaker_pain">"I can tap rhythms but I can't play chords on pads."</p>
+      <p class="solution" data-i18n="landing.persona_beatmaker_solution">Build chords in 3 steps. Save to memory slots. Play them back in real time. Export to your DAW as MIDI.</p>
+      <ul class="features-list">
+        <li data-i18n="landing.persona_beatmaker_feat1">Memory slots — save and recall chords instantly</li>
+        <li data-i18n="landing.persona_beatmaker_feat2">Chord detection — tap pads and see what chord you're playing</li>
+        <li data-i18n="landing.persona_beatmaker_feat3">41 chord qualities with tensions, omit, slash chords</li>
+        <li data-i18n="landing.persona_beatmaker_feat4">Perform mode — play chord progressions live from 16 pads</li>
+      </ul>
+    </div>
+
+    <button class="accordion-trigger" data-persona="guitarist" data-i18n="landing.tab_guitarist">Guitarist</button>
+    <div class="accordion-content" id="accordion-guitarist">
+      <p class="pain" data-i18n="landing.persona_guitarist_pain">"My guitar voicings don't translate to pads."</p>
+      <p class="solution" data-i18n="landing.persona_guitarist_solution">Input chords on the fretboard. See them mapped to the 64-pad grid. Discover new voicings through Drop 2, Drop 3, and Shell voicings.</p>
+      <ul class="features-list">
+        <li data-i18n="landing.persona_guitarist_feat1">Guitar fretboard input — click strings to enter chords</li>
+        <li data-i18n="landing.persona_guitarist_feat2">Drop 2 / Drop 3 / Shell voicing — familiar territory for guitarists</li>
+        <li data-i18n="landing.persona_guitarist_feat3">Automatic chord detection from fretboard input</li>
+        <li data-i18n="landing.persona_guitarist_feat4">Available Scale — find which scales fit your chord</li>
+      </ul>
+    </div>
+
+    <button class="accordion-trigger" data-persona="push" data-i18n="landing.tab_push_user">Push User</button>
+    <div class="accordion-content" id="accordion-push">
+      <p class="pain" data-i18n="landing.persona_push_user_pain">"Push only works inside Ableton Live."</p>
+      <p class="solution" data-i18n="landing.persona_push_user_solution">Connect your Push via MIDI and see scales, chords, and theory directly on the 64-pad grid. Works with any DAW. Push Universal Translator coming soon.</p>
+      <ul class="features-list">
+        <li data-i18n="landing.persona_push_user_feat1">MIDI I/O — connect any 64-pad controller</li>
+        <li data-i18n="landing.persona_push_user_feat2">Push serial MIDI output supported</li>
+        <li data-i18n="landing.persona_push_user_feat3">Chromatic fourths layout (same as Push)</li>
+        <li data-i18n="landing.persona_push_user_feat4">Velocity sensitivity with Push 3-style curve controls</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 3. Feature Highlights -->
+<section class="landing-section">
+  <h2 data-i18n="landing.features_title">Feature Highlights</h2>
+  <div class="feature-cards">
+    <div class="feature-card">
+      <h3 data-i18n="landing.card_theory_title">Theory Engine</h3>
+      <p data-i18n="landing.card_theory_desc">31 scales x 12 keys. Diatonic chords. Available Scale reverse lookup. Pivot chord analysis for modulation.</p>
+    </div>
+    <div class="feature-card">
+      <h3 data-i18n="landing.card_voicing_title">Voicing Tools</h3>
+      <p data-i18n="landing.card_voicing_desc">Drop 2 / Drop 3, Shell voicing (1-3-7, 1-7-3), inversions, Omit 5, Rootless. Voicing box with multiple fingering options.</p>
+    </div>
+    <div class="feature-card">
+      <h3 data-i18n="landing.card_sound_title">Sound & Performance</h3>
+      <p data-i18n="landing.card_sound_desc">Built-in organ and electric piano (Rhodes sampler). Effects. Perform mode for live chord progressions. No external sound source needed.</p>
+    </div>
+    <div class="feature-card">
+      <h3 data-i18n="landing.card_midi_title">MIDI & Integration</h3>
+      <p data-i18n="landing.card_midi_desc">WebMIDI input/output. MIDI file export. Push 3 octave sync. Velocity sensitivity controls. Works with any MIDI pad controller.</p>
+    </div>
+    <div class="feature-card">
+      <h3 data-i18n="landing.card_access_title">Accessibility & Privacy</h3>
+      <p data-i18n="landing.card_access_desc">Okabe-Ito color palette (color-vision accessible). All data stays in your browser (localStorage). No tracking, no cloud.</p>
+    </div>
+    <div class="feature-card">
+      <h3 data-i18n="landing.card_free_title">Completely Free</h3>
+      <p data-i18n="landing.card_free_desc">All features. No account. No trial period. No ads. No data collection. Open your browser and start exploring.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Screenshots / Demo -->
+<section class="landing-section">
+  <h2 data-i18n="landing.demo_title">See It in Action</h2>
+  <div class="demo-grid">
+    <div class="demo-item">
+      <img src="../img/screenshot-scale.png" alt="Scale Mode" loading="lazy">
+      <p class="caption" data-i18n="landing.demo_scale_caption">Scale Mode — C Major on 64-pad grid</p>
+    </div>
+    <div class="demo-item">
+      <img src="../img/screenshot-chord.png" alt="Chord Mode" loading="lazy">
+      <p class="caption" data-i18n="landing.demo_chord_caption">Chord Mode — Dm7 with voicing options</p>
+    </div>
+    <div class="demo-item">
+      <img src="../img/screenshot-plain.png" alt="Input Mode" loading="lazy">
+      <p class="caption" data-i18n="landing.demo_input_caption">Input Mode — real-time chord detection</p>
+    </div>
+    <div class="demo-item">
+      <img src="../img/screenshot-perform.png" alt="Perform Mode" loading="lazy">
+      <p class="caption" data-i18n="landing.demo_perform_caption">Perform Mode — play chord progressions live</p>
+    </div>
+  </div>
+  <div class="video-wrap">
+    <iframe src="https://www.youtube.com/embed/vuvZCZj0ZYg" title="64 Pad Explorer Overview" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+  </div>
+</section>
+
+<!-- 5. What Makes This Different -->
+<section class="landing-section">
+  <h2 data-i18n="landing.diff_title">What Makes This Different</h2>
+  <ul class="diff-list">
+    <li>
+      <strong data-i18n="landing.diff_only_title">The only browser-based 64-pad theory tool</strong>
+      <span data-i18n="landing.diff_only_desc">No other tool combines music theory visualization, chord detection, and sound on a 64-pad grid in the browser. Zero direct competitors.</span>
+    </li>
+    <li>
+      <strong data-i18n="landing.diff_rhodes_title">Free Rhodes velocity layers</strong>
+      <span data-i18n="landing.diff_rhodes_desc">Real Rhodes Mark I samples with velocity layers. The only browser app that offers this for free.</span>
+    </li>
+    <li>
+      <strong data-i18n="landing.diff_push_title">Push Universal Translator (coming soon)</strong>
+      <span data-i18n="landing.diff_push_desc">A world-first MIDI Effect plugin that translates Push's serial protocol to standard fourths layout — in any DAW, not just Ableton Live.</span>
+    </li>
+    <li>
+      <strong data-i18n="landing.diff_theory_title">Built by a musician, not a programmer</strong>
+      <span data-i18n="landing.diff_theory_desc">The tension hierarchy, voicing logic, and Available Scale sorting come from a professional jazz/funk guitarist who has taught guitar, written 1000+ Ableton articles, and performs with these voicings daily.</span>
+    </li>
+  </ul>
+</section>
+
+<!-- 6. CTA + Footer -->
+<section class="cta-bottom">
+  <h2 data-i18n="landing.cta_bottom_title">Ready to Explore?</h2>
+  <a href="../" class="hero-cta" data-i18n="landing.cta_primary" data-cta="footer">Try It Free</a>
+  <div class="cta-links">
+    <a href="../guide.html" class="cta-secondary" data-i18n="landing.cta_guide" data-cta="guide">Read the Guide</a>
+    <a href="#" class="cta-tertiary" data-i18n="landing.cta_desktop">Desktop Version Coming Soon</a>
+  </div>
+</section>
+
+<footer class="landing-footer">
+  <div class="footer-links">
+    <a href="../" data-i18n="landing.hero_cta">Try It Free</a>
+    <a href="../guide.html" data-i18n="landing.cta_guide">Read the Guide</a>
+    <a href="https://note.com/urinami/membership" data-i18n="landing.footer_hps">HPS (Hardcore Pad Style)</a>
+    <a href="https://murinaikurashi.com/" data-i18n="landing.footer_blog">Blog</a>
+  </div>
+  <p>64 Pad Explorer — <a href="https://note.com/urinami/membership">HPS (Hardcore Pad Style)</a></p>
+</footer>
+
+</div>
+
+<!-- i18n engine + app lang files (for shared translations) + landing lang files -->
+<script src="../i18n.js?v=3.7.0"></script>
+<script src="../lang-en.js?v=3.7.0"></script>
+<script src="../lang-ja.js?v=3.7.0"></script>
+<script src="../lang-zh.js?v=3.7.0"></script>
+<script src="../lang-es.js?v=3.7.0"></script>
+<script src="../lang-fr.js?v=3.7.0"></script>
+<script src="../lang-pt.js?v=3.7.0"></script>
+<script src="../lang-de.js?v=3.7.0"></script>
+<script src="../lang-ko.js?v=3.7.0"></script>
+<script src="../lang-it.js?v=3.7.0"></script>
+<script src="lang-landing-en.js?v=1.0.0"></script>
+<script src="lang-landing-ja.js?v=1.0.0"></script>
+<script src="lang-landing-zh.js?v=1.0.0"></script>
+<script src="lang-landing-es.js?v=1.0.0"></script>
+<script src="lang-landing-fr.js?v=1.0.0"></script>
+<script src="lang-landing-pt.js?v=1.0.0"></script>
+<script src="lang-landing-de.js?v=1.0.0"></script>
+<script src="lang-landing-ko.js?v=1.0.0"></script>
+<script src="lang-landing-it.js?v=1.0.0"></script>
+<script src="landing.js?v=1.0.0"></script>
+</body>
+</html>

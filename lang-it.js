@@ -115,6 +115,7 @@ I18N.addLang('it', {
     tap_pads: 'Tocca un pad per suonare!',
     load_vst: 'Carica plugin VST/AU...',
     affiliate_label: '',
+    staff: 'Spartito',
     circle: 'Circolo',
     help: 'Guida',
     oct_down: 'Abbassa di un\'ottava',

@@ -115,6 +115,7 @@ I18N.addLang('de', {
     tap_pads: 'Tippe auf ein Pad zum Spielen!',
     load_vst: 'VST/AU-Plugin laden...',
     affiliate_label: '',
+    staff: 'Noten',
     circle: 'Quintenzirkel',
     help: 'Hilfe',
     oct_down: 'Oktave nach unten',

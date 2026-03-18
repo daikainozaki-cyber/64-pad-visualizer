@@ -118,6 +118,7 @@ I18N.addLang('ja', {
     input_keys_disabled: 'Inputモードではキー指定は不要です',
     load_vst: 'VST/AU プラグインを読み込む...',
     affiliate_label: '徳を積みたい方はこちら…',
+    staff: '譜面',
     circle: '五度圏',
     help: 'ヘルプ',
     oct_down: 'オクターブを下げる',

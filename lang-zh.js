@@ -115,6 +115,7 @@ I18N.addLang('zh', {
     tap_pads: '轻触任意打击垫即可演奏！',
     load_vst: '加载 VST/AU 插件...',
     affiliate_label: '',
+    staff: '乐谱',
     circle: '五度圈',
     help: '\u5E2E\u52A9',
     oct_down: '\u964D\u4F4E\u516B\u5EA6',

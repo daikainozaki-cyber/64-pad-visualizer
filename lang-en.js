@@ -118,6 +118,7 @@ I18N.addLang('en', {
     input_keys_disabled: 'Key selection is not used in Input mode',
     load_vst: 'Load VST/AU Plugin...',
     affiliate_label: '',
+    staff: 'Staff',
     circle: 'Circle',
     help: 'Help',
     oct_down: 'Shift octave down',

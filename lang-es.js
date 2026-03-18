@@ -115,6 +115,7 @@ I18N.addLang('es', {
     tap_pads: '¡Toca cualquier pad para tocar!',
     load_vst: 'Cargar plugin VST/AU...',
     affiliate_label: '',
+    staff: 'Partitura',
     circle: 'Círculo',
     help: 'Ayuda',
     oct_down: 'Bajar octava',

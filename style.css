@@ -20,7 +20,7 @@
   --text-muted: #888888;
   --accent: #a0a0a0;
   --border: #404040;
-  --step-green: #7cb342;
+  --step-green: #4a4a4a;
   --font-mono: 'M PLUS 1 Code', 'Courier New', monospace;
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
@@ -242,6 +242,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; cursor: pointer;
 }
 .chord-key-change:hover { border-color: var(--accent); }
+.chord-key-hint { font-size: 0.7rem; color: var(--text-muted); margin-left: 6px; }
 .chord-key-picker {
   display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px;
   background: var(--panel-bg); border: 1px solid var(--border); border-radius: 6px;
@@ -363,7 +364,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .builder-nav button:disabled { opacity: 0.3; cursor: default; }
 
 .step-label {
-  background: var(--step-green); color: #000; font-weight: 700; font-size: 0.8rem;
+  background: var(--step-green); color: var(--text); font-weight: 700; font-size: 0.8rem;
   text-align: center; padding: 4px 0; border-radius: 4px; margin-bottom: 8px;
 }
 /* step-container removed: Root+Quality always visible, Tension toggles */
@@ -397,18 +398,18 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .piano-black-key.selected { background: #4466aa; }
 
 .builder-section-label {
-  background: var(--step-green); color: #000; font-weight: 700; font-size: 0.7rem;
+  background: var(--step-green); color: var(--text); font-weight: 700; font-size: 0.7rem;
   text-align: center; padding: 2px 0; border-radius: 3px; margin: 2px 0;
 }
 
 /* === Root Grid (Chord Builder) === */
 .root-grid {
-  display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 6px;
+  display: flex; flex-wrap: nowrap; gap: 2px; margin-bottom: 4px;
 }
 .root-btn {
-  flex: 1 1 calc(16.66% - 3px); min-width: 0;
-  height: 32px; background: var(--surface); color: var(--text); border: 1px solid var(--border);
-  border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+  flex: 1 1 0; min-width: 0;
+  height: 28px; background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; font-size: 0.7rem; font-weight: 600; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
 .root-btn:hover { background: #3a3a3a; border-color: var(--accent); }
@@ -419,21 +420,24 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
 }
 .quality-btn {
-  min-height: 50px;
+  min-height: 30px;
   background: var(--surface); color: var(--text); border: 1px solid var(--border);
-  border-radius: 6px; font-size: 1.1rem; font-weight: 600; cursor: pointer;
+  border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
 .quality-btn:hover { background: #3a3a3a; border-color: var(--accent); }
 .quality-btn.selected { background: var(--accent); color: #000; }
 .quality-btn.empty { visibility: hidden; }
 
-/* === Tension Grid (Step 3) === */
-.tension-grid {
-  display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
-  grid-auto-rows: min-content;
+/* === Quality/Tension shared container (match Quality grid height) === */
+.builder-step-container {
+  min-height: 151px;
 }
-.tension-grid.wide { grid-template-columns: repeat(8, 1fr); }
+
+/* === Tension Grid (Flat flow layout) === */
+.tension-grid {
+  display: flex; flex-wrap: wrap; gap: 3px;
+}
 .tension-btn {
   min-height: 34px; padding: 2px 1px;
   background: var(--surface); color: var(--text); border: 1px solid var(--border);
@@ -443,8 +447,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 }
 .tension-btn:hover { background: #3a3a3a; border-color: var(--accent); }
 .tension-btn.selected { background: var(--pad-chord); color: #000; border-color: var(--pad-chord); }
-.tension-btn.empty { visibility: hidden; min-height: 0; height: 0; padding: 0; border-width: 0; font-size: 0; line-height: 0; }
-.tension-btn.quality-hidden { visibility: hidden; pointer-events: none; }
+.tension-btn.quality-hidden { display: none; }
 .tension-btn.tension-uncommon { opacity: 0.35; }
 .voicing-bar.hidden { display: none; }
 .voicing-btn.hidden { display: none; }
@@ -467,11 +470,11 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 /* === TASTY Mode === */
 #tasty-bar { align-items: center; }
 #btn-tasty { flex: 0 0 auto; min-width: 70px; }
-#btn-tasty.active { background: #E69F00; color: #000; border-color: #E69F00; box-shadow: 0 0 6px rgba(230,159,0,0.5); }
-#btn-tasty.active .kbd-hint { color: rgba(0,0,0,0.5); }
-#btn-stock.active { background: #2a9d8f; color: #fff; border-color: #2a9d8f; box-shadow: 0 0 6px rgba(42,157,143,0.5); }
-#btn-stock.active .kbd-hint { color: rgba(255,255,255,0.6); }
-.tasty-counter { font-size: 0.7rem; font-weight: 700; color: #E69F00; white-space: nowrap; min-width: 30px; }
+#btn-tasty.active { background: #666; color: #fff; border-color: #888; box-shadow: 0 0 4px rgba(255,255,255,0.15); }
+#btn-tasty.active .kbd-hint { color: rgba(255,255,255,0.5); }
+#btn-stock.active { background: #666; color: #fff; border-color: #888; box-shadow: 0 0 4px rgba(255,255,255,0.15); }
+#btn-stock.active .kbd-hint { color: rgba(255,255,255,0.5); }
+.tasty-counter { font-size: 0.7rem; font-weight: 700; color: var(--text); white-space: nowrap; min-width: 30px; }
 .tasty-nav-btn { background: none; border: 1px solid var(--text-muted); color: var(--text-muted); border-radius: 4px; padding: 1px 6px; cursor: pointer; font-size: 0.65rem; line-height: 1; }
 .tasty-nav-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
 .tasty-info { font-size: 0.65rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
@@ -492,7 +495,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .tasty-degree--chord { background: var(--pad-chord); color: #000; }
 .tasty-degree--tension { background: var(--pad-tension); color: #fff; }
 .tasty-degree--top { border-color: #fff; box-shadow: 0 0 6px rgba(255,255,255,0.5); position: relative; }
-.tasty-degree-top { font-size: 0.6rem; color: #E69F00; font-weight: 700; letter-spacing: 0.5px; }
+.tasty-degree-top { font-size: 0.6rem; color: var(--text); font-weight: 700; letter-spacing: 0.5px; }
 .tasty-degree--out { opacity: 0.4; border-style: dashed; }
 @media (max-width: 767px) {
   .tasty-degree { font-size: 0.75rem; min-width: 22px; padding: 1px 4px; }
@@ -1392,7 +1395,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   .key-btn { width: 28px; height: 24px; font-size: 0.6rem; }
   .diatonic-btn { padding: 4px 1px; font-size: 0.6rem; }
   .voicing-btn { padding: 3px 2px; font-size: 0.6rem; }
-  .quality-btn { min-height: 38px; font-size: 0.85rem; }
+  .quality-btn { min-height: 32px; font-size: 0.85rem; }
   .tension-btn { min-height: 28px; font-size: 0.6rem; }
   .mode-btn { padding: 5px 0; font-size: 0.75rem; }
   .chord-name { font-size: 1.4rem; }

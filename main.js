@@ -74,6 +74,11 @@ _landscapeMediaQuery.addEventListener('change', handleLandscapeChange);
   document.getElementById('scale-panel').style.display = AppState.mode === 'scale' ? '' : 'none';
   document.getElementById('chord-panel').style.display = AppState.mode === 'chord' ? '' : 'none';
   document.getElementById('input-panel').style.display = AppState.mode === 'input' ? '' : 'none';
+  // Key rows: full rows for Scale only, compact row for Chord only
+  document.getElementById('key-rows').style.display = AppState.mode === 'scale' ? '' : 'none';
+  document.getElementById('key-label').style.display = AppState.mode === 'scale' ? '' : 'none';
+  document.getElementById('chord-key-row').style.display = AppState.mode === 'chord' ? '' : 'none';
+  if (AppState.mode === 'chord') { updateChordKeyDisplay(); }
   if (AppState.mode === 'chord' && BuilderState.step === 0) {
     BuilderState.root = AppState.key;
     setBuilderStep(1);

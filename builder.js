@@ -198,10 +198,13 @@ function promoteTriadTo7th(targetName) {
 // ======== CHORD BUILDER ========
 function setBuilderStep(step) {
   BuilderState.step = step;
-  // Root + Quality are always visible; only Tension toggles
+  // Quality and Tension share the same fixed-height container
   var tensionVisible = step === 2;
+  document.getElementById('step1').style.display = tensionVisible ? 'none' : '';
   document.getElementById('step2').style.display = tensionVisible ? '' : 'none';
-  document.getElementById('step-label').style.display = tensionVisible ? '' : 'none';
+  // Scroll container to top on step change
+  var container = document.getElementById('step-container');
+  if (container) container.scrollTop = 0;
   document.getElementById('btn-next').style.display = 'none';
   updateChordDisplay();
 }
@@ -369,7 +372,7 @@ function startOnChord() {
   if (BuilderState.bassInputMode) {
     if (BuilderState.step !== 1) setBuilderStep(1);
     document.getElementById('step-label').textContent = t('builder.step_bass');
-    document.getElementById('step-label').style.background = '#009E73';
+    document.getElementById('step-label').style.background = '#666';
   } else {
     if (BuilderState.quality) setBuilderStep(2);
     else setBuilderStep(1);

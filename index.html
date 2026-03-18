@@ -39,7 +39,7 @@
 <meta name="twitter:description" content="コードがわからなくても大丈夫。64パッドでスケール・コード・ボイシングを可視化。ブラウザだけで動く無料音楽理論ツール。">
 <meta name="twitter:image" content="https://murinaikurashi.com/apps/64-pad/img/screenshot-chord.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"64 Pad Explorer","description":"Visualize scales, chords, and voicings on a 64-pad chromatic grid. Supports Ableton Push and Maschine layouts. MIDI I/O, chord detection, multiple instrument views.","url":"https://murinaikurashi.com/apps/64-pad/","applicationCategory":"MusicApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Organization","name":"HPS (Hardcore Pad Style)","url":"https://murinaikurashi.com"},"screenshot":"https://murinaikurashi.com/apps/64-pad/img/screenshot-scale.png","softwareVersion":"3.36.45","inLanguage":["en","ja","ko","zh","es","pt","fr","de","it"]}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"64 Pad Explorer","description":"Visualize scales, chords, and voicings on a 64-pad chromatic grid. Supports Ableton Push and Maschine layouts. MIDI I/O, chord detection, multiple instrument views.","url":"https://murinaikurashi.com/apps/64-pad/","applicationCategory":"MusicApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Organization","name":"HPS (Hardcore Pad Style)","url":"https://murinaikurashi.com"},"screenshot":"https://murinaikurashi.com/apps/64-pad/img/screenshot-scale.png","softwareVersion":"3.37.0","inLanguage":["en","ja","ko","zh","es","pt","fr","de","it"]}
 </script>
 <script src="error-logger.js"></script>
 <!-- Google Analytics -->
@@ -75,7 +75,7 @@ document.addEventListener('click', function(e) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1+Code:wght@300;400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=3.36.45">
+<link rel="stylesheet" href="style.css?v=3.37.0">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -93,13 +93,13 @@ document.addEventListener('click', function(e) {
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_GeneralUserGS_sf2_file.js"></script>
 <!-- E.Piano: jRhodes3c velocity-layer sampler (5 layers, 1977 Rhodes Mark I) -->
-<script src="jrhodes3c-samples.js?v=3.36.45"></script>
+<script src="jrhodes3c-samples.js?v=3.37.0"></script>
 </head>
 <body>
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V3.36.45</span>
+  <span class="version-tag">V3.37.0</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -419,12 +419,13 @@ document.addEventListener('click', function(e) {
       <button class="chord-key-btn active" id="chord-key-major" onclick="setChordKey('major')"></button>
       <button class="chord-key-btn" id="chord-key-minor" onclick="setChordKey('minor')"></button>
       <button class="chord-key-change" id="chord-key-change" onclick="toggleChordKeyPicker()">&#9654;</button>
+      <span class="chord-key-hint" data-i18n="label.key_hint">Scale,五度圏でも設定できます</span>
       <div class="chord-key-picker" id="chord-key-picker" style="display:none;"></div>
     </div>
     <div id="diatonic-bar" class="diatonic-bar"></div>
 
     <!-- Available Scale Panel -->
-    <div id="parent-scale-toggle" style="display:none;">
+    <div id="parent-scale-toggle" style="visibility:hidden;">
       <button class="inst-toggle" id="ps-toggle" onclick="toggleParentScales()" data-i18n="parent.toggle">Available Scale</button>
     </div>
     <div id="parent-scale-panel" style="display:none;"></div>
@@ -457,17 +458,20 @@ document.addEventListener('click', function(e) {
       <div class="builder-section-label">Root</div>
       <div class="root-grid" id="root-grid"></div>
 
-      <!-- Chord Quality (always visible) -->
-      <div class="builder-section-label">Chord Quality</div>
-      <div class="quality-grid" id="quality-grid"></div>
-
-      <!-- Tension (step toggle) -->
-      <div class="step-label" id="step-label" style="display:none;">Tension</div>
-      <div id="step2" style="display:none;">
-        <div class="tension-grid" id="tension-grid"></div>
+      <!-- Chord Quality / Tension (share same fixed-height container) -->
+      <div class="builder-step-container" id="step-container">
+        <div id="step1">
+          <div class="builder-section-label" id="quality-label">Chord Quality</div>
+          <div class="quality-grid" id="quality-grid"></div>
+        </div>
+        <div id="step2" style="display:none;">
+          <div class="step-label" id="step-label">Tension</div>
+          <div class="tension-grid" id="tension-grid"></div>
+        </div>
       </div>
 
       <!-- Voicing Options -->
+      <div class="builder-section-label" id="voicing-label">Voicing</div>
       <div class="voicing-bar">
         <button class="voicing-btn" id="btn-omit5" onclick="toggleOmit5()"><span class="kbd-hint">O</span>Omit 5</button>
         <button class="voicing-btn" id="btn-rootless" onclick="toggleRootless()"><span class="kbd-hint">R</span>Rootless</button>
@@ -752,34 +756,34 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.36.45"></script>
-<script src="lang-en.js?v=3.36.45"></script>
-<script src="lang-ja.js?v=3.36.45"></script>
-<script src="lang-zh.js?v=3.36.45"></script>
-<script src="lang-es.js?v=3.36.45"></script>
-<script src="lang-fr.js?v=3.36.45"></script>
-<script src="lang-pt.js?v=3.36.45"></script>
-<script src="lang-de.js?v=3.36.45"></script>
-<script src="lang-ko.js?v=3.36.45"></script>
-<script src="lang-it.js?v=3.36.45"></script>
+<script src="i18n.js?v=3.37.0"></script>
+<script src="lang-en.js?v=3.37.0"></script>
+<script src="lang-ja.js?v=3.37.0"></script>
+<script src="lang-zh.js?v=3.37.0"></script>
+<script src="lang-es.js?v=3.37.0"></script>
+<script src="lang-fr.js?v=3.37.0"></script>
+<script src="lang-pt.js?v=3.37.0"></script>
+<script src="lang-de.js?v=3.37.0"></script>
+<script src="lang-ko.js?v=3.37.0"></script>
+<script src="lang-it.js?v=3.37.0"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=3.36.45"></script>
-<script src="pad-core/theory.js?v=3.36.45"></script>
-<script src="pad-core/render.js?v=3.36.45"></script>
-<script src="pad-core/circle.js?v=3.36.45"></script>
-<script src="pad-core/builder-ui.js?v=3.36.45"></script>
-<script src="pad-core/incremental.js?v=3.36.45"></script>
+<script src="pad-core/data.js?v=3.37.0"></script>
+<script src="pad-core/theory.js?v=3.37.0"></script>
+<script src="pad-core/render.js?v=3.37.0"></script>
+<script src="pad-core/circle.js?v=3.37.0"></script>
+<script src="pad-core/builder-ui.js?v=3.37.0"></script>
+<script src="pad-core/incremental.js?v=3.37.0"></script>
 <!-- App JS -->
-<script src="data.js?v=3.36.45"></script>
-<script src="audio.js?v=3.36.45"></script>
-<script src="theory.js?v=3.36.45"></script>
-<script src="render.js?v=3.36.45"></script>
-<script src="plain.js?v=3.36.45"></script>
-<script src="perform.js?v=3.36.45"></script>
-<script src="builder.js?v=3.36.45"></script>
-<script src="main.js?v=3.36.45"></script>
-<script src="tutorial-data.js?v=3.36.45"></script>
-<script src="tutorial.js?v=3.36.45"></script>
+<script src="data.js?v=3.37.0"></script>
+<script src="audio.js?v=3.37.0"></script>
+<script src="theory.js?v=3.37.0"></script>
+<script src="render.js?v=3.37.0"></script>
+<script src="plain.js?v=3.37.0"></script>
+<script src="perform.js?v=3.37.0"></script>
+<script src="builder.js?v=3.37.0"></script>
+<script src="main.js?v=3.37.0"></script>
+<script src="tutorial-data.js?v=3.37.0"></script>
+<script src="tutorial.js?v=3.37.0"></script>
 <script>
 if ('serviceWorker' in navigator) {
   // Clean up old ?v= registrations (they create zombie SWs)

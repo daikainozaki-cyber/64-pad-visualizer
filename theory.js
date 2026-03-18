@@ -1347,17 +1347,18 @@ function updateTastyUI() {
   var prevBtn = document.getElementById('btn-tasty-prev');
   var nextBtn = document.getElementById('btn-tasty-next');
 
-  if (TastyState.enabled && TastyState.currentIndex >= 0) {
+  var active = TastyState.enabled && TastyState.currentIndex >= 0;
+  if (active) {
     if (counter) counter.textContent = (TastyState.currentIndex + 1) + '/' + TastyState.currentMatches.length;
     if (info) info.textContent = getTastyDiffText();
-    if (prevBtn) prevBtn.style.display = '';
-    if (nextBtn) nextBtn.style.display = '';
   } else {
     if (counter) counter.textContent = '';
     if (info) info.textContent = '';
-    if (prevBtn) prevBtn.style.display = 'none';
-    if (nextBtn) nextBtn.style.display = 'none';
   }
+  if (prevBtn) prevBtn.style.visibility = active ? '' : 'hidden';
+  if (nextBtn) nextBtn.style.visibility = active ? '' : 'hidden';
+  if (counter) counter.style.visibility = active ? '' : 'hidden';
+  if (info) info.style.visibility = active ? '' : 'hidden';
 
   // Top-note filter buttons
   var degRow = document.getElementById('tasty-degrees-row');
@@ -1383,14 +1384,21 @@ function updateTastyUI() {
           '">Top:' + t + '(' + topSet[t] + ')</button> ';
       });
       degRow.innerHTML = html;
-      degRow.style.display = '';
-      degRow.style.padding = '2px 8px';
       degRow.style.display = 'flex';
+      degRow.style.padding = '2px 8px';
       degRow.style.gap = '4px';
       degRow.style.flexWrap = 'wrap';
+      degRow.style.visibility = '';
+      degRow.style.minHeight = '';
     } else {
-      degRow.innerHTML = '';
-      degRow.style.display = 'none';
+      // Reserve space to prevent layout shift
+      if (TastyState.hpsUnlocked) {
+        degRow.style.display = 'flex';
+        degRow.style.visibility = 'hidden';
+        degRow.style.minHeight = '28px';
+      } else {
+        degRow.style.display = 'none';
+      }
     }
   }
 }
@@ -1585,17 +1593,18 @@ function updateStockUI() {
 
   var reflectBtn = document.getElementById('stock-reflect-btn');
   if (reflectBtn) reflectBtn.style.display = 'none';
-  if (StockState.enabled && StockState.currentIndex >= 0) {
+  var active = StockState.enabled && StockState.currentIndex >= 0;
+  if (active) {
     if (counter) counter.textContent = (StockState.currentIndex + 1) + '/' + StockState.currentMatches.length;
     if (info) info.textContent = getStockInfoText();
-    if (prevBtn) prevBtn.style.display = '';
-    if (nextBtn) nextBtn.style.display = '';
   } else {
     if (counter) counter.textContent = '';
     if (info) info.textContent = '';
-    if (prevBtn) prevBtn.style.display = 'none';
-    if (nextBtn) nextBtn.style.display = 'none';
   }
+  if (prevBtn) prevBtn.style.visibility = active ? '' : 'hidden';
+  if (nextBtn) nextBtn.style.visibility = active ? '' : 'hidden';
+  if (counter) counter.style.visibility = active ? '' : 'hidden';
+  if (info) info.style.visibility = active ? '' : 'hidden';
 }
 
 // Conditional exports for Node.js (Vitest) — ignored in browser

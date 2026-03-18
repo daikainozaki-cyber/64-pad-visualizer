@@ -39,6 +39,8 @@ if (StockState.hpsUnlocked) {
 
 initKeyButtons();
 initScaleSelect();
+initChordKeyPicker();
+initRootGrid();
 initQualityGrid();
 initTensionGrid();
 updateOctaveLabel();

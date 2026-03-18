@@ -224,6 +224,37 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .play-btn:hover { background: #3a3a3a; }
 
 /* === Key Buttons (Scale mode) === */
+.key-label { font-size: 0.65rem; color: var(--text-muted); margin-bottom: 2px; }
+.key-rows { margin-bottom: 6px; }
+.key-row { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
+.key-row-label { font-size: 0.55rem; color: var(--text-muted); }
+.key-row-btns { display: flex; gap: 2px; flex: 1; }
+.chord-key-row { position: relative; margin-bottom: 4px; }
+.chord-key-btn {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; padding: 4px 12px; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer;
+}
+.chord-key-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+.chord-key-btn:hover { border-color: var(--accent); }
+.chord-key-change {
+  background: none; border: 1px solid var(--border); color: var(--text-muted);
+  border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; cursor: pointer;
+}
+.chord-key-change:hover { border-color: var(--accent); }
+.chord-key-picker {
+  display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px;
+  background: var(--panel-bg); border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px;
+}
+.chord-key-picker button {
+  flex: 1 1 calc(16.66% - 3px); min-width: 0;
+  height: 30px; background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.chord-key-picker button:hover { background: #3a3a3a; border-color: var(--accent); }
+.chord-key-picker button.selected { background: var(--pad-root); color: #000; }
 .key-buttons { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 10px; }
 .key-btn {
   width: 34px; height: 28px; font-size: 0.7rem; font-weight: 600;
@@ -335,7 +366,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   background: var(--step-green); color: #000; font-weight: 700; font-size: 0.8rem;
   text-align: center; padding: 4px 0; border-radius: 4px; margin-bottom: 8px;
 }
-.step-container { min-height: 340px; }
+/* step-container removed: Root+Quality always visible, Tension toggles */
 
 /* === Piano Keyboard (Step 1) === */
 .piano-wrap { position: relative; height: 130px; margin-bottom: 4px; user-select: none; }
@@ -365,13 +396,32 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .piano-black-key:hover { background: #444; }
 .piano-black-key.selected { background: #4466aa; }
 
-/* === Quality Grid (Step 2) === */
+.builder-section-label {
+  font-size: 0.7rem; color: var(--text-muted); font-weight: 600;
+  margin: 4px 0 2px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* === Root Grid (Chord Builder) === */
+.root-grid {
+  display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 6px;
+}
+.root-btn {
+  flex: 1 1 calc(16.66% - 3px); min-width: 0;
+  height: 32px; background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.root-btn:hover { background: #3a3a3a; border-color: var(--accent); }
+.root-btn.selected { background: var(--accent); color: #000; }
+
+/* === Quality Grid === */
 .quality-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
 }
 .quality-btn {
-  height: 46px; background: var(--surface); color: var(--text); border: 1px solid var(--border);
-  border-radius: 6px; font-size: 1.0rem; font-weight: 600; cursor: pointer;
+  min-height: 50px;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; font-size: 1.1rem; font-weight: 600; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
 .quality-btn:hover { background: #3a3a3a; border-color: var(--accent); }
@@ -1342,14 +1392,14 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   .key-btn { width: 28px; height: 24px; font-size: 0.6rem; }
   .diatonic-btn { padding: 4px 1px; font-size: 0.6rem; }
   .voicing-btn { padding: 3px 2px; font-size: 0.6rem; }
-  .quality-btn { height: 38px; font-size: 0.85rem; }
+  .quality-btn { min-height: 38px; font-size: 0.85rem; }
   .tension-btn { min-height: 28px; font-size: 0.6rem; }
   .mode-btn { padding: 5px 0; font-size: 0.75rem; }
   .chord-name { font-size: 1.4rem; }
   .piano-wrap { height: 110px; }
   .piano-white-key { height: 60px; font-size: 0.9rem; }
   .piano-black-key { height: 45px; font-size: 0.55rem; width: 30px; margin-left: -15px; margin-right: -15px; }
-  .step-container { min-height: 280px; }
+  /* step-container uses grid overlay, no fixed height needed */
 
   /* Pad footer */
   .pad-footer { height: auto; }

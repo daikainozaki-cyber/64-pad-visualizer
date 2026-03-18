@@ -1109,6 +1109,9 @@ function renderCircle() {
             document.getElementById('scale-select').value = 5;
           }
         }
+        updateKeyButtons();
+        updateScaleKeyDisplay();
+        updateChordKeyDisplay();
         render();
       },
       onScaleModeChange: function(mode) {
@@ -1116,6 +1119,8 @@ function renderCircle() {
         else if (mode === 'harmonic') { AppState.scaleIdx = 7; }
         else if (mode === 'melodic') { AppState.scaleIdx = 14; }
         document.getElementById('scale-select').value = AppState.scaleIdx;
+        updateScaleKeyDisplay();
+        updateChordKeyDisplay();
         render();
       }
     });
@@ -1865,8 +1870,22 @@ function renderParentScales() {
 
   // Auto-select best result based on sort mode
   if (!_selectedPS && _psAutoSelect && _psResults.length > 0) {
-    const best = findBestAutoSelect(_psResults, _isSecDom);
-    _selectedPS = { parentKey: best.parentKey, scaleIdx: best.scaleIdx };
+    if (BuilderState._fromDiatonic && BuilderState._diatonicScaleIdx !== undefined) {
+      // Diatonic bar: degree index offset by parent scale mode
+      // Major (Ionian=0): i=0→0, i=1→1, ... i=6→6
+      // Minor (Aeolian=5): i=0→5, i=1→6, i=2→0, ...
+      var baseMode = (AppState.scaleIdx === 5) ? 5 : 0;
+      var exactIdx = (baseMode + BuilderState._diatonicScaleIdx) % 7;
+      var exact = _psResults.find(function(r) { return r.scaleIdx === exactIdx && r.parentKey === AppState.key; });
+      if (exact) {
+        _selectedPS = { parentKey: exact.parentKey, scaleIdx: exact.scaleIdx };
+      } else {
+        _selectedPS = { parentKey: AppState.key, scaleIdx: exactIdx };
+      }
+    } else {
+      const best = findBestAutoSelect(_psResults, _isSecDom);
+      _selectedPS = { parentKey: best.parentKey, scaleIdx: best.scaleIdx };
+    }
   }
 
   // Always apply tension filter
@@ -2021,6 +2040,11 @@ function applyParentScaleFilter(scaleIdx) {
   if (!sat) return;
 
   const availSet = new Set(sat.avail);
+  // Diatonic minor: always add Dorian 13th (standard modern practice)
+  if (BuilderState._fromDiatonic && BuilderState.quality &&
+      BuilderState.quality.pcs.indexOf(3) >= 0) {
+    availSet.add('13');
+  }
   btns.forEach(btn => {
     if (!btn._tension) return;
     if (btn.classList.contains('quality-hidden')) return;

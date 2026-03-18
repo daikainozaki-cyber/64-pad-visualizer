@@ -19,8 +19,13 @@ function setMode(mode) {
   document.getElementById('scale-panel').style.display = mode === 'scale' ? '' : 'none';
   document.getElementById('chord-panel').style.display = mode === 'chord' ? '' : 'none';
   document.getElementById('input-panel').style.display = mode === 'input' ? '' : 'none';
+  // Scale: full key rows. Chord: compact key btn. Input: hidden
+  document.getElementById('key-rows').style.display = mode === 'scale' ? '' : 'none';
+  document.getElementById('key-label').style.display = mode === 'scale' ? '' : 'none';
+  document.getElementById('chord-key-row').style.display = mode === 'chord' ? '' : 'none';
+  if (mode === 'chord') { updateChordKeyDisplay(); }
+  // chord-key-row visibility handled above
   if (mode === 'chord' && BuilderState.step === 0) {
-    BuilderState.root = AppState.key; // carry over key
     setBuilderStep(1);
   }
   updateKeyButtons();
@@ -37,37 +42,90 @@ function setMode(mode) {
 }
 
 // ======== SCALE MODE INIT ========
+// Cycle of 4ths order (educational)
+var FOURTHS_ORDER = [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7]; // C,F,Bb,Eb,Ab,Db,Gb,B,E,A,D,G
+var FOURTHS_MAJOR_NAMES = ['C','F','Bb','Eb','Ab','Db','Gb','B','E','A','D','G'];
+var FOURTHS_MINOR_NAMES = ['Am','Dm','Gm','Cm','Fm','Bbm','Ebm','Abm','C#m','F#m','Bm','Em'];
+
 function initKeyButtons() {
-  const container = document.getElementById('key-buttons');
-  const blackKeys = [1,3,6,8,10];
-  NOTE_NAMES_SHARP.forEach((name, i) => {
-    const btn = document.createElement('button');
-    btn.className = 'key-btn' + (i === AppState.key ? ' active' : '') + (blackKeys.includes(i) ? ' black-key' : '');
-    btn.textContent = NOTE_NAMES_FLAT[i] !== name ? name + '/' + NOTE_NAMES_FLAT[i] : name;
-    btn.onclick = () => {
-      if (AppState.mode === 'chord') {
-        selectRoot(i);
-      } else {
-        AppState.key = i;
-        updateKeyButtons();
-        render();
-        saveAppSettings();
-      }
+  var majorRow = document.getElementById('key-row-major');
+  var minorRow = document.getElementById('key-row-minor');
+  if (!majorRow || !minorRow) return;
+  // Major keys (cycle of 4ths)
+  FOURTHS_ORDER.forEach(function(pc, i) {
+    var btn = document.createElement('button');
+    btn.className = 'key-btn';
+    btn.textContent = FOURTHS_MAJOR_NAMES[i];
+    btn.dataset.pc = pc;
+    btn.onclick = function() {
+      AppState.key = pc;
+      AppState.scaleIdx = 0;
+      onKeyChanged();
     };
-    container.appendChild(btn);
+    majorRow.appendChild(btn);
   });
+  // Minor keys (cycle of 4ths, relative minor)
+  FOURTHS_ORDER.forEach(function(pc, i) {
+    var minorPC = (pc + 9) % 12; // relative minor
+    var btn = document.createElement('button');
+    btn.className = 'key-btn';
+    btn.textContent = FOURTHS_MINOR_NAMES[i];
+    btn.dataset.pc = minorPC;
+    btn.onclick = function() {
+      AppState.key = minorPC;
+      AppState.scaleIdx = 5;
+      onKeyChanged();
+    };
+    minorRow.appendChild(btn);
+  });
+  updateKeyButtons();
 }
+function onKeyChanged() {
+  updateKeyButtons();
+  var sel = document.getElementById('scale-select');
+  if (sel) sel.value = AppState.scaleIdx;
+  renderDiatonicBar();
+  updateChordKeyDisplay();
+  render();
+  saveAppSettings();
+}
+function setScaleKeyMode(mode) {
+  if (mode === 'major' && AppState.scaleIdx === 5) {
+    AppState.key = (AppState.key + 3) % 12;
+    AppState.scaleIdx = 0;
+  } else if (mode === 'minor' && AppState.scaleIdx === 0) {
+    AppState.key = (AppState.key + 9) % 12;
+    AppState.scaleIdx = 5;
+  }
+  updateKeyButtons();
+  updateScaleKeyDisplay();
+  var sel = document.getElementById('scale-select');
+  if (sel) sel.value = AppState.scaleIdx;
+  renderDiatonicBar();
+  render();
+  saveAppSettings();
+}
+function updateScaleKeyDisplay() {
+  var names = ['C','C#/Db','D','D#/Eb','E','F','F#/Gb','G','G#/Ab','A','A#/Bb','B'];
+  var isMajor = AppState.scaleIdx !== 5;
+  var majorKey = isMajor ? AppState.key : (AppState.key + 3) % 12;
+  var minorKey = isMajor ? (AppState.key + 9) % 12 : AppState.key;
+  var majBtn = document.getElementById('key-mode-major');
+  var minBtn = document.getElementById('key-mode-minor');
+  if (majBtn) { majBtn.textContent = names[majorKey]; majBtn.classList.toggle('active', isMajor); }
+  if (minBtn) { minBtn.textContent = names[minorKey] + 'm'; minBtn.classList.toggle('active', !isMajor); }
+}
+
 function updateKeyButtons() {
   var isInput = AppState.mode === 'input';
-  var activePC = AppState.mode === 'chord' ? BuilderState.root : AppState.key;
-  var container = document.getElementById('key-buttons');
-  container.classList.toggle('disabled', isInput);
-  var hint = isInput ? (typeof t === 'function' ? t('ui.input_keys_disabled') : 'Key selection is not used in Input mode') : '';
-  container.title = hint;
-  document.querySelectorAll('#key-buttons .key-btn').forEach((btn, i) => {
-    btn.classList.toggle('active', !isInput && i === activePC);
-    btn.disabled = isInput;
-    btn.title = hint;
+  var isMajor = AppState.scaleIdx !== 5;
+  document.querySelectorAll('#key-row-major .key-btn').forEach(function(btn) {
+    var pc = parseInt(btn.dataset.pc);
+    btn.classList.toggle('active', isMajor && pc === AppState.key);
+  });
+  document.querySelectorAll('#key-row-minor .key-btn').forEach(function(btn) {
+    var pc = parseInt(btn.dataset.pc);
+    btn.classList.toggle('active', !isMajor && pc === AppState.key);
   });
 }
 
@@ -140,13 +198,10 @@ function promoteTriadTo7th(targetName) {
 // ======== CHORD BUILDER ========
 function setBuilderStep(step) {
   BuilderState.step = step;
-  document.getElementById('step1').style.display = step === 1 ? '' : 'none';
-  document.getElementById('step2').style.display = step === 2 ? '' : 'none';
-  if (!BuilderState.bassInputMode) {
-    const label = step === 2 ? t('builder.step_tension') : (BuilderState.root !== null ? t('builder.step_quality') : t('builder.step_root'));
-    document.getElementById('step-label').textContent = label;
-    document.getElementById('step-label').style.background = '';
-  }
+  // Root + Quality are always visible; only Tension toggles
+  var tensionVisible = step === 2;
+  document.getElementById('step2').style.display = tensionVisible ? '' : 'none';
+  document.getElementById('step-label').style.display = tensionVisible ? '' : 'none';
   document.getElementById('btn-next').style.display = 'none';
   updateChordDisplay();
 }
@@ -209,9 +264,11 @@ function builderClear() {
   BuilderState.root = null; BuilderState.quality = null; BuilderState.tension = null; BuilderState.bass = null;
   BuilderState.bassInputMode = false;
   BuilderState._fromDiatonic = false;
+  BuilderState._diatonicScaleIdx = undefined;
   document.getElementById('step-label').style.background = '';
   setBuilderStep(1);
   updateKeyButtons();
+  updateRootButtons();
   clearQualitySelection();
   clearTensionSelection();
   clearInstrumentInput();
@@ -264,12 +321,14 @@ function selectRoot(pc) {
   }
   BuilderState.root = pc;
   BuilderState.quality = null; BuilderState.tension = null; BuilderState.bass = null;
-  BuilderState._fromDiatonic = false; // Manual root selection → hide diatonic bar
+  BuilderState._fromDiatonic = false;
+  BuilderState._diatonicScaleIdx = undefined;
   resetVoicingSelection();
   updateKeyButtons();
+  updateRootButtons();
   clearQualitySelection();
   clearTensionSelection();
-  setBuilderStep(1); // Stay on step 1 (Quality visible)
+  setBuilderStep(1);
   render();
 }
 
@@ -330,6 +389,117 @@ function highlightPianoKey(containerId, pc) {
   if (containerId === 'onchord-keyboard' && _onchordPianoUI) {
     _onchordPianoUI.highlight(pc);
   }
+}
+
+// ======== CHORD KEY PICKER (5th-circle order) ========
+var FIFTHS_ORDER = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5]; // C,G,D,A,E,B,F#,C#,Ab,Eb,Bb,F
+var KEY_NAMES = ['C','G','D','A','E','B','F#/Gb','C#/Db','G#/Ab','D#/Eb','A#/Bb','F'];
+function initChordKeyPicker() {
+  var picker = document.getElementById('chord-key-picker');
+  if (!picker) return;
+  picker.innerHTML = '';
+  // Major row
+  var majLabel = document.createElement('div');
+  majLabel.className = 'key-row-label';
+  majLabel.textContent = 'Major';
+  picker.appendChild(majLabel);
+  var majRow = document.createElement('div');
+  majRow.className = 'key-row-btns';
+  FOURTHS_ORDER.forEach(function(pc, i) {
+    var btn = document.createElement('button');
+    btn.textContent = FOURTHS_MAJOR_NAMES[i];
+    btn.dataset.pc = pc;
+    btn.onclick = function() {
+      AppState.key = pc; AppState.scaleIdx = 0;
+      updateKeyButtons(); renderDiatonicBar(); updateChordKeyDisplay();
+      picker.style.display = 'none'; render(); saveAppSettings();
+    };
+    majRow.appendChild(btn);
+  });
+  picker.appendChild(majRow);
+  // Minor row
+  var minLabel = document.createElement('div');
+  minLabel.className = 'key-row-label';
+  minLabel.textContent = 'Minor';
+  picker.appendChild(minLabel);
+  var minRow = document.createElement('div');
+  minRow.className = 'key-row-btns';
+  FOURTHS_ORDER.forEach(function(pc, i) {
+    var minorPC = (pc + 9) % 12;
+    var btn = document.createElement('button');
+    btn.textContent = FOURTHS_MINOR_NAMES[i];
+    btn.dataset.pc = minorPC;
+    btn.onclick = function() {
+      AppState.key = minorPC; AppState.scaleIdx = 5;
+      updateKeyButtons(); renderDiatonicBar(); updateChordKeyDisplay();
+      picker.style.display = 'none'; render(); saveAppSettings();
+    };
+    minRow.appendChild(btn);
+  });
+  picker.appendChild(minRow);
+}
+function setChordKey(mode) {
+  if (mode === 'major') {
+    // Switch to major: if currently minor, convert back
+    var majorKey = AppState.scaleIdx === 5 ? (AppState.key + 3) % 12 : AppState.key;
+    AppState.key = majorKey;
+    AppState.scaleIdx = 0; // Ionian
+  } else {
+    // Switch to minor: relative minor
+    var minorKey = AppState.scaleIdx === 0 ? (AppState.key + 9) % 12 : AppState.key;
+    AppState.key = minorKey;
+    AppState.scaleIdx = 5; // Aeolian
+  }
+  updateKeyButtons();
+  renderDiatonicBar();
+  updateChordKeyDisplay();
+  render();
+  saveAppSettings();
+}
+function toggleChordKeyPicker() {
+  var picker = document.getElementById('chord-key-picker');
+  if (!picker) return;
+  picker.style.display = picker.style.display === 'none' ? 'flex' : 'none';
+  updateChordKeyDisplay();
+}
+function updateChordKeyDisplay() {
+  var names = ['C','C#/Db','D','D#/Eb','E','F','F#/Gb','G','G#/Ab','A','A#/Bb','B'];
+  var isMajor = AppState.scaleIdx === 0;
+  var majorKey = isMajor ? AppState.key : (AppState.key + 3) % 12;
+  var minorKey = isMajor ? (AppState.key + 9) % 12 : AppState.key;
+  var majBtn = document.getElementById('chord-key-major');
+  var minBtn = document.getElementById('chord-key-minor');
+  if (majBtn) { majBtn.textContent = names[majorKey]; majBtn.classList.toggle('active', isMajor); }
+  if (minBtn) { minBtn.textContent = names[minorKey] + 'm'; minBtn.classList.toggle('active', !isMajor); }
+  var picker = document.getElementById('chord-key-picker');
+  if (picker) {
+    picker.querySelectorAll('button').forEach(function(b) {
+      b.classList.toggle('selected', parseInt(b.dataset.pc) === majorKey);
+    });
+  }
+}
+
+// ======== ROOT GRID (12-note selector inside Chord Builder) ========
+var NOTE_LABELS = ['C','C#/Db','D','D#/Eb','E','F','F#/Gb','G','G#/Ab','A','A#/Bb','B'];
+function initRootGrid() {
+  var grid = document.getElementById('root-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (var i = 0; i < 12; i++) {
+    var btn = document.createElement('button');
+    btn.className = 'root-btn';
+    btn.textContent = NOTE_LABELS[i];
+    btn.dataset.pc = i;
+    btn.onclick = (function(pc) { return function() { selectRoot(pc); }; })(i);
+    grid.appendChild(btn);
+  }
+}
+function updateRootButtons() {
+  var btns = document.querySelectorAll('#root-grid .root-btn');
+  btns.forEach(function(btn) {
+    var pc = parseInt(btn.dataset.pc);
+    btn.classList.toggle('selected', BuilderState.root === pc);
+  });
 }
 
 // ======== QUALITY GRID (delegated to pad-core/builder-ui.js) ========

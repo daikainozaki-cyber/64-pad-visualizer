@@ -838,13 +838,7 @@ function renderDiatonicBar() {
     bar.innerHTML = '';
     return;
   }
-  // Hide diatonic bar when chord was built manually (not from diatonic bar click)
-  // Only hide after quality is selected (root-only = still browsing, bar useful)
-  if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality !== null && !BuilderState._fromDiatonic) {
-    bar.style.display = 'none';
-    bar.innerHTML = '';
-    return;
-  }
+  // Diatonic bar stays visible in chord mode for quick chord switching
   const scale = SCALES[AppState.scaleIdx];
   if (scale.pcs.length !== 7) {
     bar.style.display = 'none';
@@ -875,7 +869,7 @@ function renderDiatonicBar() {
       btn.classList.add('active');
     }
     btn.innerHTML = '<span class="dia-num">' + (i + 1) + '</span><div>' + t.chordName + '</div><div class="degree">' + t.degree + '</div>';
-    btn.onclick = () => onDiatonicClick(t);
+    btn.onclick = () => onDiatonicClick(t, i);
     bar.appendChild(btn);
   });
 }
@@ -894,7 +888,7 @@ function findParentScales(rootPC, chordIntervals, currentKey) {
   return padFindParentScales(rootPC, chordIntervals, currentKey);
 }
 
-function onDiatonicClick(tetrad) {
+function onDiatonicClick(tetrad, degreeIdx) {
   // Switch to Chord mode (direct manipulation to preserve builder state)
   AppState.mode = 'chord';
   document.getElementById('mode-scale').classList.toggle('active', false);
@@ -906,6 +900,7 @@ function onDiatonicClick(tetrad) {
 
   // Set builder state
   BuilderState._fromDiatonic = true;
+  BuilderState._diatonicScaleIdx = degreeIdx; // 0=Ionian, 1=Dorian, 2=Phrygian...
   BuilderState.root = tetrad.rootPC;
   BuilderState.quality = tetrad.quality;
   BuilderState.tension = null;
@@ -914,6 +909,7 @@ function onDiatonicClick(tetrad) {
 
   // Update builder UI
   updateKeyButtons();
+  updateRootButtons();
   highlightQuality(tetrad.quality);
   clearTensionSelection();
   updateControlsForQuality(tetrad.quality);

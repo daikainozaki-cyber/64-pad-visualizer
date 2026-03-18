@@ -115,6 +115,7 @@ I18N.addLang('fr', {
     tap_pads: 'Appuyez sur un pad pour jouer !',
     load_vst: 'Charger un plugin VST/AU...',
     affiliate_label: '',
+    staff: 'Partition',
     circle: 'Cycle',
     help: 'Aide',
     oct_down: 'Baisser d\u0027une octave',

@@ -115,6 +115,7 @@ I18N.addLang('ko', {
     tap_pads: '패드를 탭하여 연주하세요!',
     load_vst: 'VST/AU 플러그인 불러오기...',
     affiliate_label: '',
+    staff: '악보',
     circle: '5도권',
     help: '\uB3C4\uC6C0\uB9D0',
     oct_down: '\uC625\uD0C0\uBE0C \uB0B4\uB9AC\uAE30',

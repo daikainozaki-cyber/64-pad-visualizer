@@ -381,6 +381,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 /* === Tension Grid (Step 3) === */
 .tension-grid {
   display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+  grid-auto-rows: min-content;
 }
 .tension-grid.wide { grid-template-columns: repeat(8, 1fr); }
 .tension-btn {
@@ -392,7 +393,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 }
 .tension-btn:hover { background: #3a3a3a; border-color: var(--accent); }
 .tension-btn.selected { background: var(--pad-chord); color: #000; border-color: var(--pad-chord); }
-.tension-btn.empty { visibility: hidden; }
+.tension-btn.empty { visibility: hidden; min-height: 0; height: 0; padding: 0; border-width: 0; font-size: 0; line-height: 0; }
 .tension-btn.quality-hidden { visibility: hidden; pointer-events: none; }
 .tension-btn.tension-uncommon { opacity: 0.35; }
 .voicing-bar.hidden { display: none; }

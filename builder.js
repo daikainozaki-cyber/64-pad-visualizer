@@ -372,7 +372,7 @@ function startOnChord() {
   if (BuilderState.bassInputMode) {
     if (BuilderState.step !== 1) setBuilderStep(1);
     document.getElementById('step-label').textContent = t('builder.step_bass');
-    document.getElementById('step-label').style.background = '#009E73';
+    document.getElementById('step-label').style.background = '#666';
   } else {
     if (BuilderState.quality) setBuilderStep(2);
     else setBuilderStep(1);

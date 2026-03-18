@@ -1872,10 +1872,11 @@ function renderParentScales() {
   if (!_selectedPS && _psAutoSelect && _psResults.length > 0) {
     if (BuilderState._fromDiatonic && BuilderState._diatonicScaleIdx !== undefined) {
       // Diatonic bar: degree index offset by parent scale mode
-      // Major (Ionian=0): i=0→0, i=1→1, ... i=6→6
-      // Minor (Aeolian=5): i=0→5, i=1→6, i=2→0, ...
-      var baseMode = (AppState.scaleIdx === 5) ? 5 : 0;
-      var exactIdx = (baseMode + BuilderState._diatonicScaleIdx) % 7;
+      // Diatonic (0-6): offset within system, wrap with %7
+      // Harmonic Minor (7-13): base=7, Melodic Minor (14-20): base=14
+      var systemBase = AppState.scaleIdx >= 14 ? 14 : AppState.scaleIdx >= 7 ? 7 : 0;
+      var offsetInSystem = AppState.scaleIdx - systemBase;
+      var exactIdx = systemBase + (offsetInSystem + BuilderState._diatonicScaleIdx) % 7;
       var exact = _psResults.find(function(r) { return r.scaleIdx === exactIdx && r.parentKey === AppState.key; });
       if (exact) {
         _selectedPS = { parentKey: exact.parentKey, scaleIdx: exact.scaleIdx };

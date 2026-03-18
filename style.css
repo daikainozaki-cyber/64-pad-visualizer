@@ -26,7 +26,7 @@
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -477,7 +477,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 /* === Grid === */
 .pad { cursor: pointer; transition: opacity 0.15s; }
 .pad:hover { opacity: 0.8; }
-.pad-label { pointer-events: none; user-select: none; }
+.pad-label { pointer-events: none; user-select: none; font-family: var(--font-mono); }
 /* Available Scale overlay: brighter when user manually selects a scale */
 .overlay-highlight { --pad-overlay: var(--pad-overlay-hi); --pad-overlay-char: var(--pad-overlay-char-hi); }
 
@@ -499,7 +499,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 }
 .oct-btn:hover { border-color: var(--accent); background: #3a3a3a; }
 .oct-btn:disabled { opacity: 0.3; cursor: default; }
-.oct-label { font-size: 0.8rem; color: var(--text); font-weight: 600; min-width: 120px; text-align: center; }
+.oct-label { font-size: 0.8rem; color: var(--text); font-weight: 600; min-width: 120px; text-align: center; font-family: var(--font-mono); }
 
 /* === EP Sound Controls === */
 .ep-knob {
@@ -515,7 +515,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   background: radial-gradient(circle at 40% 35%, #667, #333); border: 1px solid #555;
   border-radius: 50%; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
-.ep-val { font-size: 0.65rem; color: #556677; font-variant-numeric: tabular-nums; }
+.ep-val { font-size: 0.65rem; color: #556677; font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .engine-btn {
   padding: 3px 8px; font-size: 0.65rem; border-radius: 3px;
   background: var(--surface); color: var(--text); border: 1px solid var(--border);

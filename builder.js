@@ -892,6 +892,16 @@ function initWebMIDI() {
             shiftOctave(rawNote === 55 ? 1 : -1);
             return;
           }
+          // Launchpad octave buttons: CC#91=▲, CC#92=▼ (X/Mini MK3/Pro MK3)
+          //                           CC#104=▲, CC#105=▼ (MK1/Mini MK2)
+          if (!isPush && cmd === 0xb0 && velocity === 127 &&
+              (rawNote === 91 || rawNote === 92 || rawNote === 104 || rawNote === 105)) {
+            var now = performance.now();
+            if (now - _lastOctCC < 100) return;
+            _lastOctCC = now;
+            shiftOctave((rawNote === 91 || rawNote === 104) ? 1 : -1);
+            return;
+          }
           // Push perform mode: serial 4x4 → slots directly (bypass fourths conversion)
           if (isPush && memoryViewMode === 'perform' && cmd === 0x90 && velocity > 0) {
             var si = rawNote - PUSH_SERIAL_BASE;

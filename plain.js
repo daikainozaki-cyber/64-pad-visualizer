@@ -528,21 +528,21 @@ function updatePlainUI() {
     statusEl.textContent = t('input.status_idle');
     statusEl.style.color = 'var(--text-muted)';
     captureBtn.innerHTML = kbdC + 'Capture';
-    captureBtn.style.background = '#2a6e2a';
+    captureBtn.style.background = '#2a4a6a';
     endBtn.style.display = 'none';
   } else if (PlainState.subMode === 'capture') {
     const slotNum = Math.min(PlainState.captureIndex + 1, 16);
     statusEl.textContent = t('input.status_capturing', {slot: slotNum});
-    statusEl.style.color = '#4a4';
+    statusEl.style.color = '#5a8aaa';
     captureBtn.innerHTML = kbdC + 'Capture (' + slotNum + ')';
-    captureBtn.style.background = '#2a6e2a';
+    captureBtn.style.background = '#2a4a6a';
     endBtn.style.display = '';
   } else if (PlainState.subMode === 'edit') {
     const slotNum = PlainState.currentSlot !== null ? PlainState.currentSlot + 1 : '?';
     statusEl.textContent = t('input.status_editing', {slot: slotNum});
     statusEl.style.color = 'var(--accent)';
     captureBtn.innerHTML = kbdC + 'Capture';
-    captureBtn.style.background = '#2a6e2a';
+    captureBtn.style.background = '#2a4a6a';
     endBtn.style.display = '';
   }
   updateMemorySlotUI();

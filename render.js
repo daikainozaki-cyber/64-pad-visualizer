@@ -784,7 +784,7 @@ let showStaff = true;
 let showBass = false;
 let showCircle = false;
 let showSound = true;
-let soundExpanded = false;
+let soundExpanded = true;
 let guitarLabelMode = 'name'; // 'name' or 'degree'
 let memoryViewMode = 'memory'; // 'memory' or 'perform'
 

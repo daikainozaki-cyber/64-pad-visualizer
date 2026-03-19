@@ -616,6 +616,16 @@ function onMidiNoteOn(note, velocity) {
     ensureAudioResumed();
     return;
   }
+  // Auto-adjust octave if MIDI note is outside pad grid range
+  var bm = baseMidi();
+  var padHi = bm + (ROWS - 1) * ROW_INTERVAL + (COLS - 1);
+  if (mapped < bm || mapped > padHi) {
+    var targetOct = Math.round((mapped - BASE_MIDI) / 12);
+    if (setOctaveShift(targetOct)) {
+      render();
+      saveAppSettings();
+    }
+  }
   midiActiveNotes.add(mapped);
   ensureAudioResumed();
   noteOn(mapped, applyVelocityCurve(velocity || 100), true);

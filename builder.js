@@ -849,10 +849,7 @@ var _lastOctCC = 0; // debounce: Push 3 multi-port duplicate CC
 
 function initWebMIDI() {
   if (!navigator.requestMIDIAccess) return;
-  navigator.requestMIDIAccess({ sysex: true }).catch(() => {
-    // Fallback: retry without sysex (some browsers block it)
-    return navigator.requestMIDIAccess();
-  }).then(access => {
+  navigator.requestMIDIAccess().then(access => {
     midiAccess = access;
     const statusEl = document.getElementById('midi-status');
     statusEl.style.display = '';
@@ -974,7 +971,9 @@ function initWebMIDI() {
       _lpProgrammerMode = false;
       var ledSel = document.getElementById('led-mode');
       if (ledSel) ledSel.style.display = 'none';
-      if (_lpHpsUnlocked && connected && connectedName) {
+      // LED control disabled — requires Launchpad Programmer mode testing with physical device
+      // Re-enable when Launchpad is available for testing
+      if (false && _lpHpsUnlocked && connected && connectedName) {
         var isLaunchpad = /launchpad/i.test(connectedName);
         if (isLaunchpad) {
           // Detect device type

@@ -534,3 +534,18 @@ window.addEventListener('blur', () => {
 });
 
 render();
+
+// Update notification: glow tutorial button after SW update
+(function() {
+  try {
+    if (localStorage.getItem('64pad-just-updated') === '1') {
+      localStorage.removeItem('64pad-just-updated');
+      var btn = document.getElementById('tut-btn');
+      if (btn) {
+        btn.style.animation = 'hint-pulse 1.5s ease-in-out 3';
+        btn.style.color = 'var(--accent)';
+        setTimeout(function() { btn.style.animation = ''; btn.style.color = ''; }, 5000);
+      }
+    }
+  } catch(_) {}
+})();

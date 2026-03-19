@@ -290,7 +290,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   background: var(--accent); color: #000;
   border-bottom: 3px solid #fff;
 }
-.diatonic-btn .dia-num { position: absolute; top: 1px; left: 3px; font-size: 0.55rem; color: #e55; font-weight: 700; line-height: 1; }
+.diatonic-btn .dia-num { position: absolute; top: 1px; left: 3px; font-size: 0.55rem; color: var(--text-muted); opacity: 0.5; font-weight: 700; line-height: 1; }
 .diatonic-btn.active .dia-num { color: rgba(0,0,0,0.5); }
 .diatonic-btn .degree { font-size: 0.6rem; color: var(--text-muted); }
 .diatonic-btn.active .degree { color: rgba(0,0,0,0.6); }
@@ -507,9 +507,9 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 /* === Keyboard Shortcut Badges === */
 .kbd-hint {
   position: absolute; top: 1px; left: 3px;
-  font-size: 0.7rem; color: var(--accent); opacity: 0.8;
+  font-size: 0.7rem; color: var(--text-muted); opacity: 0.5;
   line-height: 1; pointer-events: none; user-select: none;
-  text-transform: uppercase; font-weight: 700;
+  font-weight: 700;
 }
 .mem-view-btn { position: relative; }
 .inst-toggle { position: relative; }
@@ -531,7 +531,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 /* === Grid === */
 .pad { cursor: pointer; transition: opacity 0.15s; }
 .pad:hover { opacity: 0.8; }
-.pad-label { pointer-events: none; user-select: none; font-family: var(--font-mono); }
+.pad-label { pointer-events: none; user-select: none; font-family: var(--font-ui); }
 /* Available Scale overlay: brighter when user manually selects a scale */
 .overlay-highlight { --pad-overlay: var(--pad-overlay-hi); --pad-overlay-char: var(--pad-overlay-char-hi); }
 
@@ -553,7 +553,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 }
 .oct-btn:hover { border-color: var(--accent); background: #3a3a3a; }
 .oct-btn:disabled { opacity: 0.3; cursor: default; }
-.oct-label { font-size: 0.8rem; color: var(--text); font-weight: 600; min-width: 120px; text-align: center; font-family: var(--font-mono); }
+.oct-label { font-size: 0.8rem; color: var(--text); font-weight: 600; min-width: 120px; text-align: center; font-family: var(--font-ui); }
 
 /* === EP Sound Controls === */
 .ep-knob {

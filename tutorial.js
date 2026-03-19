@@ -440,7 +440,7 @@ var TutorialHints = {
     { sel: '#mode-chord', id: 'chord_mode' },
     { sel: '#mode-input', id: 'input_mode' },
     { sel: '#diatonic-bar', id: 'diatonic' },
-    { sel: '#memory-section', id: 'memory' },
+    { sel: '#section-memory', id: 'memory' },
     { sel: '#shell-bar', id: 'voicing' },
     { sel: '#sound-expand-btn', id: 'sound' },
     { sel: '#tasty-bar', id: 'tasty' },

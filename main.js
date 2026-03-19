@@ -535,6 +535,30 @@ window.addEventListener('blur', () => {
 
 render();
 
+// Section toggle (Chord panel collapsible sections)
+function toggleSection(name) {
+  var section = document.getElementById('section-' + name);
+  var btn = document.getElementById('sect-' + name);
+  if (!section) return;
+  var visible = section.style.display !== 'none';
+  section.style.display = visible ? 'none' : '';
+  if (btn) btn.classList.toggle('active', !visible);
+  try {
+    var s = JSON.parse(localStorage.getItem('64pad-sections') || '{}');
+    s[name] = !visible;
+    localStorage.setItem('64pad-sections', JSON.stringify(s));
+  } catch(_) {}
+}
+// Restore section states
+(function() {
+  try {
+    var s = JSON.parse(localStorage.getItem('64pad-sections') || '{}');
+    ['input', 'quality', 'voicing', 'memory'].forEach(function(name) {
+      if (s[name] === false) toggleSection(name);
+    });
+  } catch(_) {}
+})();
+
 // Update notification: glow tutorial button after SW update
 (function() {
   try {

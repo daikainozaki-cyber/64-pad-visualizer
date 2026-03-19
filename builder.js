@@ -202,6 +202,9 @@ function setBuilderStep(step) {
   var tensionVisible = step === 2;
   document.getElementById('step1').style.display = tensionVisible ? 'none' : '';
   document.getElementById('step2').style.display = tensionVisible ? '' : 'none';
+  // Update toggle button text to reflect current step
+  var sectBtn = document.getElementById('sect-quality');
+  if (sectBtn) sectBtn.textContent = tensionVisible ? 'Tension' : 'Quality';
   // Scroll container to top on step change
   var container = document.getElementById('step-container');
   if (container) container.scrollTop = 0;

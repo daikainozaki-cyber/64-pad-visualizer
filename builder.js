@@ -412,6 +412,7 @@ function initChordKeyPicker() {
     var btn = document.createElement('button');
     btn.textContent = FOURTHS_MAJOR_NAMES[i];
     btn.dataset.pc = pc;
+    btn.dataset.keyType = 'major';
     btn.onclick = function() {
       AppState.key = pc; AppState.scaleIdx = 0;
       updateKeyButtons(); renderDiatonicBar(); updateChordKeyDisplay();
@@ -432,6 +433,7 @@ function initChordKeyPicker() {
     var btn = document.createElement('button');
     btn.textContent = FOURTHS_MINOR_NAMES[i];
     btn.dataset.pc = minorPC;
+    btn.dataset.keyType = 'minor';
     btn.onclick = function() {
       AppState.key = minorPC; AppState.scaleIdx = 5;
       updateKeyButtons(); renderDiatonicBar(); updateChordKeyDisplay();
@@ -477,7 +479,12 @@ function updateChordKeyDisplay() {
   var picker = document.getElementById('chord-key-picker');
   if (picker) {
     picker.querySelectorAll('button').forEach(function(b) {
-      b.classList.toggle('selected', parseInt(b.dataset.pc) === majorKey);
+      var pc = parseInt(b.dataset.pc);
+      if (b.dataset.keyType === 'minor') {
+        b.classList.toggle('selected', pc === minorKey);
+      } else {
+        b.classList.toggle('selected', pc === majorKey);
+      }
     });
   }
 }

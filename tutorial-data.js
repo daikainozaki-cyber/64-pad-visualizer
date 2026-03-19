@@ -597,67 +597,6 @@ TutorialRegistry.add('tasty', {
 });
 
 // =============================================
-// LED CONTROL (HPS)
-// =============================================
-TutorialRegistry.add('led', {
-  titleKey: 'tut.led_title',
-  descKey: 'tut.led_desc',
-  category: 'advanced',
-  requireEl: '#led-mode',
-
-  steps: [
-    {
-      type: 'highlight',
-      id: 'overview',
-      targets: ['#led-mode'],
-      highlight: '#led-mode',
-      titleKey: 'tut.led.step1_title',
-      msgKey: 'tut.led.step1_msg',
-      waitFor: 'next',
-    },
-    {
-      type: 'info',
-      id: 'full_mode',
-      targets: ['#led-mode'],
-      highlight: '#led-mode',
-      titleKey: 'tut.led.step2_title',
-      msgKey: 'tut.led.step2_msg',
-      waitFor: 'next',
-    },
-    {
-      type: 'info',
-      id: 'root_mode',
-      targets: ['#led-mode'],
-      highlight: '#led-mode',
-      titleKey: 'tut.led.step3_title',
-      msgKey: 'tut.led.step3_msg',
-      waitFor: 'close',
-    },
-  ],
-  // Fallback steps when ?hps is not active or no MIDI output
-  fallbackSteps: [
-    {
-      type: 'info',
-      id: 'what_is_led',
-      targets: [],
-      highlight: null,
-      titleKey: 'tut.led.fb_step1_title',
-      msgKey: 'tut.led.fb_step1_msg',
-      waitFor: 'next',
-    },
-    {
-      type: 'info',
-      id: 'how_to_access',
-      targets: [],
-      highlight: null,
-      titleKey: 'tut.led.fb_step2_title',
-      msgKey: 'tut.led.fb_step2_msg',
-      waitFor: 'close',
-    },
-  ]
-});
-
-// =============================================
 // STOCK VOICING (HPS)
 // =============================================
 TutorialRegistry.add('stock', {

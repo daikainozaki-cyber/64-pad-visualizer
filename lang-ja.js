@@ -325,6 +325,7 @@ I18N.addLang('ja', {
     sound_autofilter: 'オートフィルター（Auto-Wah）',
     sound_autofilter_desc: 'エンベロープフィルター。FREQ・RESO・SENS・DECAYを調整できます。',
     version_history: 'Version History',
+    vh_3377: '<b>V3.37.7</b> \u2014 三井田レビュー反映：平行調バグ修正、UIタイトルケース化、フォント改善（sans-serif）、色覚バリアフリー（緑→ブルー）、Soundパネル初期展開、Layout Shift修正、チュートリアルスポットライト機能、Launchpadオクターブ対応＋MIDI自動オクターブ追従',
     vh_340: '<b>V3.40</b> \u2014 TASTY/Stockコンパクト配置：ボイシングをパッドに自動最適配置。「パッドに反映」ボタン廃止。TASTY/Stock中はボイシングボックス非表示',
     vh_336: '<b>V3.36</b> \u2014 ギターボイシングエンジンv2：ジャンルプリセット（Jazz/Bossa/Funk）、リファレンステーブル（120種×12キー）、フィンガリング自動割り当て（バレー検出対応）',
     vh_335: '<b>V3.35</b> \u2014 チュートリアルUX改善（初心者レビュー反映）。ツールチップ全9言語翻訳。ガイドにサウンドパネル・ヘッダー解説追加',

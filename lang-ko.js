@@ -393,7 +393,7 @@ I18N.addLang('ko', {
     done_title: '\uC900\uBE44 \uC644\uB8CC!',
     done_msg: '\uBAA8\uB4E0 \uC900\uBE44\uAC00 \uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC790\uC720\uB86D\uAC8C \uD0D0\uC0C9\uD558\uC138\uC694 \u2014 ? \uB97C \uB20C\uB7EC \uC804\uCCB4 \uB2E8\uCD95\uD0A4 \uBAA9\uB85D\uC744 \uD655\uC778\uD558\uC138\uC694.\n\uAC00\uC774\uB4DC\uC5D0 \uC2A4\uD06C\uB9B0\uC0F7, \uB3D9\uC601\uC0C1, \uD65C\uC6A9 \uC0AC\uB840\uAC00 \uC788\uC2B5\uB2C8\uB2E4.',
     next: '\uB2E4\uC74C',
-    skip_step: '\uAC74\uB108\uB6F0\uAE30',
+    skip_step: '다음',
     skip_all: '\uD29C\uD1A0\uB9AC\uC5BC \uAC74\uB108\uB6F0\uAE30',
     open_guide: '\uAC00\uC774\uB4DC \uC5F4\uAE30',
     close: '\uC2DC\uC791',
@@ -415,7 +415,7 @@ I18N.addLang('ko', {
     btn_label: '튜토리얼',
     // Shared action labels
     next: '다음',
-    skip_step: '건너뛰기',
+    skip_step: '다음',
     skip_all: '튜토리얼 건너뛰기',
     open_guide: '가이드 열기',
     close: '완료',

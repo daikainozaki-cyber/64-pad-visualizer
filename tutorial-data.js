@@ -137,11 +137,17 @@ TutorialRegistry.add('scale_mode', {
     {
       type: 'highlight',
       id: 'key_select',
-      targets: ['#key-buttons'],
-      highlight: '#key-buttons',
+      targets: ['#key-buttons', '#circle-wrap'],
+      highlight: '#circle-wrap',
       titleKey: 'tut.scale_mode.step2_title',
       msgKey: 'tut.scale_mode.step2_msg',
       waitFor: 'next',
+      beforeShow: function() {
+        // Ensure Circle of Fifths is visible
+        if (typeof showCircle !== 'undefined' && !showCircle && typeof toggleTheoryView === 'function') {
+          toggleTheoryView('circle');
+        }
+      },
     },
     {
       type: 'highlight',

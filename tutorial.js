@@ -135,12 +135,20 @@ var TutorialEngine = {
       }
     }
 
-    // Highlight target elements
+    // Spotlight overlay (dim everything except highlight target)
     if (stepDef.highlight) {
       var hl = document.querySelector(stepDef.highlight);
       if (hl) {
         hl.classList.add('tutorial-highlight');
         this.highlightEl = hl;
+        // Add spotlight overlay
+        var spotlightOv = document.createElement('div');
+        spotlightOv.id = 'tutorial-spotlight';
+        spotlightOv.className = 'tutorial-spotlight';
+        document.body.appendChild(spotlightOv);
+        // Raise highlight element above overlay
+        hl.style.position = hl.style.position || 'relative';
+        hl.style.zIndex = '10001';
       }
     }
     if (stepDef.targets) {
@@ -240,10 +248,13 @@ var TutorialEngine = {
   _removeHighlight: function() {
     document.querySelectorAll('.tutorial-highlight').forEach(function(el) {
       el.classList.remove('tutorial-highlight');
+      el.style.zIndex = '';
     });
     document.querySelectorAll('.tutorial-target').forEach(function(el) {
       el.classList.remove('tutorial-target');
     });
+    var spotlight = document.getElementById('tutorial-spotlight');
+    if (spotlight) spotlight.remove();
     this.highlightEl = null;
   },
 

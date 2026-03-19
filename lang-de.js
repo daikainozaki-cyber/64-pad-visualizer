@@ -393,7 +393,7 @@ I18N.addLang('de', {
     done_title: 'Bereit!',
     done_msg: 'Alles eingerichtet. Erkunde frei \u2014 dr\u00FCcke ? f\u00FCr die vollst\u00E4ndige Tastenk\u00FCrzel-Liste.\nDie Anleitung enth\u00E4lt Screenshots, Videos und Anwendungsf\u00E4lle.',
     next: 'Weiter',
-    skip_step: '\u00DCberspringen',
+    skip_step: 'Weiter',
     skip_all: 'Tutorial \u00FCberspringen',
     open_guide: 'Anleitung \u00F6ffnen',
     close: 'Starten',
@@ -415,7 +415,7 @@ I18N.addLang('de', {
     hint_try: 'Ausprobieren',
     // Shared action labels
     next: 'Weiter',
-    skip_step: '\u00DCberspringen',
+    skip_step: 'Weiter',
     skip_all: 'Tutorial \u00FCberspringen',
     open_guide: 'Anleitung \u00F6ffnen',
     close: 'Fertig',

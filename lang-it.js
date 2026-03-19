@@ -393,7 +393,7 @@ I18N.addLang('it', {
     done_title: 'Pronto!',
     done_msg: 'Tutto pronto. Esplora liberamente \u2014 premi ? per l\u0027elenco completo delle scorciatoie.\nLa Guida contiene screenshot, video e casi d\u0027uso.',
     next: 'Avanti',
-    skip_step: 'Salta',
+    skip_step: 'Avanti',
     skip_all: 'Salta tutorial',
     open_guide: 'Apri Guida',
     close: 'Inizia',
@@ -415,7 +415,7 @@ I18N.addLang('it', {
     hint_try: 'Provalo',
     // Shared action labels
     next: 'Avanti',
-    skip_step: 'Salta',
+    skip_step: 'Avanti',
     skip_all: 'Salta tutorial',
     open_guide: 'Apri Guida',
     close: 'Fine',

@@ -395,7 +395,7 @@ I18N.addLang('zh', {
     done_title: '准备就绪！',
     done_msg: '一切准备好了。自由探索吧 — 按 ? 查看完整快捷键列表。\n指南中有截图、视频和使用场景。',
     next: '下一步',
-    skip_step: '跳过',
+    skip_step: '下一步',
     skip_all: '跳过教程',
     open_guide: '打开指南',
     close: '开始',
@@ -417,7 +417,7 @@ I18N.addLang('zh', {
     btn_label: '教程',
     // Shared action labels
     next: '下一步',
-    skip_step: '跳过',
+    skip_step: '下一步',
     skip_all: '跳过教程',
     open_guide: '打开指南',
     close: '完成',

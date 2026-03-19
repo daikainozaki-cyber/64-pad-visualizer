@@ -393,7 +393,7 @@ I18N.addLang('pt', {
     done_title: 'Pronto!',
     done_msg: 'Tudo preparado. Explore livremente \u2014 prima ? para a lista completa de atalhos.\nO Guia tem capturas de ecr\u00E3, v\u00EDdeos e casos de uso.',
     next: 'Seguinte',
-    skip_step: 'Saltar',
+    skip_step: 'Seguinte',
     skip_all: 'Saltar tutorial',
     open_guide: 'Abrir Guia',
     close: 'Come\u00E7ar',
@@ -415,7 +415,7 @@ I18N.addLang('pt', {
     hint_try: 'Experimentar',
     // Shared action labels
     next: 'Seguinte',
-    skip_step: 'Saltar',
+    skip_step: 'Seguinte',
     skip_all: 'Saltar tutorial',
     open_guide: 'Abrir Guia',
     close: 'Conclu\u00EDdo',

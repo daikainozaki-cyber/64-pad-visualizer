@@ -394,7 +394,7 @@ I18N.addLang('es', {
     done_title: '\u00A1Listo!',
     done_msg: 'Todo preparado. Explora libremente \u2014 pulsa ? para la lista completa de atajos.\nLa Gu\u00EDa tiene capturas, videos y casos de uso.',
     next: 'Siguiente',
-    skip_step: 'Saltar',
+    skip_step: 'Siguiente',
     skip_all: 'Saltar tutorial',
     open_guide: 'Abrir Gu\u00EDa',
     close: 'Empezar',
@@ -417,7 +417,7 @@ I18N.addLang('es', {
     btn_label: 'Tutoriales',
     // Shared action labels
     next: 'Siguiente',
-    skip_step: 'Saltar',
+    skip_step: 'Siguiente',
     skip_all: 'Saltar tutorial',
     open_guide: 'Abrir Gu\u00EDa',
     close: 'Listo',

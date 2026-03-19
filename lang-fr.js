@@ -394,7 +394,7 @@ I18N.addLang('fr', {
     done_title: 'Pr\u00EAt !',
     done_msg: 'Tout est pr\u00EAt. Explorez librement \u2014 appuyez sur ? pour la liste compl\u00E8te des raccourcis.\nLe Guide contient des captures d\u0027\u00E9cran, des vid\u00E9os et des cas d\u0027utilisation.',
     next: 'Suivant',
-    skip_step: 'Passer',
+    skip_step: 'Suivant',
     skip_all: 'Passer le tutoriel',
     open_guide: 'Ouvrir le Guide',
     close: 'Commencer',
@@ -417,7 +417,7 @@ I18N.addLang('fr', {
     btn_label: 'Tutoriels',
     // Shared action labels
     next: 'Suivant',
-    skip_step: 'Passer',
+    skip_step: 'Suivant',
     skip_all: 'Passer le tutoriel',
     open_guide: 'Ouvrir le Guide',
     close: 'Termin\u00E9',

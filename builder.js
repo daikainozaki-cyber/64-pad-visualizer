@@ -598,6 +598,7 @@ let midiOutput = null;
 let _lpOutputActive = false;
 const _prevLEDState = new Array(64).fill(-1); // -1 = never sent
 let _prevLEDBaseMidi = 36; // baseMidi used for last LED update (for correct clear)
+let _lpLEDMode = 'full'; // 'full' | 'root' | 'off'
 
 // PUSHシリアル配列(row間8半音) → 4度クロマチック配列(row間5半音) 変換
 // baseMidi() を使用: octaveShift + semitoneShift 両方反映
@@ -956,6 +957,8 @@ function initWebMIDI() {
       clearLaunchpadLEDs();
       midiOutput = null;
       _lpOutputActive = false;
+      var ledSel = document.getElementById('led-mode');
+      if (ledSel) ledSel.style.display = 'none';
       if (connected && connectedName) {
         // Find output matching selected input by name
         for (const output of access.outputs.values()) {
@@ -975,8 +978,21 @@ function initWebMIDI() {
             }
           }
         }
-        // Trigger initial LED update
-        if (_lpOutputActive) render();
+        // Show LED mode selector and trigger initial LED update
+        if (_lpOutputActive) {
+          var ledSel = document.getElementById('led-mode');
+          if (ledSel) {
+            ledSel.style.display = '';
+            try {
+              var saved = localStorage.getItem('64pad-led-mode');
+              if (saved && (saved === 'full' || saved === 'root' || saved === 'off')) {
+                _lpLEDMode = saved;
+                ledSel.value = saved;
+              }
+            } catch(_) {}
+          }
+          render();
+        }
       }
 
       indicator.style.background = connected ? '#4caf50' : '#ff9800';
@@ -1003,10 +1019,20 @@ function initWebMIDI() {
 // Map 64PE pad state to Launchpad palette color index (0-127)
 // Launchpad palette: 0=off, 5=red, 9=orange, 21=green, 37=cyan, 45=blue, 53=purple, 79=yellow
 function _padColorToLP(state, row, col) {
+  if (_lpLEDMode === 'off') return 0;
+
   var bm = baseMidi();
   var midi = bm + row * ROW_INTERVAL + col;
   var pc = midi % 12;
   var rootPC = state.rootPC;
+
+  // Root-only mode: only light up root pitch class
+  if (_lpLEDMode === 'root') {
+    if (pc === rootPC && rootPC !== null) return 9; // Orange
+    return 0;
+  }
+
+  // Full mode: mirror all pad colors
   var activePCS = state.activePCS;
   var bassPC = state.bassPC;
   var omittedPCS = state.omittedPCS;
@@ -1051,6 +1077,14 @@ function _padColorToLP(state, row, col) {
   if (isActive) return 45;                 // Blue — scale/chord tone
   if (overlayPCS && overlayPCS.has(pc)) return 1; // Dim — scale overlay
   return 0;                                // Off
+}
+
+function setLEDMode(mode) {
+  _lpLEDMode = mode;
+  // Force full re-send by resetting prev state
+  for (var i = 0; i < 64; i++) _prevLEDState[i] = -1;
+  try { localStorage.setItem('64pad-led-mode', mode); } catch(_) {}
+  render();
 }
 
 function updateLaunchpadLEDs(state) {

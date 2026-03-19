@@ -593,6 +593,12 @@ let midiDebounceTimer = null;
 const MIDI_DEBOUNCE_MS = 40; // PUSHのシリアルMIDI対策: 40ms以内のノートをまとめる
 let midiNoteRemap = null; // null = no remap, 'push-serial' = Push serial→4th chromatic
 
+// Launchpad LED output
+let midiOutput = null;
+let _lpOutputActive = false;
+const _prevLEDState = new Array(64).fill(-1); // -1 = never sent
+let _prevLEDBaseMidi = 36; // baseMidi used for last LED update (for correct clear)
+
 // PUSHシリアル配列(row間8半音) → 4度クロマチック配列(row間5半音) 変換
 // baseMidi() を使用: octaveShift + semitoneShift 両方反映
 const PUSH_SERIAL_BASE = 36;
@@ -839,7 +845,10 @@ var _lastOctCC = 0; // debounce: Push 3 multi-port duplicate CC
 
 function initWebMIDI() {
   if (!navigator.requestMIDIAccess) return;
-  navigator.requestMIDIAccess().then(access => {
+  navigator.requestMIDIAccess({ sysex: true }).catch(() => {
+    // Fallback: retry without sysex (some browsers block it)
+    return navigator.requestMIDIAccess();
+  }).then(access => {
     midiAccess = access;
     const statusEl = document.getElementById('midi-status');
     statusEl.style.display = '';
@@ -943,6 +952,33 @@ function initWebMIDI() {
       // Per-input remap handles Push now; global remap no longer needed
       midiNoteRemap = null;
 
+      // Auto-match MIDI output for LED control (Launchpad/Push)
+      clearLaunchpadLEDs();
+      midiOutput = null;
+      _lpOutputActive = false;
+      if (connected && connectedName) {
+        // Find output matching selected input by name
+        for (const output of access.outputs.values()) {
+          if (output.name === connectedName) {
+            midiOutput = output;
+            _lpOutputActive = true;
+            break;
+          }
+        }
+        // Partial match fallback (e.g., "Launchpad X" in "LPX MIDI")
+        if (!midiOutput) {
+          for (const output of access.outputs.values()) {
+            if (output.name.includes(connectedName) || connectedName.includes(output.name)) {
+              midiOutput = output;
+              _lpOutputActive = true;
+              break;
+            }
+          }
+        }
+        // Trigger initial LED update
+        if (_lpOutputActive) render();
+      }
+
       indicator.style.background = connected ? '#4caf50' : '#ff9800';
     }
 
@@ -961,6 +997,108 @@ function initWebMIDI() {
       connectInputs();
     };
   }).catch(() => {});
+}
+
+// ======== LAUNCHPAD LED CONTROL ========
+// Map 64PE pad state to Launchpad palette color index (0-127)
+// Launchpad palette: 0=off, 5=red, 9=orange, 21=green, 37=cyan, 45=blue, 53=purple, 79=yellow
+function _padColorToLP(state, row, col) {
+  var bm = baseMidi();
+  var midi = bm + row * ROW_INTERVAL + col;
+  var pc = midi % 12;
+  var rootPC = state.rootPC;
+  var activePCS = state.activePCS;
+  var bassPC = state.bassPC;
+  var omittedPCS = state.omittedPCS;
+  var guide3PCS = state.guide3PCS;
+  var guide7PCS = state.guide7PCS;
+  var tensionPCS = state.tensionPCS;
+  var avoidPCS = state.avoidPCS;
+  var overlayPCS = state.overlayPCS;
+  var tastyMidiSet = state.tastyMidiSet;
+
+  // TASTY/Stock mode
+  if (tastyMidiSet && tastyMidiSet.size > 0) {
+    if (tastyMidiSet.has(midi)) {
+      return pc === rootPC ? 9 : 45;
+    }
+    return 0;
+  }
+
+  // Input mode
+  if (AppState.mode === 'input') {
+    if (PlainState.activeNotes.has(midi)) {
+      return pc === rootPC ? 9 : 45;
+    }
+    return 0;
+  }
+
+  // Scale/Chord modes
+  var isRoot = pc === rootPC && !omittedPCS.has(pc);
+  var isBass = bassPC !== null && pc === bassPC;
+  var isActive = activePCS.has(pc);
+  var isGuide3 = AppState.mode === 'chord' && guide3PCS.has(pc) && !isRoot && !tensionPCS.has(pc);
+  var isGuide7 = AppState.mode === 'chord' && guide7PCS.has(pc) && !isRoot && !tensionPCS.has(pc);
+  var isTension = AppState.mode === 'chord' && tensionPCS.has(pc) && !isRoot && !isGuide3 && !isGuide7;
+  var isAvoid = AppState.mode === 'chord' && avoidPCS.has(pc) && !isRoot;
+
+  if (isRoot && isActive) return 9;       // Orange — root
+  if (isBass) return 9;                    // Orange — bass
+  if (isGuide3) return 21;                 // Green — guide tone 3rd
+  if (isGuide7) return 53;                 // Purple — guide tone 7th
+  if (isAvoid) return 5;                   // Red — avoid note
+  if (isTension) return 37;                // Cyan — tension
+  if (isActive) return 45;                 // Blue — scale/chord tone
+  if (overlayPCS && overlayPCS.has(pc)) return 1; // Dim — scale overlay
+  return 0;                                // Off
+}
+
+function updateLaunchpadLEDs(state) {
+  if (!midiOutput || !_lpOutputActive) return;
+  var bm = baseMidi();
+  // If baseMidi changed (octave shift), clear old LEDs first
+  if (bm !== _prevLEDBaseMidi) {
+    for (var i = 0; i < 64; i++) {
+      if (_prevLEDState[i] > 0) {
+        var oRow = Math.floor(i / COLS);
+        var oCol = i % COLS;
+        var oldNote = _prevLEDBaseMidi + oRow * ROW_INTERVAL + oCol;
+        if (oldNote >= 0 && oldNote <= 127) {
+          midiOutput.send([0x90, oldNote, 0]);
+        }
+      }
+      _prevLEDState[i] = -1;
+    }
+    _prevLEDBaseMidi = bm;
+  }
+  for (var row = 0; row < ROWS; row++) {
+    for (var col = 0; col < COLS; col++) {
+      var idx = row * COLS + col;
+      var color = _padColorToLP(state, row, col);
+      if (color !== _prevLEDState[idx]) {
+        var midiNote = bm + row * ROW_INTERVAL + col;
+        if (midiNote >= 0 && midiNote <= 127) {
+          midiOutput.send([0x90, midiNote, color]);
+        }
+        _prevLEDState[idx] = color;
+      }
+    }
+  }
+}
+
+function clearLaunchpadLEDs() {
+  if (!midiOutput) return;
+  for (var i = 0; i < 64; i++) {
+    if (_prevLEDState[i] > 0) {
+      var row = Math.floor(i / COLS);
+      var col = i % COLS;
+      var midiNote = _prevLEDBaseMidi + row * ROW_INTERVAL + col;
+      if (midiNote >= 0 && midiNote <= 127) {
+        midiOutput.send([0x90, midiNote, 0]);
+      }
+    }
+    _prevLEDState[i] = -1;
+  }
 }
 
 // ======== TEXT CHORD INPUT ========

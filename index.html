@@ -39,7 +39,7 @@
 <meta name="twitter:description" content="コードがわからなくても大丈夫。64パッドでスケール・コード・ボイシングを可視化。ブラウザだけで動く無料音楽理論ツール。">
 <meta name="twitter:image" content="https://murinaikurashi.com/apps/64-pad/img/screenshot-chord.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"64 Pad Explorer","description":"Visualize scales, chords, and voicings on a 64-pad chromatic grid. Supports Ableton Push and Maschine layouts. MIDI I/O, chord detection, multiple instrument views.","url":"https://murinaikurashi.com/apps/64-pad/","applicationCategory":"MusicApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Organization","name":"HPS (Hardcore Pad Style)","url":"https://murinaikurashi.com"},"screenshot":"https://murinaikurashi.com/apps/64-pad/img/screenshot-scale.png","softwareVersion":"3.37.8","inLanguage":["en","ja","ko","zh","es","pt","fr","de","it"]}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"64 Pad Explorer","description":"Visualize scales, chords, and voicings on a 64-pad chromatic grid. Supports Ableton Push and Maschine layouts. MIDI I/O, chord detection, multiple instrument views.","url":"https://murinaikurashi.com/apps/64-pad/","applicationCategory":"MusicApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Organization","name":"HPS (Hardcore Pad Style)","url":"https://murinaikurashi.com"},"screenshot":"https://murinaikurashi.com/apps/64-pad/img/screenshot-scale.png","softwareVersion":"3.37.9","inLanguage":["en","ja","ko","zh","es","pt","fr","de","it"]}
 </script>
 <script src="error-logger.js"></script>
 <!-- Google Analytics -->
@@ -75,7 +75,7 @@ document.addEventListener('click', function(e) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1+Code:wght@300;400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=3.37.8">
+<link rel="stylesheet" href="style.css?v=3.37.9">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -93,13 +93,13 @@ document.addEventListener('click', function(e) {
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_FluidR3_GM_sf2_file.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0070_GeneralUserGS_sf2_file.js"></script>
 <!-- E.Piano: jRhodes3c velocity-layer sampler (5 layers, 1977 Rhodes Mark I) -->
-<script src="jrhodes3c-samples.js?v=3.37.8"></script>
+<script src="jrhodes3c-samples.js?v=3.37.9"></script>
 </head>
 <body>
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V3.37.8</span>
+  <span class="version-tag">V3.37.9</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -277,7 +277,7 @@ document.addEventListener('click', function(e) {
 
     <h2 data-i18n="help.version_history">Version History</h2>
     <ul style="font-size:0.75rem;color:var(--text-muted);">
-      <li data-i18n="help.vh_3377"><b>V3.37.8</b> — 三井田レビュー反映：平行調バグ修正、UIタイトルケース化、フォント改善、色覚バリアフリー、Soundパネル初期展開、Layout Shift修正、チュートリアルスポットライト、Launchpadオクターブ対応＋MIDI自動オクターブ追従</li>
+      <li data-i18n="help.vh_3377"><b>V3.37.9</b> — 三井田レビュー反映：平行調バグ修正、UIタイトルケース化、フォント改善、色覚バリアフリー、Soundパネル初期展開、Layout Shift修正、チュートリアルスポットライト、Launchpadオクターブ対応＋MIDI自動オクターブ追従</li>
       <li data-i18n="help.vh_335"><b>V3.35</b> — チュートリアルUX改善（初心者レビュー反映）。ツールチップ全9言語翻訳。ガイドにサウンドパネル・ヘッダー解説追加</li>
       <li data-i18n="help.vh_333"><b>V3.33</b> — インタラクティブチュートリアル。11トピック×9言語。初回操作時にコンテキストヒント表示</li>
       <li data-i18n="help.vh_332"><b>V3.32</b> — STOCK Voicing: 154種のピアノボイシング（MIDI固有鍵盤表示+「パッドに反映」）。ガイドにHPSボイシング機能セクション追加</li>
@@ -757,34 +757,34 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.37.8"></script>
-<script src="lang-en.js?v=3.37.8"></script>
-<script src="lang-ja.js?v=3.37.8"></script>
-<script src="lang-zh.js?v=3.37.8"></script>
-<script src="lang-es.js?v=3.37.8"></script>
-<script src="lang-fr.js?v=3.37.8"></script>
-<script src="lang-pt.js?v=3.37.8"></script>
-<script src="lang-de.js?v=3.37.8"></script>
-<script src="lang-ko.js?v=3.37.8"></script>
-<script src="lang-it.js?v=3.37.8"></script>
+<script src="i18n.js?v=3.37.9"></script>
+<script src="lang-en.js?v=3.37.9"></script>
+<script src="lang-ja.js?v=3.37.9"></script>
+<script src="lang-zh.js?v=3.37.9"></script>
+<script src="lang-es.js?v=3.37.9"></script>
+<script src="lang-fr.js?v=3.37.9"></script>
+<script src="lang-pt.js?v=3.37.9"></script>
+<script src="lang-de.js?v=3.37.9"></script>
+<script src="lang-ko.js?v=3.37.9"></script>
+<script src="lang-it.js?v=3.37.9"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=3.37.8"></script>
-<script src="pad-core/theory.js?v=3.37.8"></script>
-<script src="pad-core/render.js?v=3.37.8"></script>
-<script src="pad-core/circle.js?v=3.37.8"></script>
-<script src="pad-core/builder-ui.js?v=3.37.8"></script>
-<script src="pad-core/incremental.js?v=3.37.8"></script>
+<script src="pad-core/data.js?v=3.37.9"></script>
+<script src="pad-core/theory.js?v=3.37.9"></script>
+<script src="pad-core/render.js?v=3.37.9"></script>
+<script src="pad-core/circle.js?v=3.37.9"></script>
+<script src="pad-core/builder-ui.js?v=3.37.9"></script>
+<script src="pad-core/incremental.js?v=3.37.9"></script>
 <!-- App JS -->
-<script src="data.js?v=3.37.8"></script>
-<script src="audio.js?v=3.37.8"></script>
-<script src="theory.js?v=3.37.8"></script>
-<script src="render.js?v=3.37.8"></script>
-<script src="plain.js?v=3.37.8"></script>
-<script src="perform.js?v=3.37.8"></script>
-<script src="builder.js?v=3.37.8"></script>
-<script src="main.js?v=3.37.8"></script>
-<script src="tutorial-data.js?v=3.37.8"></script>
-<script src="tutorial.js?v=3.37.8"></script>
+<script src="data.js?v=3.37.9"></script>
+<script src="audio.js?v=3.37.9"></script>
+<script src="theory.js?v=3.37.9"></script>
+<script src="render.js?v=3.37.9"></script>
+<script src="plain.js?v=3.37.9"></script>
+<script src="perform.js?v=3.37.9"></script>
+<script src="builder.js?v=3.37.9"></script>
+<script src="main.js?v=3.37.9"></script>
+<script src="tutorial-data.js?v=3.37.9"></script>
+<script src="tutorial.js?v=3.37.9"></script>
 <script>
 if ('serviceWorker' in navigator) {
   // Clean up old ?v= registrations (they create zombie SWs)

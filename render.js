@@ -682,6 +682,9 @@ function render() {
     }
   }
   _syncOverlayHighlight();
+
+  // Launchpad LED update (mirrors pad colors to connected controller)
+  if (typeof updateLaunchpadLEDs === 'function') updateLaunchpadLEDs(state);
 }
 
 // ========================================

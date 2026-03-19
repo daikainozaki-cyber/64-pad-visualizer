@@ -1126,29 +1126,33 @@ function _lpProgrammerToFourths(note) {
 function _enterLaunchpadProgrammerMode() {
   var port = midiOutputDAW || midiOutput;
   if (!port) return;
-  // SysEx: enter Programmer mode (0E 01)
-  port.send([0xF0, 0x00, 0x20, 0x29, 0x02, _lpDeviceByte, 0x0E, 0x01, 0xF7]);
-  _lpProgrammerMode = true;
-  // Also try sending on MIDI port in case DAW port didn't work
-  if (midiOutput && midiOutput !== port) {
-    midiOutput.send([0xF0, 0x00, 0x20, 0x29, 0x02, _lpDeviceByte, 0x0E, 0x01, 0xF7]);
+  var sysex = [0xF0, 0x00, 0x20, 0x29, 0x02, _lpDeviceByte, 0x0E, 0x01, 0xF7];
+  try {
+    port.send(sysex);
+    _lpProgrammerMode = true;
+    // Also try sending on MIDI port in case DAW port didn't work
+    if (midiOutput && midiOutput !== port) {
+      try { midiOutput.send(sysex); } catch(_) {}
+    }
+  } catch(e) {
+    // SysEx not permitted (user denied or browser blocked)
+    _lpProgrammerMode = false;
+    _lpOutputActive = false;
+    console.warn('[64PE] SysEx not available — LED control disabled. Grant MIDI SysEx permission to enable.');
   }
 }
 
 function _exitLaunchpadProgrammerMode() {
   if (!_lpProgrammerMode) return;
+  var sysex = [0xF0, 0x00, 0x20, 0x29, 0x02, _lpDeviceByte, 0x0E, 0x00, 0xF7];
   var port = midiOutputDAW || midiOutput;
-  if (port) {
-    port.send([0xF0, 0x00, 0x20, 0x29, 0x02, _lpDeviceByte, 0x0E, 0x00, 0xF7]);
-  }
-  if (midiOutput && midiOutput !== port) {
-    midiOutput.send([0xF0, 0x00, 0x20, 0x29, 0x02, _lpDeviceByte, 0x0E, 0x00, 0xF7]);
-  }
+  try { if (port) port.send(sysex); } catch(_) {}
+  try { if (midiOutput && midiOutput !== port) midiOutput.send(sysex); } catch(_) {}
   _lpProgrammerMode = false;
 }
 
 function updateLaunchpadLEDs(state) {
-  if (!midiOutput || !_lpOutputActive) return;
+  if (!midiOutput || !_lpOutputActive || !_lpProgrammerMode) return;
   for (var row = 0; row < ROWS; row++) {
     for (var col = 0; col < COLS; col++) {
       var idx = row * COLS + col;

@@ -593,9 +593,10 @@ let midiDebounceTimer = null;
 const MIDI_DEBOUNCE_MS = 40; // PUSHのシリアルMIDI対策: 40ms以内のノートをまとめる
 let midiNoteRemap = null; // null = no remap, 'push-serial' = Push serial→4th chromatic
 
-// Launchpad LED output
+// Launchpad LED output (HPS exclusive — gated by ?hps URL parameter)
 let midiOutput = null;
 let _lpOutputActive = false;
+let _lpHpsUnlocked = false; // set in main.js from ?hps
 const _prevLEDState = new Array(64).fill(-1); // -1 = never sent
 let _prevLEDBaseMidi = 36; // baseMidi used for last LED update (for correct clear)
 let _lpLEDMode = 'full'; // 'full' | 'root' | 'off'
@@ -953,13 +954,13 @@ function initWebMIDI() {
       // Per-input remap handles Push now; global remap no longer needed
       midiNoteRemap = null;
 
-      // Auto-match MIDI output for LED control (Launchpad/Push)
+      // Auto-match MIDI output for LED control (HPS exclusive)
       clearLaunchpadLEDs();
       midiOutput = null;
       _lpOutputActive = false;
       var ledSel = document.getElementById('led-mode');
       if (ledSel) ledSel.style.display = 'none';
-      if (connected && connectedName) {
+      if (_lpHpsUnlocked && connected && connectedName) {
         // Find output matching selected input by name
         for (const output of access.outputs.values()) {
           if (output.name === connectedName) {

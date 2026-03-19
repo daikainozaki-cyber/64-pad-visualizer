@@ -27,6 +27,9 @@ if (StockState.hpsUnlocked) {
   }).catch(function() {});
 }
 
+// Launchpad LED: same HPS gate
+_lpHpsUnlocked = new URLSearchParams(window.location.search).has('hps');
+
 // Genre Preset: HPS-only UI (Desktop paid version always has ?hps)
 (function() {
   var hps = new URLSearchParams(window.location.search).has('hps');

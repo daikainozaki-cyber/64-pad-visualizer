@@ -579,6 +579,21 @@ I18N.addLang('en', {
       fb_step2_title: 'How to Access TASTY',
       fb_step2_msg: 'Available when you join HPS (Hardcore Pad Style).\nPress T in Chord mode to activate. Press again to switch to another voicing.\nSee the Guide for details.',
     },
+    // LED Control tutorial
+    led_title: 'LED Control',
+    led_desc: 'Mirror scale/chord colors to your MIDI controller pad LEDs. HPS members only',
+    led: {
+      step1_title: 'LED Control',
+      step1_msg: 'When a MIDI controller (Launchpad, etc.) is connected, pad LEDs reflect the colors shown in 64 Pad Explorer.\nFind notes by feel without looking at the screen.\n(HPS members only)',
+      step2_title: 'Full Mode',
+      step2_msg: 'Root (orange), guide tones (green/purple), tensions (cyan), avoid notes (red) \u2014 LEDs match the on-screen colors.',
+      step3_title: 'Root Mode',
+      step3_msg: 'Only root note pads light up.\nFor advanced players who want to internalize root positions.\nOff disables LED output entirely.',
+      fb_step1_title: 'What is LED Control?',
+      fb_step1_msg: 'A feature that mirrors scale and chord colors to your MIDI controller pad LEDs in real time.\nHPS members only.',
+      fb_step2_title: 'How to use LED Control',
+      fb_step2_msg: 'Join HPS (Hardcore Pad Style) and connect a MIDI controller.\nSupports Launchpad X and Launchpad Mini MK3.',
+    },
     // STOCK Voicing tutorial
     stock_title: 'STOCK Voicing',
     stock_desc: 'Classic piano voicing idioms. HPS members only',

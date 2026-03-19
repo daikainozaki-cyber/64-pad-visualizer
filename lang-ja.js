@@ -579,6 +579,21 @@ I18N.addLang('ja', {
       fb_step2_title: 'TASTY Voicingを使うには',
       fb_step2_msg: 'HPS（Hardcore Pad Style）に参加すると利用できます。\nChordモードでTキーを押して起動。再び押すと、他のボイシングに変換されます。\n詳しくはガイドをご覧ください。',
     },
+    // LED制御
+    led_title: 'LED Control',
+    led_desc: 'MIDIコントローラのパッドLEDにスケール・コードの配色を反映。HPS会員専用機能です',
+    led: {
+      step1_title: 'LED制御',
+      step1_msg: 'MIDIコントローラ（Launchpad等）を接続すると、パッドのLEDに64 Pad Explorerの配色が反映されます。\n画面を見なくても指で位置がわかります。\n（HPS会員限定）',
+      step2_title: 'Fullモード',
+      step2_msg: 'ルート（橙）、ガイドトーン（緑/紫）、テンション（水色）、アヴォイド（赤）など、画面と同じ色分けでLEDが光ります。',
+      step3_title: 'Rootモード',
+      step3_msg: 'ルート音のパッドだけが光ります。\nルートの位置を体で覚えたい上級者向け。\nOffでLED出力を停止します。',
+      fb_step1_title: 'LED Controlとは',
+      fb_step1_msg: 'MIDIコントローラのパッドLEDにスケール・コードの配色をリアルタイムで反映する機能です。\nHPS会員限定の機能です。',
+      fb_step2_title: 'LED Controlを使うには',
+      fb_step2_msg: 'HPS（Hardcore Pad Style）に参加し、MIDIコントローラを接続すると利用できます。\nLaunchpad X / Launchpad Mini MK3に対応しています。',
+    },
     // STOCKボイシング
     stock_title: 'STOCK Voicing',
     stock_desc: 'ピアノでよく使われる常套句的なボイシング。HPS会員専用機能です',

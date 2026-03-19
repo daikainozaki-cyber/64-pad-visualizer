@@ -594,11 +594,13 @@ const MIDI_DEBOUNCE_MS = 40; // PUSHのシリアルMIDI対策: 40ms以内のノ�
 let midiNoteRemap = null; // null = no remap, 'push-serial' = Push serial→4th chromatic
 
 // Launchpad LED output (HPS exclusive — gated by ?hps URL parameter)
-let midiOutput = null;
+let midiOutput = null;       // Output port for LED Note-On
+let midiOutputDAW = null;    // DAW port for SysEx (may be same as midiOutput)
 let _lpOutputActive = false;
-let _lpHpsUnlocked = false; // set in main.js from ?hps
+let _lpHpsUnlocked = false;  // set in main.js from ?hps
+let _lpProgrammerMode = false; // true when Launchpad is in Programmer mode
+let _lpDeviceByte = 0x0C;   // 0x0C = Launchpad X, 0x0D = Mini MK3
 const _prevLEDState = new Array(64).fill(-1); // -1 = never sent
-let _prevLEDBaseMidi = 36; // baseMidi used for last LED update (for correct clear)
 let _lpLEDMode = 'full'; // 'full' | 'root' | 'off'
 
 // PUSHシリアル配列(row間8半音) → 4度クロマチック配列(row間5半音) 変換
@@ -938,14 +940,24 @@ function initWebMIDI() {
           }
           // Non-Push fourths-layout controller perform mode (Linnstrument, Launchpad, etc.)
           if (!isPush && memoryViewMode === 'perform' && cmd === 0x90 && velocity > 0) {
-            if (handlePerformMidi(rawNote)) {
+            var perfNote = (_lpProgrammerMode && rawNote >= 11 && rawNote <= 88) ? _lpProgrammerToFourths(rawNote) : rawNote;
+            if (perfNote >= 0 && handlePerformMidi(perfNote)) {
               ensureAudioResumed();
               return;
             }
           }
           // Push: block notes outside pad range (touch strip sends low notes)
           if (isPush && (cmd === 0x90 || cmd === 0x80) && (rawNote < 36 || rawNote > 99)) return;
-          const note = isPush ? pushSerialToFourths(rawNote) : rawNote;
+          // Launchpad Programmer mode: convert notes 11-88 to 4th chromatic
+          var note;
+          if (isPush) {
+            note = pushSerialToFourths(rawNote);
+          } else if (_lpProgrammerMode && rawNote >= 11 && rawNote <= 88) {
+            note = _lpProgrammerToFourths(rawNote);
+            if (note < 0) return; // Invalid pad position (e.g., note 19 = side button)
+          } else {
+            note = rawNote;
+          }
           if (cmd === 0x90 && velocity > 0) onMidiNoteOn(note, velocity);
           else if (cmd === 0x80 || (cmd === 0x90 && velocity === 0)) onMidiNoteOff(note);
         };
@@ -955,24 +967,34 @@ function initWebMIDI() {
       midiNoteRemap = null;
 
       // Auto-match MIDI output for LED control (HPS exclusive)
-      clearLaunchpadLEDs();
+      _exitLaunchpadProgrammerMode();
       midiOutput = null;
+      midiOutputDAW = null;
       _lpOutputActive = false;
+      _lpProgrammerMode = false;
       var ledSel = document.getElementById('led-mode');
       if (ledSel) ledSel.style.display = 'none';
       if (_lpHpsUnlocked && connected && connectedName) {
-        // Find output matching selected input by name
-        for (const output of access.outputs.values()) {
-          if (output.name === connectedName) {
-            midiOutput = output;
-            _lpOutputActive = true;
-            break;
-          }
-        }
-        // Partial match fallback (e.g., "Launchpad X" in "LPX MIDI")
-        if (!midiOutput) {
+        var isLaunchpad = /launchpad/i.test(connectedName);
+        if (isLaunchpad) {
+          // Detect device type
+          _lpDeviceByte = /mini/i.test(connectedName) ? 0x0D : 0x0C;
+          // Collect all matching outputs (Launchpad has MIDI + DAW ports)
+          var matchedOutputs = [];
           for (const output of access.outputs.values()) {
-            if (output.name.includes(connectedName) || connectedName.includes(output.name)) {
+            if (/launchpad/i.test(output.name)) matchedOutputs.push(output);
+          }
+          if (matchedOutputs.length > 0) {
+            // First port = MIDI, second = DAW (if available)
+            midiOutput = matchedOutputs[0];
+            midiOutputDAW = matchedOutputs.length > 1 ? matchedOutputs[1] : matchedOutputs[0];
+            _lpOutputActive = true;
+            _enterLaunchpadProgrammerMode();
+          }
+        } else {
+          // Non-Launchpad: try direct name match for basic LED
+          for (const output of access.outputs.values()) {
+            if (output.name === connectedName || output.name.includes(connectedName) || connectedName.includes(output.name)) {
               midiOutput = output;
               _lpOutputActive = true;
               break;
@@ -981,7 +1003,7 @@ function initWebMIDI() {
         }
         // Show LED mode selector and trigger initial LED update
         if (_lpOutputActive) {
-          var ledSel = document.getElementById('led-mode');
+          ledSel = document.getElementById('led-mode');
           if (ledSel) {
             ledSel.style.display = '';
             try {
@@ -1088,32 +1110,54 @@ function setLEDMode(mode) {
   render();
 }
 
+// Convert 64PE grid (row, col) to Launchpad Programmer mode note (11-88)
+function _lpNote(row, col) {
+  return (row + 1) * 10 + (col + 1);
+}
+
+// Convert Launchpad Programmer mode note (11-88) to 64PE MIDI note
+function _lpProgrammerToFourths(note) {
+  var lpRow = Math.floor(note / 10) - 1;
+  var lpCol = (note % 10) - 1;
+  if (lpRow < 0 || lpRow >= 8 || lpCol < 0 || lpCol >= 8) return -1;
+  return baseMidi() + lpRow * ROW_INTERVAL + lpCol;
+}
+
+function _enterLaunchpadProgrammerMode() {
+  var port = midiOutputDAW || midiOutput;
+  if (!port) return;
+  // SysEx: enter Programmer mode (0E 01)
+  port.send([0xF0, 0x00, 0x20, 0x29, 0x02, _lpDeviceByte, 0x0E, 0x01, 0xF7]);
+  _lpProgrammerMode = true;
+  // Also try sending on MIDI port in case DAW port didn't work
+  if (midiOutput && midiOutput !== port) {
+    midiOutput.send([0xF0, 0x00, 0x20, 0x29, 0x02, _lpDeviceByte, 0x0E, 0x01, 0xF7]);
+  }
+}
+
+function _exitLaunchpadProgrammerMode() {
+  if (!_lpProgrammerMode) return;
+  var port = midiOutputDAW || midiOutput;
+  if (port) {
+    port.send([0xF0, 0x00, 0x20, 0x29, 0x02, _lpDeviceByte, 0x0E, 0x00, 0xF7]);
+  }
+  if (midiOutput && midiOutput !== port) {
+    midiOutput.send([0xF0, 0x00, 0x20, 0x29, 0x02, _lpDeviceByte, 0x0E, 0x00, 0xF7]);
+  }
+  _lpProgrammerMode = false;
+}
+
 function updateLaunchpadLEDs(state) {
   if (!midiOutput || !_lpOutputActive) return;
-  var bm = baseMidi();
-  // If baseMidi changed (octave shift), clear old LEDs first
-  if (bm !== _prevLEDBaseMidi) {
-    for (var i = 0; i < 64; i++) {
-      if (_prevLEDState[i] > 0) {
-        var oRow = Math.floor(i / COLS);
-        var oCol = i % COLS;
-        var oldNote = _prevLEDBaseMidi + oRow * ROW_INTERVAL + oCol;
-        if (oldNote >= 0 && oldNote <= 127) {
-          midiOutput.send([0x90, oldNote, 0]);
-        }
-      }
-      _prevLEDState[i] = -1;
-    }
-    _prevLEDBaseMidi = bm;
-  }
   for (var row = 0; row < ROWS; row++) {
     for (var col = 0; col < COLS; col++) {
       var idx = row * COLS + col;
       var color = _padColorToLP(state, row, col);
       if (color !== _prevLEDState[idx]) {
-        var midiNote = bm + row * ROW_INTERVAL + col;
-        if (midiNote >= 0 && midiNote <= 127) {
-          midiOutput.send([0x90, midiNote, color]);
+        // In Programmer mode: use (row+1)*10+(col+1), else use MIDI note
+        var note = _lpProgrammerMode ? _lpNote(row, col) : (baseMidi() + row * ROW_INTERVAL + col);
+        if (note >= 0 && note <= 127) {
+          midiOutput.send([0x90, note, color]);
         }
         _prevLEDState[idx] = color;
       }
@@ -1127,9 +1171,9 @@ function clearLaunchpadLEDs() {
     if (_prevLEDState[i] > 0) {
       var row = Math.floor(i / COLS);
       var col = i % COLS;
-      var midiNote = _prevLEDBaseMidi + row * ROW_INTERVAL + col;
-      if (midiNote >= 0 && midiNote <= 127) {
-        midiOutput.send([0x90, midiNote, 0]);
+      var note = _lpProgrammerMode ? _lpNote(row, col) : (baseMidi() + row * ROW_INTERVAL + col);
+      if (note >= 0 && note <= 127) {
+        midiOutput.send([0x90, note, 0]);
       }
     }
     _prevLEDState[i] = -1;

@@ -18,6 +18,10 @@ const { ROWS, COLS, BASE_MIDI, ROW_INTERVAL, COL_INTERVAL, PAD_SIZE, PAD_GAP, MA
 // ======== ADAPTER: pcName (bridges AppState → pad-core) ========
 function getParentMajorKey(scaleIdx, key) { return padGetParentMajorKey(scaleIdx, key); }
 function pcName(pc, contextKey) {
+  // If user has explicit ♯/♭ preference from root notation toggle, use it
+  if (typeof _rootUseFlats !== 'undefined') {
+    return _rootUseFlats ? NOTE_NAMES_FLAT[pc] : NOTE_NAMES_SHARP[pc];
+  }
   const parentKey = contextKey !== undefined ? contextKey : padGetParentMajorKey(AppState.scaleIdx, AppState.key);
   return KEY_SPELLINGS[parentKey][pc];
 }

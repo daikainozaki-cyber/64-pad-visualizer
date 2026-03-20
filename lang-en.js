@@ -688,7 +688,7 @@ I18N.addLang('en', {
     memory: 'Toggle Memory Slot panel \u2014 save/recall chords in 16 slots [\u2318\u2325M]',
     sect_key: 'Toggle Key display',
     sect_input: 'Toggle text chord input [\u2318\u2325T]',
-    sect_quality: 'Toggle Quality/Tension selectors [\u2318\u2325Q]',
+    sect_quality: 'Toggle Root/Quality/Tension selectors [\u2318\u2325Q]',
     sect_voicing: 'Toggle voicing controls (Omit, Shell, Inversion, Drop) [\u2318\u2325V]',
     text_input: 'Type chord name directly \u2014 Cm7, G7(b9,#11), Am7/G [/]',
     parent_scales: 'Show available scales for the current chord',

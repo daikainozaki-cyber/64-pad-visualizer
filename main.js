@@ -596,6 +596,11 @@ function toggleSection(name) {
   var visible = section.style.display !== 'none';
   section.style.display = visible ? 'none' : '';
   if (btn) btn.classList.toggle('active', !visible);
+  // Quality toggles Root together
+  if (name === 'quality') {
+    var rootSect = document.getElementById('section-root');
+    if (rootSect) rootSect.style.display = visible ? 'none' : '';
+  }
   try {
     var s = JSON.parse(localStorage.getItem('64pad-sections') || '{}');
     s[name] = !visible;
@@ -607,7 +612,9 @@ function toggleSection(name) {
   try {
     var s = JSON.parse(localStorage.getItem('64pad-sections') || '{}');
     ['key', 'input', 'quality', 'voicing', 'memory'].forEach(function(name) {
-      if (s[name] === false) toggleSection(name);
+      if (s[name] === false) {
+        toggleSection(name);
+      }
     });
   } catch(_) {}
 })();

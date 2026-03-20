@@ -512,6 +512,8 @@ function toggleRootNotation() {
   updateRootLabels();
   var tog = document.getElementById('root-notation-toggle');
   if (tog) tog.textContent = _rootUseFlats ? '\u266D' : '\u266F';
+  updateChordDisplay();
+  render();
 }
 function updateRootLabels() {
   var labels = getRootLabels();

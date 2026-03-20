@@ -675,12 +675,16 @@ function toggleHeader() {
   setInfo(defaultKey);
 
   document.addEventListener('mouseenter', function(e) {
-    var el = e.target.closest('[data-info]');
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var el = t.closest('[data-info]');
     if (el) setInfo(el.getAttribute('data-info'));
   }, true);
 
   document.addEventListener('mouseleave', function(e) {
-    var el = e.target.closest('[data-info]');
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var el = t.closest('[data-info]');
     if (el) setInfo(defaultKey);
   }, true);
 })();

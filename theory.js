@@ -1141,14 +1141,13 @@ function cycleTasty(reverse) {
   playMidiNotes(midiNotes);
 }
 
-// Recalculate current TASTY voicing for new root (called on ArrowLeft/Right transpose)
-function refreshTastyVoicing() {
+// Transpose current TASTY voicing by delta semitones (called on ArrowLeft/Right)
+// Uses direct MIDI offset instead of findBestPosition to preserve pad position shape
+function refreshTastyVoicing(delta) {
   if (!TastyState.enabled || TastyState.currentIndex < 0) return;
   var recipe = TastyState.currentMatches[TastyState.currentIndex];
   if (!recipe) return;
-  var rootPC = BuilderState.root;
-  var rootMidi = 48 + rootPC;
-  var midiNotes = findBestPosition(rootMidi, recipe.v);
+  var midiNotes = TastyState.midiNotes.map(function(n) { return n + delta; });
   var split = splitByPadRange(midiNotes);
   TastyState.midiNotes = midiNotes;
   TastyState.outOfRange = split.outOfRange;
@@ -1545,16 +1544,14 @@ function cycleStock(reverse) {
   playMidiNotes(allNotes);
 }
 
-// Recalculate current STOCK voicing for new root (called on ArrowLeft/Right transpose)
-function refreshStockVoicing() {
+// Transpose current STOCK voicing by delta semitones (called on ArrowLeft/Right)
+// Uses direct MIDI offset to preserve pad position shape
+function refreshStockVoicing(delta) {
   if (!StockState.enabled || StockState.currentIndex < 0) return;
   var entry = StockState.currentMatches[StockState.currentIndex];
   if (!entry) return;
-  var rootPC = BuilderState.root;
-  var lhRoot = 36 + rootPC;
-  var rhRoot = 48 + rootPC;
-  StockState.lhMidi = entry.LH && entry.LH.length > 0 ? stockDegreesToMidi(lhRoot, entry.LH) : [];
-  StockState.rhMidi = entry.RH && entry.RH.length > 0 ? stockDegreesToMidi(rhRoot, entry.RH) : [];
+  StockState.lhMidi = StockState.lhMidi.map(function(n) { return n + delta; });
+  StockState.rhMidi = StockState.rhMidi.map(function(n) { return n + delta; });
   var degMap = {};
   if (entry.LH) {
     for (var i = 0; i < entry.LH.length && i < StockState.lhMidi.length; i++) {

@@ -1384,8 +1384,12 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   }
   #staff-ep-panel {
     min-width: 100vw;
-    align-items: center;
+    align-items: stretch;
   }
+  #staff-ep-panel > div { justify-content: center; }
+  /* Guitar/Bass/Piano toggle bar centered on mobile */
+  .pad-area #inst-toggle-bar { justify-content: center; }
+  .pad-area #instrument-row { text-align: center; }
 
   /* Pad SVG: responsive width */
   #pad-grid {

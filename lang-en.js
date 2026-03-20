@@ -114,6 +114,7 @@ I18N.addLang('en', {
     sc_cmd_quality: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>Q</kbd> \u2014 Quality/Tension',
     sc_cmd_voicing: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>V</kbd> \u2014 Voicing',
     sc_cmd_key: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>K</kbd> \u2014 Key Display',
+    sc_cmd_header: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>H</kbd> \u2014 Header / Info Bar',
     tips_toggle: 'Show startup tips',
     layout: 'Layout',
     footer: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',

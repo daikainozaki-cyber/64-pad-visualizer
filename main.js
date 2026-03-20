@@ -271,6 +271,7 @@ document.addEventListener('keydown', (e) => {
     if (cmdOptCode === 'KeyQ') { e.preventDefault(); toggleSection('quality'); return; }
     if (cmdOptCode === 'KeyV') { e.preventDefault(); toggleSection('voicing'); return; }
     if (cmdOptCode === 'KeyK') { e.preventDefault(); toggleKeyDisplay(); return; }
+    if (cmdOptCode === 'KeyH') { e.preventDefault(); toggleHeader(); return; }
   }
 
   // Shift+D: Cycle Drop (voicing operation, not display toggle)
@@ -623,6 +624,26 @@ function toggleSection(name) {
         setTimeout(function() { btn.style.animation = ''; btn.style.color = ''; }, 5000);
       }
     }
+  } catch(_) {}
+})();
+
+// ========================================
+// HEADER TOGGLE (⌘⌥H)
+// ========================================
+function toggleHeader() {
+  var hdr = document.querySelector('.header-bar');
+  var links = document.getElementById('header-links');
+  var infoBar = document.getElementById('info-bar');
+  var visible = hdr && hdr.style.display !== 'none';
+  if (hdr) hdr.style.display = visible ? 'none' : '';
+  if (links) links.style.display = visible ? 'none' : '';
+  if (infoBar) infoBar.style.display = visible ? 'none' : '';
+  try { localStorage.setItem('64pad-header-hidden', visible ? '1' : ''); } catch(_) {}
+}
+// Restore header state
+(function() {
+  try {
+    if (localStorage.getItem('64pad-header-hidden') === '1') toggleHeader();
   } catch(_) {}
 })();
 

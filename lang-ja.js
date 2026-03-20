@@ -114,6 +114,7 @@ I18N.addLang('ja', {
     sc_cmd_quality: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>Q</kbd> \u2014 クオリティ/テンション',
     sc_cmd_voicing: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>V</kbd> \u2014 ボイシング',
     sc_cmd_key: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>K</kbd> \u2014 キー表示',
+    sc_cmd_header: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>H</kbd> \u2014 ヘッダー / Info Bar',
     tips_toggle: '起動時にヒントを表示',
     layout: 'レイアウト',
     footer: '64 Pad Explorer \u2014 HPS（Hardcore Pad Style）',

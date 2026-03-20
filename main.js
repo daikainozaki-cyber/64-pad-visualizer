@@ -253,10 +253,28 @@ document.addEventListener('keydown', (e) => {
   }
 
 
-  // Shift+letter: shortcuts that conflict with A-I voicing box range
+  // Cmd+Option (Mac) / Ctrl+Alt (Win): Display toggle shortcuts (Ableton-style)
+  // Uses e.code because Option+key produces special chars on Mac
+  if ((e.metaKey || e.ctrlKey) && e.altKey && !e.shiftKey && e.code) {
+    var cmdOptCode = e.code;
+    // Instruments
+    if (cmdOptCode === 'KeyG') { e.preventDefault(); toggleInstrument('guitar'); return; }
+    if (cmdOptCode === 'KeyB') { e.preventDefault(); toggleInstrument('bass'); return; }
+    if (cmdOptCode === 'KeyP') { e.preventDefault(); toggleInstrument('piano'); return; }
+    // Right panel
+    if (cmdOptCode === 'KeyF') { e.preventDefault(); toggleTheoryView('circle'); return; }
+    if (cmdOptCode === 'KeyS') { e.preventDefault(); toggleTheoryView('staff'); return; }
+    if (cmdOptCode === 'KeyA') { e.preventDefault(); toggleInstrument('sound'); return; }
+    if (cmdOptCode === 'KeyM') { e.preventDefault(); toggleSection('memory'); return; }
+    // Control panel sections
+    if (cmdOptCode === 'KeyT') { e.preventDefault(); toggleSection('input'); return; }
+    if (cmdOptCode === 'KeyQ') { e.preventDefault(); toggleSection('quality'); return; }
+    if (cmdOptCode === 'KeyV') { e.preventDefault(); toggleSection('voicing'); return; }
+  }
+
+  // Shift+D: Cycle Drop (voicing operation, not display toggle)
   if (e.shiftKey && !e.metaKey && !e.ctrlKey) {
     if (lk === 'd') {
-      // Shift+D: Cycle Drop
       if (AppState.mode === 'chord' && BuilderState.quality) {
         if (!VoicingState.drop) setDrop('drop2');
         else if (VoicingState.drop === 'drop2') setDrop('drop3');
@@ -264,11 +282,6 @@ document.addEventListener('keydown', (e) => {
       }
       return;
     }
-    if (lk === 'g') { toggleInstrument('guitar'); return; }
-    if (lk === 'b') { toggleInstrument('bass'); return; }
-    if (lk === 'p') { toggleInstrument('piano'); return; }
-    if (lk === 'c') { toggleTheoryView('circle'); return; }
-    if (lk === 's') { toggleTheoryView('staff'); return; }
   }
 
   // Tab / Shift+Tab: Mode cycle (Scale → Chord → Input → Scale)

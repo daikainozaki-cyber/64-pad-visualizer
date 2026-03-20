@@ -367,10 +367,10 @@ fingerings.json に追加
 | Phase 4.975 | **Performモード + 16スロット + Undo** | **完了** | 16パッドリアルタイム演奏、キーボード4×4グリッド、MIDIパッド対応、D&D並び替え、Undo(30回) |
 | Phase 4.98 | **多言語対応（i18n）** | **完了** | 9言語(en/zh/es/fr/pt/de/ja/ko/it)、`t()`関数+`data-i18n`属性方式、ビルドツール不要 |
 | Phase 4.99 | **Parent Scale逆引き** | **完了** | 4スケールシステム(○/NM/■/◆)×7度×12キー。テンションフィルタ、五度圏距離ソート、行クリックでスケール切替。**コード・スケール編完成** |
-| ~~Phase 5~~ | ~~指番号判定ロジック~~ | **廃止** | 指番号はツール自動化より人間が教える価値。HPSの参入障壁そのもの |
+| Phase 5 | **PADフィンガリングエンジン（HPS専用）** | 未着手 | 旧Phase5（指番号自動判定）を再設計。①Claude in ChromeでHPS本編1〜8回を精読→フィンガリングデータJSON抽出 ②解剖学的制約（手首角度・指可動域・ブロークンバレー等）をロジック化 ③ランダムサンプリングで検証→一般化 ④TASTYトランスポーズに最適配置適用。現在は全ノート+delta簡易版。ギターエンジンと同じ「リファレンス+ロジック」構造 |
+| Phase 5.5 | **エンジン分離（guitar/pad-fingering）** | 未着手 | theory.jsからギターフィンガリングロジックを`guitar-fingering.js`に分離。PADフィンガリングは`pad-fingering.js`として新設。データは`data/pad-fingerings.json`等で管理。肥大化防止 |
 | Phase 6 | **ダイアグラム描画モジュール化** | 一部完了 | pad-core: パッドグリッド描画済み。**未モジュール化**: ギター(renderGuitarDiagram)・ベース(renderBassDiagram)・ピアノ(renderPianoDisplay)・五線譜(renderStaff) — 全てrender.jsに残存。pad-coreへ移行すべき |
 | Phase 7 | **五度圏アプリにダイアグラム統合** | 未着手 | Phase 6完了後、モジュールを五度圏アプリにインポート |
-| ~~Phase 8~~ | ~~記事からのデータ抽出パイプライン~~ | **廃止** | Phase 5廃止に伴い不要 |
 | Phase A | **Audio Input（マイク→コード判定）** | 未着手 | getUserMedia+AnalyserNode→Chromagram(FFT→12PC)→padDetectChord。ギターユーザー取り込みの入口 |
 | Phase R | **マルチトラック録音** | 未着手 | MediaRecorder+Web Audio。マイク+内部音源の複数トラック→WAV書き出し。デモ録り・レッスン記録品質 |
 | Phase X | **アプリ間連携（PADDAW基盤）** | 未着手 | 同一オリジンlocalStorage+BroadcastChannelで64PE↔MRC↔五度圏を接続。MIDI転送、コード進行共有。各アプリ単独完成品＋組合せでDAW |

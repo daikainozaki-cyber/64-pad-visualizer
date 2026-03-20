@@ -631,13 +631,10 @@ function toggleSection(name) {
 // HEADER TOGGLE (⌘⌥H)
 // ========================================
 function toggleHeader() {
-  var hdr = document.querySelector('.header-bar');
-  var links = document.getElementById('header-links');
-  var infoBar = document.getElementById('info-bar');
-  var visible = hdr && hdr.style.display !== 'none';
-  if (hdr) hdr.style.display = visible ? 'none' : '';
-  if (links) links.style.display = visible ? 'none' : '';
-  if (infoBar) infoBar.style.display = visible ? 'none' : '';
+  var row = document.querySelector('.header-row');
+  if (!row) return;
+  var visible = row.style.display !== 'none';
+  row.style.display = visible ? 'none' : '';
   try { localStorage.setItem('64pad-header-hidden', visible ? '1' : ''); } catch(_) {}
 }
 // Restore header state
@@ -648,7 +645,7 @@ function toggleHeader() {
 })();
 
 // ========================================
-// INFO BAR (Ableton-style hover info)
+// INFO BAR (hover info — aligned to right panel)
 // ========================================
 (function() {
   var bar = document.getElementById('info-bar');
@@ -659,6 +656,21 @@ function toggleHeader() {
     var text = t(key);
     bar.textContent = (text !== key) ? text : '';
   }
+
+  // Align info bar to match right panel (staff-ep-panel) exactly
+  function alignInfoBar() {
+    var panel = document.getElementById('staff-ep-panel');
+    var row = document.querySelector('.header-row');
+    if (!panel || !row) return;
+    var panelRect = panel.getBoundingClientRect();
+    var rowRect = row.getBoundingClientRect();
+    bar.style.left = (panelRect.left - rowRect.left) + 'px';
+    bar.style.right = (rowRect.right - panelRect.right) + 'px';
+  }
+  window.addEventListener('resize', alignInfoBar);
+  // Run after fonts/layout settle, and periodically for pane changes
+  requestAnimationFrame(function() { requestAnimationFrame(alignInfoBar); });
+  setInterval(alignInfoBar, 2000);
 
   setInfo(defaultKey);
 

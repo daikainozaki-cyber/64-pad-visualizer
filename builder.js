@@ -500,10 +500,15 @@ function updateChordKeyDisplay() {
 }
 
 // ======== ROOT GRID (12-note selector inside Chord Builder) ========
-var _rootUseFlats = false;
-try { _rootUseFlats = localStorage.getItem('64pad-root-flats') === '1'; } catch(_) {}
+var _rootUseFlats = null;  // null = auto-detect from key context
+try { var _savedFlats = localStorage.getItem('64pad-root-flats'); if (_savedFlats !== null) _rootUseFlats = _savedFlats === '1'; } catch(_) {}
 
 function getRootLabels() {
+  if (_rootUseFlats === null) {
+    // Auto: use key context
+    var parentKey = padGetParentMajorKey(AppState.scaleIdx, AppState.key);
+    return KEY_SPELLINGS[parentKey];
+  }
   return _rootUseFlats ? NOTE_NAMES_FLAT : NOTE_NAMES_SHARP;
 }
 function setRootNotation(useFlats) {
@@ -517,15 +522,18 @@ function setRootNotation(useFlats) {
 function updateRootNotationUI() {
   var sharp = document.getElementById('root-notation-sharp');
   var flat = document.getElementById('root-notation-flat');
+  var isFlat = _rootUseFlats === true;
+  var isSharp = _rootUseFlats === false;
+  // null = auto (neither button highlighted)
   if (sharp) {
-    sharp.style.background = _rootUseFlats ? 'transparent' : 'var(--text)';
-    sharp.style.color = _rootUseFlats ? 'var(--text-muted)' : 'var(--bg)';
-    sharp.style.border = _rootUseFlats ? '1px solid var(--border)' : 'none';
+    sharp.style.background = isSharp ? 'var(--text)' : 'transparent';
+    sharp.style.color = isSharp ? 'var(--bg)' : 'var(--text-muted)';
+    sharp.style.border = isSharp ? 'none' : '1px solid var(--border)';
   }
   if (flat) {
-    flat.style.background = _rootUseFlats ? 'var(--text)' : 'transparent';
-    flat.style.color = _rootUseFlats ? 'var(--bg)' : 'var(--text-muted)';
-    flat.style.border = _rootUseFlats ? 'none' : '1px solid var(--border)';
+    flat.style.background = isFlat ? 'var(--text)' : 'transparent';
+    flat.style.color = isFlat ? 'var(--bg)' : 'var(--text-muted)';
+    flat.style.border = isFlat ? 'none' : '1px solid var(--border)';
   }
 }
 function updateRootLabels() {

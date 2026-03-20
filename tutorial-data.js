@@ -247,8 +247,8 @@ TutorialRegistry.add('chord_mode', {
     {
       type: 'info',
       id: 'secondary_dominant',
-      targets: ['#parent-scales'],
-      highlight: '#parent-scales',
+      targets: ['#parent-scale-panel'],
+      highlight: '#parent-scale-toggle',
       titleKey: 'tut.chord_mode.step6_title',
       msgKey: 'tut.chord_mode.step6_msg',
       waitFor: 'next',
@@ -297,8 +297,8 @@ TutorialRegistry.add('input_mode', {
     {
       type: 'info',
       id: 'chord_detect',
-      targets: ['#info-text'],
-      highlight: '#info-text',
+      targets: ['#chord-name'],
+      highlight: '#chord-name',
       titleKey: 'tut.input_mode.step3_title',
       msgKey: 'tut.input_mode.step3_msg',
       waitFor: 'next',

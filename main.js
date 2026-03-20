@@ -270,6 +270,7 @@ document.addEventListener('keydown', (e) => {
     if (cmdOptCode === 'KeyT') { e.preventDefault(); toggleSection('input'); return; }
     if (cmdOptCode === 'KeyQ') { e.preventDefault(); toggleSection('quality'); return; }
     if (cmdOptCode === 'KeyV') { e.preventDefault(); toggleSection('voicing'); return; }
+    if (cmdOptCode === 'KeyK') { e.preventDefault(); toggleKeyDisplay(); return; }
   }
 
   // Shift+D: Cycle Drop (voicing operation, not display toggle)
@@ -572,6 +573,17 @@ document.addEventListener('keyup', (e) => {
 window.addEventListener('blur', () => {
   document.getElementById('memory-slots')?.classList.remove('opt-held');
 });
+
+// Toggle Key display (Cmd+Opt+K)
+function toggleKeyDisplay() {
+  var keyRows = document.getElementById('key-rows');
+  var keyLabel = document.getElementById('key-label');
+  var chordKeyRow = document.getElementById('chord-key-row');
+  var visible = keyRows && keyRows.style.display !== 'none';
+  if (keyRows) keyRows.style.display = visible ? 'none' : '';
+  if (keyLabel) keyLabel.style.display = visible ? 'none' : '';
+  if (chordKeyRow) chordKeyRow.style.display = visible ? 'none' : '';
+}
 
 render();
 

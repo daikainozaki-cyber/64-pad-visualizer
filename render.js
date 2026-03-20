@@ -1685,11 +1685,15 @@ function isSecondaryDominant(qualityIntervals, results) {
   });
 }
 
-function findBestAutoSelect(results, isSecDom) {
+function findBestAutoSelect(results, isSecDom, isHybrid) {
   if (AppState.psSortMode === 'practical') {
     if (isSecDom) {
       var lydb7 = results.find(function(r) { return r.scaleIdx === 17 && r.exactMatch && !r.omit5Match; });
       if (lydb7) return lydb7;
+    }
+    if (isHybrid) {
+      var mixo = results.find(function(r) { return r.degreeNum === 5 && r.system === '\u25CB' && r.exactMatch && !r.omit5Match; });
+      if (mixo) return mixo;
     }
     const diaMatch = results.find(r =>
       r.system === '○' && r.distance === 0 && !r.omit5Match);
@@ -1717,12 +1721,14 @@ function renderParentScales() {
   let fullAbsSet = new Set();
   let hasTension = false;
   let newFPSource = '';
+  let _isHybridChord = false;
 
   if (AppState.mode === 'chord' && BuilderState.root !== null && BuilderState.quality !== null) {
     // Fingerprint always from BuilderState (chord-change detection, triggers padExtNotes.clear())
     newFPSource = BuilderState.root + ':' +
       (BuilderState.quality ? BuilderState.quality.name : '') + ':' +
-      (BuilderState.tension ? BuilderState.tension.label : '');
+      (BuilderState.tension ? BuilderState.tension.label : '') + ':' +
+      (BuilderState.bass !== null ? BuilderState.bass : '');
 
     if (padExtNotes.size > 0) {
       // Pad override: chord determined by toggled pad notes
@@ -1745,6 +1751,23 @@ function renderParentScales() {
       if (extPCs.length > 0) {
         extPCs.forEach(pc => fullAbsSet.add(pc));
         hasTension = true;
+      }
+
+      // Hybrid chord reinterpretation: when bass note is NOT a chord tone,
+      // reinterpret with bass as root for Available Scale calculation.
+      // Inversion (bass IS a chord tone) keeps the original root.
+      if (BuilderState.bass !== null) {
+        const chordAbsPCs = fullPCS ? fullPCS.map(iv => (iv + BuilderState.root) % 12) : [];
+        if (!chordAbsPCs.includes(BuilderState.bass)) {
+          // Hybrid chord: bass is not a chord tone → reinterpret
+          psRoot = BuilderState.bass;
+          const allAbsPCs = new Set(chordAbsPCs);
+          allAbsPCs.add(BuilderState.bass);
+          qualityIntervals = new Set([...allAbsPCs].map(pc => ((pc - psRoot) + 12) % 12));
+          fullAbsSet = allAbsPCs;
+          hasTension = true; // reinterpreted chords typically have extensions
+          _isHybridChord = true;
+        }
       }
     }
   } else if (AppState.mode === 'input' && PlainState.activeNotes.size >= 3) {
@@ -1803,14 +1826,23 @@ function renderParentScales() {
     r.secDomBoost = (_isSecDom && r.scaleIdx === 17 && !r.omit5Match) ? 1 : 0;
   });
 
+  // Hybrid chord boost: hybrid chords (non-chord-tone bass) create a dominant space.
+  // The absence of 3rd makes Dorian/Mixolydian equally valid by interval matching,
+  // but Mixolydian (V7 scale) is the correct first choice because the bass note
+  // establishes a dominant function. (Triad pair theory: C/D → G Major → D Mixolydian)
+  _psResults.forEach(function(r) {
+    r.hybridBoost = (_isHybridChord && r.degreeNum === 5 && r.system === '\u25CB' && !r.omit5Match) ? 1 : 0;
+  });
+
   // Re-sort: exact matches first, then by mode-specific criteria
   const SYS = { '\u25CB': 0, 'NM': 1, '\u25A0': 2, '\u25C6': 3 };
   if (AppState.psSortMode === 'practical') {
-    // Practical: exactMatch → omit5 → secDomBoost → distance → system → avoidCount → degreeNum
+    // Practical: exactMatch → omit5 → secDomBoost/hybridBoost → distance → system → avoidCount → degreeNum
     _psResults.sort((a, b) =>
       (b.exactMatch - a.exactMatch) ||
       (a.omit5Match - b.omit5Match) ||
       (b.secDomBoost - a.secDomBoost) ||
+      (b.hybridBoost - a.hybridBoost) ||
       (a.distance - b.distance) ||
       ((SYS[a.system] || 0) - (SYS[b.system] || 0)) ||
       (a.avoidCount - b.avoidCount) ||
@@ -1872,7 +1904,7 @@ function renderParentScales() {
         _selectedPS = { parentKey: AppState.key, scaleIdx: exactIdx };
       }
     } else {
-      const best = findBestAutoSelect(_psResults, _isSecDom);
+      const best = findBestAutoSelect(_psResults, _isSecDom, _isHybridChord);
       _selectedPS = { parentKey: best.parentKey, scaleIdx: best.scaleIdx };
     }
   }
@@ -1911,9 +1943,9 @@ function renderParentScales() {
   let html = '<div class="ps-header">' +
     t('parent.header', { n: _psResults.length });
   html += ' <button class="ps-sort-toggle' + (AppState.psSortMode === 'practical' ? ' active' : '') +
-    '" onclick="if(AppState.psSortMode!==\'practical\')togglePsSortMode()">' + t('parent.sortPractical') + '</button>';
+    '" onclick="if(AppState.psSortMode!==\'practical\')togglePsSortMode()" data-info="info.sort_practical">' + t('parent.sortPractical') + '</button>';
   html += '<button class="ps-sort-toggle' + (AppState.psSortMode === 'diatonic' ? ' active' : '') +
-    '" onclick="if(AppState.psSortMode!==\'diatonic\')togglePsSortMode()">' + t('parent.sortDiatonic') + '</button>';
+    '" onclick="if(AppState.psSortMode!==\'diatonic\')togglePsSortMode()" data-info="info.sort_diatonic">' + t('parent.sortDiatonic') + '</button>';
   if (farResults.length > 0) {
     html += ' <button class="ps-expand" onclick="togglePSExpand()">' +
       (_psExpanded ? '\u25B2' : '\u25BC ' + t('parent.expand')) + '</button>';

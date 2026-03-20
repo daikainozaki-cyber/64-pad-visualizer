@@ -423,7 +423,7 @@ I18N.addLang('zh', {
     close: '完成',
     onboarding_ask_title: '教程',
     onboarding_ask_msg: '第一次来？想快速浏览一下应用吗？',
-    onboarding_yes: '好的，给我看看！',
+    onboarding_yes: '下一步',
     onboarding_no: '跳过',
     // Onboarding
     onboarding_title: '初步体验',

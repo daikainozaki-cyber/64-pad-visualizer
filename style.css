@@ -1393,8 +1393,15 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
     display: block;
   }
 
-  /* Instrument row: hidden on Screen 1 (moved to Screen 3 by JS) */
-  .pad-area #instrument-row { display: none; }
+  /* Instruments compact on Screen 1 (below pad) */
+  .pad-area #instrument-row { display: block !important; }
+  .pad-area #inst-toggle-bar { justify-content: center; margin-bottom: 2px; }
+  .pad-area #instrument-diagrams { display: flex !important; flex-direction: column; gap: 2px; }
+  .pad-area #guitar-wrap svg,
+  .pad-area #bass-wrap svg,
+  .pad-area #piano-wrap-display svg { width: 100%; height: auto; max-height: 80px; }
+  .pad-area #guitar-position-bar { display: none !important; }
+  .pad-area #bass-position-bar { display: none !important; }
 
   /* Show dot indicators */
   #screen-dots { display: flex; }

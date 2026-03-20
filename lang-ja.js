@@ -440,7 +440,7 @@ I18N.addLang('ja', {
     // オンボーディング確認ダイアログ
     onboarding_ask_title: 'チュートリアル',
     onboarding_ask_msg: 'はじめてですか？ アプリの使い方を簡単にご案内します。',
-    onboarding_yes: 'はい、案内して！',
+    onboarding_yes: '次へ',
     onboarding_no: 'スキップ',
     // オンボーディング
     onboarding_title: 'はじめの一歩',

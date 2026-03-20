@@ -45,6 +45,9 @@ var TutorialEngine = {
     this.active = true;
     this.step = -1;
     this._presetChanged = false;
+    // Scroll to Screen 1 on mobile so tutorial starts on the visible screen
+    var layout = document.querySelector('.app-layout');
+    if (layout) layout.scrollTo({ left: 0, behavior: 'smooth' });
     // Preset listener for onboarding sound step
     if (id === 'onboarding') {
       this._boundOnPresetChange = this._onPresetChange.bind(this);
@@ -224,16 +227,34 @@ var TutorialEngine = {
     html += '</div>';
     card.innerHTML = html;
 
-    // Insert card
-    var insertTarget = document.getElementById('pad-grid');
+    // Insert card into the same screen as the target element (mobile: each screen is a pane)
+    var insertTarget = null;
+    if (this.highlightEl && window.innerWidth < 768) {
+      var targetScreen = this.highlightEl.closest('.pad-area, .control-panel, #staff-ep-panel');
+      if (targetScreen) {
+        insertTarget = targetScreen;
+        // Auto-scroll to the correct screen
+        var layout = document.querySelector('.app-layout');
+        if (layout) {
+          var screenIdx = Array.from(layout.children).indexOf(targetScreen);
+          if (screenIdx >= 0) {
+            layout.scrollTo({ left: screenIdx * window.innerWidth, behavior: 'smooth' });
+          }
+        }
+      }
+    }
+    if (!insertTarget) insertTarget = document.getElementById('pad-grid');
     if (insertTarget) {
-      insertTarget.parentNode.insertBefore(card, insertTarget);
+      if (insertTarget.id === 'pad-grid') {
+        insertTarget.parentNode.insertBefore(card, insertTarget);
+      } else {
+        insertTarget.insertBefore(card, insertTarget.firstChild);
+      }
     } else {
       document.body.appendChild(card);
     }
     this.card = card;
-
-    // Scroll highlight into view
+    // Scroll highlight into view (within current screen)
     if (this.highlightEl) {
       this.highlightEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }

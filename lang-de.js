@@ -422,7 +422,7 @@ I18N.addLang('de', {
     // Onboarding
     onboarding_ask_title: 'Tutorial',
     onboarding_ask_msg: 'Zum ersten Mal hier? M\u00F6chtest du eine kurze Tour durch die App?',
-    onboarding_yes: 'Ja, zeig mir!',
+    onboarding_yes: 'Weiter',
     onboarding_no: '\u00DCberspringen',
     onboarding_title: 'Erste Schritte',
     onboarding_desc: 'Lerne die Grundlagen von 64 Pad Explorer',

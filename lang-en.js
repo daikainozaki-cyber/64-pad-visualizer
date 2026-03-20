@@ -440,7 +440,7 @@ I18N.addLang('en', {
     // Onboarding ask dialog
     onboarding_ask_title: 'Tutorial',
     onboarding_ask_msg: 'First time here? Want a quick tour of the app?',
-    onboarding_yes: 'Yes, show me!',
+    onboarding_yes: 'Next',
     onboarding_no: 'Skip',
     // Onboarding
     onboarding_title: 'First Steps',

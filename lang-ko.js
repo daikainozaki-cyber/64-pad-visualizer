@@ -421,7 +421,7 @@ I18N.addLang('ko', {
     close: '완료',
     onboarding_ask_title: '튜토리얼',
     onboarding_ask_msg: '처음이신가요? 앱을 간단히 둘러볼까요?',
-    onboarding_yes: '네, 보여주세요!',
+    onboarding_yes: '다음',
     onboarding_no: '건너뛰기',
     // Onboarding
     onboarding_title: '첫 단계',

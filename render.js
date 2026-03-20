@@ -38,23 +38,8 @@ function moveMemorySection(toMobile) {
 }
 
 function moveInstrumentRow(toMobile) {
-  var instRow = document.getElementById('instrument-row');
-  if (!instRow) return;
-  var builderContent = document.querySelector('.pad-area');
-  var staffPanel = document.getElementById('staff-ep-panel');
-  if (toMobile) {
-    // Move instrument row to top of staff panel (Screen 3)
-    if (instRow.parentElement !== staffPanel) {
-      staffPanel.insertBefore(instRow, staffPanel.firstChild);
-    }
-    instRow.style.display = '';
-  } else {
-    // Move back to builder content area
-    if (instRow.parentElement !== builderContent) {
-      builderContent.appendChild(instRow);
-    }
-    instRow.style.display = '';
-  }
+  // On mobile: diagrams stay in instrument-row (Screen 1, below pad)
+  // No DOM move needed — CSS handles sizing
 }
 
 function initScreenDots() {

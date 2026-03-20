@@ -424,7 +424,7 @@ I18N.addLang('fr', {
     // Onboarding ask dialog
     onboarding_ask_title: 'Tutoriel',
     onboarding_ask_msg: 'Premi\u00E8re visite ? Voulez-vous un tour rapide de l\u0027appli ?',
-    onboarding_yes: 'Oui, montrez-moi !',
+    onboarding_yes: 'Suivant',
     onboarding_no: 'Passer',
     // Onboarding
     onboarding_title: 'Premiers pas',

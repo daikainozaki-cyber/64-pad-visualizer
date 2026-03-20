@@ -745,6 +745,15 @@ TutorialRegistry.add('circle', {
       highlight: '#circle-of-fifths',
       titleKey: 'tut.circle.step5_title',
       msgKey: 'tut.circle.step5_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'action',
+      id: 'try_minor_modes',
+      targets: ['#circle-of-fifths'],
+      highlight: '#circle-of-fifths',
+      titleKey: 'tut.circle.step6_title',
+      msgKey: 'tut.circle.step6_msg',
       waitFor: 'close',
     },
   ]
@@ -785,13 +794,16 @@ TutorialRegistry.add('guitar', {
       waitFor: 'next',
     },
     {
-      type: 'info',
+      type: 'action',
       id: 'input',
       targets: ['#guitar-wrap'],
       highlight: '#guitar-wrap',
       titleKey: 'tut.guitar.step3_title',
       msgKey: 'tut.guitar.step3_msg',
       waitFor: 'next',
+      beforeShow: function() {
+        if (typeof setMode === 'function') setMode('input');
+      }
     },
     {
       type: 'info',

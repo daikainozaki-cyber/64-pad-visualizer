@@ -97,6 +97,26 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .header-links a:hover { color: var(--accent); }
 .link-sep { color: var(--border); margin: 0 4px; }
 
+/* === Info Bar (Ableton-style hover info) === */
+.info-bar {
+  height: 20px;
+  line-height: 20px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.info-bar .info-shortcut {
+  color: var(--accent);
+  margin-left: 6px;
+  font-weight: bold;
+}
+
 /* === Help Modal === */
 .help-overlay {
   display: none;
@@ -1349,6 +1369,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
     margin-bottom: 2px;
     padding: 0 8px;
   }
+  .info-bar { display: none; }
 
   /* Horizontal scroll-snap container */
   .app-layout {

@@ -625,3 +625,29 @@ function toggleSection(name) {
     }
   } catch(_) {}
 })();
+
+// ========================================
+// INFO BAR (Ableton-style hover info)
+// ========================================
+(function() {
+  var bar = document.getElementById('info-bar');
+  if (!bar) return;
+  var defaultKey = 'info.default';
+
+  function setInfo(key) {
+    var text = t(key);
+    bar.textContent = (text !== key) ? text : '';
+  }
+
+  setInfo(defaultKey);
+
+  document.addEventListener('mouseenter', function(e) {
+    var el = e.target.closest('[data-info]');
+    if (el) setInfo(el.getAttribute('data-info'));
+  }, true);
+
+  document.addEventListener('mouseleave', function(e) {
+    var el = e.target.closest('[data-info]');
+    if (el) setInfo(defaultKey);
+  }, true);
+})();

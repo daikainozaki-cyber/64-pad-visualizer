@@ -716,7 +716,7 @@ I18N.addLang('en', {
     save: 'Save all current settings (key, scale, sound, memory, layout)',
     tutorial: 'Interactive tutorials \u2014 learn the basics step by step',
     help: 'Open help modal with full keyboard shortcut reference [?]',
-    affiliate: 'Purchasing through these links supports development',
+    affiliate: 'Purchasing through these links supports development…',
     lang: 'Switch display language',
     octave: 'Shift pad octave range \u2014 Push/Launchpad can also control via octave buttons',
     play: 'Play the current chord [Space]',

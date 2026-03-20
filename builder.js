@@ -506,14 +506,27 @@ try { _rootUseFlats = localStorage.getItem('64pad-root-flats') === '1'; } catch(
 function getRootLabels() {
   return _rootUseFlats ? NOTE_NAMES_FLAT : NOTE_NAMES_SHARP;
 }
-function toggleRootNotation() {
-  _rootUseFlats = !_rootUseFlats;
+function setRootNotation(useFlats) {
+  _rootUseFlats = useFlats;
   try { localStorage.setItem('64pad-root-flats', _rootUseFlats ? '1' : '0'); } catch(_) {}
   updateRootLabels();
-  var tog = document.getElementById('root-notation-toggle');
-  if (tog) tog.textContent = _rootUseFlats ? '\u266D' : '\u266F';
+  updateRootNotationUI();
   updateChordDisplay();
   render();
+}
+function updateRootNotationUI() {
+  var sharp = document.getElementById('root-notation-sharp');
+  var flat = document.getElementById('root-notation-flat');
+  if (sharp) {
+    sharp.style.background = _rootUseFlats ? 'transparent' : 'var(--text)';
+    sharp.style.color = _rootUseFlats ? 'var(--text-muted)' : 'var(--bg)';
+    sharp.style.border = _rootUseFlats ? '1px solid var(--border)' : 'none';
+  }
+  if (flat) {
+    flat.style.background = _rootUseFlats ? 'var(--text)' : 'transparent';
+    flat.style.color = _rootUseFlats ? 'var(--bg)' : 'var(--text-muted)';
+    flat.style.border = _rootUseFlats ? 'none' : '1px solid var(--border)';
+  }
 }
 function updateRootLabels() {
   var labels = getRootLabels();
@@ -535,9 +548,7 @@ function initRootGrid() {
     btn.onclick = (function(pc) { return function() { selectRoot(pc); }; })(i);
     grid.appendChild(btn);
   }
-  // Set toggle button text
-  var tog = document.getElementById('root-notation-toggle');
-  if (tog) tog.textContent = _rootUseFlats ? '\u266D' : '\u266F';
+  updateRootNotationUI();
 }
 function updateRootButtons() {
   var btns = document.querySelectorAll('#root-grid .root-btn');

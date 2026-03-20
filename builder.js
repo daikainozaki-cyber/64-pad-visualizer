@@ -500,19 +500,42 @@ function updateChordKeyDisplay() {
 }
 
 // ======== ROOT GRID (12-note selector inside Chord Builder) ========
-var NOTE_LABELS = ['C','C#/Db','D','D#/Eb','E','F','F#/Gb','G','G#/Ab','A','A#/Bb','B'];
+var _rootUseFlats = false;
+try { _rootUseFlats = localStorage.getItem('64pad-root-flats') === '1'; } catch(_) {}
+
+function getRootLabels() {
+  return _rootUseFlats ? NOTE_NAMES_FLAT : NOTE_NAMES_SHARP;
+}
+function toggleRootNotation() {
+  _rootUseFlats = !_rootUseFlats;
+  try { localStorage.setItem('64pad-root-flats', _rootUseFlats ? '1' : '0'); } catch(_) {}
+  updateRootLabels();
+  var tog = document.getElementById('root-notation-toggle');
+  if (tog) tog.textContent = _rootUseFlats ? '\u266D' : '\u266F';
+}
+function updateRootLabels() {
+  var labels = getRootLabels();
+  var btns = document.querySelectorAll('#root-grid .root-btn');
+  btns.forEach(function(btn) {
+    btn.textContent = labels[parseInt(btn.dataset.pc)];
+  });
+}
 function initRootGrid() {
   var grid = document.getElementById('root-grid');
   if (!grid) return;
   grid.innerHTML = '';
+  var labels = getRootLabels();
   for (var i = 0; i < 12; i++) {
     var btn = document.createElement('button');
     btn.className = 'root-btn';
-    btn.textContent = NOTE_LABELS[i];
+    btn.textContent = labels[i];
     btn.dataset.pc = i;
     btn.onclick = (function(pc) { return function() { selectRoot(pc); }; })(i);
     grid.appendChild(btn);
   }
+  // Set toggle button text
+  var tog = document.getElementById('root-notation-toggle');
+  if (tog) tog.textContent = _rootUseFlats ? '\u266D' : '\u266F';
 }
 function updateRootButtons() {
   var btns = document.querySelectorAll('#root-grid .root-btn');

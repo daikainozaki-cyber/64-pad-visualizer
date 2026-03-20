@@ -22,7 +22,13 @@ function setMode(mode) {
   // Scale: full key rows. Chord: compact key btn. Input: hidden
   document.getElementById('key-rows').style.display = mode === 'scale' ? '' : 'none';
   document.getElementById('key-label').style.display = mode === 'scale' ? '' : 'none';
-  document.getElementById('chord-key-row').style.display = mode === 'chord' ? '' : 'none';
+  var showKey = mode === 'chord';
+  if (showKey) {
+    try { var ss = JSON.parse(localStorage.getItem('64pad-sections') || '{}'); if (ss.key === false) showKey = false; } catch(_) {}
+  }
+  document.getElementById('chord-key-row').style.display = showKey ? '' : 'none';
+  var sectKeyBtn = document.getElementById('sect-key');
+  if (sectKeyBtn) sectKeyBtn.classList.toggle('active', showKey);
   if (mode === 'chord') { updateChordKeyDisplay(); }
   // chord-key-row visibility handled above
   if (mode === 'chord' && BuilderState.step === 0) {

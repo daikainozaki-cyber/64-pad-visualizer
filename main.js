@@ -590,7 +590,7 @@ render();
 
 // Section toggle (Chord panel collapsible sections)
 function toggleSection(name) {
-  var section = document.getElementById('section-' + name);
+  var section = document.getElementById('section-' + name) || (name === 'key' ? document.getElementById('chord-key-row') : null);
   var btn = document.getElementById('sect-' + name);
   if (!section) return;
   var visible = section.style.display !== 'none';
@@ -606,7 +606,7 @@ function toggleSection(name) {
 (function() {
   try {
     var s = JSON.parse(localStorage.getItem('64pad-sections') || '{}');
-    ['input', 'quality', 'voicing', 'memory'].forEach(function(name) {
+    ['key', 'input', 'quality', 'voicing', 'memory'].forEach(function(name) {
       if (s[name] === false) toggleSection(name);
     });
   } catch(_) {}

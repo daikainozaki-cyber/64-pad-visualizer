@@ -500,8 +500,7 @@ function updateChordKeyDisplay() {
 }
 
 // ======== ROOT GRID (12-note selector inside Chord Builder) ========
-var _rootUseFlats = null;  // null = auto-detect from key context
-try { var _savedFlats = localStorage.getItem('64pad-root-flats'); if (_savedFlats !== null) _rootUseFlats = _savedFlats === '1'; } catch(_) {}
+var _rootUseFlats = null;  // null = auto-detect from key context. Not persisted.
 
 function getRootLabels() {
   if (_rootUseFlats === null) {
@@ -513,7 +512,6 @@ function getRootLabels() {
 }
 function setRootNotation(useFlats) {
   _rootUseFlats = useFlats;
-  try { localStorage.setItem('64pad-root-flats', _rootUseFlats ? '1' : '0'); } catch(_) {}
   updateRootLabels();
   updateRootNotationUI();
   updateChordDisplay();

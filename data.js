@@ -25,7 +25,7 @@ function pcName(pc, contextKey) {
 // ======== STATE ========
 const AppState = {
   key: 0,
-  mode: 'scale',  // 'scale' | 'chord' | 'input'
+  mode: 'chord',  // 'scale' | 'chord' | 'input'
   scaleIdx: 0,
   octaveShift: 0, // -1, 0, +1, +2 — shifts entire grid like Push's octave up/down
   semitoneShift: 0, // -11 to +11 — fine-tune for 32-pad mode
@@ -161,8 +161,8 @@ function saveAppSettings() {
       showGuitar: typeof showGuitar !== 'undefined' ? showGuitar : false,
       showBass: typeof showBass !== 'undefined' ? showBass : false,
       showPiano: typeof showPiano !== 'undefined' ? showPiano : false,
-      showStaff: typeof showStaff !== 'undefined' ? showStaff : true,
-      showCircle: typeof showCircle !== 'undefined' ? showCircle : false,
+      showStaff: typeof showStaff !== 'undefined' ? showStaff : false,
+      showCircle: typeof showCircle !== 'undefined' ? showCircle : true,
       showSound: typeof showSound !== 'undefined' ? showSound : true,
       guitarLabelMode: typeof guitarLabelMode !== 'undefined' ? guitarLabelMode : 'name',
       velThreshold: AppState.velThreshold,

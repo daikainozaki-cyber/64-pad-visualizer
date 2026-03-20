@@ -768,9 +768,9 @@ function renderStaff(mode, rootPC, activePCS, omittedPCS, qualityPCS, overrideMi
 const DIAGRAM_WIDTH = 564;              // shared width for pad, guitar & piano (matches pad grid)
 let showGuitar = false;
 let showPiano = false;
-let showStaff = true;
+let showStaff = false;
 let showBass = false;
-let showCircle = false;
+let showCircle = true;
 let showSound = true;
 let soundExpanded = true;
 let guitarLabelMode = 'name'; // 'name' or 'degree'

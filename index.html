@@ -75,7 +75,7 @@ document.addEventListener('click', function(e) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1+Code:wght@300;400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=3.39.5">
+<link rel="stylesheet" href="style.css?v=3.39.6">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -112,13 +112,13 @@ document.addEventListener('click', function(e) {
   };
 })();
 </script>
-<script src="jrhodes3c-samples.js?v=3.39.5" onload="if(window._sampleLoadDone)window._sampleLoadDone()"></script>
+<script src="jrhodes3c-samples.js?v=3.39.6" onload="if(window._sampleLoadDone)window._sampleLoadDone()"></script>
 </head>
 <body>
 
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V3.39.5</span>
+  <span class="version-tag">V3.39.6</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -330,12 +330,12 @@ document.addEventListener('click', function(e) {
     <p style="margin-top:8px;text-align:center;">
       <label style="font-size:0.7rem;color:var(--text-muted);cursor:pointer;" data-i18n="help.layout">Layout</label><br>
       <select id="pane-order-select" onchange="setPaneOrder(this.value)" style="font-size:0.7rem;margin-top:2px;padding:2px 4px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:4px;">
-        <option value="ABC">Pad → Builder → Staff</option>
-        <option value="ACB">Pad → Staff → Builder</option>
-        <option value="BAC">Builder → Pad → Staff</option>
-        <option value="BCA">Builder → Staff → Pad</option>
-        <option value="CAB">Staff → Pad → Builder</option>
-        <option value="CBA">Staff → Builder → Pad</option>
+        <option value="BAC">Chord → Pad → Circle</option>
+        <option value="ABC">Pad → Chord → Circle</option>
+        <option value="BCA">Chord → Circle → Pad</option>
+        <option value="ACB">Pad → Circle → Chord</option>
+        <option value="CAB">Circle → Pad → Chord</option>
+        <option value="CBA">Circle → Chord → Pad</option>
       </select>
     </p>
 
@@ -574,15 +574,15 @@ document.addEventListener('click', function(e) {
   <!-- Right: Staff + Memory -->
   <div id="staff-ep-panel" data-pane="C" style="display:flex;flex-direction:column;gap:4px;min-width:360px;">
     <div style="display:flex;justify-content:center;gap:4px;">
-      <button id="inst-toggle-staff" class="inst-toggle active" onclick="toggleTheoryView('staff')" title="Show/hide staff notation" data-i18n-title="ui.toggle_staff"><span class="kbd-hint">Shift+S</span><span data-i18n="ui.staff">Staff</span></button>
-      <button id="inst-toggle-circle" class="inst-toggle" onclick="toggleTheoryView('circle')" title="Show/hide circle of fifths (Shift+C)" data-i18n-title="ui.toggle_circle"><span class="kbd-hint">Shift+C</span><span data-i18n="ui.circle">Circle</span></button>
+      <button id="inst-toggle-staff" class="inst-toggle" onclick="toggleTheoryView('staff')" title="Show/hide staff notation" data-i18n-title="ui.toggle_staff"><span class="kbd-hint">Shift+S</span><span data-i18n="ui.staff">Staff</span></button>
+      <button id="inst-toggle-circle" class="inst-toggle active" onclick="toggleTheoryView('circle')" title="Show/hide circle of fifths (Shift+C)" data-i18n-title="ui.toggle_circle"><span class="kbd-hint">Shift+C</span><span data-i18n="ui.circle">Circle</span></button>
       <button id="inst-toggle-sound" class="inst-toggle active" onclick="toggleInstrument('sound')" title="Show/hide sound controls — select ORGAN or E.PIANO to play sound" data-i18n-title="ui.toggle_sound">Sound</button>
       <button class="inst-toggle active" id="sect-memory" onclick="toggleSection('memory')">Memory Slot</button>
     </div>
-    <div id="staff-area" style="display:flex;justify-content:center;">
+    <div id="staff-area" style="display:none;justify-content:center;">
       <svg id="staff-notation" width="280" height="0" style="display:none;"></svg>
     </div>
-    <div id="circle-wrap" style="display:none;justify-content:center;">
+    <div id="circle-wrap" style="display:flex;justify-content:center;">
       <svg id="circle-of-fifths"></svg>
     </div>
     <div id="sound-controls" style="padding:8px 10px;background:linear-gradient(180deg,#1a1a2a,#12121e);border:1px solid #333;border-radius:6px;">
@@ -797,34 +797,34 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=3.39.5"></script>
-<script src="lang-en.js?v=3.39.5"></script>
-<script src="lang-ja.js?v=3.39.5"></script>
-<script src="lang-zh.js?v=3.39.5"></script>
-<script src="lang-es.js?v=3.39.5"></script>
-<script src="lang-fr.js?v=3.39.5"></script>
-<script src="lang-pt.js?v=3.39.5"></script>
-<script src="lang-de.js?v=3.39.5"></script>
-<script src="lang-ko.js?v=3.39.5"></script>
-<script src="lang-it.js?v=3.39.5"></script>
+<script src="i18n.js?v=3.39.6"></script>
+<script src="lang-en.js?v=3.39.6"></script>
+<script src="lang-ja.js?v=3.39.6"></script>
+<script src="lang-zh.js?v=3.39.6"></script>
+<script src="lang-es.js?v=3.39.6"></script>
+<script src="lang-fr.js?v=3.39.6"></script>
+<script src="lang-pt.js?v=3.39.6"></script>
+<script src="lang-de.js?v=3.39.6"></script>
+<script src="lang-ko.js?v=3.39.6"></script>
+<script src="lang-it.js?v=3.39.6"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=3.39.5"></script>
-<script src="pad-core/theory.js?v=3.39.5"></script>
-<script src="pad-core/render.js?v=3.39.5"></script>
-<script src="pad-core/circle.js?v=3.39.5"></script>
-<script src="pad-core/builder-ui.js?v=3.39.5"></script>
-<script src="pad-core/incremental.js?v=3.39.5"></script>
+<script src="pad-core/data.js?v=3.39.6"></script>
+<script src="pad-core/theory.js?v=3.39.6"></script>
+<script src="pad-core/render.js?v=3.39.6"></script>
+<script src="pad-core/circle.js?v=3.39.6"></script>
+<script src="pad-core/builder-ui.js?v=3.39.6"></script>
+<script src="pad-core/incremental.js?v=3.39.6"></script>
 <!-- App JS -->
-<script src="data.js?v=3.39.5"></script>
-<script src="audio.js?v=3.39.5"></script>
-<script src="theory.js?v=3.39.5"></script>
-<script src="render.js?v=3.39.5"></script>
-<script src="plain.js?v=3.39.5"></script>
-<script src="perform.js?v=3.39.5"></script>
-<script src="builder.js?v=3.39.5"></script>
-<script src="main.js?v=3.39.5"></script>
-<script src="tutorial-data.js?v=3.39.5"></script>
-<script src="tutorial.js?v=3.39.5"></script>
+<script src="data.js?v=3.39.6"></script>
+<script src="audio.js?v=3.39.6"></script>
+<script src="theory.js?v=3.39.6"></script>
+<script src="render.js?v=3.39.6"></script>
+<script src="plain.js?v=3.39.6"></script>
+<script src="perform.js?v=3.39.6"></script>
+<script src="builder.js?v=3.39.6"></script>
+<script src="main.js?v=3.39.6"></script>
+<script src="tutorial-data.js?v=3.39.6"></script>
+<script src="tutorial.js?v=3.39.6"></script>
 <script>
 if ('serviceWorker' in navigator) {
   // Clean up old ?v= registrations (they create zombie SWs)

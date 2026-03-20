@@ -66,10 +66,12 @@ function setPaneOrder(preset) {
   var sel = document.getElementById('pane-order-select');
   if (sel) sel.value = preset;
 }
-// Restore saved pane order
+// Restore saved pane order (default: ABC)
 (function() {
   var saved = localStorage.getItem('64pad-pane-order');
-  if (saved && /^[ABC]{3}$/.test(saved) && saved.indexOf('A') >= 0 && saved.indexOf('B') >= 0 && saved.indexOf('C') >= 0) setPaneOrder(saved);
+  if (saved && /^[ABC]{3}$/.test(saved) && saved.indexOf('A') >= 0 && saved.indexOf('B') >= 0 && saved.indexOf('C') >= 0) {
+    setPaneOrder(saved);
+  }
 })();
 
 // Mobile responsive init
@@ -419,7 +421,11 @@ document.addEventListener('keydown', (e) => {
       const delta = key === 'ArrowRight' ? 1 : 11;
       BuilderState.root = (BuilderState.root + delta) % 12;
       updateKeyButtons();
-      if (VoicingState.selectedBoxIdx !== null) {
+      if (TastyState.enabled) {
+        refreshTastyVoicing();
+      } else if (StockState.enabled) {
+        refreshStockVoicing();
+      } else if (VoicingState.selectedBoxIdx !== null) {
         VoicingState._preservePosition = { type: 'transpose', midiDelta: key === 'ArrowRight' ? 1 : -1 };
       }
       updateChordDisplay(); render();

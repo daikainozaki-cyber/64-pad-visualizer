@@ -1141,6 +1141,23 @@ function cycleTasty(reverse) {
   playMidiNotes(midiNotes);
 }
 
+// Recalculate current TASTY voicing for new root (called on ArrowLeft/Right transpose)
+function refreshTastyVoicing() {
+  if (!TastyState.enabled || TastyState.currentIndex < 0) return;
+  var recipe = TastyState.currentMatches[TastyState.currentIndex];
+  if (!recipe) return;
+  var rootPC = BuilderState.root;
+  var rootMidi = 48 + rootPC;
+  var midiNotes = findBestPosition(rootMidi, recipe.v);
+  var split = splitByPadRange(midiNotes);
+  TastyState.midiNotes = midiNotes;
+  TastyState.outOfRange = split.outOfRange;
+  TastyState.degreeMap = buildTastyDegreeMap(midiNotes, recipe.v);
+  TastyState.topNote = midiNotes.length > 0 ? Math.max.apply(null, midiNotes) : null;
+  TastyState.padPositions = padFindCompactPositions(midiNotes, ROWS, COLS, baseMidi(), ROW_INTERVAL);
+  updateTastyUI();
+}
+
 function toggleTasty() {
   if (!TastyState.hpsUnlocked || !TastyState.voicings) return;
   if (AppState.mode !== 'chord' || BuilderState.root === null || !BuilderState.quality) return;
@@ -1526,6 +1543,33 @@ function cycleStock(reverse) {
   render();
   // Play all notes
   playMidiNotes(allNotes);
+}
+
+// Recalculate current STOCK voicing for new root (called on ArrowLeft/Right transpose)
+function refreshStockVoicing() {
+  if (!StockState.enabled || StockState.currentIndex < 0) return;
+  var entry = StockState.currentMatches[StockState.currentIndex];
+  if (!entry) return;
+  var rootPC = BuilderState.root;
+  var lhRoot = 36 + rootPC;
+  var rhRoot = 48 + rootPC;
+  StockState.lhMidi = entry.LH && entry.LH.length > 0 ? stockDegreesToMidi(lhRoot, entry.LH) : [];
+  StockState.rhMidi = entry.RH && entry.RH.length > 0 ? stockDegreesToMidi(rhRoot, entry.RH) : [];
+  var degMap = {};
+  if (entry.LH) {
+    for (var i = 0; i < entry.LH.length && i < StockState.lhMidi.length; i++) {
+      degMap[StockState.lhMidi[i]] = entry.LH[i];
+    }
+  }
+  if (entry.RH) {
+    for (var j = 0; j < entry.RH.length && j < StockState.rhMidi.length; j++) {
+      degMap[StockState.rhMidi[j]] = entry.RH[j];
+    }
+  }
+  StockState.degreeMap = degMap;
+  var allNotes = StockState.lhMidi.concat(StockState.rhMidi);
+  StockState.padPositions = padFindCompactPositions(allNotes, ROWS, COLS, baseMidi(), ROW_INTERVAL);
+  updateStockUI();
 }
 
 function toggleStock() {

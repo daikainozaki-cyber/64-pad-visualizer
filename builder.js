@@ -348,6 +348,7 @@ function selectQuality(q) {
   updateControlsForQuality(q);
   setBuilderStep(2); // Go to Tension
   render();
+  updateTastyUI();
   playCurrentChord();
 }
 
@@ -1318,6 +1319,7 @@ function applyParsedChordToBuilder(parsed) {
   if (parsed.bass !== null) highlightPianoKey('onchord-keyboard', parsed.bass);
   setBuilderStep(2);
   render();
+  updateTastyUI();
   playCurrentChord();
 }
 

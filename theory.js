@@ -915,6 +915,7 @@ function onDiatonicClick(tetrad, degreeIdx) {
   updateControlsForQuality(tetrad.quality);
   setBuilderStep(2);
   render();
+  updateTastyUI();
 }
 
 // ========================================
@@ -1025,14 +1026,14 @@ function findBestPosition(rootMidi, degrees) {
 function getTastyCategory(quality) {
   if (!quality) return null;
   var pcs = quality.pcs;
+  // TASTY requires 4-note chords (7th/6th) — triads excluded
+  if (pcs.length < 4) return null;
   // Dominant: major 3rd + minor 7th (must check before generic major)
   if (pcs.includes(4) && pcs.includes(10)) return 'dominant';
   // Major 7th
   if (pcs.includes(4) && pcs.includes(11)) return 'major';
   // 6 chord (major 3rd + 6th, no 7th)
   if (pcs.includes(4) && pcs.includes(9) && !pcs.includes(10) && !pcs.includes(11)) return 'major';
-  // Major triad (no 7th)
-  if (pcs.includes(4) && !pcs.includes(3)) return 'major';
   // Minor: has minor 3rd
   if (pcs.includes(3)) return 'minor';
   return null;
@@ -1164,6 +1165,8 @@ function toggleTasty() {
   if (TastyState.enabled) {
     disableTasty();
   } else {
+    // Disable STOCK if active (mutually exclusive)
+    if (StockState.enabled) disableStock();
     // Enable: save original, find matches, apply first voicing
     TastyState.originalQuality = BuilderState.quality;
     TastyState.originalTension = BuilderState.tension;
@@ -1355,7 +1358,13 @@ function updateTastyUI() {
   bar.style.display = TastyState.hpsUnlocked ? '' : 'none';
 
   var btn = document.getElementById('btn-tasty');
-  if (btn) btn.classList.toggle('active', TastyState.enabled);
+  var canUseTasty = getTastyCategory(BuilderState.quality) !== null;
+  if (btn) {
+    btn.classList.toggle('active', TastyState.enabled);
+    btn.classList.toggle('tasty-ready', canUseTasty && !TastyState.enabled);
+    btn.disabled = !canUseTasty;
+    btn.style.opacity = canUseTasty ? '' : '0.3';
+  }
 
   var counter = document.getElementById('tasty-counter');
   var info = document.getElementById('tasty-info');

@@ -460,7 +460,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .voicing-bar { display: flex; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
 .voicing-btn {
   flex: 1; padding: 5px 4px; border-radius: 5px; border: 1px solid var(--border);
-  background: var(--surface); color: var(--text-muted); font-size: 0.7rem; font-weight: 600;
+  background: var(--surface); color: var(--text); font-size: 0.7rem; font-weight: 600;
   cursor: pointer; text-align: center; position: relative;
 }
 .voicing-btn:has(.kbd-hint) { padding-top: 14px; }
@@ -476,8 +476,10 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 #btn-stock.active { background: #666; color: #fff; border-color: #888; box-shadow: 0 0 4px rgba(255,255,255,0.15); }
 #btn-stock.active .kbd-hint { color: rgba(255,255,255,0.5); }
 .tasty-counter { font-size: 0.7rem; font-weight: 700; color: var(--text); white-space: nowrap; min-width: 30px; }
-.tasty-nav-btn { background: none; border: 1px solid var(--text-muted); color: var(--text-muted); border-radius: 4px; padding: 1px 6px; cursor: pointer; font-size: 0.65rem; line-height: 1; }
+.tasty-nav-btn { background: none; border: 1px solid var(--text-muted); color: var(--text-muted); border-radius: 4px; padding: 1px 6px; cursor: pointer; font-size: 0.65rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
 .tasty-nav-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.voicing-btn.tasty-ready { animation: tasty-ready-pulse 3s ease-in-out infinite; }
+@keyframes tasty-ready-pulse { 0%,100% { opacity: 0.65; } 50% { opacity: 1; } }
 .tasty-info { font-size: 0.65rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
 
 /* TASTY Degree Badges (near TASTY bar — proximity principle) */

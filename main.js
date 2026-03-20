@@ -463,28 +463,29 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // t: TASTY mode (toggle/cycle), Shift+T: cycle reverse
+  // t: TASTY mode toggle (ON/OFF only)
   if (lk === 't') {
     if (AppState.mode === 'chord' && TastyState.hpsUnlocked) {
-      if (TastyState.enabled) {
-        cycleTasty(e.shiftKey);
-      } else {
-        toggleTasty();
-      }
+      toggleTasty();
     }
     return;
   }
 
-  // k: STOCK voicing (toggle/cycle), Shift+K: cycle reverse
+  // k: STOCK voicing toggle (ON/OFF only)
   if (lk === 'k') {
     if (AppState.mode === 'chord' && StockState.hpsUnlocked) {
-      if (StockState.enabled) {
-        cycleStock(e.shiftKey);
-      } else {
-        toggleStock();
-      }
+      toggleStock();
     }
     return;
+  }
+
+  // z/x: TASTY or STOCK prev/next (paired keys)
+  if (lk === 'z' || lk === 'x') {
+    if (AppState.mode === 'chord') {
+      var reverse = lk === 'z';
+      if (TastyState.enabled) { cycleTasty(reverse); return; }
+      if (StockState.enabled) { cycleStock(reverse); return; }
+    }
   }
 
   // Letter keys A-I: Select voicing box (case-insensitive, single char only)

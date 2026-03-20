@@ -99,6 +99,7 @@ I18N.addLang('ko', {
     sc_esc: '<kbd>Esc</kbd> \u2014 보이싱 박스 선택 해제 / 도움말 닫기',
     sc_help: '<kbd>?</kbd> \u2014 도움말 표시/숨기기',
     tips_toggle: '시작 시 팁 표시',
+    layout: '레이아웃',
     footer: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
   },
   legend: {

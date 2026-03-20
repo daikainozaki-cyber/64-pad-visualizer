@@ -99,6 +99,7 @@ I18N.addLang('zh', {
     sc_esc: '<kbd>Esc</kbd> \u2014 取消Voicing Box选择 / 关闭帮助',
     sc_help: '<kbd>?</kbd> \u2014 切换帮助显示',
     tips_toggle: '启动时显示提示',
+    layout: '布局',
     footer: '64 Pad Explorer \u2014 HPS（Hardcore Pad Style）',
   },
   legend: {

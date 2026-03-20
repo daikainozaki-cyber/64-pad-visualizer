@@ -101,6 +101,7 @@ I18N.addLang('en', {
     sc_esc: '<kbd>Esc</kbd> \u2014 Deselect voicing box / close Help',
     sc_help: '<kbd>?</kbd> \u2014 Toggle Help',
     tips_toggle: 'Show startup tips',
+    layout: 'Layout',
     footer: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
   },
   legend: {

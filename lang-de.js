@@ -99,6 +99,7 @@ I18N.addLang('de', {
     sc_esc: '<kbd>Esc</kbd> \u2014 Voicing Box abwählen / Hilfe schließen',
     sc_help: '<kbd>?</kbd> \u2014 Hilfe ein-/ausblenden',
     tips_toggle: 'Tipps beim Start anzeigen',
+    layout: 'Layout',
     footer: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
   },
   legend: {

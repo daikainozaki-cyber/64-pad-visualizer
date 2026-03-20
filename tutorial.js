@@ -236,7 +236,7 @@ var TutorialEngine = {
         // Auto-scroll to the correct screen
         var layout = document.querySelector('.app-layout');
         if (layout) {
-          var screenIdx = Array.from(layout.children).indexOf(targetScreen);
+          var screenIdx = targetScreen.style.order !== '' ? parseInt(targetScreen.style.order) : Array.from(layout.children).indexOf(targetScreen);
           if (screenIdx >= 0) {
             layout.scrollTo({ left: screenIdx * window.innerWidth, behavior: 'smooth' });
           }

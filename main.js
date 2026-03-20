@@ -53,6 +53,25 @@ initPlayControls();
 initTextChordInput();
 I18N.init();
 
+// Pane order (ABC preset switch)
+function setPaneOrder(preset) {
+  var orders = { A: 0, B: 1, C: 2 };
+  for (var i = 0; i < preset.length; i++) {
+    orders[preset[i]] = i;
+  }
+  document.querySelector('[data-pane="A"]').style.order = orders.A;
+  document.querySelector('[data-pane="B"]').style.order = orders.B;
+  document.querySelector('[data-pane="C"]').style.order = orders.C;
+  localStorage.setItem('64pad-pane-order', preset);
+  var sel = document.getElementById('pane-order-select');
+  if (sel) sel.value = preset;
+}
+// Restore saved pane order
+(function() {
+  var saved = localStorage.getItem('64pad-pane-order');
+  if (saved && /^[ABC]{3}$/.test(saved) && saved.indexOf('A') >= 0 && saved.indexOf('B') >= 0 && saved.indexOf('C') >= 0) setPaneOrder(saved);
+})();
+
 // Mobile responsive init
 _isMobile = _mobileMediaQuery.matches;
 _isLandscape = _landscapeMediaQuery.matches;

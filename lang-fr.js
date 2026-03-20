@@ -99,6 +99,7 @@ I18N.addLang('fr', {
     sc_esc: '<kbd>Esc</kbd> \u2014 Désélectionner la voicing box / fermer l\'aide',
     sc_help: '<kbd>?</kbd> \u2014 Afficher/masquer l\'aide',
     tips_toggle: 'Afficher les astuces au démarrage',
+    layout: 'Disposition',
     footer: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
   },
   legend: {

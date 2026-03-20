@@ -101,6 +101,7 @@ I18N.addLang('ja', {
     sc_esc: '<kbd>Esc</kbd> \u2014 ボイシングボックス選択解除 / ヘルプを閉じる',
     sc_help: '<kbd>?</kbd> \u2014 ヘルプ表示切替',
     tips_toggle: '起動時にヒントを表示',
+    layout: 'レイアウト',
     footer: '64 Pad Explorer \u2014 HPS（Hardcore Pad Style）',
   },
   legend: {

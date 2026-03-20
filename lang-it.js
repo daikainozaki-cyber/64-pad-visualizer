@@ -99,6 +99,7 @@ I18N.addLang('it', {
     sc_esc: '<kbd>Esc</kbd> \u2014 Deselezionare voicing box / chiudere la guida',
     sc_help: '<kbd>?</kbd> \u2014 Mostrare/nascondere la guida',
     tips_toggle: 'Mostra suggerimenti all\'avvio',
+    layout: 'Disposizione',
     footer: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
   },
   legend: {

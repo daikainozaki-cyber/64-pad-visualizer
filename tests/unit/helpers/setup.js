@@ -49,3 +49,7 @@ Object.assign(globalThis, theory);
 // Load builder.js
 const builder = require('../../../builder.js');
 Object.assign(globalThis, builder);
+
+// Load midi.js
+const midi = require('../../../midi.js');
+Object.assign(globalThis, midi);

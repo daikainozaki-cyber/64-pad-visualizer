@@ -247,8 +247,8 @@ TutorialRegistry.add('chord_mode', {
     {
       type: 'info',
       id: 'secondary_dominant',
-      targets: ['#parent-scale-panel'],
-      highlight: '#parent-scale-toggle',
+      targets: ['#diatonic-ext-toggles'],
+      highlight: '#ext-secdom-btn',
       titleKey: 'tut.chord_mode.step6_title',
       msgKey: 'tut.chord_mode.step6_msg',
       waitFor: 'next',

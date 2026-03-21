@@ -33,6 +33,7 @@ function renderCircle() {
       scaleMode: circleScaleMode,
       size: Math.min(DIAGRAM_WIDTH, 500),
       showTitle: true,
+      titleText: t('tut.circle_title'),
       showDegrees: true,
       showScaleModeButtons: false,
       colors: {
@@ -94,7 +95,8 @@ function renderCircle() {
       selectedKeyIndex: circleKeyIndex,
       selectedType: circleType,
       scaleMode: circleScaleMode,
-      size: Math.min(DIAGRAM_WIDTH, 500)
+      size: Math.min(DIAGRAM_WIDTH, 500),
+      titleText: t('tut.circle_title')
     });
   }
 }

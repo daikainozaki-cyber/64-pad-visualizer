@@ -93,6 +93,8 @@ I18N.setLang = function(code) {
     var btn = document.getElementById('guitar-label-btn');
     if (btn) btn.textContent = guitarLabelMode === 'name' ? t('label.note_name') : t('label.degree');
   }
+  // Update circle title on language change
+  if (typeof renderCircle === 'function') renderCircle();
   // Update lang selector
   var sel = document.getElementById('lang-select');
   if (sel) sel.value = code;

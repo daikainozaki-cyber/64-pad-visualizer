@@ -157,6 +157,7 @@ I18N.addLang('ja', {
     degree: '度数',
     chord_input: 'コードを入力',
     chord_hint: 'テンションは ( ) 付き: C7(b9,#11) | dim, h=m7♭5 も可',
+    key_hint: 'Scale・五度圏からも設定できます',
   },
   header: {
     portal: 'HPSポータル',

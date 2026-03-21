@@ -251,6 +251,14 @@ function renderParentScales() {
     );
   }
 
+  // Deduplicate: same scaleIdx = same actual scale. Keep first (best-sorted) only.
+  var _seenScaleIdx = {};
+  _psResults = _psResults.filter(function(r) {
+    if (_seenScaleIdx[r.scaleIdx]) return false;
+    _seenScaleIdx[r.scaleIdx] = true;
+    return true;
+  });
+
   if (_psResults.length === 0) {
     _selectedPS = null;
     applyParentScaleFilter(null);

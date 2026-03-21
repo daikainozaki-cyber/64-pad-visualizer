@@ -13,11 +13,13 @@ function renderCircle() {
   if (!svgEl) return;
 
   // Determine circle selectedType from current scale
+  // Circle always shows Natural Minor (Harm/Mel differences shown in diatonic bar instead)
   var circleType = 'major';
   var circleScaleMode = 'natural';
-  if (AppState.scaleIdx === 5) { circleType = 'minor'; circleScaleMode = 'natural'; }
-  else if (AppState.scaleIdx === 7) { circleType = 'minor'; circleScaleMode = 'harmonic'; }
-  else if (AppState.scaleIdx === 14) { circleType = 'minor'; circleScaleMode = 'melodic'; }
+  if (AppState.scaleIdx === 5 || AppState.scaleIdx === 7 || AppState.scaleIdx === 14) {
+    circleType = 'minor';
+    circleScaleMode = 'natural'; // always natural — no Harm/Mel variation on circle
+  }
 
   var circleKeyIndex = CHROMATIC_TO_CIRCLE[AppState.key];
   if (circleType === 'minor') {

@@ -715,6 +715,138 @@ TutorialRegistry.add('stock', {
 // =============================================
 // CIRCLE OF FIFTHS
 // =============================================
+// =============================================
+// MINOR 3 SCALES — independent tutorial
+// =============================================
+TutorialRegistry.add('minor_scales', {
+  titleKey: 'tut.minor_scales_title',
+  descKey: 'tut.minor_scales_desc',
+  category: 'features',
+  steps: [
+    {
+      type: 'action',
+      id: 'set_minor',
+      targets: ['#diatonic-bar'],
+      highlight: '#diatonic-bar',
+      titleKey: 'tut.minor_scales.step1_title',
+      msgKey: 'tut.minor_scales.step1_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        if (typeof AppState !== 'undefined') {
+          AppState.key = 9; AppState.scaleIdx = 5;
+          if (typeof setMode === 'function') setMode('scale');
+          if (typeof render === 'function') render();
+        }
+      }
+    },
+    {
+      type: 'action',
+      id: 'toggle_harm_mel',
+      targets: ['#diatonic-ext-toggles'],
+      highlight: '#ext-minor-btn',
+      titleKey: 'tut.minor_scales.step2_title',
+      msgKey: 'tut.minor_scales.step2_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        if (typeof AppState !== 'undefined' && !AppState.showMinorVariants) {
+          if (typeof toggleMinorVariants === 'function') toggleMinorVariants();
+        }
+      }
+    },
+    {
+      type: 'info',
+      id: 'compare',
+      targets: ['#diatonic-ext'],
+      highlight: '#diatonic-ext',
+      titleKey: 'tut.minor_scales.step3_title',
+      msgKey: 'tut.minor_scales.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'action',
+      id: 'parallel_key',
+      targets: ['#diatonic-ext-toggles'],
+      highlight: '#ext-parallel-btn',
+      titleKey: 'tut.minor_scales.step4_title',
+      msgKey: 'tut.minor_scales.step4_msg',
+      waitFor: 'close',
+      beforeShow: function() {
+        if (typeof AppState !== 'undefined' && !AppState.showParallelKey) {
+          if (typeof toggleParallelKey === 'function') toggleParallelKey();
+        }
+      }
+    },
+  ]
+});
+
+// =============================================
+// SECONDARY DOMINANT — independent tutorial
+// =============================================
+TutorialRegistry.add('secondary_dominant', {
+  titleKey: 'tut.secdom_title',
+  descKey: 'tut.secdom_desc',
+  category: 'advanced',
+  steps: [
+    {
+      type: 'action',
+      id: 'setup',
+      targets: ['#diatonic-bar'],
+      highlight: '#diatonic-bar',
+      titleKey: 'tut.secdom.step1_title',
+      msgKey: 'tut.secdom.step1_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        if (typeof AppState !== 'undefined') {
+          AppState.key = 0; AppState.scaleIdx = 0;
+          if (typeof setMode === 'function') setMode('scale');
+          if (typeof render === 'function') render();
+        }
+      }
+    },
+    {
+      type: 'action',
+      id: 'toggle_secdom',
+      targets: ['#diatonic-ext-toggles'],
+      highlight: '#ext-secdom-btn',
+      titleKey: 'tut.secdom.step2_title',
+      msgKey: 'tut.secdom.step2_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        if (typeof AppState !== 'undefined' && !AppState.showSecDom) {
+          if (typeof toggleSecDom === 'function') toggleSecDom();
+        }
+      }
+    },
+    {
+      type: 'info',
+      id: 'major_resolve',
+      targets: ['#diatonic-ext'],
+      highlight: '#diatonic-ext',
+      titleKey: 'tut.secdom.step3_title',
+      msgKey: 'tut.secdom.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'minor_resolve',
+      targets: ['#diatonic-ext'],
+      highlight: '#diatonic-ext',
+      titleKey: 'tut.secdom.step4_title',
+      msgKey: 'tut.secdom.step4_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'available_scale',
+      targets: ['#parent-scale-panel'],
+      highlight: '#parent-scale-toggle',
+      titleKey: 'tut.secdom.step5_title',
+      msgKey: 'tut.secdom.step5_msg',
+      waitFor: 'close',
+    },
+  ]
+});
+
 TutorialRegistry.add('circle', {
   titleKey: 'tut.circle_title',
   descKey: 'tut.circle_desc',

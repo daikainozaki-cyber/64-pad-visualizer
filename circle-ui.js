@@ -34,7 +34,7 @@ function renderCircle() {
       size: Math.min(DIAGRAM_WIDTH, 500),
       showTitle: true,
       showDegrees: true,
-      showScaleModeButtons: true,
+      showScaleModeButtons: false,
       colors: {
         majorSegment: '#2c2c2c',
         minorSegment: '#262626',

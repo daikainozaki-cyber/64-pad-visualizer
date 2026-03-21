@@ -818,48 +818,28 @@ TutorialRegistry.add('secondary_dominant', {
       }
     },
     {
-      type: 'info',
+      type: 'action',
       id: 'major_resolve',
-      targets: ['#parent-scale-panel'],
-      highlight: '#parent-scale-panel',
+      targets: ['#diatonic-ext'],
+      highlight: '#diatonic-ext',
       titleKey: 'tut.secdom.step3_title',
       msgKey: 'tut.secdom.step3_msg',
       waitFor: 'next',
       beforeShow: function() {
-        // Click C7 (I7 → F△7, major resolution) to demonstrate
-        var bars = document.querySelectorAll('.diatonic-ext-bar');
-        for (var b of bars) {
-          if (b.querySelector('.ext-label') && b.querySelector('.ext-label').textContent === 'V7/') {
-            var btns = b.querySelectorAll('.diatonic-btn:not(.secdom-empty)');
-            for (var btn of btns) {
-              if (btn.textContent.indexOf('C7') !== -1) { btn.click(); break; }
-            }
-          }
-        }
-        var el = document.getElementById('parent-scale-panel');
+        var el = document.getElementById('diatonic-ext');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     },
     {
-      type: 'info',
+      type: 'action',
       id: 'minor_resolve',
-      targets: ['#parent-scale-panel'],
-      highlight: '#parent-scale-panel',
+      targets: ['#diatonic-ext'],
+      highlight: '#diatonic-ext',
       titleKey: 'tut.secdom.step4_title',
       msgKey: 'tut.secdom.step4_msg',
       waitFor: 'next',
       beforeShow: function() {
-        // Click A7 (VI7 → Dm7, minor resolution) to demonstrate
-        var bars = document.querySelectorAll('.diatonic-ext-bar');
-        for (var b of bars) {
-          if (b.querySelector('.ext-label') && b.querySelector('.ext-label').textContent === 'V7/') {
-            var btns = b.querySelectorAll('.diatonic-btn:not(.secdom-empty)');
-            for (var btn of btns) {
-              if (btn.textContent.indexOf('A7') !== -1) { btn.click(); break; }
-            }
-          }
-        }
-        var el = document.getElementById('parent-scale-panel');
+        var el = document.getElementById('diatonic-ext');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     },

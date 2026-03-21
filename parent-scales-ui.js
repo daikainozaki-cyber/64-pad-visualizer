@@ -197,15 +197,18 @@ function renderParentScales() {
   var _isSecDom = BuilderState._fromSecDom || isSecondaryDominant(qualityIntervals, _psResults);
   _psResults.forEach(function(r) {
     r.secDomBoost = 0;
-    if (!_isSecDom || r.omit5Match) return;
+    if (!_isSecDom) return;
+    // For secdom from bar click, don't skip omit5 (Altered has b5)
+    if (r.omit5Match && !BuilderState._fromSecDom) return;
     if (BuilderState._fromSecDom && BuilderState._secDomTargetIsMajor !== undefined) {
       if (BuilderState._secDomTargetIsMajor) {
         // Resolves to major → Mixolydian (V7 ← Major)
         if (r.degreeNum === 5 && r.system === '\u25CB') r.secDomBoost = 2; // Mixolydian
       } else {
-        // Resolves to minor → HMP5↓ (Phrygian Dominant) or Altered
-        if (r.scaleIdx === 11) r.secDomBoost = 2;  // ■5 Phrygian Dominant (HMP5↓)
-        if (r.scaleIdx === 20) r.secDomBoost = 2;  // ◆7 Super Locrian (Altered)
+        // Resolves to minor → HMP5↓ (Phrygian Dominant) or Altered (1st), Mixolydian (3rd)
+        if (r.scaleIdx === 11) r.secDomBoost = 3;  // ■5 Phrygian Dominant (HMP5↓)
+        if (r.scaleIdx === 20) r.secDomBoost = 3;  // ◆7 Super Locrian (Altered)
+        if (r.degreeNum === 5 && r.system === '\u25CB') r.secDomBoost = 1; // Mixolydian — still useful for chordal approach
       }
     } else {
       // Generic secdom detection (no resolution info): boost Lydian b7 as before
@@ -277,7 +280,7 @@ function renderParentScales() {
 
   // Auto-select best result based on sort mode
   if (!_selectedPS && _psAutoSelect && _psResults.length > 0) {
-    if (BuilderState._fromDiatonic && BuilderState._diatonicScaleIdx !== undefined) {
+    if (BuilderState._fromDiatonic && !BuilderState._fromSecDom && BuilderState._diatonicScaleIdx !== undefined) {
       // Diatonic bar: degree index offset by parent scale mode
       // Diatonic (0-6): offset within system, wrap with %7
       // Harmonic Minor (7-13): base=7, Melodic Minor (14-20): base=14

@@ -1026,18 +1026,16 @@ function _renderSecondaryDominants(container, mainTetrads) {
       var targetQuality = t.quality; // resolution target quality
       btn.innerHTML = '<div>' + chordName + '</div><div class="degree">' + degree + '</div>';
       btn.onclick = function() {
-        onDiatonicClick({ rootPC: secDomRoot, pcs: dom7quality.pcs, quality: dom7quality, chordName: chordName, degree: degree }, i);
-        // Override: secdom is non-diatonic, force Practical sort only
-        BuilderState._fromDiatonic = false;
+        // Set flags BEFORE onDiatonicClick (which calls render → renderParentScales)
         BuilderState._fromSecDom = true;
-        // Resolution target: major or minor? Determines scale priority
-        BuilderState._secDomTargetIsMajor = targetQuality.name.indexOf('m') !== 0; // 'm7','m△7' = minor, others = major
+        BuilderState._secDomTargetIsMajor = targetQuality.name.indexOf('m') !== 0;
         AppState.psSortMode = 'practical';
-        // Auto-open Available Scale panel
         AppState.showParentScales = true;
         var psBtn = document.getElementById('ps-toggle');
         if (psBtn) psBtn.classList.add('active');
-        render();
+        onDiatonicClick({ rootPC: secDomRoot, pcs: dom7quality.pcs, quality: dom7quality, chordName: chordName, degree: degree }, i);
+        // onDiatonicClick sets _fromDiatonic=true, override after
+        BuilderState._fromDiatonic = false;
       };
     }
     row.appendChild(btn);
@@ -1085,8 +1083,10 @@ function onDiatonicClick(tetrad, degreeIdx) {
   document.getElementById('chord-panel').style.display = '';
   document.getElementById('input-panel').style.display = 'none';
 
-  // Set builder state
-  BuilderState._fromDiatonic = true;
+  // Set builder state (preserve _fromSecDom if already set)
+  if (!BuilderState._fromSecDom) {
+    BuilderState._fromDiatonic = true;
+  }
   BuilderState._diatonicScaleIdx = degreeIdx; // 0=Ionian, 1=Dorian, 2=Phrygian...
   BuilderState.root = tetrad.rootPC;
   BuilderState.quality = tetrad.quality;

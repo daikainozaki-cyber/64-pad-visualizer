@@ -205,10 +205,12 @@ function renderParentScales() {
         // Resolves to major → Mixolydian (V7 ← Major)
         if (r.degreeNum === 5 && r.system === '\u25CB') r.secDomBoost = 2; // Mixolydian
       } else {
-        // Resolves to minor → HMP5↓ (Phrygian Dominant) or Altered (1st), Mixolydian (3rd)
+        // Resolves to minor → HMP5↓ (Phrygian Dominant) or Altered (1st)
         if (r.scaleIdx === 11) r.secDomBoost = 3;  // ■5 Phrygian Dominant (HMP5↓)
         if (r.scaleIdx === 20) r.secDomBoost = 3;  // ◆7 Super Locrian (Altered)
-        if (r.degreeNum === 5 && r.system === '\u25CB') r.secDomBoost = 1; // Mixolydian — still useful for chordal approach
+        // Mixolydian: useful in major key context (chordal approach), but not in minor key
+        var isMinorKey = [5, 7, 14].indexOf(AppState.scaleIdx) !== -1;
+        if (r.degreeNum === 5 && r.system === '\u25CB' && !isMinorKey) r.secDomBoost = 1;
       }
     } else {
       // Generic secdom detection (no resolution info): boost Lydian b7 as before

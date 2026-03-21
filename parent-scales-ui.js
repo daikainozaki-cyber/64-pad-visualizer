@@ -210,7 +210,9 @@ function renderParentScales() {
         if (r.scaleIdx === 20) r.secDomBoost = 3;  // ◆7 Super Locrian (Altered)
         // Mixolydian: useful in major key context (chordal approach), but not in minor key
         var isMinorKey = [5, 7, 14].indexOf(AppState.scaleIdx) !== -1;
-        if (r.degreeNum === 5 && r.system === '\u25CB' && !isMinorKey) r.secDomBoost = 1;
+        if (r.degreeNum === 5 && r.system === '\u25CB') {
+          r.secDomBoost = isMinorKey ? -1 : 1; // Minor key: demote Mixolydian (too bright)
+        }
       }
     } else {
       // Generic secdom detection (no resolution info): boost Lydian b7 as before

@@ -214,6 +214,7 @@ I18N.addLang('ja', {
   diatonic: {
     parallel: '同主調',
     secdom: 'セカンダリー・ドミナント',
+    harm_mel: 'Harm/Mel',
   },
   parent: {
     toggle: 'Available Scale',

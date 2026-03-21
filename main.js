@@ -274,6 +274,10 @@ document.addEventListener('keydown', (e) => {
     if (cmdOptCode === 'KeyL') { e.preventDefault(); toggleLinkMode(); return; }
     if (cmdOptCode === 'KeyK') { e.preventDefault(); toggleKeyDisplay(); return; }
     if (cmdOptCode === 'KeyH') { e.preventDefault(); toggleHeader(); return; }
+    // Diatonic extensions
+    if (cmdOptCode === 'KeyN') { e.preventDefault(); toggleMinorVariants(); return; }
+    if (cmdOptCode === 'KeyD') { e.preventDefault(); toggleSecDom(); return; }
+    if (cmdOptCode === 'KeyR') { e.preventDefault(); toggleParallelKey(); return; }
   }
 
   // Shift+D: Cycle Drop (voicing operation, not display toggle)

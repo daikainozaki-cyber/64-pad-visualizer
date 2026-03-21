@@ -96,7 +96,7 @@ TutorialRegistry.add('onboarding', {
     {
       type: 'info',
       id: 'instruments',
-      targets: ['#inst-toggle-guitar', '#inst-toggle-bass', '#inst-toggle-piano'],
+      targets: ['#inst-toggle-link', '#inst-toggle-guitar', '#inst-toggle-bass', '#inst-toggle-piano'],
       highlight: '#inst-toggle-bar',
       titleKey: 'tut.onboarding.instruments_title',
       msgKey: 'tut.onboarding.instruments_msg',
@@ -936,6 +936,58 @@ TutorialRegistry.add('settings', {
       highlight: null,
       titleKey: 'tut.settings.step6_title',
       msgKey: 'tut.settings.step6_msg',
+      waitFor: 'close',
+    },
+  ]
+});
+
+// =============================================
+// LINK MODE
+// =============================================
+TutorialRegistry.add('link_mode', {
+  titleKey: 'tut.link_title',
+  descKey: 'tut.link_desc',
+  category: 'features',
+  steps: [
+    {
+      type: 'highlight',
+      id: 'link_button',
+      targets: ['#inst-toggle-link'],
+      highlight: '#inst-toggle-link',
+      titleKey: 'tut.link.step1_title',
+      msgKey: 'tut.link.step1_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'action',
+      id: 'enable_link',
+      targets: ['#inst-toggle-link'],
+      highlight: '#inst-toggle-link',
+      titleKey: 'tut.link.step2_title',
+      msgKey: 'tut.link.step2_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        if (!linkMode) toggleLinkMode();
+        if (!showGuitar) toggleInstrument('guitar');
+        if (!showPiano) toggleInstrument('piano');
+      }
+    },
+    {
+      type: 'info',
+      id: 'play_notes',
+      targets: ['#pad-grid'],
+      highlight: '#pad-grid',
+      titleKey: 'tut.link.step3_title',
+      msgKey: 'tut.link.step3_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
+      id: 'shortcut',
+      targets: [],
+      highlight: null,
+      titleKey: 'tut.link.step4_title',
+      msgKey: 'tut.link.step4_msg',
       waitFor: 'close',
     },
   ]

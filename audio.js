@@ -724,18 +724,28 @@ function drawVelocityCurve() {
 let _heldMidi = null;
 const _heldTouches = new Map(); // touch.identifier → midi
 document.addEventListener('mouseup', () => {
-  if (_heldMidi !== null) { noteOff(_heldMidi); _heldMidi = null; }
+  if (_heldMidi !== null) {
+    noteOff(_heldMidi);
+    if (linkMode) { midiActiveNotes.delete(_heldMidi); scheduleMidiUpdate(); }
+    _heldMidi = null;
+  }
 });
 document.addEventListener('touchend', (e) => {
   for (const t of e.changedTouches) {
     const midi = _heldTouches.get(t.identifier);
-    if (midi !== undefined) { noteOff(midi); _heldTouches.delete(t.identifier); }
+    if (midi !== undefined) {
+      noteOff(midi); _heldTouches.delete(t.identifier);
+      if (linkMode) { midiActiveNotes.delete(midi); scheduleMidiUpdate(); }
+    }
   }
 });
 document.addEventListener('touchcancel', (e) => {
   for (const t of e.changedTouches) {
     const midi = _heldTouches.get(t.identifier);
-    if (midi !== undefined) { noteOff(midi); _heldTouches.delete(t.identifier); }
+    if (midi !== undefined) {
+      noteOff(midi); _heldTouches.delete(t.identifier);
+      if (linkMode) { midiActiveNotes.delete(midi); scheduleMidiUpdate(); }
+    }
   }
 });
 // Safety: if window loses focus while holding, release all notes
@@ -743,6 +753,7 @@ window.addEventListener('blur', () => {
   if (_heldMidi !== null) { noteOff(_heldMidi); _heldMidi = null; }
   _heldTouches.forEach((midi) => noteOff(midi));
   _heldTouches.clear();
+  if (linkMode) { midiActiveNotes.clear(); scheduleMidiUpdate(); }
 });
 
 function playMidiNotes(midiNotes) {

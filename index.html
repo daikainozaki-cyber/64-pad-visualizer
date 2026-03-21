@@ -75,7 +75,7 @@ document.addEventListener('click', function(e) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1+Code:wght@300;400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=4.0.0">
+<link rel="stylesheet" href="style.css?v=4.1.9">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -112,7 +112,7 @@ document.addEventListener('click', function(e) {
   };
 })();
 </script>
-<script src="jrhodes3c-samples.js?v=4.0.0" onload="if(window._sampleLoadDone)window._sampleLoadDone()"></script>
+<script src="jrhodes3c-samples.js?v=4.1.9" onload="if(window._sampleLoadDone)window._sampleLoadDone()"></script>
 </head>
 <body>
 
@@ -120,7 +120,7 @@ document.addEventListener('click', function(e) {
 <div class="header-block">
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V4.0.0</span>
+  <span class="version-tag">V4.1.9</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;" data-info="info.lang">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -188,6 +188,7 @@ document.addEventListener('click', function(e) {
 
     <h2 data-i18n="help.display">表示</h2>
     <ul>
+      <li data-i18n="help.display_link"><strong>Link</strong> — リンクモード。弾いた音がリアルタイムでパッド・ギター・ベース・ピアノに同期表示。楽器が薄暗くなり、弾いた音だけ光る [<kbd>⌘⌥L</kbd>]</li>
       <li data-i18n="help.display_inst"><strong>Guitar / Bass / Piano / Staff</strong> — ギターフレットボード、ベース、ピアノ鍵盤、五線譜を個別にON/OFF</li>
       <li data-i18n="help.display_circle"><strong>Circle of Fifths</strong> — 五度圏表示。キー選択と連動、ダイアトニックコード・機能表示（T/SD/D）。マイナーモード切替対応</li>
       <li data-i18n="help.display_label"><strong>音名/度数</strong> — ギター・パッド上の表示を音名(C, D, E)と度数(R, 2, 3)で切り替え</li>
@@ -292,6 +293,7 @@ document.addEventListener('click', function(e) {
       <li data-i18n="help.sc_perform"><kbd>p</kbd> — Perform / Memory 切替</li>
       <li data-i18n="help.sc_save"><kbd>Option</kbd>+<kbd>1234</kbd><kbd>qwer</kbd><kbd>asdf</kbd><kbd>zxcv</kbd> — メモリースロットに保存（16スロット対応）</li>
       <li data-i18n="help.sc_bank"><kbd>[</kbd> / <kbd>]</kbd> — バンク切替</li>
+      <li data-i18n="help.sc_link"><kbd>⌘⌥</kbd>+<kbd>L</kbd> — Link モード（弾いた音を全楽器に同期）</li>
       <li data-i18n="help.sc_inst"><kbd>⌘⌥</kbd>+<kbd>G</kbd> / <kbd>B</kbd> / <kbd>P</kbd> — Guitar / Bass / Piano 表示切替</li>
       <li data-i18n="help.sc_undo"><kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>z</kbd> — メモリースロットのUndo（最大30回）</li>
       <li data-i18n="help.sc_esc"><kbd>Esc</kbd> — 選択解除 / ヘルプを閉じる</li>
@@ -300,6 +302,7 @@ document.addEventListener('click', function(e) {
     </ul>
     <h3 data-i18n="help.shortcut_display">Display Toggle (⌘⌥ / Ctrl+Alt)</h3>
     <ul>
+      <li data-i18n="help.sc_cmd_link"><kbd>⌘</kbd><kbd>⌥</kbd>+<kbd>L</kbd> — Link</li>
       <li data-i18n="help.sc_cmd_guitar"><kbd>⌘</kbd><kbd>⌥</kbd>+<kbd>G</kbd> — Guitar</li>
       <li data-i18n="help.sc_cmd_bass"><kbd>⌘</kbd><kbd>⌥</kbd>+<kbd>B</kbd> — Bass</li>
       <li data-i18n="help.sc_cmd_piano"><kbd>⌘</kbd><kbd>⌥</kbd>+<kbd>P</kbd> — Piano</li>
@@ -399,6 +402,7 @@ document.addEventListener('click', function(e) {
     </div>
     <div id="instrument-row" style="margin-top:4px;">
       <div id="inst-toggle-bar" style="display:flex;gap:4px;justify-content:center;margin-bottom:2px;">
+          <button id="inst-toggle-link" class="inst-toggle" onclick="toggleLinkMode()" title="⌘⌥L" data-info="info.link_mode">Link</button>
           <button id="inst-toggle-guitar" class="inst-toggle" onclick="toggleInstrument('guitar')" title="⌘⌥G" data-i18n-title="ui.toggle_guitar" data-info="info.guitar">Guitar</button>
           <button id="inst-toggle-bass" class="inst-toggle" onclick="toggleInstrument('bass')" title="⌘⌥B" data-i18n-title="ui.toggle_bass" data-info="info.bass">Bass</button>
           <button id="inst-toggle-piano" class="inst-toggle" onclick="toggleInstrument('piano')" title="⌘⌥P" data-i18n-title="ui.toggle_piano" data-info="info.piano">Piano</button>
@@ -828,34 +832,34 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=4.0.0"></script>
-<script src="lang-en.js?v=4.0.0"></script>
-<script src="lang-ja.js?v=4.0.0"></script>
-<script src="lang-zh.js?v=4.0.0"></script>
-<script src="lang-es.js?v=4.0.0"></script>
-<script src="lang-fr.js?v=4.0.0"></script>
-<script src="lang-pt.js?v=4.0.0"></script>
-<script src="lang-de.js?v=4.0.0"></script>
-<script src="lang-ko.js?v=4.0.0"></script>
-<script src="lang-it.js?v=4.0.0"></script>
+<script src="i18n.js?v=4.1.9"></script>
+<script src="lang-en.js?v=4.1.9"></script>
+<script src="lang-ja.js?v=4.1.9"></script>
+<script src="lang-zh.js?v=4.1.9"></script>
+<script src="lang-es.js?v=4.1.9"></script>
+<script src="lang-fr.js?v=4.1.9"></script>
+<script src="lang-pt.js?v=4.1.9"></script>
+<script src="lang-de.js?v=4.1.9"></script>
+<script src="lang-ko.js?v=4.1.9"></script>
+<script src="lang-it.js?v=4.1.9"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=4.0.0"></script>
-<script src="pad-core/theory.js?v=4.0.0"></script>
-<script src="pad-core/render.js?v=4.0.0"></script>
-<script src="pad-core/circle.js?v=4.0.0"></script>
-<script src="pad-core/builder-ui.js?v=4.0.0"></script>
-<script src="pad-core/incremental.js?v=4.0.0"></script>
+<script src="pad-core/data.js?v=4.1.9"></script>
+<script src="pad-core/theory.js?v=4.1.9"></script>
+<script src="pad-core/render.js?v=4.1.9"></script>
+<script src="pad-core/circle.js?v=4.1.9"></script>
+<script src="pad-core/builder-ui.js?v=4.1.9"></script>
+<script src="pad-core/incremental.js?v=4.1.9"></script>
 <!-- App JS -->
-<script src="data.js?v=4.0.0"></script>
-<script src="audio.js?v=4.0.0"></script>
-<script src="theory.js?v=4.0.0"></script>
-<script src="render.js?v=4.0.0"></script>
-<script src="plain.js?v=4.0.0"></script>
-<script src="perform.js?v=4.0.0"></script>
-<script src="builder.js?v=4.0.0"></script>
-<script src="main.js?v=4.0.0"></script>
-<script src="tutorial-data.js?v=4.0.0"></script>
-<script src="tutorial.js?v=4.0.0"></script>
+<script src="data.js?v=4.1.9"></script>
+<script src="audio.js?v=4.1.9"></script>
+<script src="theory.js?v=4.1.9"></script>
+<script src="render.js?v=4.1.9"></script>
+<script src="plain.js?v=4.1.9"></script>
+<script src="perform.js?v=4.1.9"></script>
+<script src="builder.js?v=4.1.9"></script>
+<script src="main.js?v=4.1.9"></script>
+<script src="tutorial-data.js?v=4.1.9"></script>
+<script src="tutorial.js?v=4.1.9"></script>
 <script>
 if ('serviceWorker' in navigator) {
   // Clean up old ?v= registrations (they create zombie SWs)

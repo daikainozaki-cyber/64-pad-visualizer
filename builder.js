@@ -731,7 +731,7 @@ function onNativeMidiIn(note, velocity) {
   noteOn(note, (velocity || 100) / 127, true);
   if (handlePerformMidi(note)) return;
   midiActiveNotes.add(note);
-  if (AppState.mode === 'input') {
+  if (!linkMode && AppState.mode === 'input') {
     if (PlainState.subMode === 'idle') {
       PlainState.subMode = 'capture';
       PlainState.captureIndex = findNextEmptySlot(0);
@@ -751,9 +751,9 @@ function onNativeMidiIn(note, velocity) {
 function onNativeMidiOff(note) {
   noteOff(note);
   midiActiveNotes.delete(note);
-  if (AppState.mode === 'input' && PlainState.subMode !== 'idle') {
+  if (!linkMode && AppState.mode === 'input' && PlainState.subMode !== 'idle') {
     // latch: keep note in activeNotes
-  } else if (AppState.mode === 'input') {
+  } else if (!linkMode && AppState.mode === 'input') {
     PlainState.activeNotes.delete(note);
     updatePlainDisplay();
     render();
@@ -774,8 +774,10 @@ function updateMidiDisplay() {
   const notes = [...midiActiveNotes].sort((a, b) => a - b);
   if (notes.length === 0) {
     document.querySelectorAll('.midi-highlight').forEach(el => el.remove());
+    document.querySelectorAll('.link-highlight').forEach(el => el.remove());
     // Plain mode: #midi-detect is SSOT of updatePlainDisplay(), don't clear
-    if (AppState.mode === 'input') return;
+    if (!linkMode && AppState.mode === 'input') return;
+    if (linkMode) { detectEl.innerHTML = ''; return; } // Link mode: just clear highlights, keep display
     detectEl.innerHTML = '';
     // Restore diagrams: instrument input state takes priority over builder state
     if (instrumentInputActive) {
@@ -788,12 +790,12 @@ function updateMidiDisplay() {
     return;
   }
   // Guitar/Bass/Piano input active: preserve instrument chord name, only add MIDI highlights
-  if (instrumentInputActive) {
+  if (!linkMode && instrumentInputActive) {
     highlightMidiPads(notes);
     return;
   }
   // Plain mode: #midi-detect handled by updatePlainDisplay() (SSOT), only add highlights
-  if (AppState.mode === 'input') {
+  if (!linkMode && AppState.mode === 'input') {
     highlightMidiPads(notes);
     return;
   }
@@ -815,14 +817,115 @@ function updateMidiDisplay() {
   } else {
     detectEl.textContent = noteNames.join(' ');
   }
-  // Update instrument diagrams with MIDI-detected chord
-  if (candidates.length > 0) {
+  // Update instrument diagrams with MIDI-detected chord, or highlight-only in link mode
+  if (linkMode) {
+    // Link mode: keep existing scale/chord display, just add highlight overlays
+    highlightMidiInstruments(notes);
+  } else if (candidates.length > 0) {
     const midiPCS = new Set(notes.map(n => n % 12));
     renderGuitarDiagram(candidates[0].rootPC, midiPCS);
     renderBassDiagram(candidates[0].rootPC, midiPCS);
     renderPianoDisplay(candidates[0].rootPC, midiPCS);
   }
   highlightMidiPads(notes);
+}
+
+function highlightMidiInstruments(midiNotes) {
+  document.querySelectorAll('.link-highlight').forEach(el => el.remove());
+  // Re-apply dim in case render() rebuilt SVGs
+  applyLinkDim();
+  if (!midiNotes || midiNotes.length === 0) return;
+  var NS = 'http://www.w3.org/2000/svg';
+  var noteSet = new Set(midiNotes);
+
+  // --- Pad: bright filled rects over dim ---
+  var padSvg = document.getElementById('pad-grid');
+  if (padSvg) {
+    var bm = baseMidi();
+    for (var row = 0; row < ROWS; row++) {
+      for (var col = 0; col < COLS; col++) {
+        var midi = bm + row * ROW_INTERVAL + col;
+        if (!noteSet.has(midi)) continue;
+        var x = MARGIN + col * (PAD_SIZE + PAD_GAP);
+        var y = MARGIN + (ROWS - 1 - row) * (PAD_SIZE + PAD_GAP);
+        var hl = document.createElementNS(NS, 'rect');
+        hl.setAttribute('x', x); hl.setAttribute('y', y);
+        hl.setAttribute('width', PAD_SIZE); hl.setAttribute('height', PAD_SIZE);
+        hl.setAttribute('rx', 6);
+        hl.setAttribute('fill', '#fff'); hl.setAttribute('opacity', '0.55');
+        hl.setAttribute('stroke', '#fff'); hl.setAttribute('stroke-width', 2);
+        hl.setAttribute('class', 'link-highlight');
+        hl.setAttribute('pointer-events', 'none');
+        padSvg.appendChild(hl);
+      }
+    }
+  }
+
+  // --- Piano: bright key overlays over dim ---
+  var pianoSvg = document.getElementById('piano-display');
+  if (pianoSvg && pianoSvg.children.length > 0) {
+    var hitRects = [...pianoSvg.querySelectorAll('rect[cursor="pointer"]')];
+    hitRects.forEach(function(hr) {
+      var midi = parseInt(hr.dataset.midi);
+      if (!noteSet.has(midi)) return;
+      var kx = parseFloat(hr.getAttribute('x'));
+      var ky = parseFloat(hr.getAttribute('y'));
+      var kw = parseFloat(hr.getAttribute('width'));
+      var kh = parseFloat(hr.getAttribute('height'));
+      // Circle centered on the key
+      var c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', kx + kw / 2);
+      c.setAttribute('cy', ky + kh / 2);
+      c.setAttribute('r', Math.min(kw, kh) * 0.35);
+      c.setAttribute('fill', '#fff');
+      c.setAttribute('opacity', '0.9');
+      c.setAttribute('class', 'link-highlight');
+      c.setAttribute('pointer-events', 'none');
+      pianoSvg.appendChild(c);
+    });
+  }
+
+  // --- Guitar: bright circles over dim ---
+  var guitarSvg = document.getElementById('guitar-diagram');
+  if (guitarSvg && typeof GUITAR_OPEN_MIDI !== 'undefined') {
+    var gRects = guitarSvg.querySelectorAll('rect[data-string][data-fret]');
+    gRects.forEach(function(r) {
+      var s = parseInt(r.dataset.string);
+      var f = parseInt(r.dataset.fret);
+      var midi = GUITAR_OPEN_MIDI[s] + f;
+      if (!noteSet.has(midi)) return;
+      var hl = document.createElementNS(NS, 'circle');
+      var cx = parseFloat(r.getAttribute('x')) + parseFloat(r.getAttribute('width')) / 2;
+      var cy = parseFloat(r.getAttribute('y')) + parseFloat(r.getAttribute('height')) / 2;
+      hl.setAttribute('cx', cx); hl.setAttribute('cy', cy);
+      hl.setAttribute('r', 8);
+      hl.setAttribute('fill', '#fff'); hl.setAttribute('opacity', '0.9');
+      hl.setAttribute('class', 'link-highlight');
+      hl.setAttribute('pointer-events', 'none');
+      guitarSvg.appendChild(hl);
+    });
+  }
+
+  // --- Bass: bright circles over dim ---
+  var bassSvg = document.getElementById('bass-diagram');
+  if (bassSvg && typeof PAD_BASS_TUNING !== 'undefined') {
+    var bRects = bassSvg.querySelectorAll('rect[data-string][data-fret]');
+    bRects.forEach(function(r) {
+      var s = parseInt(r.dataset.string);
+      var f = parseInt(r.dataset.fret);
+      var midi = PAD_BASS_TUNING[s] + f;
+      if (!noteSet.has(midi)) return;
+      var hl = document.createElementNS(NS, 'circle');
+      var cx = parseFloat(r.getAttribute('x')) + parseFloat(r.getAttribute('width')) / 2;
+      var cy = parseFloat(r.getAttribute('y')) + parseFloat(r.getAttribute('height')) / 2;
+      hl.setAttribute('cx', cx); hl.setAttribute('cy', cy);
+      hl.setAttribute('r', 8);
+      hl.setAttribute('fill', '#fff'); hl.setAttribute('opacity', '0.9');
+      hl.setAttribute('class', 'link-highlight');
+      hl.setAttribute('pointer-events', 'none');
+      bassSvg.appendChild(hl);
+    });
+  }
 }
 
 function highlightMidiPads(midiNotes) {

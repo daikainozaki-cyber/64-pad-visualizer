@@ -166,6 +166,7 @@ function saveAppSettings() {
       showGuitar: typeof showGuitar !== 'undefined' ? showGuitar : false,
       showBass: typeof showBass !== 'undefined' ? showBass : false,
       showPiano: typeof showPiano !== 'undefined' ? showPiano : false,
+      linkMode: typeof linkMode !== 'undefined' ? linkMode : false,
       showStaff: typeof showStaff !== 'undefined' ? showStaff : false,
       showCircle: typeof showCircle !== 'undefined' ? showCircle : true,
       showSound: typeof showSound !== 'undefined' ? showSound : true,
@@ -197,6 +198,7 @@ function loadAppSettings() {
     if (s.showGuitar !== undefined) showGuitar = s.showGuitar;
     if (s.showBass !== undefined) showBass = s.showBass;
     if (s.showPiano !== undefined) showPiano = s.showPiano;
+    if (s.linkMode !== undefined) linkMode = s.linkMode;
     if (s.showStaff !== undefined) showStaff = s.showStaff;
     if (s.showCircle !== undefined) showCircle = s.showCircle;
     if (s.showSound !== undefined) showSound = s.showSound;

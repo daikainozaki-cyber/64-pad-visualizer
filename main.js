@@ -121,6 +121,7 @@ _landscapeMediaQuery.addEventListener('change', handleLandscapeChange);
   document.getElementById('inst-toggle-guitar').classList.toggle('active', showGuitar);
   document.getElementById('inst-toggle-bass').classList.toggle('active', showBass);
   document.getElementById('inst-toggle-piano').classList.toggle('active', showPiano);
+  document.getElementById('inst-toggle-link').classList.toggle('active', linkMode);
   document.getElementById('inst-toggle-staff').classList.toggle('active', showStaff);
   document.getElementById('inst-toggle-circle').classList.toggle('active', showCircle);
   document.getElementById('inst-toggle-sound').classList.toggle('active', showSound);
@@ -270,6 +271,7 @@ document.addEventListener('keydown', (e) => {
     if (cmdOptCode === 'KeyT') { e.preventDefault(); toggleSection('input'); return; }
     if (cmdOptCode === 'KeyQ') { e.preventDefault(); toggleSection('quality'); return; }
     if (cmdOptCode === 'KeyV') { e.preventDefault(); toggleSection('voicing'); return; }
+    if (cmdOptCode === 'KeyL') { e.preventDefault(); toggleLinkMode(); return; }
     if (cmdOptCode === 'KeyK') { e.preventDefault(); toggleKeyDisplay(); return; }
     if (cmdOptCode === 'KeyH') { e.preventDefault(); toggleHeader(); return; }
   }

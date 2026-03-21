@@ -240,6 +240,9 @@ function renderPads(svg, state, grid) {
       (function(m, r) {
         r.addEventListener('mousedown', (e) => {
           e.preventDefault();
+          if (linkMode) {
+            _heldMidi = m; noteOn(m); midiActiveNotes.add(m); scheduleMidiUpdate(); return;
+          }
           if (AppState.mode === 'input') { togglePlainNote(m); }
           else if (TastyState.enabled || StockState.enabled) {
             // TASTY/Stock mode: play note only, don't modify chord builder
@@ -267,6 +270,10 @@ function renderPads(svg, state, grid) {
         });
         r.addEventListener('touchstart', (e) => {
           e.preventDefault();
+          if (linkMode) {
+            for (const t of e.changedTouches) { _heldTouches.set(t.identifier, m); }
+            noteOn(m); midiActiveNotes.add(m); scheduleMidiUpdate(); return;
+          }
           if (AppState.mode === 'input') { togglePlainNote(m); }
           else if (TastyState.enabled || StockState.enabled) {
             for (const t of e.changedTouches) { _heldTouches.set(t.identifier, m); }
@@ -775,6 +782,43 @@ let showSound = true;
 let soundExpanded = true;
 let guitarLabelMode = 'name'; // 'name' or 'degree'
 let memoryViewMode = 'memory'; // 'memory' or 'perform'
+let linkMode = false; // Link mode: pads momentary, all instruments sync live
+
+function toggleLinkMode() {
+  linkMode = !linkMode;
+  var btn = document.getElementById('inst-toggle-link');
+  if (btn) btn.classList.toggle('active', linkMode);
+  if (linkMode) {
+    applyLinkDim();
+  } else {
+    removeLinkDim();
+    midiActiveNotes.clear();
+    updateMidiDisplay();
+  }
+}
+
+function applyLinkDim() {
+  var NS = 'http://www.w3.org/2000/svg';
+  ['pad-grid', 'piano-display', 'guitar-diagram', 'bass-diagram'].forEach(function(id) {
+    var svg = document.getElementById(id);
+    if (!svg || svg.querySelector('.link-dim')) return;
+    var vb = svg.getAttribute('viewBox');
+    if (!vb) return;
+    var p = vb.split(' ');
+    var dim = document.createElementNS(NS, 'rect');
+    dim.setAttribute('x', p[0]); dim.setAttribute('y', p[1]);
+    dim.setAttribute('width', p[2]); dim.setAttribute('height', p[3]);
+    dim.setAttribute('fill', 'rgba(0,0,0,0.55)');
+    dim.setAttribute('class', 'link-dim');
+    dim.setAttribute('pointer-events', 'none');
+    svg.appendChild(dim);
+  });
+}
+
+function removeLinkDim() {
+  document.querySelectorAll('.link-dim').forEach(function(el) { el.remove(); });
+  document.querySelectorAll('.link-highlight').forEach(function(el) { el.remove(); });
+}
 
 function toggleSoundExpand() {
   soundExpanded = !soundExpanded;
@@ -956,7 +1000,14 @@ function toggleBassFret(stringIdx, fret) {
 // ========================================
 // PIANO DISPLAY
 // ========================================
-function renderPianoDisplay(state) {
+function renderPianoDisplay(stateOrRootPC, pcsSetOpt) {
+  // Handle both new state object format and legacy 2-arg format (rootPC, pcsSet)
+  var state;
+  if (stateOrRootPC !== null && typeof stateOrRootPC === 'object') {
+    state = stateOrRootPC;
+  } else {
+    state = { rootPC: stateOrRootPC != null ? stateOrRootPC : -1, activePCS: pcsSetOpt || new Set() };
+  }
   const svg = document.getElementById('piano-display');
   var pcsSet = state ? state.activePCS : new Set();
   if (!pcsSet) pcsSet = new Set();

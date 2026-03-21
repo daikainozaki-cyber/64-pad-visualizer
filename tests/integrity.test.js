@@ -32,7 +32,9 @@ describe('Sound engine integrity', () => {
 
   it('No Desktop/JUCE references in web code', () => {
     const files = ['audio.js', 'render.js', 'builder.js', 'data.js',
-                   'theory.js', 'plain.js', 'perform.js', 'main.js'];
+                   'theory.js', 'tasty-stock.js', 'staff.js', 'instruments.js',
+                   'circle-ui.js', 'parent-scales-ui.js', 'play-controls.js',
+                   'plain.js', 'perform.js', 'main.js'];
     for (const f of files) {
       const p = resolve(ROOT, f);
       if (!existsSync(p)) continue;

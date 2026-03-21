@@ -46,6 +46,10 @@ Object.assign(globalThis, data);
 const theory = require('../../../theory.js');
 Object.assign(globalThis, theory);
 
+// Load tasty-stock.js → inject TASTY/STOCK exports as globals
+const tastyStock = require('../../../tasty-stock.js');
+Object.assign(globalThis, tastyStock);
+
 // Load builder.js
 const builder = require('../../../builder.js');
 Object.assign(globalThis, builder);

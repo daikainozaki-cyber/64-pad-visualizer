@@ -355,11 +355,36 @@ TutorialRegistry.add('diatonic', {
     },
     {
       type: 'info',
+      id: 'minor_variants',
+      targets: ['#diatonic-ext-toggles'],
+      highlight: '#ext-minor-btn',
+      titleKey: 'tut.diatonic.step4_title',
+      msgKey: 'tut.diatonic.step4_msg',
+      waitFor: 'next',
+      beforeShow: function() {
+        // Switch to Am Natural Minor to show minor-specific features
+        if (typeof AppState !== 'undefined') {
+          AppState.key = 9; AppState.scaleIdx = 5;
+          if (typeof render === 'function') render();
+        }
+      }
+    },
+    {
+      type: 'info',
+      id: 'secdom',
+      targets: ['#diatonic-ext-toggles'],
+      highlight: '#ext-secdom-btn',
+      titleKey: 'tut.diatonic.step5_title',
+      msgKey: 'tut.diatonic.step5_msg',
+      waitFor: 'next',
+    },
+    {
+      type: 'info',
       id: 'shortcuts',
       targets: [],
       highlight: null,
-      titleKey: 'tut.diatonic.step4_title',
-      msgKey: 'tut.diatonic.step4_msg',
+      titleKey: 'tut.diatonic.step6_title',
+      msgKey: 'tut.diatonic.step6_msg',
       waitFor: 'close',
     },
   ]

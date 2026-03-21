@@ -227,11 +227,13 @@ function renderParentScales() {
   // Re-sort: exact matches first, then by mode-specific criteria
   const SYS = { '\u25CB': 0, 'NM': 1, '\u25A0': 2, '\u25C6': 3 };
   if (AppState.psSortMode === 'practical') {
-    // Practical: exactMatch → omit5 → secDomBoost/hybridBoost → distance → system → avoidCount → degreeNum
+    // Practical: exactMatch → secDomBoost (if secdom) → omit5 → hybridBoost → distance → system → avoidCount → degreeNum
+    var _secDomActive = !!BuilderState._fromSecDom;
     _psResults.sort((a, b) =>
       (b.exactMatch - a.exactMatch) ||
+      (_secDomActive ? (b.secDomBoost - a.secDomBoost) : 0) ||
       (a.omit5Match - b.omit5Match) ||
-      (b.secDomBoost - a.secDomBoost) ||
+      (!_secDomActive ? (b.secDomBoost - a.secDomBoost) : 0) ||
       (b.hybridBoost - a.hybridBoost) ||
       (a.distance - b.distance) ||
       ((SYS[a.system] || 0) - (SYS[b.system] || 0)) ||

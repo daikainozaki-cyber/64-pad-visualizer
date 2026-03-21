@@ -1033,6 +1033,10 @@ function _renderSecondaryDominants(container, mainTetrads) {
         // Resolution target: major or minor? Determines scale priority
         BuilderState._secDomTargetIsMajor = targetQuality.name.indexOf('m') !== 0; // 'm7','m△7' = minor, others = major
         AppState.psSortMode = 'practical';
+        // Auto-open Available Scale panel
+        AppState.showParentScales = true;
+        var psBtn = document.getElementById('ps-toggle');
+        if (psBtn) psBtn.classList.add('active');
         render();
       };
     }

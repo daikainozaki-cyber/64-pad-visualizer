@@ -56,6 +56,11 @@ function isSecondaryDominant(qualityIntervals, results) {
 function findBestAutoSelect(results, isSecDom, isHybrid) {
   if (AppState.psSortMode === 'practical') {
     if (isSecDom) {
+      if (BuilderState._fromSecDom) {
+        // SecDom bar click: sort already boosted by resolution target — use top result
+        var top = results.find(function(r) { return r.secDomBoost > 0 && !r.omit5Match; });
+        if (top) return top;
+      }
       var lydb7 = results.find(function(r) { return r.scaleIdx === 17 && r.exactMatch && !r.omit5Match; });
       if (lydb7) return lydb7;
     }
@@ -258,8 +263,8 @@ function renderParentScales() {
   if (newFPSource !== _psChordFP) {
     _psChordFP = newFPSource;
     _selectedPS = null;
-    // Only auto-select when chord came from diatonic bar click
-    _psAutoSelect = !!BuilderState._fromDiatonic;
+    // Auto-select when chord came from diatonic bar or secondary dominant click
+    _psAutoSelect = !!BuilderState._fromDiatonic || !!BuilderState._fromSecDom;
     padExtNotes.clear(); // extension notes are meaningless for a different chord
   }
 

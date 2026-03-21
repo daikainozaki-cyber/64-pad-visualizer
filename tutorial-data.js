@@ -894,21 +894,28 @@ TutorialRegistry.add('circle', {
       titleKey: 'tut.circle.step4_title',
       msgKey: 'tut.circle.step4_msg',
       waitFor: 'next',
+      beforeShow: function() {
+        // Set Am so diatonic bar shows minor chords
+        if (typeof AppState !== 'undefined') {
+          AppState.key = 9; AppState.scaleIdx = 5;
+          if (typeof render === 'function') render();
+        }
+      }
     },
     {
       type: 'info',
       id: 'minor_modes',
-      targets: ['#circle-of-fifths'],
-      highlight: '#circle-of-fifths',
+      targets: ['#diatonic-bar'],
+      highlight: '#diatonic-ext-toggles',
       titleKey: 'tut.circle.step5_title',
       msgKey: 'tut.circle.step5_msg',
       waitFor: 'next',
     },
     {
-      type: 'action',
+      type: 'info',
       id: 'try_minor_modes',
-      targets: ['#circle-of-fifths'],
-      highlight: '#circle-of-fifths',
+      targets: ['#diatonic-ext-toggles'],
+      highlight: '#diatonic-ext-toggles',
       titleKey: 'tut.circle.step6_title',
       msgKey: 'tut.circle.step6_msg',
       waitFor: 'close',

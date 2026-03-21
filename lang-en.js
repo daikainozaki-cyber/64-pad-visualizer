@@ -665,7 +665,7 @@ I18N.addLang('en', {
       step4_title: 'Select a Minor Key',
       step4_msg: 'The inner ring shows minor keys.\nClick one to select a minor key.\nThe circle always shows Natural Minor diatonic chords.',
       step5_title: 'Scale Switching',
-      step5_msg: 'With a minor key selected, Nat / Harm / Mel buttons let you switch scales.\nPads and the diatonic bar update accordingly.\nUse the "Harm/Mel" button (\u2318\u2325N) below the diatonic bar to compare all 3 minor scales.',
+      step5_msg: 'With a minor key selected, use the Scale Selector to switch between Natural/Harmonic/Melodic.\nPads and the diatonic bar update accordingly.\nUse the "Harm/Mel" button (\u2318\u2325N) below the diatonic bar to compare all 3 minor scales.',
       step6_title: 'Parallel Key & Secondary Dominant',
       step6_msg: 'Below the diatonic bar, find "Parallel Key" and "Secondary Dominant" buttons.\nParallel Key shows borrowed chord sources. Secondary Dominant shows V7 chords with auto Available Scale display.',
     },

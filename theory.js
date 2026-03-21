@@ -1023,9 +1023,17 @@ function _renderSecondaryDominants(container, mainTetrads) {
           degree = '?7';
         }
       }
+      var targetQuality = t.quality; // resolution target quality
       btn.innerHTML = '<div>' + chordName + '</div><div class="degree">' + degree + '</div>';
       btn.onclick = function() {
         onDiatonicClick({ rootPC: secDomRoot, pcs: dom7quality.pcs, quality: dom7quality, chordName: chordName, degree: degree }, i);
+        // Override: secdom is non-diatonic, force Practical sort only
+        BuilderState._fromDiatonic = false;
+        BuilderState._fromSecDom = true;
+        // Resolution target: major or minor? Determines scale priority
+        BuilderState._secDomTargetIsMajor = targetQuality.name.indexOf('m') !== 0; // 'm7','m△7' = minor, others = major
+        AppState.psSortMode = 'practical';
+        render();
       };
     }
     row.appendChild(btn);

@@ -188,10 +188,24 @@ function renderParentScales() {
     _psResults = _psResults.filter(r => r.system !== '' || !DOM_ND.has(r.scaleIdx));
   }
 
-  // Secondary dominant detection: boost Lydian b7 for non-diatonic dom7 chords
-  var _isSecDom = isSecondaryDominant(qualityIntervals, _psResults);
+  // Secondary dominant: boost scale based on resolution target quality
+  var _isSecDom = BuilderState._fromSecDom || isSecondaryDominant(qualityIntervals, _psResults);
   _psResults.forEach(function(r) {
-    r.secDomBoost = (_isSecDom && r.scaleIdx === 17 && !r.omit5Match) ? 1 : 0;
+    r.secDomBoost = 0;
+    if (!_isSecDom || r.omit5Match) return;
+    if (BuilderState._fromSecDom && BuilderState._secDomTargetIsMajor !== undefined) {
+      if (BuilderState._secDomTargetIsMajor) {
+        // Resolves to major → Mixolydian (V7 ← Major)
+        if (r.degreeNum === 5 && r.system === '\u25CB') r.secDomBoost = 2; // Mixolydian
+      } else {
+        // Resolves to minor → HMP5↓ (Phrygian Dominant) or Altered
+        if (r.scaleIdx === 11) r.secDomBoost = 2;  // ■5 Phrygian Dominant (HMP5↓)
+        if (r.scaleIdx === 20) r.secDomBoost = 2;  // ◆7 Super Locrian (Altered)
+      }
+    } else {
+      // Generic secdom detection (no resolution info): boost Lydian b7 as before
+      if (r.scaleIdx === 17) r.secDomBoost = 1;
+    }
   });
 
   // Hybrid chord boost: hybrid chords (non-chord-tone bass) create a dominant space.
@@ -312,8 +326,10 @@ function renderParentScales() {
     t('parent.header', { n: _psResults.length });
   html += ' <button class="ps-sort-toggle' + (AppState.psSortMode === 'practical' ? ' active' : '') +
     '" onclick="if(AppState.psSortMode!==\'practical\')togglePsSortMode()" data-info="info.sort_practical">' + t('parent.sortPractical') + '</button>';
-  html += '<button class="ps-sort-toggle' + (AppState.psSortMode === 'diatonic' ? ' active' : '') +
-    '" onclick="if(AppState.psSortMode!==\'diatonic\')togglePsSortMode()" data-info="info.sort_diatonic">' + t('parent.sortDiatonic') + '</button>';
+  if (!BuilderState._fromSecDom) {
+    html += '<button class="ps-sort-toggle' + (AppState.psSortMode === 'diatonic' ? ' active' : '') +
+      '" onclick="if(AppState.psSortMode!==\'diatonic\')togglePsSortMode()" data-info="info.sort_diatonic">' + t('parent.sortDiatonic') + '</button>';
+  }
   if (farResults.length > 0) {
     html += ' <button class="ps-expand" onclick="togglePSExpand()">' +
       (_psExpanded ? '\u25B2' : '\u25BC ' + t('parent.expand')) + '</button>';

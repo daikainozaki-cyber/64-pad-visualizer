@@ -820,26 +820,54 @@ TutorialRegistry.add('secondary_dominant', {
     {
       type: 'info',
       id: 'major_resolve',
-      targets: ['#diatonic-ext'],
-      highlight: '#diatonic-ext',
+      targets: ['#parent-scale-panel'],
+      highlight: '#parent-scale-panel',
       titleKey: 'tut.secdom.step3_title',
       msgKey: 'tut.secdom.step3_msg',
       waitFor: 'next',
+      beforeShow: function() {
+        // Click C7 (I7 → F△7, major resolution) to demonstrate
+        var bars = document.querySelectorAll('.diatonic-ext-bar');
+        for (var b of bars) {
+          if (b.querySelector('.ext-label') && b.querySelector('.ext-label').textContent === 'V7/') {
+            var btns = b.querySelectorAll('.diatonic-btn:not(.secdom-empty)');
+            for (var btn of btns) {
+              if (btn.textContent.indexOf('C7') !== -1) { btn.click(); break; }
+            }
+          }
+        }
+        var el = document.getElementById('parent-scale-panel');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     },
     {
       type: 'info',
       id: 'minor_resolve',
-      targets: ['#diatonic-ext'],
-      highlight: '#diatonic-ext',
+      targets: ['#parent-scale-panel'],
+      highlight: '#parent-scale-panel',
       titleKey: 'tut.secdom.step4_title',
       msgKey: 'tut.secdom.step4_msg',
       waitFor: 'next',
+      beforeShow: function() {
+        // Click A7 (VI7 → Dm7, minor resolution) to demonstrate
+        var bars = document.querySelectorAll('.diatonic-ext-bar');
+        for (var b of bars) {
+          if (b.querySelector('.ext-label') && b.querySelector('.ext-label').textContent === 'V7/') {
+            var btns = b.querySelectorAll('.diatonic-btn:not(.secdom-empty)');
+            for (var btn of btns) {
+              if (btn.textContent.indexOf('A7') !== -1) { btn.click(); break; }
+            }
+          }
+        }
+        var el = document.getElementById('parent-scale-panel');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     },
     {
       type: 'info',
       id: 'available_scale',
       targets: ['#parent-scale-panel'],
-      highlight: '#parent-scale-toggle',
+      highlight: '#parent-scale-panel',
       titleKey: 'tut.secdom.step5_title',
       msgKey: 'tut.secdom.step5_msg',
       waitFor: 'close',
@@ -919,6 +947,10 @@ TutorialRegistry.add('circle', {
       titleKey: 'tut.circle.step6_title',
       msgKey: 'tut.circle.step6_msg',
       waitFor: 'close',
+      beforeShow: function() {
+        var el = document.getElementById('diatonic-ext-toggles');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     },
   ]
 });

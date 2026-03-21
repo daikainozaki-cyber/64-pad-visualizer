@@ -37,6 +37,9 @@ const AppState = {
   showParentScales: false, // Parent Scale panel toggle
   psSortMode: 'practical', // 'practical' | 'diatonic'
   diatonicMode: 'tetrad',  // 'tetrad' | 'triad'
+  showMinorVariants: false, // 3 minor scales parallel display
+  showSecDom: false,        // Secondary dominants display
+  showParallelKey: false,   // Parallel key (同主調) display
   // Velocity sensitivity (Push 3-style parameters)
   velThreshold: 0,   // 0-64: minimum input velocity, below = no sound
   velDrive: 0,       // -64 to +64: curve rise (+soft=loud, -need harder touch)
@@ -177,6 +180,9 @@ function saveAppSettings() {
       velRange: AppState.velRange,
       semitoneShift: AppState.semitoneShift,
       diatonicMode: AppState.diatonicMode,
+      showMinorVariants: AppState.showMinorVariants,
+      showSecDom: AppState.showSecDom,
+      showParallelKey: AppState.showParallelKey,
       banks: BankState.banks,
       activeBankId: BankState.activeBankId,
       showTips: AppState.showTips,
@@ -209,6 +215,9 @@ function loadAppSettings() {
     if (s.velRange !== undefined) AppState.velRange = s.velRange;
     if (s.semitoneShift !== undefined && s.semitoneShift >= -11 && s.semitoneShift <= 11) AppState.semitoneShift = s.semitoneShift;
     if (s.diatonicMode === 'triad' || s.diatonicMode === 'tetrad') AppState.diatonicMode = s.diatonicMode;
+    if (s.showMinorVariants !== undefined) AppState.showMinorVariants = s.showMinorVariants;
+    if (s.showSecDom !== undefined) AppState.showSecDom = s.showSecDom;
+    if (s.showParallelKey !== undefined) AppState.showParallelKey = s.showParallelKey;
     if (s.showTips === false) AppState.showTips = false;
     // Migration: banks
     if (Array.isArray(s.banks) && s.banks.length > 0) {

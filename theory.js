@@ -833,9 +833,13 @@ function toggleDiatonicMode() {
 function renderDiatonicBar() {
   const bar = document.getElementById('diatonic-bar');
   if (!bar) return;
+  var extTogglesEl = document.getElementById('diatonic-ext-toggles');
+  var extContainerEl = document.getElementById('diatonic-ext');
   if (AppState.mode === 'input') {
     bar.style.display = 'none';
     bar.innerHTML = '';
+    if (extTogglesEl) extTogglesEl.style.display = 'none';
+    if (extContainerEl) extContainerEl.innerHTML = '';
     return;
   }
   // Diatonic bar stays visible in chord mode for quick chord switching
@@ -843,6 +847,8 @@ function renderDiatonicBar() {
   if (scale.pcs.length !== 7) {
     bar.style.display = 'none';
     bar.innerHTML = '';
+    if (extTogglesEl) extTogglesEl.style.display = 'none';
+    if (extContainerEl) extContainerEl.innerHTML = '';
     return;
   }
   bar.style.display = 'flex';
@@ -872,6 +878,175 @@ function renderDiatonicBar() {
     btn.onclick = () => onDiatonicClick(t, i);
     bar.appendChild(btn);
   });
+
+  // Extension toggles + bars
+  var extToggles = document.getElementById('diatonic-ext-toggles');
+  var extContainer = document.getElementById('diatonic-ext');
+  if (!extToggles || !extContainer) return;
+  extContainer.innerHTML = '';
+
+  // Determine if current scale is one of the 3 minor types
+  var isMinorVariant = [5, 7, 14].indexOf(AppState.scaleIdx) !== -1;
+
+  // Show/hide toggles (always show for 7-note scales)
+  extToggles.style.display = 'flex';
+
+  // Show/hide minor-specific toggle
+  var minorBtn = document.getElementById('ext-minor-btn');
+  if (minorBtn) minorBtn.style.display = isMinorVariant ? '' : 'none';
+
+  // Update toggle button states
+  if (minorBtn) minorBtn.classList.toggle('active', AppState.showMinorVariants);
+  var secdomBtn = document.getElementById('ext-secdom-btn');
+  if (secdomBtn) secdomBtn.classList.toggle('active', AppState.showSecDom);
+  var parallelBtn = document.getElementById('ext-parallel-btn');
+  if (parallelBtn) parallelBtn.classList.toggle('active', AppState.showParallelKey);
+
+  // Render extension bars
+  if (AppState.showMinorVariants && isMinorVariant) {
+    _renderMinorVariants(extContainer, noteCount);
+  }
+  if (AppState.showParallelKey) {
+    _renderParallelKey(extContainer, noteCount);
+  }
+  if (AppState.showSecDom) {
+    _renderSecondaryDominants(extContainer, tetrads);
+  }
+}
+
+function toggleMinorVariants() {
+  AppState.showMinorVariants = !AppState.showMinorVariants;
+  renderDiatonicBar();
+  saveAppSettings();
+}
+function toggleSecDom() {
+  AppState.showSecDom = !AppState.showSecDom;
+  renderDiatonicBar();
+  saveAppSettings();
+}
+function toggleParallelKey() {
+  AppState.showParallelKey = !AppState.showParallelKey;
+  renderDiatonicBar();
+  saveAppSettings();
+}
+
+// --- Extension bar helpers ---
+
+function _createExtBar(container, label, tetrads, isCurrent) {
+  var row = document.createElement('div');
+  row.className = 'diatonic-ext-bar' + (isCurrent ? ' current' : '');
+  var lbl = document.createElement('div');
+  lbl.className = 'ext-label';
+  lbl.textContent = label;
+  row.appendChild(lbl);
+  tetrads.forEach(function(t, i) {
+    var btn = document.createElement('button');
+    btn.className = 'diatonic-btn';
+    btn.innerHTML = '<span class="dia-num">' + (i + 1) + '</span><div>' + t.chordName + '</div><div class="degree">' + t.degree + '</div>';
+    btn.onclick = function() { onDiatonicClick(t, i); };
+    row.appendChild(btn);
+  });
+  container.appendChild(row);
+}
+
+function _renderMinorVariants(container, noteCount) {
+  // NM is already shown in the main diatonic bar — only show HM and MM
+  var minorScales = [
+    { idx: 7, label: 'HM' },
+    { idx: 14, label: 'MM' },
+  ];
+  minorScales.forEach(function(s) {
+    var tetrads = getDiatonicTetrads(SCALES[s.idx].pcs, AppState.key, noteCount);
+    _createExtBar(container, s.label, tetrads, AppState.scaleIdx === s.idx);
+  });
+}
+
+function _renderSecondaryDominants(container, mainTetrads) {
+  var row = document.createElement('div');
+  row.className = 'diatonic-ext-bar';
+  var lbl = document.createElement('div');
+  lbl.className = 'ext-label';
+  lbl.textContent = 'V7/';
+  row.appendChild(lbl);
+
+  // Find dominant 7th quality from BUILDER_QUALITIES
+  var dom7quality = null;
+  for (var r = 0; r < BUILDER_QUALITIES.length; r++) {
+    for (var c = 0; c < BUILDER_QUALITIES[r].length; c++) {
+      var q = BUILDER_QUALITIES[r][c];
+      if (q && q.name === '7') { dom7quality = q; break; }
+    }
+    if (dom7quality) break;
+  }
+  if (!dom7quality) return;
+
+  var parentKey = padGetParentMajorKey(0, AppState.key);
+
+  // Build scale PCS set for checking if secdom root is diatonic
+  var scalePCS = SCALES[AppState.scaleIdx].pcs;
+  var scaleAbsSet = {};
+  for (var si = 0; si < scalePCS.length; si++) {
+    scaleAbsSet[(scalePCS[si] + AppState.key) % 12] = true;
+  }
+  var isMinorScale = [5, 7, 14].indexOf(AppState.scaleIdx) !== -1;
+
+  mainTetrads.forEach(function(t, i) {
+    var btn = document.createElement('button');
+    btn.className = 'diatonic-btn';
+    var secDomRoot = (t.rootPC + 7) % 12;
+
+    // Skip conditions:
+    // 1. Tonic (i=0): V7→I is the primary dominant, not secondary
+    // 2. SecDom root must be on the diatonic scale (definition requirement)
+    var skip = (i === 0) ||
+               !scaleAbsSet[secDomRoot];      // root not in diatonic scale
+
+    if (skip) {
+      btn.classList.add('secdom-empty');
+      btn.innerHTML = '<div>—</div>';
+    } else {
+      var chordName = KEY_SPELLINGS[parentKey][secDomRoot] + '7';
+      // Compute degree: interval from key root
+      var interval = ((secDomRoot - AppState.key) + 12) % 12;
+      var MAJOR_INTERVALS = [0, 2, 4, 5, 7, 9, 11];
+      var ROMAN = ['I','II','III','IV','V','VI','VII'];
+      var degreeIdx2 = MAJOR_INTERVALS.indexOf(interval);
+      var degree;
+      if (degreeIdx2 !== -1) {
+        degree = ROMAN[degreeIdx2] + '7';
+      } else {
+        // Flatted degree
+        var sharpIdx = MAJOR_INTERVALS.indexOf(interval + 1);
+        if (sharpIdx !== -1) {
+          degree = 'b' + ROMAN[sharpIdx] + '7';
+        } else {
+          degree = '?7';
+        }
+      }
+      btn.innerHTML = '<div>' + chordName + '</div><div class="degree">' + degree + '</div>';
+      btn.onclick = function() {
+        onDiatonicClick({ rootPC: secDomRoot, pcs: dom7quality.pcs, quality: dom7quality, chordName: chordName, degree: degree }, i);
+      };
+    }
+    row.appendChild(btn);
+  });
+  container.appendChild(row);
+}
+
+function _renderParallelKey(container, noteCount) {
+  var isMinor = [5, 7, 14].indexOf(AppState.scaleIdx) !== -1;
+  // Also treat all ○ modes as major-side, ■/◆ as minor-side
+  if (!isMinor && AppState.scaleIdx >= 0 && AppState.scaleIdx <= 6) {
+    // Major side → show natural minor
+    var tetrads = getDiatonicTetrads(SCALES[5].pcs, AppState.key, noteCount);
+    var keyName = KEY_SPELLINGS[padGetParentMajorKey(0, AppState.key)][AppState.key];
+    _createExtBar(container, keyName + 'm', tetrads, false);
+  } else if (isMinor) {
+    // Minor side → show major
+    var tetrads = getDiatonicTetrads(SCALES[0].pcs, AppState.key, noteCount);
+    var keyName = KEY_SPELLINGS[padGetParentMajorKey(0, AppState.key)][AppState.key];
+    _createExtBar(container, keyName, tetrads, false);
+  }
 }
 
 // ========================================

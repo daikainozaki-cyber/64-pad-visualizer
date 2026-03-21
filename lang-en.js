@@ -211,6 +211,10 @@ I18N.addLang('en', {
     limit_reached: 'Maximum 16 banks',
     cannot_delete_last: 'Cannot delete the last bank',
   },
+  diatonic: {
+    parallel: 'Parallel Key',
+    secdom: 'Secondary Dominant',
+  },
   parent: {
     toggle: 'Available Scale',
     header: 'Available Scales ({n})',

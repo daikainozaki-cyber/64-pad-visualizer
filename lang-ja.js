@@ -211,6 +211,10 @@ I18N.addLang('ja', {
     limit_reached: '\u30D0\u30F3\u30AF\u306F\u6700\u592716\u500B\u307E\u3067',
     cannot_delete_last: '\u6700\u5F8C\u306E\u30D0\u30F3\u30AF\u306F\u524A\u9664\u3067\u304D\u307E\u305B\u3093',
   },
+  diatonic: {
+    parallel: '同主調',
+    secdom: 'セカンダリー・ドミナント',
+  },
   parent: {
     toggle: 'Available Scale',
     header: 'Available Scales ({n})',

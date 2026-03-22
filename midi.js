@@ -21,6 +21,7 @@ let _lpOutputActive = false;
 let _lpHpsUnlocked = false;  // set in main.js from ?hps
 let _lpProgrammerMode = false; // true when Launchpad is in Programmer mode
 let _lpDeviceByte = 0x0C;   // 0x0C = Launchpad X, 0x0D = Mini MK3
+let _isPush = false;         // true when Push 3 User Mode detected
 const _prevLEDState = new Array(64).fill(-1); // -1 = never sent
 let _lpLEDMode = 'full'; // 'full' | 'root' | 'off'
 
@@ -495,20 +496,46 @@ function initWebMIDI() {
       _lpProgrammerMode = false;
       var ledSel = document.getElementById('led-mode');
       if (ledSel) ledSel.style.display = 'none';
-      // LED control disabled — requires Launchpad Programmer mode testing with physical device
-      // Re-enable when Launchpad is available for testing
-      if (false && _lpHpsUnlocked && connected && connectedName) {
+      // LED control: Push 3 User Mode (no SysEx needed) + Launchpad (disabled until physical testing)
+      _isPush = false;
+      console.log('[64PE LED] hpsUnlocked:', _lpHpsUnlocked, 'connected:', connected, 'connectedName:', connectedName);
+      // List all output ports for debugging
+      for (const output of access.outputs.values()) {
+        console.log('[64PE LED] Output port:', output.name, output.id);
+      }
+      if (_lpHpsUnlocked && connected && connectedName) {
+        var isPush = /push/i.test(connectedName) || /ableton/i.test(connectedName);
         var isLaunchpad = /launchpad/i.test(connectedName);
-        if (isLaunchpad) {
-          // Detect device type
+        console.log('[64PE LED] isPush:', isPush, 'isLaunchpad:', isLaunchpad);
+        if (isPush) {
+          // Push 3 User Mode: Note On with velocity=color, no SysEx needed
+          // Push serial note = 36 + row*8 + col
+          _isPush = true;
+          // Push 3: try both Live Port (LED control) and User Port
+          var pushLivePort = null;
+          var pushUserPort = null;
+          for (const output of access.outputs.values()) {
+            console.log('[64PE LED] Checking output:', output.name);
+            if (/push/i.test(output.name) || /ableton/i.test(output.name)) {
+              if (/live/i.test(output.name)) pushLivePort = output;
+              else if (/user/i.test(output.name)) pushUserPort = output;
+            }
+          }
+          // LED control via Live Port (proven in standalone), fallback to User Port
+          midiOutput = pushLivePort || pushUserPort;
+          if (midiOutput) {
+            _lpOutputActive = true;
+            _lpProgrammerMode = true;
+            console.log('[64PE LED] Push LED output:', midiOutput.name);
+          }
+        } else if (false && isLaunchpad) {
+          // Launchpad: disabled until physical device testing
           _lpDeviceByte = /mini/i.test(connectedName) ? 0x0D : 0x0C;
-          // Collect all matching outputs (Launchpad has MIDI + DAW ports)
           var matchedOutputs = [];
           for (const output of access.outputs.values()) {
             if (/launchpad/i.test(output.name)) matchedOutputs.push(output);
           }
           if (matchedOutputs.length > 0) {
-            // First port = MIDI, second = DAW (if available)
             midiOutput = matchedOutputs[0];
             midiOutputDAW = matchedOutputs.length > 1 ? matchedOutputs[1] : matchedOutputs[0];
             _lpOutputActive = true;
@@ -681,8 +708,15 @@ function updateLaunchpadLEDs(state) {
       var idx = row * COLS + col;
       var color = _padColorToLP(state, row, col);
       if (color !== _prevLEDState[idx]) {
-        // In Programmer mode: use (row+1)*10+(col+1), else use MIDI note
-        var note = _lpProgrammerMode ? _lpNote(row, col) : (baseMidi() + row * ROW_INTERVAL + col);
+        var note;
+        if (_isPush) {
+          // Push 3 User Mode: serial layout (36 + row*8 + col)
+          note = 36 + row * 8 + col;
+        } else if (_lpProgrammerMode) {
+          note = _lpNote(row, col);
+        } else {
+          note = baseMidi() + row * ROW_INTERVAL + col;
+        }
         if (note >= 0 && note <= 127) {
           midiOutput.send([0x90, note, color]);
         }
@@ -698,7 +732,14 @@ function clearLaunchpadLEDs() {
     if (_prevLEDState[i] > 0) {
       var row = Math.floor(i / COLS);
       var col = i % COLS;
-      var note = _lpProgrammerMode ? _lpNote(row, col) : (baseMidi() + row * ROW_INTERVAL + col);
+      var note;
+      if (_isPush) {
+        note = 36 + row * 8 + col;
+      } else if (_lpProgrammerMode) {
+        note = _lpNote(row, col);
+      } else {
+        note = baseMidi() + row * ROW_INTERVAL + col;
+      }
       if (note >= 0 && note <= 127) {
         midiOutput.send([0x90, note, 0]);
       }

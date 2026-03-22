@@ -359,6 +359,16 @@ const ENGINES = {
     },
     defaultPreset: 'Rhodes 1',
   },
+  epiano: {
+    name: 'E.PIANO (Physics)',
+    presets: {
+      'Rhodes + Twin':    { epiano: 'Rhodes Stage + Twin', label: 'Rhodes Stage + Twin Reverb' },
+      'Rhodes Suitcase':  { epiano: 'Rhodes Suitcase', label: 'Rhodes Suitcase' },
+      'Wurlitzer 200A':   { epiano: 'Wurlitzer 200A', label: 'Wurlitzer 200A' },
+      'Rhodes DI':        { epiano: 'Rhodes DI', label: 'Rhodes Clean DI' },
+    },
+    defaultPreset: 'Rhodes + Twin',
+  },
 };
 
 // --- Velocity-driven saturation (soft clipping) ---
@@ -409,6 +419,7 @@ function setEngine(key) {
   });
   renderSoundControls();
   saveSoundSettings();
+  _updateEpMixerVisibility();
 }
 
 function selectSound(combinedValue) {
@@ -429,6 +440,7 @@ function selectSound(combinedValue) {
   AudioState.presetKey = presetKey;
   AudioState.instrument = AudioState.engine.presets[presetKey];
   saveSoundSettings();
+  _updateEpMixerVisibility();
 }
 
 function setPreset(name) {
@@ -438,6 +450,45 @@ function setPreset(name) {
   const sel = document.getElementById('organ-preset');
   if (sel) sel.value = AudioState.engineKey + ':' + name;
   saveSoundSettings();
+  _updateEpMixerVisibility();
+}
+
+function _updateEpMixerVisibility() {
+  var sec = document.getElementById('ep-mixer-section');
+  if (!sec) return;
+  sec.style.display = (AudioState.instrument && AudioState.instrument.epiano) ? '' : 'none';
+}
+
+function _saveEpMixer() {
+  try {
+    localStorage.setItem('64pad-ep-mixer', JSON.stringify({
+      tineBodyMix: EpState.tineBodyMix,
+      tineAttackMix: EpState.tineAttackMix,
+      hammerClickMix: EpState.hammerClickMix,
+      metalMix: EpState.metalMix,
+      hammerNoiseMix: EpState.hammerNoiseMix,
+    }));
+  } catch(_) {}
+}
+
+function _loadEpMixer() {
+  try {
+    var raw = localStorage.getItem('64pad-ep-mixer');
+    if (!raw) return;
+    var s = JSON.parse(raw);
+    ['tineBodyMix','tineAttackMix','hammerClickMix','metalMix','hammerNoiseMix'].forEach(function(key) {
+      if (s[key] !== undefined) EpState[key] = s[key];
+    });
+    // Sync sliders
+    var map = {tineBodyMix:'ep-body', tineAttackMix:'ep-attack', hammerClickMix:'ep-click', metalMix:'ep-metal', hammerNoiseMix:'ep-noise'};
+    var valMap = {tineBodyMix:'ep-body-val', tineAttackMix:'ep-atk-val', hammerClickMix:'ep-click-val', metalMix:'ep-metal-val', hammerNoiseMix:'ep-noise-val'};
+    Object.keys(map).forEach(function(key) {
+      var sl = document.getElementById(map[key]);
+      var vl = document.getElementById(valMap[key]);
+      if (sl) sl.value = EpState[key];
+      if (vl) vl.textContent = EpState[key].toFixed(2);
+    });
+  } catch(_) {}
 }
 
 function saveSoundSettings() {
@@ -627,9 +678,14 @@ function noteOn(midi, velocity, poly, _retries) {
   // Per-voice saturation chain (velocity-driven)
   var sat = _createVoiceSaturation(velocity);
 
-  // Route to sampler engine or WebAudioFont
+  // Route to physics engine, sampler, or WebAudioFont
   let envelope;
-  if (AudioState.instrument.sampler) {
+  if (AudioState.instrument.epiano) {
+    // Physics engine: bypass per-voice saturation (physics chain has 3 nonlinear stages)
+    if (sat.cleanup) sat.cleanup();
+    EpState.preset = AudioState.instrument.epiano;
+    envelope = epianoNoteOn(audioCtx, midi, velocity, masterGain);
+  } else if (AudioState.instrument.sampler) {
     envelope = _samplerNoteOn(AudioState.instrument.sampler, midi, velocity, sat.input);
   } else {
     envelope = wafPlayer.queueWaveTable(
@@ -972,6 +1028,23 @@ onReady(() => {
   });
   drawVelocityCurve();
 
+  // --- E.Piano Mixer sliders ---
+  [['ep-body','ep-body-val','tineBodyMix'],
+   ['ep-attack','ep-atk-val','tineAttackMix'],
+   ['ep-click','ep-click-val','hammerClickMix'],
+   ['ep-metal','ep-metal-val','metalMix'],
+   ['ep-noise','ep-noise-val','hammerNoiseMix']].forEach(([sid, vid, key]) => {
+    var s = document.getElementById(sid);
+    var v = document.getElementById(vid);
+    if (s && v) s.addEventListener('input', () => {
+      EpState[key] = parseFloat(s.value);
+      v.textContent = parseFloat(s.value).toFixed(2);
+      _saveEpMixer();
+    });
+  });
+
   renderSoundControls();
   loadSoundSettings();
+  _loadEpMixer();
+  _updateEpMixerVisibility();
 });

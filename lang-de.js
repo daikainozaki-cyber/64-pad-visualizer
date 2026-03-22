@@ -228,6 +228,7 @@ I18N.addLang('de', {
     harm_mel: 'Harm/Mel \u2014 Harmonisch und melodisch Moll-Diatonik nebeneinander vergleichen [\u2318\u2325N]',
     parallel_key: 'Parallel Key \u2014 Dur-/Moll-Diatonik für denselben Grundton anzeigen. Herkunft von Borrowed Chords sichtbar [\u2318\u2325R]',
     secdom: 'Sekundärdominante \u2014 V7 zeigen, der zu jedem diatonischen Akkord auflöst. Klicken für automatische Available Scale-Anzeige [\u2318\u2325D]',
+    harmonic_fn: 'T/SD/D \u2014 Color diatonic chords by harmonic function: Tonic, Subdominant, Dominant [\u2318\u2325F]',
     capture: 'Pad-Eingaben in einen Memory Slot aufnehmen [C]',
     capture_end: 'Aufnahme beenden und im aktuellen Slot speichern [E]',
     save: 'Alle aktuellen Einstellungen speichern (Tonart, Skala, Sound, Memory, Layout)',
@@ -302,6 +303,7 @@ I18N.addLang('de', {
   diatonic: {
     parallel: 'Paralleltonart',
     secdom: 'Sekundärdominante',
+    harmonic_fn: 'T/SD/D',
   },
   parent: {
     toggle: 'Available Scale',

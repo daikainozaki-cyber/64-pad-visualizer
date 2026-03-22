@@ -278,6 +278,7 @@ document.addEventListener('keydown', (e) => {
     if (cmdOptCode === 'KeyN') { e.preventDefault(); toggleMinorVariants(); return; }
     if (cmdOptCode === 'KeyD') { e.preventDefault(); toggleSecDom(); return; }
     if (cmdOptCode === 'KeyR') { e.preventDefault(); toggleParallelKey(); return; }
+    if (cmdOptCode === 'KeyF') { e.preventDefault(); toggleHarmonicFn(); return; }
   }
 
   // Shift+D: Cycle Drop (voicing operation, not display toggle)

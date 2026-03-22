@@ -215,6 +215,7 @@ I18N.addLang('en', {
   diatonic: {
     parallel: 'Parallel Key',
     secdom: 'Secondary Dominant',
+    harmonic_fn: 'T/SD/D',
   },
   parent: {
     toggle: 'Available Scale',
@@ -777,6 +778,7 @@ I18N.addLang('en', {
     harm_mel: 'Harm/Mel \u2014 Compare Harmonic & Melodic Minor diatonic chords side by side [\u2318\u2325N]',
     parallel_key: 'Parallel Key \u2014 Show major/minor diatonic for the same root. See where borrowed chords come from [\u2318\u2325R]',
     secdom: 'Secondary Dominant \u2014 Show V7 resolving to each diatonic chord. Click for Available Scale auto-display [\u2318\u2325D]',
+    harmonic_fn: 'T/SD/D \u2014 Color diatonic chords by harmonic function: Tonic, Subdominant, Dominant [\u2318\u2325F]',
     capture: 'Start capturing pad taps into a memory slot [C]',
     save: 'Save all current settings (key, scale, sound, memory, layout)',
     tutorial: 'Interactive tutorials \u2014 learn the basics step by step',

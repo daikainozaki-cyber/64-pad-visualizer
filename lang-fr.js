@@ -225,6 +225,7 @@ I18N.addLang('fr', {
     harm_mel: 'Harm/Mel \u2014 Comparer les accords diatoniques mineur harmonique et mélodique côte à côte [\u2318\u2325N]',
     parallel_key: 'Parallel Key \u2014 Afficher les accords diatoniques majeurs/mineurs pour la même fondamentale. Voir d\'où viennent les accords empruntés [\u2318\u2325R]',
     secdom: 'Dominante secondaire \u2014 Afficher le V7 résolvant vers chaque accord diatonique. Cliquer pour l\'affichage automatique Available Scale [\u2318\u2325D]',
+    harmonic_fn: 'T/SD/D \u2014 Color diatonic chords by harmonic function: Tonic, Subdominant, Dominant [\u2318\u2325F]',
     capture: 'Commencer à capturer les frappes de pads dans un emplacement mémoire [C]',
     capture_end: 'Terminer la capture et sauvegarder dans l\'emplacement actuel [E]',
     save: 'Sauvegarder tous les paramètres actuels (tonalité, gamme, son, mémoire, disposition)',
@@ -299,6 +300,7 @@ I18N.addLang('fr', {
   diatonic: {
     parallel: 'Tonalité parallèle',
     secdom: 'Dominante secondaire',
+    harmonic_fn: 'T/SD/D',
   },
   parent: {
     toggle: 'Available Scale',

@@ -816,6 +816,38 @@ function drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleab
 // ========================================
 // DIATONIC CHORD BAR
 // ========================================
+
+// T/SD/D harmonic function mapping per scale family
+// 'T'=tonic, 'SD'=subdominant, 'D'=dominant
+// Source: urinami-san's harmonic function classification (2026-03-22)
+var HARMONIC_FN_BASES = {
+  major: ['T','SD','T','SD','D','T','D'],   // I=T ii=SD iii=T(代理) IV=SD V=D vi=T(代理) vii=D(代理)
+  nm:    ['T','SD','T','SD','D','SD','SD'],  // i=T ii=SD(代理) ♭III=T(代理) iv=SD v=D ♭VI=SD(代理) ♭VII=SD(代理)
+  hm:    ['T','SD','T','SD','D','SD','D'],   // i=T ii=SD(代理) ♭III=T(代理) iv=SD V=D ♭VI=SD(代理) vii=D(代理)
+  mm:    ['T','SD','T','SD','D','T','D'],    // i=T ii=SD(代理) ♭III=T(代理) IV=SD V=D vi=T(代理) vii=D(代理)
+};
+
+function getHarmonicFunction(scaleIdx, degreeIdx) {
+  if (degreeIdx < 0 || degreeIdx >= 7) return null;
+  var scale = SCALES[scaleIdx];
+  if (!scale || scale.pcs.length !== 7) return null;
+  var cat = scale.cat;
+  var num = scale.num; // 1-based mode number within family
+  var base, offset;
+  if (cat === '○') {
+    // Major family — NM (Aeolian, idx 5) overrides with its own TSD
+    if (scaleIdx === 5) { base = HARMONIC_FN_BASES.nm; offset = 0; }
+    else { base = HARMONIC_FN_BASES.major; offset = num - 1; }
+  } else if (cat === '■') {
+    base = HARMONIC_FN_BASES.hm; offset = num - 1;
+  } else if (cat === '◆') {
+    base = HARMONIC_FN_BASES.mm; offset = num - 1;
+  } else {
+    return null; // Non-diatonic scales (pentatonic, blues, etc.)
+  }
+  return base[(degreeIdx + offset) % 7];
+}
+
 function noteNameForKey(pc, key) {
   return padNoteNameForKey(pc, key);
 }
@@ -874,6 +906,13 @@ function renderDiatonicBar() {
         BuilderState.quality.name === t.quality.name && !BuilderState.tension) {
       btn.classList.add('active');
     }
+    // T/SD/D harmonic function coloring
+    if (AppState.showHarmonicFn) {
+      var fn = getHarmonicFunction(AppState.scaleIdx, i);
+      if (fn === 'T') btn.classList.add('fn-tonic');
+      else if (fn === 'SD') btn.classList.add('fn-subdominant');
+      else if (fn === 'D') btn.classList.add('fn-dominant');
+    }
     btn.innerHTML = '<span class="dia-num">' + (i + 1) + '</span><div>' + t.chordName + '</div><div class="degree">' + t.degree + '</div>';
     btn.onclick = () => onDiatonicClick(t, i);
     bar.appendChild(btn);
@@ -901,6 +940,8 @@ function renderDiatonicBar() {
   if (secdomBtn) secdomBtn.classList.toggle('active', AppState.showSecDom);
   var parallelBtn = document.getElementById('ext-parallel-btn');
   if (parallelBtn) parallelBtn.classList.toggle('active', AppState.showParallelKey);
+  var fnBtn = document.getElementById('ext-fn-btn');
+  if (fnBtn) fnBtn.classList.toggle('active', AppState.showHarmonicFn);
 
   // Render extension bars
   if (AppState.showMinorVariants && isMinorVariant) {
@@ -929,10 +970,15 @@ function toggleParallelKey() {
   renderDiatonicBar();
   saveAppSettings();
 }
+function toggleHarmonicFn() {
+  AppState.showHarmonicFn = !AppState.showHarmonicFn;
+  renderDiatonicBar();
+  saveAppSettings();
+}
 
 // --- Extension bar helpers ---
 
-function _createExtBar(container, label, tetrads, isCurrent) {
+function _createExtBar(container, label, tetrads, isCurrent, scaleIdx) {
   var row = document.createElement('div');
   row.className = 'diatonic-ext-bar' + (isCurrent ? ' current' : '');
   var lbl = document.createElement('div');
@@ -942,6 +988,12 @@ function _createExtBar(container, label, tetrads, isCurrent) {
   tetrads.forEach(function(t, i) {
     var btn = document.createElement('button');
     btn.className = 'diatonic-btn';
+    if (AppState.showHarmonicFn && scaleIdx !== undefined) {
+      var fn = getHarmonicFunction(scaleIdx, i);
+      if (fn === 'T') btn.classList.add('fn-tonic');
+      else if (fn === 'SD') btn.classList.add('fn-subdominant');
+      else if (fn === 'D') btn.classList.add('fn-dominant');
+    }
     btn.innerHTML = '<span class="dia-num">' + (i + 1) + '</span><div>' + t.chordName + '</div><div class="degree">' + t.degree + '</div>';
     btn.onclick = function() { onDiatonicClick(t, i); };
     row.appendChild(btn);
@@ -957,7 +1009,7 @@ function _renderMinorVariants(container, noteCount) {
   ];
   minorScales.forEach(function(s) {
     var tetrads = getDiatonicTetrads(SCALES[s.idx].pcs, AppState.key, noteCount);
-    _createExtBar(container, s.label, tetrads, AppState.scaleIdx === s.idx);
+    _createExtBar(container, s.label, tetrads, AppState.scaleIdx === s.idx, s.idx);
   });
 }
 
@@ -1050,12 +1102,12 @@ function _renderParallelKey(container, noteCount) {
     // Major side → show natural minor
     var tetrads = getDiatonicTetrads(SCALES[5].pcs, AppState.key, noteCount);
     var keyName = KEY_SPELLINGS[padGetParentMajorKey(0, AppState.key)][AppState.key];
-    _createExtBar(container, keyName + 'm', tetrads, false);
+    _createExtBar(container, keyName + 'm', tetrads, false, 5);
   } else if (isMinor) {
     // Minor side → show major
     var tetrads = getDiatonicTetrads(SCALES[0].pcs, AppState.key, noteCount);
     var keyName = KEY_SPELLINGS[padGetParentMajorKey(0, AppState.key)][AppState.key];
-    _createExtBar(container, keyName, tetrads, false);
+    _createExtBar(container, keyName, tetrads, false, 0);
   }
 }
 

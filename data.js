@@ -40,6 +40,7 @@ const AppState = {
   showMinorVariants: false, // 3 minor scales parallel display
   showSecDom: false,        // Secondary dominants display
   showParallelKey: false,   // Parallel key (同主調) display
+  showHarmonicFn: false,    // T/SD/D harmonic function coloring
   // Velocity sensitivity (Push 3-style parameters)
   velThreshold: 0,   // 0-64: minimum input velocity, below = no sound
   velDrive: 0,       // -64 to +64: curve rise (+soft=loud, -need harder touch)
@@ -183,6 +184,7 @@ function saveAppSettings() {
       showMinorVariants: AppState.showMinorVariants,
       showSecDom: AppState.showSecDom,
       showParallelKey: AppState.showParallelKey,
+      showHarmonicFn: AppState.showHarmonicFn,
       banks: BankState.banks,
       activeBankId: BankState.activeBankId,
       showTips: AppState.showTips,
@@ -218,6 +220,7 @@ function loadAppSettings() {
     if (s.showMinorVariants !== undefined) AppState.showMinorVariants = s.showMinorVariants;
     if (s.showSecDom !== undefined) AppState.showSecDom = s.showSecDom;
     if (s.showParallelKey !== undefined) AppState.showParallelKey = s.showParallelKey;
+    if (s.showHarmonicFn !== undefined) AppState.showHarmonicFn = s.showHarmonicFn;
     if (s.showTips === false) AppState.showTips = false;
     // Migration: banks
     if (Array.isArray(s.banks) && s.banks.length > 0) {

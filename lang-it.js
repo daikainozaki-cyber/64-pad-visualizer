@@ -229,6 +229,7 @@ I18N.addLang('it', {
     harm_mel: 'Harm/Mel \u2014 Confronta gli accordi diatonici di minore armonica e melodica affiancati [\u2318\u2325N]',
     parallel_key: 'Tonalità parallela \u2014 Mostra diatonici maggiore/minore per la stessa fondamentale. Vedi l\'origine degli accordi presi in prestito [\u2318\u2325R]',
     secdom: 'Dominante secondaria \u2014 Mostra V7 che risolvono su ogni accordo diatonico. Clicca per visualizzazione automatica Available Scale [\u2318\u2325D]',
+    harmonic_fn: 'T/SD/D \u2014 Color diatonic chords by harmonic function: Tonic, Subdominant, Dominant [\u2318\u2325F]',
     capture: 'Inizia a catturare i tocchi sui pad in uno slot di memoria [C]',
     capture_end: 'Termina la cattura e salva nello slot corrente [E]',
     save: 'Salva tutte le impostazioni correnti (tonalità, scala, suono, memoria, layout)',
@@ -303,6 +304,7 @@ I18N.addLang('it', {
   diatonic: {
     parallel: 'Tonalità parallela',
     secdom: 'Dominante secondaria',
+    harmonic_fn: 'T/SD/D',
   },
   parent: {
     toggle: 'Available Scale',

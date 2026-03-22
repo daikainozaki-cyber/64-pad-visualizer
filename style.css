@@ -365,6 +365,13 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
 .diatonic-ext-bar .diatonic-btn.secdom-empty {
   background: transparent; border-color: transparent; cursor: default; opacity: 0.3;
 }
+/* T/SD/D harmonic function coloring (same palette as Circle of Fifths) */
+.diatonic-btn.fn-tonic { background: rgba(160,128,96,0.25); border-bottom: 3px solid #a08060; }
+.diatonic-btn.fn-subdominant { background: rgba(88,136,152,0.25); border-bottom: 3px solid #588898; }
+.diatonic-btn.fn-dominant { background: rgba(136,104,120,0.25); border-bottom: 3px solid #886878; }
+.diatonic-btn.fn-tonic.active { background: #a08060; border-bottom: 3px solid #fff; }
+.diatonic-btn.fn-subdominant.active { background: #588898; border-bottom: 3px solid #fff; }
+.diatonic-btn.fn-dominant.active { background: #886878; border-bottom: 3px solid #fff; }
 
 /* === Text Chord Input === */
 .text-chord-container { position: relative; margin-bottom: 8px; }

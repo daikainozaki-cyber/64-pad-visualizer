@@ -229,6 +229,7 @@ I18N.addLang('zh', {
     harm_mel: 'Harm/Mel \u2014 对比和声小调与旋律小调的自然和弦 [\u2318\u2325N]',
     parallel_key: '同主音调 \u2014 显示相同根音的大/小调自然和弦。查看借用和弦的来源 [\u2318\u2325R]',
     secdom: '副属和弦 \u2014 显示解决到每个自然和弦的V7。点击自动显示Available Scale [\u2318\u2325D]',
+    harmonic_fn: 'T/SD/D \u2014 Color diatonic chords by harmonic function: Tonic, Subdominant, Dominant [\u2318\u2325F]',
     capture: '开始录入打击垫点击到记忆插槽 [C]',
     capture_end: '结束录入并保存到当前插槽 [E]',
     save: '保存所有当前设置（调、音阶、音色、记忆、布局）',
@@ -303,6 +304,7 @@ I18N.addLang('zh', {
   diatonic: {
     parallel: '同主音调',
     secdom: '副属和弦',
+    harmonic_fn: 'T/SD/D',
   },
   parent: {
     toggle: 'Available Scale',

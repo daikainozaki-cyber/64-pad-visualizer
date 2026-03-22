@@ -75,7 +75,7 @@ document.addEventListener('click', function(e) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1+Code:wght@300;400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=4.8.0">
+<link rel="stylesheet" href="style.css?v=4.8.1">
 <!-- WebAudioFont: player + organ instruments -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
 <script src="https://surikov.github.io/webaudiofontdata/sound/0160_FluidR3_GM_sf2_file.js"></script>
@@ -112,7 +112,7 @@ document.addEventListener('click', function(e) {
   };
 })();
 </script>
-<script src="jrhodes3c-samples.js?v=4.8.0" onload="if(window._sampleLoadDone)window._sampleLoadDone()"></script>
+<script src="jrhodes3c-samples.js?v=4.8.1" onload="if(window._sampleLoadDone)window._sampleLoadDone()"></script>
 </head>
 <body>
 
@@ -120,7 +120,7 @@ document.addEventListener('click', function(e) {
 <div class="header-block">
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V4.8.0</span>
+  <span class="version-tag">V4.8.1</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;" data-info="info.lang">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -488,6 +488,7 @@ document.addEventListener('click', function(e) {
       <button class="diatonic-ext-toggle" id="ext-minor-btn" onclick="toggleMinorVariants()" title="⌘⌥N" data-info="info.harm_mel">Harm/Mel</button>
       <button class="diatonic-ext-toggle" id="ext-parallel-btn" onclick="toggleParallelKey()" title="⌘⌥R" data-i18n="diatonic.parallel" data-info="info.parallel_key">Parallel Key</button>
       <button class="diatonic-ext-toggle" id="ext-secdom-btn" onclick="toggleSecDom()" title="⌘⌥D" data-i18n="diatonic.secdom" data-info="info.secdom">Secondary Dominant</button>
+      <button class="diatonic-ext-toggle" id="ext-fn-btn" onclick="toggleHarmonicFn()" title="⌘⌥F" data-i18n="diatonic.harmonic_fn" data-info="info.harmonic_fn">T/SD/D</button>
     </div>
     <div id="diatonic-ext"></div>
 
@@ -770,7 +771,7 @@ document.addEventListener('click', function(e) {
 
 <!-- JA affiliates: below app layout, visible without scroll -->
 <div id="affiliate-instrument-area" class="ja-affiliate" style="text-align:center;padding:4px 0;" data-info="info.affiliate">
-  <p style="font-size:0.65rem;color:var(--text-muted);margin:2px 0;opacity:0.6;">徳を積みたい方はこちら…</p>
+  <p style="font-size:0.65rem;color:var(--text-muted);margin:2px 0;opacity:0.6;" data-i18n="affiliate_label">赤字脱却のために連打してくれても良いんですよ…ほしいものリストもありますよ…</p>
   <div style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;padding:4px;opacity:0.7;">
     <a href="https://h.accesstrade.net/sp/cc?rk=01000gil00iidb" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" target="_blank"><img src="https://h.accesstrade.net/sp/rr?rk=01000gil00iidb" alt="サウンドハウス" border="0" style="vertical-align:middle;"></a>
     <a href="//af.moshimo.com/af/c/click?a_id=892719&p_id=170&pc_id=185&pl_id=4071" rel="nofollow" referrerpolicy="no-referrer-when-downgrade" attributionsrc target="_blank"><img src="//image.moshimo.com/af-img/0068/000000004071.gif" width="164" height="28" style="border:none;vertical-align:middle;"></a><img src="//i.moshimo.com/af/i/impression?a_id=892719&p_id=170&pc_id=185&pl_id=4071" width="1" height="1" style="border:none;" loading="lazy">
@@ -841,41 +842,41 @@ document.addEventListener('click', function(e) {
 </div>
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=4.8.0"></script>
-<script src="lang-en.js?v=4.8.0"></script>
-<script src="lang-ja.js?v=4.8.0"></script>
-<script src="lang-zh.js?v=4.8.0"></script>
-<script src="lang-es.js?v=4.8.0"></script>
-<script src="lang-fr.js?v=4.8.0"></script>
-<script src="lang-pt.js?v=4.8.0"></script>
-<script src="lang-de.js?v=4.8.0"></script>
-<script src="lang-ko.js?v=4.8.0"></script>
-<script src="lang-it.js?v=4.8.0"></script>
+<script src="i18n.js?v=4.8.1"></script>
+<script src="lang-en.js?v=4.8.1"></script>
+<script src="lang-ja.js?v=4.8.1"></script>
+<script src="lang-zh.js?v=4.8.1"></script>
+<script src="lang-es.js?v=4.8.1"></script>
+<script src="lang-fr.js?v=4.8.1"></script>
+<script src="lang-pt.js?v=4.8.1"></script>
+<script src="lang-de.js?v=4.8.1"></script>
+<script src="lang-ko.js?v=4.8.1"></script>
+<script src="lang-it.js?v=4.8.1"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=4.8.0"></script>
-<script src="pad-core/theory.js?v=4.8.0"></script>
-<script src="pad-core/render.js?v=4.8.0"></script>
-<script src="pad-core/circle.js?v=4.8.0"></script>
-<script src="pad-core/builder-ui.js?v=4.8.0"></script>
-<script src="pad-core/incremental.js?v=4.8.0"></script>
+<script src="pad-core/data.js?v=4.8.1"></script>
+<script src="pad-core/theory.js?v=4.8.1"></script>
+<script src="pad-core/render.js?v=4.8.1"></script>
+<script src="pad-core/circle.js?v=4.8.1"></script>
+<script src="pad-core/builder-ui.js?v=4.8.1"></script>
+<script src="pad-core/incremental.js?v=4.8.1"></script>
 <!-- App JS -->
-<script src="data.js?v=4.8.0"></script>
-<script src="audio.js?v=4.8.0"></script>
-<script src="theory.js?v=4.8.0"></script>
-<script src="tasty-stock.js?v=4.8.0"></script>
-<script src="staff.js?v=4.8.0"></script>
-<script src="instruments.js?v=4.8.0"></script>
-<script src="circle-ui.js?v=4.8.0"></script>
-<script src="parent-scales-ui.js?v=4.8.0"></script>
-<script src="play-controls.js?v=4.8.0"></script>
-<script src="render.js?v=4.8.0"></script>
-<script src="plain.js?v=4.8.0"></script>
-<script src="perform.js?v=4.8.0"></script>
-<script src="builder.js?v=4.8.0"></script>
-<script src="midi.js?v=4.8.0"></script>
-<script src="main.js?v=4.8.0"></script>
-<script src="tutorial-data.js?v=4.8.0"></script>
-<script src="tutorial.js?v=4.8.0"></script>
+<script src="data.js?v=4.8.1"></script>
+<script src="audio.js?v=4.8.1"></script>
+<script src="theory.js?v=4.8.1"></script>
+<script src="tasty-stock.js?v=4.8.1"></script>
+<script src="staff.js?v=4.8.1"></script>
+<script src="instruments.js?v=4.8.1"></script>
+<script src="circle-ui.js?v=4.8.1"></script>
+<script src="parent-scales-ui.js?v=4.8.1"></script>
+<script src="play-controls.js?v=4.8.1"></script>
+<script src="render.js?v=4.8.1"></script>
+<script src="plain.js?v=4.8.1"></script>
+<script src="perform.js?v=4.8.1"></script>
+<script src="builder.js?v=4.8.1"></script>
+<script src="midi.js?v=4.8.1"></script>
+<script src="main.js?v=4.8.1"></script>
+<script src="tutorial-data.js?v=4.8.1"></script>
+<script src="tutorial.js?v=4.8.1"></script>
 <script>
 if ('serviceWorker' in navigator) {
   // Clean up old ?v= registrations (they create zombie SWs)

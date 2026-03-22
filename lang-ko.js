@@ -229,6 +229,7 @@ I18N.addLang('ko', {
     harm_mel: 'Harm/Mel \u2014 하모닉 & 멜로딕 마이너 다이아토닉 코드 비교 [\u2318\u2325N]',
     parallel_key: '동주조 \u2014 같은 근음의 장조/단조 다이아토닉 표시. 차용 코드의 출처 확인 [\u2318\u2325R]',
     secdom: '세컨더리 도미넌트 \u2014 각 다이아토닉 코드로 해결하는 V7 표시. 클릭 시 Available Scale 자동 표시 [\u2318\u2325D]',
+    harmonic_fn: 'T/SD/D \u2014 Color diatonic chords by harmonic function: Tonic, Subdominant, Dominant [\u2318\u2325F]',
     capture: '패드 탭을 메모리 슬롯에 캡처 시작 [C]',
     capture_end: '캡처 종료 후 현재 슬롯에 저장 [E]',
     save: '현재 설정 모두 저장 (키, 스케일, 사운드, 메모리, 레이아웃)',
@@ -303,6 +304,7 @@ I18N.addLang('ko', {
   diatonic: {
     parallel: '동주조',
     secdom: '세컨더리 도미넌트',
+    harmonic_fn: 'T/SD/D',
   },
   parent: {
     toggle: 'Available Scale',

@@ -11,7 +11,8 @@ var EP_LUT_SIZE = 1024;
 var _epHammerNoiseBuf = null;   // AudioBuffer: short filtered noise burst
 var _epCabinetNode = null;      // ConvolverNode: shared cabinet IR
 var _epCabinetGain = null;      // GainNode: cabinet output level
-var _epSpringReverb = null;     // ConvolverNode: spring reverb (Accutronics 4AB3C1B)
+var _epSpringReverb = null;     // ConvolverNode or AudioWorkletNode: spring reverb (Accutronics 4AB3C1B)
+var _epSpringReverbWorklet = false; // true when AudioWorklet spring reverb is active
 var _epMetalBuf = null;         // AudioBuffer: pre-computed metallic attack (commuted synthesis)
 var _epInitialized = false;
 var _epRealIRLoaded = false;    // true when real Twin Reverb IR is loaded
@@ -22,6 +23,7 @@ var _epRealIRLoaded = false;    // true when real Twin Reverb IR is loaded
 var _epDryBus = null;           // GainNode: per-voice V2B outputs sum here
 var _epSendHPF = null;          // BiquadFilter: HPF 318Hz on reverb send (500pF/1MΩ RC)
 var _epV3Driver = null;         // WaveShaper: 12AT7 reverb driver (parallel triodes)
+var _epV3Drive = null;          // GainNode: V3 send drive level (Dwell control)
 var _epV3LUT = null;            // Float32Array: 12AT7 driver LUT
 var _epV4AGain = null;          // GainNode: reverb recovery amp (~36dB, essentially linear)
 var _epReverbPot = null;        // GainNode: reverb return level control
@@ -59,6 +61,7 @@ var EpState = {
   use2ndPreamp: true,      // AB763 V2A+V2B (cathode follower + 2nd gain stage)
   brightSwitch: false,     // AB763 bright cap bypass (increases C1 → more treble)
   springReverbMix: 0.12,   // Spring reverb wet level (Fender "2-3" ≈ 0.08-0.15)
+  springDwell: 6.0,        // Spring reverb send drive (V3 driver gain, higher = more saturation)
 };
 
 // ========================================
@@ -578,6 +581,43 @@ function _loadRealCabinetIR(ctx) {
 }
 
 // ========================================
+// SPRING REVERB AudioWorklet LOADER
+// ========================================
+// Async upgrade: ConvolverNode plays immediately, AudioWorklet hot-swaps when ready.
+// Same pattern as _loadRealCabinetIR — fallback-first, upgrade in background.
+
+var _epSendLPF2Ref = null; // saved for hot-swap reconnection
+
+function _loadSpringReverbWorklet(ctx) {
+  if (!ctx.audioWorklet) return; // Safari <14.1 fallback to ConvolverNode
+  if (_epSpringReverbWorklet) return;
+
+  ctx.audioWorklet.addModule('spring-reverb-processor.js')
+    .then(function() {
+      var workletNode = new AudioWorkletNode(ctx, 'spring-reverb-processor', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [2],
+      });
+
+      // Hot-swap: disconnect ConvolverNode, connect AudioWorkletNode
+      if (_epSendLPF2Ref && _epSpringReverb && _epV4AGain) {
+        _epSendLPF2Ref.disconnect(_epSpringReverb);
+        _epSpringReverb.disconnect(_epV4AGain);
+
+        _epSendLPF2Ref.connect(workletNode);
+        workletNode.connect(_epV4AGain);
+
+        _epSpringReverb = workletNode;
+        _epSpringReverbWorklet = true;
+      }
+    })
+    .catch(function(e) {
+      // Keep ConvolverNode fallback — silent degradation
+    });
+}
+
+// ========================================
 // CABINET IR GENERATION (synthetic fallback)
 // ========================================
 
@@ -862,8 +902,8 @@ function epianoInit(ctx, masterDest) {
   // V3 amplifies the post-tonestack signal, then transformer filters V3's output.
   // CRITICAL: transformer is AFTER V3, so V3's generated harmonics get filtered too.
   _epV3LUT = computeV3DriverLUT_12AT7();
-  var _epV3Drive = ctx.createGain();
-  _epV3Drive.gain.setValueAtTime(6.0, 0); // studio level: clean but adds subtle harmonics
+  _epV3Drive = ctx.createGain();
+  _epV3Drive.gain.setValueAtTime(EpState.springDwell, 0); // Dwell: send drive level (higher = more V3 saturation)
   _epV3Driver = ctx.createWaveShaper();
   _epV3Driver.curve = _epV3LUT;
   _epV3Driver.oversample = 'none';
@@ -903,16 +943,31 @@ function epianoInit(ctx, masterDest) {
   _epSendTilt.connect(_epSendLPF1);
   _epSendLPF1.connect(_epSendLPF2);
 
-  // 5c. Spring reverb (Accutronics 4AB3C1B, allpass cascade model)
+  // 5c. Spring reverb (Accutronics 4AB3C1B)
+  // Immediate: ConvolverNode with synthetic IR (fallback)
+  // Background: AudioWorklet with Välimäki parametric model (primary)
   _epSpringReverb = ctx.createConvolver();
   _epSpringReverb.buffer = _createSpringReverbIR(ctx);
   _epSendLPF2.connect(_epSpringReverb);
+  _epSendLPF2Ref = _epSendLPF2; // save for future hot-swap reconnection
+  // AudioWorklet spring reverb: disabled pending algorithm research.
+  // The Välimäki parametric model needs structural fixes (allpass in/out of feedback loop).
+  // See: spring-reverb-processor.js, Daily notes/2026-03-23.md
+  // _loadSpringReverbWorklet(ctx);
 
   // 5d. V4A recovery amp (~36dB voltage gain, essentially linear)
   // Signal from tank output is millivolts — V4A brings it to line level.
   // Shares 820Ω cathode resistor with V4B (runs clean due to tiny input signal)
   _epV4AGain = ctx.createGain();
-  _epV4AGain.gain.setValueAtTime(0.08, 0); // V3 drive ×6 amplifies spring input; V4A compensates (6×0.08≈0.5 = original wet level)
+  // V4A gain: recovery amplifier.
+  // With AudioWorklet: allpass cascade is energy-preserving, output ≈ input level.
+  // Input to worklet ≈ 0.10 peak (after HPF+V3+LPF chain).
+  // Dry bus at V4B ≈ 0.22 (from gain staging plan).
+  // V4A × pot should bring wet to comparable level: 0.10 × V4A × pot ≈ 0.22 × ratio
+  // At pot=0.12 (Fender "2-3"), V4A = 1.0 gives wet = 0.10 × 1.0 × 0.12 = 0.012
+  // Dry at V4B = 0.22, so wet/dry ratio = 0.012/0.22 = 5.5% — typical spring mix.
+  // With ConvolverNode fallback (IR RMS=0.15): V4A=1.0 gives 0.15×1.0×0.12=0.018 — similar.
+  _epV4AGain.gain.setValueAtTime(0.08, 0); // ConvolverNode IR RMS=0.15 → 0.15×0.08×0.12 ≈ wet level
   _epSpringReverb.connect(_epV4AGain);
 
   // 5e. Reverb pot (100kΩ log, controls RETURN level — send is always full)

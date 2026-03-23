@@ -34,6 +34,8 @@ var ASSETS = [
   'lang-de.js?v=4.8.4',
   'lang-ko.js?v=4.8.4',
   'lang-it.js?v=4.8.4',
+  'epiano-engine.js?v=4.8.4',
+  'spring-reverb-processor.js?v=4.8.4',
   'data/tasty-recipes.json?v=4.8.4',
   'favicon.svg',
   'img/icon-192.png',

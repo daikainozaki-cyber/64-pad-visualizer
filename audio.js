@@ -584,6 +584,8 @@ function _saveEpMixer() {
       metalMix: EpState.metalMix,
       hammerNoiseMix: EpState.hammerNoiseMix,
       pickupSymmetry: EpState.pickupSymmetry,
+      springReverbMix: EpState.springReverbMix,
+      springDwell: EpState.springDwell,
     }));
   } catch(_) {}
 }
@@ -593,12 +595,12 @@ function _loadEpMixer() {
     var raw = localStorage.getItem('64pad-ep-mixer');
     if (!raw) return;
     var s = JSON.parse(raw);
-    ['tineBodyMix','tineAttackMix','hammerClickMix','metalMix','hammerNoiseMix','pickupSymmetry'].forEach(function(key) {
+    ['tineBodyMix','tineAttackMix','hammerClickMix','metalMix','hammerNoiseMix','pickupSymmetry','springReverbMix','springDwell'].forEach(function(key) {
       if (s[key] !== undefined) EpState[key] = s[key];
     });
     // Sync sliders
-    var map = {tineBodyMix:'ep-body', tineAttackMix:'ep-attack', hammerClickMix:'ep-click', metalMix:'ep-metal', hammerNoiseMix:'ep-noise', pickupSymmetry:'ep-pu-sym'};
-    var valMap = {tineBodyMix:'ep-body-val', tineAttackMix:'ep-atk-val', hammerClickMix:'ep-click-val', metalMix:'ep-metal-val', hammerNoiseMix:'ep-noise-val', pickupSymmetry:'ep-pu-sym-val'};
+    var map = {tineBodyMix:'ep-body', tineAttackMix:'ep-attack', hammerClickMix:'ep-click', metalMix:'ep-metal', hammerNoiseMix:'ep-noise', pickupSymmetry:'ep-pu-sym', springReverbMix:'ep-rev', springDwell:'ep-dwell'};
+    var valMap = {tineBodyMix:'ep-body-val', tineAttackMix:'ep-atk-val', hammerClickMix:'ep-click-val', metalMix:'ep-metal-val', hammerNoiseMix:'ep-noise-val', pickupSymmetry:'ep-pu-sym-val', springReverbMix:'ep-rev-val', springDwell:'ep-dwell-val'};
     Object.keys(map).forEach(function(key) {
       var sl = document.getElementById(map[key]);
       var vl = document.getElementById(valMap[key]);
@@ -960,7 +962,7 @@ onReady(() => {
   // Initialize masterGain from slider
   if (volSlider) masterGain.gain.setValueAtTime(parseFloat(volSlider.value), 0);
 
-  // Real-time REV → masterReverbGain
+  // Real-time REV → masterReverbGain (master reverb only; spring reverb is separate)
   const revSlider = document.getElementById('snd-reverb');
   if (revSlider) revSlider.addEventListener('input', () => {
     masterReverbGain.gain.setValueAtTime(parseFloat(revSlider.value), audioCtx.currentTime);
@@ -1167,6 +1169,32 @@ onReady(() => {
     EpState.pickupSymmetry = parseFloat(puSymSlider.value);
     puSymVal.textContent = parseFloat(puSymSlider.value).toFixed(2);
     if (typeof epianoUpdateLUTs === 'function') epianoUpdateLUTs();
+    _saveEpMixer();
+  });
+
+  // Spring reverb REV knob — controls wet return level (_epReverbPot)
+  var epRevSlider = document.getElementById('ep-rev');
+  var epRevVal = document.getElementById('ep-rev-val');
+  if (epRevSlider && epRevVal) epRevSlider.addEventListener('input', () => {
+    var val = parseFloat(epRevSlider.value);
+    EpState.springReverbMix = val;
+    epRevVal.textContent = val.toFixed(2);
+    if (typeof _epReverbPot !== 'undefined' && _epReverbPot) {
+      _epReverbPot.gain.setValueAtTime(val, audioCtx.currentTime);
+    }
+    _saveEpMixer();
+  });
+
+  // Spring reverb DWELL knob — controls V3 send drive (saturation character)
+  var epDwellSlider = document.getElementById('ep-dwell');
+  var epDwellVal = document.getElementById('ep-dwell-val');
+  if (epDwellSlider && epDwellVal) epDwellSlider.addEventListener('input', () => {
+    var val = parseFloat(epDwellSlider.value);
+    EpState.springDwell = val;
+    epDwellVal.textContent = val.toFixed(1);
+    if (typeof _epV3Drive !== 'undefined' && _epV3Drive) {
+      _epV3Drive.gain.setValueAtTime(val, audioCtx.currentTime);
+    }
     _saveEpMixer();
   });
 

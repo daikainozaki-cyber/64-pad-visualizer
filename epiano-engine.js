@@ -30,6 +30,7 @@ var _epV4BMakeup = null;        // GainNode: V4B output level
 var _epPowerDrive = null;       // GainNode: shared poweramp drive control
 var _epSharedPoweramp = null;   // WaveShaper: shared 6L6 poweramp
 var _epSharedPowerMakeup = null;// GainNode: poweramp output level
+var _epHarpLPF = null;          // BiquadFilter: harp wiring LPF (5.7kHz, cable+Volume pot)
 
 // --- Current LUTs (Float32Array, recomputed on param change) ---
 var _epPickupLUT = null;
@@ -101,7 +102,14 @@ var EP_AMP_PRESETS = {
 // LUT COMPUTATION FUNCTIONS
 // ========================================
 
-function computePickupLUT_Rhodes(symmetry, distance) {
+// --- PU LUT computation (Falaize & Hélie 2017 eq 25-27) ---
+// gapScale: per-register PU gap adjustment (1.0 = mid-range reference gap)
+//   Bass/treble: gap is 2× wider → gapScale=2.0 → gentler, lower sensitivity
+//   Mid: gap is reference → gapScale=1.0 → steeper, higher sensitivity
+// qRange: physical displacement range mapped to WaveShaper [-1,+1]
+//   Bass: large tine displacement → wide qRange → LUT covers full PU sweep
+//   Treble: tiny displacement → narrow qRange → LUT zooms into linear center
+function computePickupLUT_Rhodes(symmetry, distance, gapScale, qRange) {
   var lut = new Float32Array(EP_LUT_SIZE);
   // Rhodes PU: electromagnetic pickup — Falaize & Hélie 2017 (IRCAM) equations (25-27)
   // Port-Hamiltonian model: magnet (sphere) + coil + ferrous tine
@@ -111,33 +119,28 @@ function computePickupLUT_Rhodes(symmetry, distance) {
   // f2(q) = (q + Rp + Lver)² + Lhor²
   //
   // Lver = vertical offset (voicing) — Rhodes tech adjusts this with PU screw
-  //   Lver=0: tine on-axis → fundamental attenuated, 2nd harmonic dominant (+15dB, Shear Fig2.5)
-  //   Lver>0: tine off-axis → fundamental dominant, harmonics roll off (Shear: 2nd at -5dB)
-  //   Real Rhodes voicing: typically Lver ≈ 1-2mm (off-axis but not far)
   // Lhor = horizontal gap — closer = stronger nonlinearity = more harmonics
   // Rp = coil radius (~3mm physical, normalized)
   //
-  // Shear 2011 Fig2.3: PU adds +30-35dB to harmonics vs acoustic tine signal.
-  // The PU is the MAIN harmonic generator — tine alone is nearly sinusoidal.
-  //
   // Refs: Falaize & Hélie JSV 2017 eq(25-27), Shear 2011 (UCSB) Fig2.3/2.5
 
-  // symmetry: 0..1 (clamped). Real Rhodes voicing screw moves tine UP from PU axis.
-  // 0 = on-axis: 2nd harmonic +15dB over fundamental (Shear Fig2.5). Extreme bell.
-  // 0.3 = typical voicing: ~1-2mm offset. Good bell + fundamental balance.
-  // 1 = far off-axis: fundamental dominant, mellow tone.
-  // pypHS: Lver=0.5mm, Lhor=10mm, Rp=5mm → Lver/Rp=0.1, Lhor/Rp=2.0
-  // Falaize: Lver=1mm, Lhor=10mm, Rp=5mm → Lver/Rp=0.2, Lhor/Rp=2.0
-  // Shear: on-axis(0mm) to 5mm offset → Lver/Rp = 0 to 1.0
-  var sym = Math.max(0, Math.min(1, symmetry)); // clamp 0..1
+  var sym = Math.max(0, Math.min(1, symmetry));
   var Rp = 0.2;                        // coil radius (normalized, ~5mm physical)
-  var Lver = sym * 0.25;               // 0=on-axis, 0.5=Rp×1.25 (far off-axis). Shear range.
-  var Lhor = distance * 0.35 + 0.05;   // 0.05-0.40. Close=steep gradient, far=gentle
+  var Lver = sym * 0.25;               // 0=on-axis, 0.5=Rp×1.25 (far off-axis)
+  var baseLhor = distance * 0.35 + 0.05;
+  var gs = (gapScale !== undefined) ? gapScale : 1.0;
+  var Lhor = baseLhor * gs;            // per-register gap adjustment
 
   var Lhor2 = Lhor * Lhor;
 
+  // qRange: how much physical displacement [-1,+1] covers.
+  // Default 1.0 = standard range (~25mm physical, matching Rp=0.2 normalization).
+  // Bass: qRange > 1 → LUT covers wider displacement → tine sweeps past PU → pulsed waveform
+  // Treble: qRange < 1 → LUT zooms into center → stays linear → bell
+  var qr = (qRange !== undefined && qRange > 0) ? qRange : 1.0;
+
   for (var i = 0; i < EP_LUT_SIZE; i++) {
-    var q = (i / (EP_LUT_SIZE - 1)) * 2 - 1;
+    var q = ((i / (EP_LUT_SIZE - 1)) * 2 - 1) * qr;
 
     var d1 = q - Rp + Lver;
     var f1 = d1 * d1 + Lhor2;
@@ -150,32 +153,28 @@ function computePickupLUT_Rhodes(symmetry, distance) {
     lut[i] = g1 - g2;
   }
 
-  // Remove DC offset at center (input=0 should produce 0 output)
+  // Remove DC offset at center
   var dcOffset = lut[Math.floor(EP_LUT_SIZE / 2)];
   for (var i = 0; i < EP_LUT_SIZE; i++) lut[i] -= dcOffset;
 
-  // Scale: preserve distance-dependent output level.
-  // Closer PU = stronger magnetic gradient = louder + more nonlinear.
-  // Far PU = weaker gradient = quieter + more linear.
-  // Normalize relative to a REFERENCE distance (Lhor=0.25, mid-range).
-  // This way, distance slider actually changes both tone AND level — like real PU.
+  // Normalize: all LUTs share the same reference so physical sensitivity is preserved.
+  // Closer PU (smaller gapScale) → steeper curve → higher peak → louder + more nonlinear.
+  // Wider PU (larger gapScale) → gentler curve → lower peak → quieter + more linear.
   var refLhor = 0.25;
   var refLhor2 = refLhor * refLhor;
-  var refD1 = 0 - Rp + 0.15; // reference Lver=0.15 (typical voicing)
+  var refD1 = 0 - Rp + 0.15;
   var refF1 = refD1 * refD1 + refLhor2;
   var refD2 = 0 + Rp + 0.15;
   var refF2 = refD2 * refD2 + refLhor2;
   var refG1 = 1.0 / refF1 - 2.0 * refLhor2 / (refF1 * refF1);
   var refG2 = 1.0 / refF2 - 2.0 * refLhor2 / (refF2 * refF2);
   var refPeak = Math.abs(refG1 - refG2);
-  // Scale so reference distance outputs ±0.7. Closer will exceed, farther will be below.
   var maxVal = 0;
   for (var i = 0; i < EP_LUT_SIZE; i++) {
     if (Math.abs(lut[i]) > maxVal) maxVal = Math.abs(lut[i]);
   }
   if (maxVal > 0 && refPeak > 0) {
     var scale = 0.7 / refPeak;
-    // Apply physics-based scaling, but clamp to ±0.95 to avoid WS hard clamp
     for (var i = 0; i < EP_LUT_SIZE; i++) {
       lut[i] *= scale;
       if (lut[i] > 0.95) lut[i] = 0.95;
@@ -493,6 +492,79 @@ function _getHammerParams(midi, velocity) {
   return { Tc: Tc, relMass: relMass };
 }
 
+// --- Tine length (exponential fit to Shear 2011 endpoints: 157mm at key 1, 18mm at key 88) ---
+// Rhodes 88-key Mark I tine cutting chart. Calibrated to measured endpoints.
+function _tineLength(midi) {
+  var key = Math.max(1, Math.min(88, midi - 20)); // MIDI 21=key1(A0), MIDI 108=key88(A7)
+  return 157 * Math.exp(-0.0249 * (key - 1)); // mm
+}
+
+// --- Striking line position (Service Manual: low=57.15mm, high=3.175mm from harp support) ---
+// "Lower notes have a contact location closer to the center of the tine and higher notes
+// closer to the base" (Sonderboe 2024 §3.3). Linear interpolation in key space.
+function _strikingLine(midi) {
+  var key = Math.max(1, Math.min(88, midi - 20));
+  var t = (key - 1) / 87;
+  return 57.15 * (1 - t) + 3.175 * t; // mm
+}
+
+// --- PU gap per register (Service Manual Ch.4) ---
+// Rhodes tech adjusts PU height per register. Wider gap for bass = compensate for large tine displacement.
+// Low (keys 1-30): 1/16" = 1.588mm
+// Mid (keys 31-65): 1/32" = 0.794mm
+// High (keys 65-88): 1/16" = 1.588mm (wood hammer tips, short tines)
+function _puGapMm(midi) {
+  var key = Math.max(1, Math.min(88, midi - 20));
+  if (key <= 30) return 1.588;
+  if (key <= 65) return 0.794;
+  return 1.588;
+}
+
+// --- Euler-Bernoulli cantilever mode shapes ---
+// φₙ(ξ) = cosh(βₙξ) - cos(βₙξ) - σₙ(sinh(βₙξ) - sin(βₙξ))
+// βₙL eigenvalues and σₙ coefficients for first 3 modes
+var _EP_BETAL = [1.8751, 4.6941, 7.8548];
+var _EP_SIGMA = [0.7341, 1.0185, 0.9992];
+// Pre-computed tip values φₙ(1.0) for normalization
+var _EP_PHI_TIP = null;
+
+function _cantileverPhi(xi, modeIdx) {
+  var bx = _EP_BETAL[modeIdx] * xi;
+  return Math.cosh(bx) - Math.cos(bx) - _EP_SIGMA[modeIdx] * (Math.sinh(bx) - Math.sin(bx));
+}
+
+// Normalized mode excitation: 0 at root, 1 at tip
+function _modeExcitation(xi, modeIdx) {
+  if (!_EP_PHI_TIP) {
+    _EP_PHI_TIP = [_cantileverPhi(1.0, 0), _cantileverPhi(1.0, 1), _cantileverPhi(1.0, 2)];
+  }
+  return _cantileverPhi(xi, modeIdx) / _EP_PHI_TIP[modeIdx];
+}
+
+// --- Physical tip displacement factor (relative to reference key B3/MIDI 59) ---
+// Tip displacement ∝ √(hammerMass) × L^(3/2) × φ₁(x_s/L)
+// This replaces the ad-hoc pitchPUScale.
+var _EP_TIP_REF = null; // cached reference value
+
+function _tipDisplacementFactor(midi) {
+  var L = _tineLength(midi);
+  var xs = _strikingLine(midi);
+  var xi = Math.min(xs / L, 0.95); // clamp (can't hit past the tip)
+  var phi = _modeExcitation(xi, 0);
+  var hammer = _getHammerParams(midi, 0.5);
+  var massScale = Math.sqrt(hammer.relMass);
+
+  if (!_EP_TIP_REF) {
+    var Lr = _tineLength(59);
+    var xsr = _strikingLine(59);
+    var xir = Math.min(xsr / Lr, 0.95);
+    var phir = _modeExcitation(xir, 0);
+    var hr = _getHammerParams(59, 0.5);
+    _EP_TIP_REF = Math.sqrt(hr.relMass) * Math.pow(Lr, 1.5) * phir;
+  }
+  return massScale * Math.pow(L, 1.5) * phi / _EP_TIP_REF;
+}
+
 // --- Tonebar presence and phase (Münster 2014, Service Manual) ---
 // Münster Table 1: tonebars alternate in/anti phase depending on register.
 // Anti-phase: tonebar cancels part of fundamental → thinner tone.
@@ -576,6 +648,22 @@ function computeModeFrequencies(midiNote, velocity) {
   // modulation artifacts (tonebar outlasting fundamental → changing harmonic balance).
   var tonebarDecay = hasTB ? tau : 0.001;
 
+  // --- Striking line spatial excitation (Euler-Bernoulli mode shapes) ---
+  // The hammer hits at position x_s along the tine (from clamped end).
+  // Mode excitation ∝ φₙ(x_s/L): mode shape at the striking point.
+  // Near the root (our range ξ=0.18-0.55), φₙ(ξ) ≈ (βₙξ)², so the spatial
+  // ratio between beam modes and fundamental is roughly constant (~6.3× for mode 2).
+  // But for larger ξ (mid-range keys ~0.5-0.55), the exact mode shapes diverge.
+  var L_mm = _tineLength(midiNote);
+  var xs_mm = _strikingLine(midiNote);
+  var xi = Math.min(xs_mm / L_mm, 0.95);
+  var spatialFund = _modeExcitation(xi, 0);
+  var spatialBeam1 = _modeExcitation(xi, 1);
+  var spatialBeam2 = _modeExcitation(xi, 2);
+  // Beam/fundamental spatial ratio (how much more each beam mode is excited relative to fundamental)
+  var spatialRatio1 = spatialBeam1 / Math.max(spatialFund, 0.001);
+  var spatialRatio2 = spatialBeam2 / Math.max(spatialFund, 0.001);
+
   // --- Beam modes ---
   var beam1Freq = f0 * 7.11;
   var beam2Freq = f0 * 20.25;
@@ -588,15 +676,18 @@ function computeModeFrequencies(midiNote, velocity) {
   var beam1Filter = 1 / (1 + Math.pow(beam1Freq / fc, 2));
   var beam2Filter = 1 / (1 + Math.pow(beam2Freq / fc, 2));
 
-  // Scale beam modes relative to fundamental (fundamental normalized to 1.0)
-  // beam_relative = beamFilter / fundFilter × peak_beam_ratio
-  // peak_beam_ratio: maximum beam/fundamental ratio when fully excited.
-  // Gabrielli 2020: beam modes are clearly visible in laser vibrometry.
-  // Shear 2011: PU output has 2nd harmonic at -25dB (5.6%) — but that's PU-generated,
-  // not from beam modes. Beam modes are separate mechanical vibrations.
-  // Higher ratio → more bell quality. Tuned by ear (urinami-san).
-  var beam1Rel = (beam1Filter / Math.max(fundFilter, 0.01)) * 0.8;
-  var beam2Rel = (beam2Filter / Math.max(fundFilter, 0.01)) * 0.4;
+  // Beam mode amplitude = hammerSpectral × spatialExcitation × frequencyResponse × tuning
+  // spatialRatio: mode shape at striking point (how much the hammer excites this mode)
+  // (1/freqRatio²): higher modes have less displacement per unit excitation force
+  // tuningConstant: absorbs the spatial×frequency product to match empirical 0.8/0.4
+  // At mid-range (ξ≈0.5): spatialRatio≈6.3, (1/7.11²)=0.020 → product≈0.124
+  //   So tuningConst ≈ 0.8/0.124/refSpatial ≈ 6.5/refSpatial (calibrated below)
+  var freqResp1 = 1 / (7.11 * 7.11);  // displacement ∝ 1/ω²
+  var freqResp2 = 1 / (20.25 * 20.25);
+  // Reference spatial ratios at mid-range (ξ≈0.5): ~6.3 and ~17.5
+  // Tuning constants calibrated so mid-range output matches previous 0.8/0.4 behavior
+  var beam1Rel = (beam1Filter / Math.max(fundFilter, 0.01)) * spatialRatio1 * freqResp1 * 6.5;
+  var beam2Rel = (beam2Filter / Math.max(fundFilter, 0.01)) * spatialRatio2 * freqResp2 * 9.5;
 
   return {
     frequencies: [
@@ -916,7 +1007,7 @@ function epianoInit(ctx, masterDest) {
   //   Q = 0.6 (Volume pot at 25kΩ) to 1.1 (Volume pot full open at 50kΩ)
   // Old: 7.8kHz/Q=1.3 (no cable, no volume pot load). Too bright, painful 2-5kHz.
   // Sources: Wheeler calc, EP-Forum, cable capacitance 50pF/m standard
-  var _epHarpLPF = ctx.createBiquadFilter();
+  _epHarpLPF = ctx.createBiquadFilter();
   _epHarpLPF.type = 'lowpass';
   _epHarpLPF.frequency.setValueAtTime(5700, 0);
   _epHarpLPF.Q.setValueAtTime(0.8, 0); // Volume pot ~halfway between full(1.1) and half(0.6)
@@ -1184,24 +1275,45 @@ function epianoNoteOn(ctx, midi, velocity, masterDest) {
   // No "drive" knob exists in real Rhodes. The LUT shape (from Lhor, Lver) and
   // tine amplitude (from velocity) fully determine the output. Nothing else.
   //
-  // Pitch-dependent tine displacement (physical):
-  // Low notes: longer tines → larger displacement → deeper into LUT nonlinearity → growl
-  // High notes: shorter tines → smaller displacement → stays in linear center → bell
-  // This is NOT an artificial "drive" — it's the physical displacement range.
-  var pitchPUScale = 1.0 + Math.max(0, (60 - midi)) * 0.006  // low: up to ~1.23×
-                         - Math.max(0, (midi - 72)) * 0.01;   // high: down to ~0.5× at C7
-  if (pitchPUScale < 0.35) pitchPUScale = 0.35;
+  // Per-note PU LUT: computed with physical PU gap for this register.
+  //   Bass/treble: wider gap (1.588mm) → gentler curve → less nonlinearity
+  //   Mid: narrow gap (0.794mm) → steeper curve → more nonlinearity
+  // Per-note q range: WaveShaper [-1,+1] maps to physical tine displacement range.
+  //   Bass: large displacement → LUT covers wide sweep → tine passes PU → growl
+  //   Treble: tiny displacement → LUT zooms center → stays linear → bell
+  var tipFactor = _tipDisplacementFactor(midi);
+  var gapMm = _puGapMm(midi);
+  var gapScale = gapMm / 0.794; // 1.0 at mid-range reference
+  // qRange: how much of the LUT's q-space this key explores.
+  // tipFactor > 1 (bass): wider q range → LUT includes the far-from-PU regions
+  // tipFactor < 1 (treble): narrow q range → LUT concentrated on center
+  // Clamp to reasonable range to avoid LUT resolution issues
+  var qRange = Math.max(0.3, Math.min(5.0, tipFactor));
 
   var lastNode = voiceMixer;
-  if (_epPickupLUT) {
+  if (preset.pickupType === 'rhodes') {
+    // Per-note PU LUT with physical gap and displacement range
+    var noteLUT = computePickupLUT_Rhodes(EpState.pickupSymmetry, EpState.pickupDistance, gapScale, qRange);
+    var pickupWS = ctx.createWaveShaper();
+    pickupWS.curve = noteLUT;
+    pickupWS.oversample = 'none';
+    // Input gain: no longer the ad-hoc pitchPUScale.
+    // The per-note LUT already encodes the physical displacement range (qRange)
+    // and PU gap (gapScale). The input just needs to be in [-1,+1].
+    // tineAmplitude handles velocity. No separate pitch scaling needed.
+    var puInput = ctx.createGain();
+    puInput.gain.setValueAtTime(1.0, now);
+    lastNode.connect(puInput);
+    puInput.connect(pickupWS);
+    lastNode = pickupWS;
+    nodes.push(puInput, pickupWS);
+  } else if (_epPickupLUT) {
+    // Wurlitzer / other presets: use shared LUT (no per-register physics)
     var pickupWS = ctx.createWaveShaper();
     pickupWS.curve = _epPickupLUT;
     pickupWS.oversample = 'none';
-    // Tine signal goes directly into PU. No artificial drive stage.
-    // The LUT's shape (steep for close PU, gentle for far PU) determines harmonics.
-    // pitchPUScale models the physical displacement difference across the keyboard.
     var puInput = ctx.createGain();
-    puInput.gain.setValueAtTime(pitchPUScale, now);
+    puInput.gain.setValueAtTime(1.0, now);
     lastNode.connect(puInput);
     puInput.connect(pickupWS);
     lastNode = pickupWS;
@@ -1388,22 +1500,17 @@ function epianoNoteOn(ctx, midi, velocity, masterDest) {
   }
 
   // --- 6. Route to shared chain or direct output ---
-  // All presets go through harp LPF first (it's part of the INSTRUMENT, not the amp).
-  // Harp wiring (L=1.2H) + cable capacitance (650pF) + volume pot loading (25kΩ)
-  // → RLC resonance at 5.7kHz, Q≈0.8. This applies to ALL outputs including DI.
+  // Harp wiring LPF (5.7kHz): part of the INSTRUMENT (not the amp).
+  // L=1.2H + cable 650pF + Volume pot 25kΩ → RLC resonance at 5.7kHz, Q≈0.8.
   //
-  // Cabinet presets: harp LPF → dry bus → V4B → poweramp → cabinet
-  // DI preset: harp LPF → direct output
-  if (_epHarpLPF) {
-    lastNode.connect(_epHarpLPF);
-  }
+  // Cabinet presets: lastNode → dryBus → harpLPF → V4B → poweramp → cabinet
+  //   (dryBus → harpLPF → V4B chain is wired in epianoInit)
+  // DI preset: lastNode → per-voice harpLPF → masterDest
+  //   (separate harpLPF per voice, bypasses entire amp chain)
   if (preset.useCabinet && _epDryBus) {
-    // Amp chain: harpLPF already connects to V4B via dryBus (in epianoInit)
-    // Per-voice connects to dryBus through the shared harpLPF
     lastNode.connect(_epDryBus);
   } else {
-    // DI: per-voice → harpLPF → masterDest
-    // Need a separate path since harpLPF is connected to V4B in shared chain
+    // DI: per-voice harp LPF → direct output (no amp chain)
     var diHarpLPF = ctx.createBiquadFilter();
     diHarpLPF.type = 'lowpass';
     diHarpLPF.frequency.setValueAtTime(5700, now);

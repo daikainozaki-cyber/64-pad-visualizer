@@ -285,7 +285,13 @@ flangerMix.connect(masterReverb);
 const epianoDirectOut = audioCtx.createGain();
 epianoDirectOut.gain.setValueAtTime(0.6, 0); // match masterGain level
 epianoDirectOut.connect(masterComp);          // dry path to compressor
-epianoDirectOut.connect(masterReverb);        // room reverb (space) — spring reverb (timbre) is separate
+// Room reverb send: controllable per preset.
+// Amp presets (Twin/Suitcase): room reverb adds space on top of spring reverb → send=1.0
+// DI preset: no processing at all → send=0.0
+const epianoReverbSend = audioCtx.createGain();
+epianoReverbSend.gain.setValueAtTime(1.0, 0);
+epianoDirectOut.connect(epianoReverbSend);
+epianoReverbSend.connect(masterReverb);
 
 // Rotary speaker / tremolo LFO (tremoloNode created above, near masterGain)
 const tremoloLFO = audioCtx.createOscillator();
@@ -800,6 +806,11 @@ function noteOn(midi, velocity, poly, _retries) {
     // Physics engine: bypass per-voice saturation (physics chain has 3 nonlinear stages)
     if (sat.cleanup) sat.cleanup();
     EpState.preset = AudioState.instrument.epiano;
+    // DI = no room reverb send. Amp presets = room reverb adds space.
+    var epPreset = EP_AMP_PRESETS[EpState.preset];
+    epianoReverbSend.gain.setValueAtTime(
+      (epPreset && epPreset.useCabinet) ? 1.0 : 0.0, audioCtx.currentTime
+    );
     envelope = epianoNoteOn(audioCtx, midi, velocity, epianoDirectOut);
   } else if (AudioState.instrument.sampler) {
     envelope = _samplerNoteOn(AudioState.instrument.sampler, midi, velocity, sat.input);

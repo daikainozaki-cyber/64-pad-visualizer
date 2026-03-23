@@ -279,11 +279,13 @@ function rebuildFilterChain() {
 flangerMix.connect(masterComp);
 flangerMix.connect(masterReverb);
 
-// E-piano direct output: bypasses master reverb (e-piano has its own AB763 spring reverb).
-// Without this, e-piano gets double-reverbed (spring + master = chirpy delay artifacts).
+// E-piano output: spring reverb = timbre (part of amp voice), room reverb = space (separate layer).
+// "スプリングリバーブって音色なのよ。空間表現と言うより。" — urinami-san (2026-03-23)
+// Both coexist: amp's spring reverb colors the tone, master reverb adds room acoustics.
 const epianoDirectOut = audioCtx.createGain();
 epianoDirectOut.gain.setValueAtTime(0.6, 0); // match masterGain level
-epianoDirectOut.connect(masterComp);          // dry only — no master reverb
+epianoDirectOut.connect(masterComp);          // dry path to compressor
+epianoDirectOut.connect(masterReverb);        // room reverb (space) — spring reverb (timbre) is separate
 
 // Rotary speaker / tremolo LFO (tremoloNode created above, near masterGain)
 const tremoloLFO = audioCtx.createOscillator();
@@ -578,11 +580,6 @@ function _updateEpMixerVisibility() {
 function _saveEpMixer() {
   try {
     localStorage.setItem('64pad-ep-mixer', JSON.stringify({
-      tineBodyMix: EpState.tineBodyMix,
-      tineAttackMix: EpState.tineAttackMix,
-      hammerClickMix: EpState.hammerClickMix,
-      metalMix: EpState.metalMix,
-      hammerNoiseMix: EpState.hammerNoiseMix,
       pickupSymmetry: EpState.pickupSymmetry,
       springReverbMix: EpState.springReverbMix,
       springDwell: EpState.springDwell,
@@ -595,12 +592,12 @@ function _loadEpMixer() {
     var raw = localStorage.getItem('64pad-ep-mixer');
     if (!raw) return;
     var s = JSON.parse(raw);
-    ['tineBodyMix','tineAttackMix','hammerClickMix','metalMix','hammerNoiseMix','pickupSymmetry','springReverbMix','springDwell'].forEach(function(key) {
+    ['pickupSymmetry','springReverbMix','springDwell'].forEach(function(key) {
       if (s[key] !== undefined) EpState[key] = s[key];
     });
     // Sync sliders
-    var map = {tineBodyMix:'ep-body', tineAttackMix:'ep-attack', hammerClickMix:'ep-click', metalMix:'ep-metal', hammerNoiseMix:'ep-noise', pickupSymmetry:'ep-pu-sym', springReverbMix:'ep-rev', springDwell:'ep-dwell'};
-    var valMap = {tineBodyMix:'ep-body-val', tineAttackMix:'ep-atk-val', hammerClickMix:'ep-click-val', metalMix:'ep-metal-val', hammerNoiseMix:'ep-noise-val', pickupSymmetry:'ep-pu-sym-val', springReverbMix:'ep-rev-val', springDwell:'ep-dwell-val'};
+    var map = {pickupSymmetry:'ep-pu-sym', springReverbMix:'ep-rev', springDwell:'ep-dwell'};
+    var valMap = {pickupSymmetry:'ep-pu-sym-val', springReverbMix:'ep-rev-val', springDwell:'ep-dwell-val'};
     Object.keys(map).forEach(function(key) {
       var sl = document.getElementById(map[key]);
       var vl = document.getElementById(valMap[key]);
@@ -1148,21 +1145,7 @@ onReady(() => {
   drawVelocityCurve();
 
   // --- E.Piano Mixer sliders ---
-  [['ep-body','ep-body-val','tineBodyMix'],
-   ['ep-attack','ep-atk-val','tineAttackMix'],
-   ['ep-click','ep-click-val','hammerClickMix'],
-   ['ep-metal','ep-metal-val','metalMix'],
-   ['ep-noise','ep-noise-val','hammerNoiseMix']].forEach(([sid, vid, key]) => {
-    var s = document.getElementById(sid);
-    var v = document.getElementById(vid);
-    if (s && v) s.addEventListener('input', () => {
-      EpState[key] = parseFloat(s.value);
-      v.textContent = parseFloat(s.value).toFixed(2);
-      _saveEpMixer();
-    });
-  });
-
-  // PU Symmetry knob — recomputes pickup LUT on change (affects next noteOn)
+  // Voicing knob (PU Symmetry) — the ONLY tine-side control, same as real Rhodes tech adjustment
   var puSymSlider = document.getElementById('ep-pu-sym');
   var puSymVal = document.getElementById('ep-pu-sym-val');
   if (puSymSlider && puSymVal) puSymSlider.addEventListener('input', () => {
@@ -1171,6 +1154,9 @@ onReady(() => {
     if (typeof epianoUpdateLUTs === 'function') epianoUpdateLUTs();
     _saveEpMixer();
   });
+
+  // PU Distance is fixed by the physical model (not a user knob).
+  // Varies by year/model in presets, not by slider.
 
   // Spring reverb REV knob — controls wet return level (_epReverbPot)
   var epRevSlider = document.getElementById('ep-rev');
@@ -1193,7 +1179,9 @@ onReady(() => {
     EpState.springDwell = val;
     epDwellVal.textContent = val.toFixed(1);
     if (typeof _epV3Drive !== 'undefined' && _epV3Drive) {
-      _epV3Drive.gain.setValueAtTime(val, audioCtx.currentTime);
+      // Real pot never reaches true zero (residual resistance + coupling capacitor leakage)
+      var driveVal = Math.max(val, 0.5);
+      _epV3Drive.gain.setValueAtTime(driveVal, audioCtx.currentTime);
     }
     _saveEpMixer();
   });

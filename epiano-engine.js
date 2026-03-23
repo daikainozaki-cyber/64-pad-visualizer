@@ -8,12 +8,10 @@
 var EP_LUT_SIZE = 1024;
 
 // --- Shared resources (initialized once) ---
-var _epHammerNoiseBuf = null;   // AudioBuffer: short filtered noise burst
 var _epCabinetNode = null;      // ConvolverNode: shared cabinet IR
 var _epCabinetGain = null;      // GainNode: cabinet output level
 var _epSpringReverb = null;     // ConvolverNode or AudioWorkletNode: spring reverb (Accutronics 4AB3C1B)
 var _epSpringReverbWorklet = false; // true when AudioWorklet spring reverb is active
-var _epMetalBuf = null;         // AudioBuffer: pre-computed metallic attack (commuted synthesis)
 var _epInitialized = false;
 var _epRealIRLoaded = false;    // true when real Twin Reverb IR is loaded
 
@@ -44,7 +42,7 @@ var _epTonestackFB = null;  // feedback (a coefficients)
 
 // --- E-Piano parameters (UI-controllable) ---
 var EpState = {
-  pickupSymmetry: 0.15,   // -1..1: vertical offset (0=center, +=more 2nd harmonic)
+  pickupSymmetry: 0.3,    // 0..1: voicing (0=on-axis: 2nd harmonic dominant, 1=far off-axis: fundamental dominant)
   pickupDistance: 0.5,     // 0.1..1.0: horizontal gap (closer=more distortion)
   preampGain: 1.0,         // 0.5..5.0: input drive
   tonestackBass: 0.5,      // 0..1
@@ -52,12 +50,9 @@ var EpState = {
   tonestackTreble: 0.5,    // 0..1
   powerampDrive: 1.0,      // 0.5..3.0
   preset: 'Rhodes Stage + Twin',
-  // Component mixer (0..2, default 1.0)
-  tineBodyMix: 1.0,        // fundamental + tone bar (sustain)
-  tineAttackMix: 1.0,      // upper harmonic fast-decay modes ("para")
-  hammerClickMix: 1.0,     // detuned osc soft thud
-  hammerNoiseMix: 1.0,     // noise buffer mechanical texture
-  metalMix: 0.0,           // commuted synthesis metallic attack (default off — experimental)
+  // Tine/tonebar/beam mode amplitudes are determined by physics, not user knobs.
+  // Year/model variation → presets (Mark I '73, Mark II, Suitcase, etc.)
+  // Individual key variation → per-key hash table (_epKeyVariation)
   use2ndPreamp: true,      // AB763 V2A+V2B (cathode follower + 2nd gain stage)
   brightSwitch: false,     // AB763 bright cap bypass (increases C1 → more treble)
   springReverbMix: 0.12,   // Spring reverb wet level (Fender "2-3" ≈ 0.08-0.15)
@@ -111,53 +106,81 @@ function computePickupLUT_Rhodes(symmetry, distance) {
   // Rhodes PU: electromagnetic pickup — Falaize & Hélie 2017 (IRCAM) equations (25-27)
   // Port-Hamiltonian model: magnet (sphere) + coil + ferrous tine
   //
-  // The position-dependent modulation coefficient (velocity factor removed for WaveShaper):
-  //   g(q) = [1/f1(q) - 2*Lhor²/f1²(q)] - [1/f2(q) - 2*Lhor²/f2²(q)]
-  //   f1(q) = (q - Rp + Lver)² + Lhor²
-  //   f2(q) = (q + Rp + Lver)² + Lhor²
+  // g(q) = [1/f1(q) - 2*Lhor²/f1²(q)] - [1/f2(q) - 2*Lhor²/f2²(q)]
+  // f1(q) = (q - Rp + Lver)² + Lhor²
+  // f2(q) = (q + Rp + Lver)² + Lhor²
   //
-  // Lver = vertical offset (voicing) — controls even/odd harmonic balance
-  //   Lver=0: tine centered on PU axis → odd harmonics only
-  //   Lver>0: tine offset → 2nd harmonic dominates → "bell" quality
-  // Lhor = horizontal gap — controls overall nonlinearity strength
-  // Rp = coil radius (fixed)
+  // Lver = vertical offset (voicing) — Rhodes tech adjusts this with PU screw
+  //   Lver=0: tine on-axis → fundamental attenuated, 2nd harmonic dominant (+15dB, Shear Fig2.5)
+  //   Lver>0: tine off-axis → fundamental dominant, harmonics roll off (Shear: 2nd at -5dB)
+  //   Real Rhodes voicing: typically Lver ≈ 1-2mm (off-axis but not far)
+  // Lhor = horizontal gap — closer = stronger nonlinearity = more harmonics
+  // Rp = coil radius (~3mm physical, normalized)
   //
-  // Refs: Falaize & Hélie JSV 2017 eq(25-27), Shear 2011 (UCSB)
+  // Shear 2011 Fig2.3: PU adds +30-35dB to harmonics vs acoustic tine signal.
+  // The PU is the MAIN harmonic generator — tine alone is nearly sinusoidal.
+  //
+  // Refs: Falaize & Hélie JSV 2017 eq(25-27), Shear 2011 (UCSB) Fig2.3/2.5
 
-  var Lhor = distance * 0.3 + 0.15;   // horizontal gap, normalized (0.15-0.45)
-  var Lver = symmetry * 0.3 + 0.15;   // vertical offset: always some asymmetry (Rhodes voicing)
-  var Rp = 0.25;                       // coil radius, normalized
+  // symmetry: 0..1 (clamped). Real Rhodes voicing screw moves tine UP from PU axis.
+  // 0 = on-axis: 2nd harmonic +15dB over fundamental (Shear Fig2.5). Extreme bell.
+  // 0.3 = typical voicing: ~1-2mm offset. Good bell + fundamental balance.
+  // 1 = far off-axis: fundamental dominant, mellow tone.
+  // pypHS: Lver=0.5mm, Lhor=10mm, Rp=5mm → Lver/Rp=0.1, Lhor/Rp=2.0
+  // Falaize: Lver=1mm, Lhor=10mm, Rp=5mm → Lver/Rp=0.2, Lhor/Rp=2.0
+  // Shear: on-axis(0mm) to 5mm offset → Lver/Rp = 0 to 1.0
+  var sym = Math.max(0, Math.min(1, symmetry)); // clamp 0..1
+  var Rp = 0.2;                        // coil radius (normalized, ~5mm physical)
+  var Lver = sym * 0.25;               // 0=on-axis, 0.5=Rp×1.25 (far off-axis). Shear range.
+  var Lhor = distance * 0.35 + 0.05;   // 0.05-0.40. Close=steep gradient, far=gentle
 
   var Lhor2 = Lhor * Lhor;
 
   for (var i = 0; i < EP_LUT_SIZE; i++) {
-    var q = (i / (EP_LUT_SIZE - 1)) * 2 - 1; // tine displacement, normalized -1..1
+    var q = (i / (EP_LUT_SIZE - 1)) * 2 - 1;
 
-    // Falaize eq(26): f1(q) = (q - Rp + Lver)² + Lhor²
     var d1 = q - Rp + Lver;
     var f1 = d1 * d1 + Lhor2;
 
-    // Falaize eq(27): f2(q) = (q + Rp + Lver)² + Lhor²
     var d2 = q + Rp + Lver;
     var f2 = d2 * d2 + Lhor2;
 
-    // Position-dependent modulation: g(q) from eq(25), velocity factor removed
-    // g(q) = [1/f1 - 2*Lhor²/f1²] - [1/f2 - 2*Lhor²/f2²]
     var g1 = 1.0 / f1 - 2.0 * Lhor2 / (f1 * f1);
     var g2 = 1.0 / f2 - 2.0 * Lhor2 / (f2 * f2);
     lut[i] = g1 - g2;
   }
 
-  // Remove DC offset at LUT center (input=0) to prevent WaveShaper bias
+  // Remove DC offset at center (input=0 should produce 0 output)
   var dcOffset = lut[Math.floor(EP_LUT_SIZE / 2)];
   for (var i = 0; i < EP_LUT_SIZE; i++) lut[i] -= dcOffset;
-  // Normalize to -1..1
+
+  // Scale: preserve distance-dependent output level.
+  // Closer PU = stronger magnetic gradient = louder + more nonlinear.
+  // Far PU = weaker gradient = quieter + more linear.
+  // Normalize relative to a REFERENCE distance (Lhor=0.25, mid-range).
+  // This way, distance slider actually changes both tone AND level — like real PU.
+  var refLhor = 0.25;
+  var refLhor2 = refLhor * refLhor;
+  var refD1 = 0 - Rp + 0.15; // reference Lver=0.15 (typical voicing)
+  var refF1 = refD1 * refD1 + refLhor2;
+  var refD2 = 0 + Rp + 0.15;
+  var refF2 = refD2 * refD2 + refLhor2;
+  var refG1 = 1.0 / refF1 - 2.0 * refLhor2 / (refF1 * refF1);
+  var refG2 = 1.0 / refF2 - 2.0 * refLhor2 / (refF2 * refF2);
+  var refPeak = Math.abs(refG1 - refG2);
+  // Scale so reference distance outputs ±0.7. Closer will exceed, farther will be below.
   var maxVal = 0;
   for (var i = 0; i < EP_LUT_SIZE; i++) {
     if (Math.abs(lut[i]) > maxVal) maxVal = Math.abs(lut[i]);
   }
-  if (maxVal > 0) {
-    for (var i = 0; i < EP_LUT_SIZE; i++) lut[i] /= maxVal;
+  if (maxVal > 0 && refPeak > 0) {
+    var scale = 0.7 / refPeak;
+    // Apply physics-based scaling, but clamp to ±0.95 to avoid WS hard clamp
+    for (var i = 0; i < EP_LUT_SIZE; i++) {
+      lut[i] *= scale;
+      if (lut[i] > 0.95) lut[i] = 0.95;
+      if (lut[i] < -0.95) lut[i] = -0.95;
+    }
   }
   return lut;
 }
@@ -446,7 +469,8 @@ function _initKeyVariation() {
     _epKeyVariation[k] = {
       lverOffset:    (h(seed)     - 0.5) * 0.06,  // ±3% voicing alignment
       lhorOffset:    (h(seed + 1) - 0.5) * 0.04,  // ±2% gap distance
-      tonebarDetune: (h(seed + 2) - 0.5) * 0.008, // ±0.4% tonebar detuning
+      // tonebarDetune removed: Münster 2014 proved tonebar vibrates at EXACTLY tine frequency
+      // (eigenfreq 100-3800 cents apart, yet perfectly enslaved). No beating in steady state.
       decayScale:    0.92 + h(seed + 3) * 0.16,    // 0.92-1.08 decay variation
       hammerHard:    0.90 + h(seed + 4) * 0.20,    // 0.90-1.10 hammer hardness
     };
@@ -477,86 +501,33 @@ function computeModeFrequencies(midiNote, velocity) {
   var velDecayScale = 1.0 - velocity * 0.4; // hard hit: 0.6×, soft: 1.0×
 
   return {
-    // MEASURED ratios (Gabrielli 2020 via Sonderboe 2024):
-    //   beam mode 2 = 7.11×, beam mode 3 = 20.25×
-    // Very sparse — huge jumps between modes = thin steel rod character
+    // === Physical basis (Münster 2014, Gabrielli 2020, Shear 2011) ===
+    //
+    // Tine = pure sine after 10-14ms transient (high-speed camera confirmed)
+    // Tonebar = vibrates at EXACTLY tine frequency (enslaved, Münster Table 1)
+    //   eigenfreq 757-3800 cents apart, yet perfectly synchronised
+    // Beam modes = 7.11× & 20.25× (Gabrielli measured) — transient only, 10-35ms
+    // ALL harmonics in output come from PU nonlinearity, not mechanical system
+    //
     frequencies: [
-      f0,                              // tine fundamental
-      f0 * (1.005 + kv.tonebarDetune), // tone bar (slightly detuned + per-key variation)
-      f0 * 7.11,                       // beam mode 2 — MEASURED (Gabrielli)
-      f0 * 20.25,                      // beam mode 3 — MEASURED (Gabrielli)
+      f0,                              // tine fundamental (pure sine)
+      f0,                              // tone bar (same freq — enslaved by tine, Münster 2014)
+      f0 * 7.11,                       // beam mode 2 — MEASURED (Gabrielli 2020)
+      f0 * 20.25,                      // beam mode 3 — MEASURED (Gabrielli 2020)
     ],
     amplitudes: [
       1.0,                    // fundamental — always dominant
-      0.3,                    // tone bar — sustain body
+      0.3,                    // tone bar — energy reservoir, extends sustain
       0.08 + velPow * 0.15,   // beam mode 2 — velocity-dependent (0.08-0.23)
       0.02 + velPow * 0.06,   // beam mode 3 — mostly on hard hits (0.02-0.08)
     ],
     decayTimes: [
       2.5 * pitchScale * decayVar,                    // tine fundamental
-      4.0 * pitchScale * decayVar,                    // tone bar (longest sustain)
-      0.035 * pitchScale * decayVar * velDecayScale,   // beam mode 2 (velocity-dependent)
-      0.015 * pitchScale * decayVar * velDecayScale,   // beam mode 3 (velocity-dependent)
+      4.0 * pitchScale * decayVar,                    // tone bar (longest — energy reservoir)
+      0.035 * pitchScale * decayVar * velDecayScale,   // beam mode 2 (10-14ms transient)
+      0.015 * pitchScale * decayVar * velDecayScale,   // beam mode 3 (dies fastest)
     ],
   };
-}
-
-// ========================================
-// METALLIC ATTACK BUFFER (Commuted Synthesis)
-// ========================================
-// Pre-compute a "struck metal" waveform at reference pitch (A4=440Hz).
-// 20+ inharmonic partials with fast decay = dense metallic transient.
-// On noteOn, playbackRate shifts to target pitch. One node, many partials.
-
-function _createMetalBuf(ctx) {
-  var sr = ctx.sampleRate;
-  var len = Math.floor(sr * 0.025); // 25ms — very short burst, metallic then gone
-  var buf = ctx.createBuffer(1, len, sr);
-  var d = buf.getChannelData(0);
-  var refF0 = 440; // reference pitch = A4
-
-  // Euler-Bernoulli beam modes + extra inharmonic partials
-  // More partials = denser = more metallic
-  var partials = [
-    // [frequency ratio, amplitude, decay time constant (seconds)]
-    // Rhodes tine = clamped-free steel rod (r=0.5mm, L=22-156mm)
-    // MEASURED mode ratios (Gabrielli 2020 via Sonderboe 2024):
-    //   Mode 2: 7.11×  Mode 3: 20.25×
-    // Ideal E-B beam: 6.27, 17.55, 34.39 — measured is HIGHER (tuning spring effect)
-    // Key: VERY sparse — huge gaps between modes = thin metal rod character
-    //
-    // Tone bar: coupled modes near fundamental (beating = shimmer)
-    [0.97,   0.12, 0.006],   // tone bar coupled mode (below f0)
-    [1.02,   0.10, 0.006],   // tone bar coupled mode (above f0)
-    [7.11,   0.25, 0.003],   // beam mode 2 — MEASURED (Gabrielli)
-    [20.25,  0.10, 0.002],   // beam mode 3 — MEASURED (Gabrielli)
-    [40.0,   0.04, 0.001],   // beam mode 4 — estimated (extrapolated)
-    [65.0,   0.02, 0.001],   // beam mode 5 — estimated
-  ];
-
-  for (var i = 0; i < len; i++) {
-    var t = i / sr;
-    var sample = 0;
-    for (var p = 0; p < partials.length; p++) {
-      var freq = refF0 * partials[p][0];
-      if (freq > sr / 2.2) continue; // Nyquist guard
-      var amp = partials[p][1];
-      var decay = partials[p][2];
-      sample += amp * Math.sin(2 * Math.PI * freq * t) * Math.exp(-t / decay);
-    }
-    d[i] = sample;
-  }
-
-  // Normalize peak to 1.0
-  var peak = 0;
-  for (var i = 0; i < len; i++) {
-    if (Math.abs(d[i]) > peak) peak = Math.abs(d[i]);
-  }
-  if (peak > 0) {
-    for (var i = 0; i < len; i++) d[i] /= peak;
-  }
-
-  return buf;
 }
 
 // ========================================
@@ -665,26 +636,9 @@ function _createCabinetIR(ctx, type) {
   return buf;
 }
 
-// ========================================
-// HAMMER NOISE BUFFER
-// ========================================
-
-function _createHammerNoiseBuf(ctx) {
-  var sr = ctx.sampleRate;
-  var len = Math.floor(sr * 0.003); // 3ms — very short metallic click
-  var buf = ctx.createBuffer(1, len, sr);
-  var d = buf.getChannelData(0);
-  // Simple 1-pole highpass to remove low freq content (metal click = high freq)
-  var prev = 0;
-  for (var i = 0; i < len; i++) {
-    var t = i / len;
-    var raw = (Math.random() * 2 - 1) * Math.exp(-t * 15); // fast decay
-    // Highpass: output = current - previous (differentiator ≈ HPF)
-    d[i] = raw - prev * 0.7;
-    prev = raw;
-  }
-  return buf;
-}
+// (Hammer noise and metallic attack buffers removed — 2026-03-23)
+// Real signal path has no air-coupled components in PU output.
+// Tine vibration → PU. That's it. (Münster 2014, urinami-san)
 
 // ========================================
 // SPRING REVERB IR (Allpass cascade — Abel/Välimäki/Parker)
@@ -792,12 +746,6 @@ function _createSpringReverbIR(ctx) {
 function epianoInit(ctx, masterDest) {
   if (_epInitialized) return;
 
-  // Hammer noise buffer (shared, reused by all voices)
-  _epHammerNoiseBuf = _createHammerNoiseBuf(ctx);
-
-  // Metallic attack buffer (commuted synthesis, shared)
-  _epMetalBuf = _createMetalBuf(ctx);
-
   // === AB763 SHARED SIGNAL CHAIN (correct Fender reverb routing) ===
   //
   // Real AB763 Vibrato channel signal flow:
@@ -864,14 +812,31 @@ function epianoInit(ctx, masterDest) {
   _epV4B.oversample = 'none';
   _epV4B.connect(_epV4BMakeup);
 
-  // --- 4. Dry bus ---
-  // Per-voice V2B outputs sum here.
-  // In real circuit: V2B plate → 3.3MΩ/220kΩ divider → V4B grid (6.25% pass-through)
-  // The 10pF bright cap across 3.3MΩ preserves high frequencies in dry path.
-  // Web Audio gain calibrated for musical levels (not literal circuit ratios).
+  // --- 4. Harp wiring LPF (series-parallel pickup array) ---
+  // Single Rhodes PU: L≈150mH, R≈180Ω, C_self≈30pF → resonance ~18kHz (inaudible).
+  // But the HARP wiring (73-key: 24 groups of 3 parallel → series) creates:
+  //   L_total ≈ 24 × (150mH / 3) = 1.2H
+  //   R_total ≈ 24 × (180Ω / 3) = 1,440Ω (matches EP-Forum measurements)
+  //   C_total = cable (~300pF) + preamp input (~50pF) ≈ 350pF
+  //   f_res = 1/(2π√(1.2 × 350e-12)) ≈ 7,800 Hz
+  //   Q = (1/R) × √(L/C) ≈ (1/1440) × √(1.2/350e-12) ≈ 1.3
+  // This is the real LPF that shapes the Rhodes output before the preamp.
+  // The gentle resonant peak at ~7.8kHz with Q≈1.3 adds a subtle presence lift
+  // before rolling off — contributing to the characteristic "bell" quality.
+  //
+  // Sources: Wheeler calc (L=150mH/unit), EP-Forum (R=1440Ω harp),
+  //          Shadetree Keys (wiring config), Horton & Moore (RLC methodology)
+  var _epHarpLPF = ctx.createBiquadFilter();
+  _epHarpLPF.type = 'lowpass';
+  _epHarpLPF.frequency.setValueAtTime(7800, 0);
+  _epHarpLPF.Q.setValueAtTime(1.3, 0);
+
+  // --- 4b. Dry bus ---
+  // Per-voice V2B outputs sum here → through harp LPF → V4B.
   _epDryBus = ctx.createGain();
-  _epDryBus.gain.setValueAtTime(0.7, 0); // V2B recovery increases signal; 0.7 targets V4B at ~22% WS
-  _epDryBus.connect(_epV4B);
+  _epDryBus.gain.setValueAtTime(0.7, 0);
+  _epDryBus.connect(_epHarpLPF);
+  _epHarpLPF.connect(_epV4B);
 
   // --- 5. Reverb send chain: HPF → V3 → spring → V4A → pot → V4B ---
 
@@ -903,7 +868,7 @@ function epianoInit(ctx, masterDest) {
   // CRITICAL: transformer is AFTER V3, so V3's generated harmonics get filtered too.
   _epV3LUT = computeV3DriverLUT_12AT7();
   _epV3Drive = ctx.createGain();
-  _epV3Drive.gain.setValueAtTime(EpState.springDwell, 0); // Dwell: send drive level (higher = more V3 saturation)
+  _epV3Drive.gain.setValueAtTime(Math.max(EpState.springDwell, 0.5), 0); // Dwell: send drive. Min 0.5 (real pot never reaches true zero)
   _epV3Driver = ctx.createWaveShaper();
   _epV3Driver.curve = _epV3LUT;
   _epV3Driver.oversample = 'none';
@@ -950,24 +915,21 @@ function epianoInit(ctx, masterDest) {
   _epSpringReverb.buffer = _createSpringReverbIR(ctx);
   _epSendLPF2.connect(_epSpringReverb);
   _epSendLPF2Ref = _epSendLPF2; // save for future hot-swap reconnection
-  // AudioWorklet spring reverb: disabled pending algorithm research.
-  // The Välimäki parametric model needs structural fixes (allpass in/out of feedback loop).
-  // See: spring-reverb-processor.js, Daily notes/2026-03-23.md
-  // _loadSpringReverbWorklet(ctx);
+  // AudioWorklet spring reverb: Abel waveguide structure (US8391504B1).
+  // D(z) at output only (not in loop) → tail energy preserved, chirp per echo.
+  // Replaces Välimäki approach (allpass in loop → tail dissipated).
+  _loadSpringReverbWorklet(ctx);
 
   // 5d. V4A recovery amp (~36dB voltage gain, essentially linear)
   // Signal from tank output is millivolts — V4A brings it to line level.
   // Shares 820Ω cathode resistor with V4B (runs clean due to tiny input signal)
   _epV4AGain = ctx.createGain();
-  // V4A gain: recovery amplifier.
-  // With AudioWorklet: allpass cascade is energy-preserving, output ≈ input level.
-  // Input to worklet ≈ 0.10 peak (after HPF+V3+LPF chain).
-  // Dry bus at V4B ≈ 0.22 (from gain staging plan).
-  // V4A × pot should bring wet to comparable level: 0.10 × V4A × pot ≈ 0.22 × ratio
-  // At pot=0.12 (Fender "2-3"), V4A = 1.0 gives wet = 0.10 × 1.0 × 0.12 = 0.012
-  // Dry at V4B = 0.22, so wet/dry ratio = 0.012/0.22 = 5.5% — typical spring mix.
-  // With ConvolverNode fallback (IR RMS=0.15): V4A=1.0 gives 0.15×1.0×0.12=0.018 — similar.
-  _epV4AGain.gain.setValueAtTime(0.08, 0); // ConvolverNode IR RMS=0.15 → 0.15×0.08×0.12 ≈ wet level
+  // V4A gain: recovery amplifier (real 12AX7: ~36dB ≈ ×63).
+  // AudioWorklet (Abel waveguide): output is energy-preserving BUT 20 stretched allpass
+  // stages spread energy over ~2ms → peak drops to ~1/√112 of input.
+  // Need significant recovery gain to bring wet to audible level relative to dry bus (0.22).
+  // V4A=5.0 with pot=0.12: worklet_peak × 5.0 × 0.12 ≈ usable wet level.
+  _epV4AGain.gain.setValueAtTime(5.0, 0); // Recovery amp for AudioWorklet (strong to make reverb audible)
   _epSpringReverb.connect(_epV4AGain);
 
   // 5e. Reverb pot (100kΩ log, controls RETURN level — send is always full)
@@ -1059,13 +1021,8 @@ function epianoNoteOn(ctx, midi, velocity, masterDest) {
     osc.frequency.setValueAtTime(freq, now);
 
     var modeGain = ctx.createGain();
-    // modes 0,1 = body (sustain), modes 2+ = attack (fast decay)
-    var mixLevel = (m < 2) ? EpState.tineBodyMix : EpState.tineAttackMix;
-    // Mode amplitude WITHOUT tineAmplitude — voiceMixer already applies velocity.
-    // Previous: amp = amplitudes[m] * tineAmplitude * mixLevel → signal = tineAmplitude² (0.09 at ff)
-    // Now: amp = amplitudes[m] * mixLevel → signal = tineAmplitude (0.3 at ff)
-    // This drives PU WaveShaper into its nonlinear region → 2nd harmonic → bell quality.
-    var amp = modes.amplitudes[m] * mixLevel;
+    // Amplitudes determined by physics (computeModeFrequencies), not user knobs.
+    var amp = modes.amplitudes[m];
     modeGain.gain.setValueAtTime(amp, now);
     // Exponential decay
     modeGain.gain.setTargetAtTime(0, now, modes.decayTimes[m]);
@@ -1077,131 +1034,57 @@ function epianoNoteOn(ctx, midi, velocity, masterDest) {
     nodes.push(osc, modeGain);
   }
 
-  // --- 2. Hammer contact: soft neoprene/rubber thud ---
-  // The hammer tip is SOFT (neoprene/rubber). It doesn't "click" like metal.
-  // The metallic character comes from tine beam modes + pickup nonlinearity,
-  // NOT from the hammer itself. This component models the dull mechanical
-  // contact sound — low frequency, rounded envelope.
-  var clickOsc1 = ctx.createOscillator();
-  clickOsc1.type = 'sine';
-  clickOsc1.frequency.setValueAtTime(800 + velocity * 600, now); // 0.8-1.4kHz (soft thud)
+  // --- 2. Pickup nonlinearity ---
+  // Physics: tine vibrates → passes through PU magnetic field → EMF = g(q) × dq/dt
+  // No "drive" knob exists in real Rhodes. The LUT shape (from Lhor, Lver) and
+  // tine amplitude (from velocity) fully determine the output. Nothing else.
+  //
+  // Pitch-dependent tine displacement (physical):
+  // Low notes: longer tines → larger displacement → deeper into LUT nonlinearity → growl
+  // High notes: shorter tines → smaller displacement → stays in linear center → bell
+  // This is NOT an artificial "drive" — it's the physical displacement range.
+  var pitchPUScale = 1.0 + Math.max(0, (60 - midi)) * 0.006  // low: up to ~1.23×
+                         - Math.max(0, (midi - 72)) * 0.01;   // high: down to ~0.5× at C7
+  if (pitchPUScale < 0.35) pitchPUScale = 0.35;
 
-  var clickOsc2 = ctx.createOscillator();
-  clickOsc2.type = 'sine';
-  clickOsc2.frequency.setValueAtTime(1200 + velocity * 800, now); // 1.2-2.0kHz
-
-  var clickEnv = ctx.createGain();
-  clickEnv.gain.setValueAtTime(velocity * 0.03 * EpState.hammerClickMix, now);
-  clickEnv.gain.setTargetAtTime(0, now, 0.008); // 8ms decay (softer than 3ms)
-
-  clickOsc1.connect(clickEnv);
-  clickOsc2.connect(clickEnv);
-  clickOsc1.start(now);
-  clickOsc2.start(now);
-  clickOsc1.stop(now + 0.04);
-  clickOsc2.stop(now + 0.04);
-  nodes.push(clickOsc1, clickOsc2, clickEnv);
-
-  // Component B: very subtle noise texture (mechanical rattle)
-  var noiseSrc = ctx.createBufferSource();
-  noiseSrc.buffer = _epHammerNoiseBuf;
-  noiseSrc.playbackRate.setValueAtTime(1.0 + velocity * 0.5, now);
-
-  var noiseGain = ctx.createGain();
-  noiseGain.gain.setValueAtTime(velocity * 0.003 * EpState.hammerNoiseMix, now);
-
-  var clickHPF = ctx.createBiquadFilter();
-  clickHPF.type = 'highpass';
-  clickHPF.frequency.setValueAtTime(3000, now);
-  clickHPF.Q.setValueAtTime(0.5, now);
-
-  noiseSrc.connect(clickHPF);
-  clickHPF.connect(noiseGain);
-  noiseSrc.start(now);
-  nodes.push(noiseSrc, noiseGain, clickHPF);
-
-  // --- 2b. Metallic attack: resonant filter bank ---
-  // Impulse → parallel bandpass filters tuned to beam mode frequencies
-  // Each filter rings at its resonant frequency, creating dense inharmonic
-  // partials that sound "metallic". This is how bells/chimes work.
-  // The impulse excites ALL resonances simultaneously = metallic transient.
-  if (EpState.metalMix > 0 && _epMetalBuf) {
-    // Commuted synthesis: pre-computed metallic attack buffer (20 inharmonic partials)
-    // Pitch-shift by playbackRate to match current note
-    var metalSrc = ctx.createBufferSource();
-    metalSrc.buffer = _epMetalBuf;
-    // Buffer was computed at A4 (440Hz). Shift to target pitch.
-    var targetF0 = modes.frequencies[0];
-    metalSrc.playbackRate.setValueAtTime(targetF0 / 440, now);
-
-    // LPF before pickup: real PU has limited electromagnetic bandwidth.
-    // High beam modes (20×, 40×) at high notes exceed Nyquist or create
-    // aliasing artifacts when going through WaveShaper (oversample=none).
-    var metalLPF = ctx.createBiquadFilter();
-    metalLPF.type = 'lowpass';
-    metalLPF.frequency.setValueAtTime(4000, now); // PU bandwidth limit
-    metalLPF.Q.setValueAtTime(0.707, now);
-
-    var metalGain = ctx.createGain();
-    metalGain.gain.setValueAtTime(velocity * 0.4 * EpState.metalMix, now);
-
-    metalSrc.connect(metalLPF);
-    metalLPF.connect(metalGain);
-    metalSrc.start(now);
-    nodes.push(metalLPF);
-    nodes.push(metalSrc, metalGain);
-  }
-
-  // --- 3. Pickup nonlinearity ---
-  // Sum tine oscillators + hammer click + metal resonance before pickup
-  var pickupInput = ctx.createGain();
-  // Per-key pickup variation (Lver/Lhor offset baked into input gain)
-  var kvPU = _epKeyVariation[midi] || _epKeyVariation[60];
-  // Pitch-dependent PU input gain (urinami-san 2026-03-22):
-  // Low notes: longer tines → larger displacement → drives PU harder → boomy
-  // High notes: shorter tines → smaller displacement → PU stays linear → bell-like
-  // Magnet size also varies: low = larger magnet, gentler gradient
-  // High notes: shorter tines = less displacement = less PU drive (prevents hysteric overtones)
-  var pitchPUScale = 1.0 + Math.max(0, (60 - midi)) * 0.004  // low: up to ~1.15×
-                         - Math.max(0, (midi - 72)) * 0.008;  // high (above C5): reduce, ~0.6× at C7
-  if (pitchPUScale < 0.4) pitchPUScale = 0.4; // floor
-  // Attack boost: tine approaches PU during large displacement (Lhor dynamic change)
-  // Falaize model is more sensitive than tanh — keep boost moderate
-  var attackBoost = 1.0 + velocity * 0.5 * pitchPUScale; // up to ~1.6× on low forte
-  pickupInput.gain.setValueAtTime(attackBoost, now);
-  pickupInput.gain.setTargetAtTime(pitchPUScale, now, 0.03); // settle to pitch-dependent baseline
-  voiceMixer.connect(pickupInput);
-  clickEnv.connect(pickupInput);  // hammer soft thud
-  noiseGain.connect(pickupInput); // mechanical texture
-  if (EpState.metalMix > 0) metalGain.connect(pickupInput); // metallic resonance
-  nodes.push(pickupInput);
-
-  var lastNode = pickupInput;
+  var lastNode = voiceMixer;
   if (_epPickupLUT) {
-    // PU Drive: push signal into WaveShaper's nonlinear region.
-    // Real Rhodes tine is very close to PU → steep magnetic gradient →
-    // small displacement causes large flux change → strong harmonics.
-    // Drive must stay below ±1 at WaveShaper input (hard clamp = digital crackle).
-    // Max input: tine(0.3) × attackBoost(1.5) + metal(0.4×1.5) ≈ 1.05 at ff+metal.
-    // Drive 0.85 → peak ~0.89 (within ±1). Bell harmonics from LUT asymmetry.
-    var pickupDrive = ctx.createGain();
-    pickupDrive.gain.setValueAtTime(0.85, now);
-    lastNode.connect(pickupDrive);
-    lastNode = pickupDrive;
-    nodes.push(pickupDrive);
-
     var pickupWS = ctx.createWaveShaper();
     pickupWS.curve = _epPickupLUT;
     pickupWS.oversample = 'none';
-    lastNode.connect(pickupWS);
+    // Tine signal goes directly into PU. No artificial drive stage.
+    // The LUT's shape (steep for close PU, gentle for far PU) determines harmonics.
+    // pitchPUScale models the physical displacement difference across the keyboard.
+    var puInput = ctx.createGain();
+    puInput.gain.setValueAtTime(pitchPUScale, now);
+    lastNode.connect(puInput);
+    puInput.connect(pickupWS);
     lastNode = pickupWS;
-    nodes.push(pickupWS);
-    // Makeup: compensate drive compression + maintain signal level for next stage.
-    var pickupMakeup = ctx.createGain();
-    pickupMakeup.gain.setValueAtTime(1.0, now);
-    lastNode.connect(pickupMakeup);
-    lastNode = pickupMakeup;
-    nodes.push(pickupMakeup);
+    nodes.push(puInput, pickupWS);
+  }
+
+  // --- 3b. Single pickup coil: L ≈ 150mH, R ≈ 180Ω ---
+  // Rhodes pickup: ~3000 turns AWG 38, AlNiCo 5 magnet, DC resistance 170-190Ω.
+  // Calculated inductance ~150mH (Wheeler formula, confirmed by L/R ratio analysis).
+  // With C_self ~30pF: f_res ≈ 18kHz — ABOVE audible range.
+  // → Single pickup is electrically transparent. NO per-voice filter needed.
+  // The audible filtering comes from the HARP WIRING (series-parallel groups)
+  // which is modeled in epianoInit() as a shared filter.
+  //
+  // Sources: EP-Forum (DC R), Shadetree Keys (~3100 turns), The Gear Page (~2900 turns),
+  // Wheeler formula calculation, Horton & Moore (2009) methodology.
+
+  // --- 3c. Coupling capacitor HPF (0.047μF + 1MΩ grid leak = 3.4Hz) ---
+  // AB763 Normal channel: 0.047μF coupling cap to V1A grid.
+  // f_c = 1/(2π × 0.047e-6 × 1e6) = 3.39 Hz — subsonic, removes DC offset.
+  {
+    var couplingHPF = ctx.createBiquadFilter();
+    couplingHPF.type = 'highpass';
+    couplingHPF.frequency.setValueAtTime(3.4, now);
+    couplingHPF.Q.setValueAtTime(0.707, now); // Butterworth
+    lastNode.connect(couplingHPF);
+    lastNode = couplingHPF;
+    nodes.push(couplingHPF);
   }
 
   // --- 4. Preamp ---

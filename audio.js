@@ -2,6 +2,8 @@
 // AUDIO ENGINE
 // ========================================
 let _soundMuted = true; // Sound OFF by default — user turns on explicitly
+// A/B switch: ?worklet=1 in URL to use AudioWorklet e-piano engine
+const _useEpianoWorklet = new URLSearchParams(window.location.search).get('worklet') === '1';
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // --- Master audio graph ---
@@ -811,7 +813,9 @@ function noteOn(midi, velocity, poly, _retries) {
     epianoReverbSend.gain.setValueAtTime(
       (epPreset && epPreset.useCabinet) ? 1.0 : 0.0, audioCtx.currentTime
     );
-    envelope = epianoNoteOn(audioCtx, midi, velocity, epianoDirectOut);
+    envelope = _useEpianoWorklet
+      ? epianoWorkletNoteOn(audioCtx, midi, velocity, epianoDirectOut)
+      : epianoNoteOn(audioCtx, midi, velocity, epianoDirectOut);
   } else if (AudioState.instrument.sampler) {
     envelope = _samplerNoteOn(AudioState.instrument.sampler, midi, velocity, sat.input);
   } else {
@@ -1163,6 +1167,9 @@ onReady(() => {
     EpState.pickupSymmetry = parseFloat(puSymSlider.value);
     puSymVal.textContent = parseFloat(puSymSlider.value).toFixed(2);
     if (typeof epianoUpdateLUTs === 'function') epianoUpdateLUTs();
+    if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      epianoWorkletUpdateParams({ pickupSymmetry: EpState.pickupSymmetry });
+    }
     _saveEpMixer();
   });
 
@@ -1179,6 +1186,9 @@ onReady(() => {
     if (typeof _epReverbPot !== 'undefined' && _epReverbPot) {
       _epReverbPot.gain.setValueAtTime(val, audioCtx.currentTime);
     }
+    if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      epianoWorkletUpdateParams({ springReverbMix: val });
+    }
     _saveEpMixer();
   });
 
@@ -1193,6 +1203,9 @@ onReady(() => {
       // Real pot never reaches true zero (residual resistance + coupling capacitor leakage)
       var driveVal = Math.max(val, 0.5);
       _epV3Drive.gain.setValueAtTime(driveVal, audioCtx.currentTime);
+    }
+    if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      epianoWorkletUpdateParams({ springDwell: val });
     }
     _saveEpMixer();
   });

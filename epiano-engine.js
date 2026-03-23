@@ -11,9 +11,25 @@ var EP_LUT_SIZE = 1024;
 var _epHammerNoiseBuf = null;   // AudioBuffer: short filtered noise burst
 var _epCabinetNode = null;      // ConvolverNode: shared cabinet IR
 var _epCabinetGain = null;      // GainNode: cabinet output level
+var _epSpringReverb = null;     // ConvolverNode: spring reverb (Accutronics 4AB3C1B)
 var _epMetalBuf = null;         // AudioBuffer: pre-computed metallic attack (commuted synthesis)
 var _epInitialized = false;
 var _epRealIRLoaded = false;    // true when real Twin Reverb IR is loaded
+
+// --- AB763 shared signal chain (correct Fender reverb routing) ---
+// Per-voice V2B → _epDryBus ─────────────────────────────────────┐
+// Per-voice tonestack → _epSendHPF → V3 → spring → V4A → pot ───┤→ _epV4B → poweramp → cabinet
+var _epDryBus = null;           // GainNode: per-voice V2B outputs sum here
+var _epSendHPF = null;          // BiquadFilter: HPF 318Hz on reverb send (500pF/1MΩ RC)
+var _epV3Driver = null;         // WaveShaper: 12AT7 reverb driver (parallel triodes)
+var _epV3LUT = null;            // Float32Array: 12AT7 driver LUT
+var _epV4AGain = null;          // GainNode: reverb recovery amp (~36dB, essentially linear)
+var _epReverbPot = null;        // GainNode: reverb return level control
+var _epV4B = null;              // WaveShaper: post-mix 12AX7 stage ("bloom")
+var _epV4BMakeup = null;        // GainNode: V4B output level
+var _epPowerDrive = null;       // GainNode: shared poweramp drive control
+var _epSharedPoweramp = null;   // WaveShaper: shared 6L6 poweramp
+var _epSharedPowerMakeup = null;// GainNode: poweramp output level
 
 // --- Current LUTs (Float32Array, recomputed on param change) ---
 var _epPickupLUT = null;
@@ -40,6 +56,9 @@ var EpState = {
   hammerClickMix: 1.0,     // detuned osc soft thud
   hammerNoiseMix: 1.0,     // noise buffer mechanical texture
   metalMix: 0.0,           // commuted synthesis metallic attack (default off — experimental)
+  use2ndPreamp: true,      // AB763 V2A+V2B (cathode follower + 2nd gain stage)
+  brightSwitch: false,     // AB763 bright cap bypass (increases C1 → more treble)
+  springReverbMix: 0.12,   // Spring reverb wet level (Fender "2-3" ≈ 0.08-0.15)
 };
 
 // ========================================
@@ -52,6 +71,7 @@ var EP_AMP_PRESETS = {
     powerampType: '6L6',
     useTonestack: true,
     useCabinet: true,
+    useSpringReverb: true,   // Accutronics 4AB3C1B via V3 driver
   },
   'Rhodes Suitcase': {
     pickupType: 'rhodes',
@@ -59,6 +79,7 @@ var EP_AMP_PRESETS = {
     powerampType: 'GeTr',
     useTonestack: true,
     useCabinet: true,
+    useSpringReverb: false,  // Suitcase has vibrato, not spring reverb
   },
   'Wurlitzer 200A': {
     pickupType: 'wurlitzer',
@@ -66,6 +87,7 @@ var EP_AMP_PRESETS = {
     powerampType: 'SS',
     useTonestack: true,
     useCabinet: true,
+    useSpringReverb: false,  // Built-in speaker, no spring reverb
   },
   'Rhodes DI': {
     pickupType: 'rhodes',
@@ -73,6 +95,7 @@ var EP_AMP_PRESETS = {
     powerampType: null,
     useTonestack: false,
     useCabinet: false,
+    useSpringReverb: false,
   },
 };
 
@@ -200,6 +223,7 @@ function computePreampLUT_12AX7() {
   if (maxSwing > 0) {
     for (var i = 0; i < EP_LUT_SIZE; i++) lut[i] = -lut[i] / maxSwing;
   }
+
   return lut;
 }
 
@@ -269,33 +293,133 @@ function computePowerampLUT_SS() {
   return lut;
 }
 
-// ========================================
-// TONESTACK (Fender TMB — IIR coefficients)
-// ========================================
-// Simplified Fender tonestack using 3 cascaded biquads
-// (Full Yeh & Smith 2006 3rd-order IIR approximated as lowshelf + peaking + highshelf)
+function computeV3DriverLUT_12AT7() {
+  // 12AT7 reverb driver — Koren model, both triode sections paralleled
+  // AB763: V3 drives reverb output transformer (Hammond 1750A, 22.8kΩ primary)
+  // Why 12AT7: low rp (10.9kΩ vs 62.5kΩ) = better current drive into transformer
+  // Parallel triodes: rp halved to ~5.5kΩ, gm doubled to ~11mA/V
+  //
+  // Operating point (measured): Vgk=-8.2V, Vp≈450V, Ip≈1.86mA/section
+  // High headroom: grid swings ±10V before clipping vs 12AX7's ±3V
+  // At normal Volume (3-5): essentially clean
+  // At pushed Volume (7+): grid conduction = gritty reverb character
+  //
+  // Refs: Koren tube model, ampbooks.com reverb driver analysis,
+  //       Rob Robinette AB763, fenderguru.com tube specs
+  var lut = new Float32Array(EP_LUT_SIZE);
+  var mu = 60, ex = 1.35, kG1 = 460, kP = 300, kVB = 300;
+  var Vgk_bias = -8.2;
+  var gridSwing = 10.0; // wider than 12AX7 — more headroom before clipping
 
-function computeTonestackBiquads(bass, mid, treble, sr) {
-  // Returns array of 3 biquad parameter objects for BiquadFilterNode
-  // Twin Reverb AB763 character approximation
-  return [
-    {
+  var rawOut = new Float32Array(EP_LUT_SIZE);
+  for (var i = 0; i < EP_LUT_SIZE; i++) {
+    var x = (i / (EP_LUT_SIZE - 1)) * 2 - 1;
+    var Vgk = Vgk_bias + x * gridSwing;
+    // Grid conduction: soft clamp above ~0V (grid can't go much positive)
+    if (Vgk > 0.3) Vgk = 0.3 + (Vgk - 0.3) * 0.02;
+    // Koren plate current model (transformer-coupled: Vp stays near B+)
+    var Vp = 450;
+    var E1 = Math.log(1 + Math.exp(kP * (1 / mu + Vgk / Math.sqrt(kVB + Vp * Vp)))) / kP;
+    var Ip = Math.pow(Math.max(E1, 0), ex) / kG1;
+    rawOut[i] = Ip * 2; // parallel sections double the current
+  }
+  // Center at operating point, normalize to -1..1
+  var Ip_rest = rawOut[Math.floor(EP_LUT_SIZE / 2)];
+  var maxSwing = 0;
+  for (var i = 0; i < EP_LUT_SIZE; i++) {
+    lut[i] = rawOut[i] - Ip_rest;
+    if (Math.abs(lut[i]) > maxSwing) maxSwing = Math.abs(lut[i]);
+  }
+  if (maxSwing > 0) {
+    for (var i = 0; i < EP_LUT_SIZE; i++) lut[i] /= maxSwing;
+  }
+  return lut;
+}
+
+// ========================================
+// TONESTACK (Fender TMB — Hybrid Biquad + WaveShaper)
+// ========================================
+// Biquad chain for frequency shaping (calibrated to Yeh & Smith 2006 AB763 curve)
+// + mild WaveShaper between stages for nonlinear interaction (carbon comp saturation)
+// → "chime" quality that pure linear IIR cannot produce
+//
+// Signal flow: HPF(DC block) → LowShelf(bass) → WS(mild saturation) → Peaking(mid scoop) → HighShelf(treble)
+//
+// Why not IIR: IIRFilterNode retains internal state after input drops → ringing artifacts
+// amplified by downstream gain stages. BiquadFilterNode doesn't have this problem.
+// Why WaveShaper: real passive tonestack has micro-nonlinearities from carbon comp resistors
+// and capacitor dielectric absorption. These create subtle intermodulation that contributes
+// to the "alive" quality of tube amps.
+
+var _epTonestackSatLUT = null;
+
+function _initTonestackSatLUT() {
+  if (_epTonestackSatLUT) return;
+  // Very mild saturation: models carbon composition resistor nonlinearity
+  // At low signal: nearly linear. At peaks: gentle 2nd harmonic generation.
+  var size = 256;
+  _epTonestackSatLUT = new Float32Array(size);
+  for (var i = 0; i < size; i++) {
+    var x = (i / (size - 1)) * 2 - 1; // -1..1
+    // Soft asymmetric saturation: slight 2nd harmonic bias
+    // tanh(1.2x) + 0.05*x² gives ~1% 2nd harmonic at full scale
+    _epTonestackSatLUT[i] = Math.tanh(1.2 * x) + 0.05 * x * Math.abs(x);
+  }
+  // Normalize so peak output = 1.0
+  var peak = 0;
+  for (var i = 0; i < size; i++) {
+    if (Math.abs(_epTonestackSatLUT[i]) > peak) peak = Math.abs(_epTonestackSatLUT[i]);
+  }
+  if (peak > 0) {
+    for (var i = 0; i < size; i++) _epTonestackSatLUT[i] /= peak;
+  }
+}
+
+function computeTonestackParams(bass, mid, treble, bright) {
+  // Returns Biquad parameters calibrated to AB763 Yeh & Smith curve:
+  //   50Hz: +1dB, 100Hz: -1dB, 400Hz: -10dB, 600Hz: -11dB (scoop),
+  //   1kHz: -9dB, 3kHz: -2dB, 8kHz: 0dB
+  //
+  // Knob ranges derived from Yeh & Smith coefficient sweep:
+  //   Bass 0→1:  100Hz varies -16dB to 0dB (16dB range)
+  //   Mid 0→1:   600Hz varies -20dB to -3dB (17dB range)
+  //   Treble 0→1: 3kHz varies -14dB to 0dB (14dB range)
+
+  // Clamp
+  var b = Math.max(0, Math.min(1, bass));
+  var m = Math.max(0, Math.min(1, mid));
+  var t = Math.max(0, Math.min(1, treble));
+
+  return {
+    // DC blocking highpass (passive network has zero DC pass-through)
+    hpf: { type: 'highpass', frequency: 30, Q: 0.707 },
+
+    // Low shelf: bass control. Fender bass pot range ≈ 16 dB.
+    // Center frequency 100Hz (AB763 bass cap + pot interaction)
+    lowShelf: {
       type: 'lowshelf',
-      frequency: 250,
-      gain: (bass - 0.5) * 20,  // ±10 dB
+      frequency: 100,
+      gain: -16 + b * 16  // -16 to 0 dB
     },
-    {
+
+    // Mid scoop: peaking EQ. THE Fender TMB signature.
+    // AB763 fixed 6.8K = deep scoop. Mid knob controls depth.
+    // Q calibrated to match Yeh & Smith: scoop spans ~200Hz-2kHz
+    midScoop: {
       type: 'peaking',
-      frequency: 800,
-      Q: 1.2,
-      gain: (mid - 0.5) * 16,   // ±8 dB (Twin has no mid pot, but we add it)
+      frequency: 600,
+      Q: 0.8,
+      gain: -17 + m * 14  // -17 to -3 dB (always some scoop — Fender character)
     },
-    {
+
+    // High shelf: treble control. Bright switch shifts the knee lower.
+    // AB763 treble cap 250pF → bright bypass multiplies C1 → lower frequency
+    highShelf: {
       type: 'highshelf',
-      frequency: 3000,
-      gain: (treble - 0.5) * 20, // ±10 dB
-    },
-  ];
+      frequency: bright ? 1500 : 3000,
+      gain: -14 + t * 14   // -14 to 0 dB
+    }
+  };
 }
 
 // ========================================
@@ -523,6 +647,105 @@ function _createHammerNoiseBuf(ctx) {
 }
 
 // ========================================
+// SPRING REVERB IR (Allpass cascade — Abel/Välimäki/Parker)
+// ========================================
+// Accutronics 4AB3C1B (Twin Reverb): 2 springs, allpass dispersion model
+
+function _createSpringReverbIR(ctx) {
+  var sr = ctx.sampleRate;
+  var len = Math.floor(sr * 2.5);
+  var buf = ctx.createBuffer(2, len, sr);
+
+  var springConfigs = [
+    { delay: Math.floor(0.033 * sr), numAP: 300, apCoeff: 0.60 },
+    { delay: Math.floor(0.041 * sr), numAP: 340, apCoeff: 0.62 },
+  ];
+
+  var chirpLen = Math.floor(0.40 * sr);
+  var reflGain = 0.88;
+  var numReflections = 30;
+
+  for (var ch = 0; ch < 2; ch++) {
+    var d = buf.getChannelData(ch);
+
+    for (var s = 0; s < springConfigs.length; s++) {
+      var sp = springConfigs[s];
+
+      // Generate chirp: impulse → allpass cascade
+      var chirp = new Float32Array(chirpLen);
+      chirp[0] = 1.0;
+      for (var n = 0; n < sp.numAP; n++) {
+        var prev_x = 0, prev_y = 0;
+        for (var i = 0; i < chirpLen; i++) {
+          var x = chirp[i];
+          var y = sp.apCoeff * x + prev_x - sp.apCoeff * prev_y;
+          chirp[i] = y;
+          prev_x = x;
+          prev_y = y;
+        }
+      }
+
+      // Add reflections with polarity inversion at fixed ends
+      // Each reflection: shorter effective chirp (energy loss = HF dies first)
+      var roundTrip = sp.delay * 2;
+      var stereoOffset = ch * Math.floor(0.0025 * sr);
+      for (var r = 0; r < numReflections; r++) {
+        var reflStart = r * roundTrip + stereoOffset;
+        var gain = Math.pow(reflGain, r);
+        var polarity = (r % 2 === 0) ? 1.0 : -1.0;
+        // Later reflections use shorter window of chirp (attack fades out)
+        var effLen = Math.floor(chirpLen / (1 + r * 0.3));
+        for (var i = 0; i < effLen; i++) {
+          var idx = reflStart + i;
+          if (idx >= 0 && idx < len) {
+            // Fade within each reflection to avoid hard cutoff
+            var fade = (i < effLen - 64) ? 1.0 : (effLen - i) / 64;
+            d[idx] += chirp[i] * gain * polarity * fade * 15.0 / springConfigs.length;
+          }
+        }
+      }
+    }
+
+    // Frequency-dependent decay (LPF progressive darkening)
+    var lpfBase = Math.exp(-2 * Math.PI * 5000 / sr);
+    var lpState = 0;
+    for (var pass = 0; pass < 3; pass++) {
+      lpState = 0;
+      for (var i = 0; i < len; i++) {
+        lpState = lpfBase * lpState + (1 - lpfBase) * d[i];
+        var t = i / sr;
+        var blend = Math.min(1, t / 2.5);
+        d[i] = d[i] * (1 - blend * 0.3) + lpState * blend * 0.3;
+      }
+    }
+
+    // Bandpass 100Hz-6kHz
+    var hpAlpha = 1 - Math.exp(-2 * Math.PI * 100 / sr);
+    var lpAlpha2 = Math.exp(-2 * Math.PI * 6000 / sr);
+    var hpPrev = 0, lpPrev = 0;
+    for (var i = 0; i < len; i++) {
+      var hpOut = d[i] - hpPrev;
+      hpPrev += hpAlpha * hpOut;
+      lpPrev = lpAlpha2 * lpPrev + (1 - lpAlpha2) * hpOut;
+      d[i] = lpPrev;
+    }
+
+    // RMS normalize
+    var rmsSum = 0;
+    for (var i = 0; i < len; i++) rmsSum += d[i] * d[i];
+    var rms = Math.sqrt(rmsSum / len);
+    if (rms > 0) {
+      var scale = 0.15 / rms;
+      for (var i = 0; i < len; i++) {
+        d[i] = Math.max(-1, Math.min(1, d[i] * scale));
+      }
+    }
+  }
+
+  return buf;
+}
+
+// ========================================
 // INITIALIZATION
 // ========================================
 
@@ -535,17 +758,129 @@ function epianoInit(ctx, masterDest) {
   // Metallic attack buffer (commuted synthesis, shared)
   _epMetalBuf = _createMetalBuf(ctx);
 
-  // Cabinet IR convolver (shared) — start with synthetic, upgrade to real IR async
+  // === AB763 SHARED SIGNAL CHAIN (correct Fender reverb routing) ===
+  //
+  // Real AB763 Vibrato channel signal flow:
+  //   V1A → V2A(CF) → tonestack → Volume pot
+  //     ├─ [SEND] HPF(318Hz) → V3(12AT7) → spring tank → V4A(recovery) → reverb pot ─┐
+  //     └─ [DRY]  V2B(gain) ──────────────────────────────────────────────────────────────┤
+  //                                                     passive mix at V4B grid ←─────────┘
+  //                                                             ↓
+  //                                                     V4B (12AX7, 3rd gain stage)
+  //                                                             ↓
+  //                                                     tremolo → phase inverter
+  //                                                             ↓
+  //                                                     poweramp (4×6L6) → cabinet
+  //
+  // Key insight: wet and dry go through the SAME V4B → poweramp → cabinet.
+  // Their interaction in V4B creates the "bloom" — harmonics that neither signal
+  // produces alone. This is why routing matters more than IR quality.
+
+  // --- 1. Cabinet (end of chain) ---
   _epCabinetNode = ctx.createConvolver();
-  _epCabinetNode.buffer = _createCabinetIR(ctx, 'twin'); // fallback synthetic
+  _epCabinetNode.buffer = _createCabinetIR(ctx, 'twin');
   _epCabinetGain = ctx.createGain();
-  _epCabinetGain.gain.setValueAtTime(6.0, 0); // real IR is quieter than synthetic — boost
+  _epCabinetGain.gain.setValueAtTime(8.0, 0);
   _epCabinetNode.connect(_epCabinetGain);
   _epCabinetGain.connect(masterDest);
-
-  // Load real Twin Reverb IR (1973 Twin + JBL D120F, Shift Line free pack)
-  // Async: replaces synthetic IR when ready. No audible gap — just gets better.
   _loadRealCabinetIR(ctx);
+
+  // --- 2. Shared poweramp (6L6 push-pull Class AB) ---
+  // Moved from per-voice to shared: all notes interact in the power stage
+  // (real amp has ONE power amp for all notes)
+  _epSharedPowerMakeup = ctx.createGain();
+  _epSharedPowerMakeup.gain.setValueAtTime(2.0, 0); // compensates for poweramp unity-gain normalization
+  _epSharedPowerMakeup.connect(_epCabinetNode);
+
+  _epSharedPoweramp = ctx.createWaveShaper();
+  _epSharedPoweramp.oversample = '2x';
+  _epSharedPoweramp.connect(_epSharedPowerMakeup);
+
+  _epPowerDrive = ctx.createGain();
+  _epPowerDrive.gain.setValueAtTime(EpState.powerampDrive, 0);
+  _epPowerDrive.connect(_epSharedPoweramp);
+
+  // --- 3. V4B: post-mix tube stage (12AX7) ---
+  // Wet + dry sum at V4B's grid through passive resistor network.
+  // V4B's nonlinearity creates intermodulation between reverb tail and notes = "bloom".
+  // Uses same 12AX7 characteristics as V1A/V2B (shared cathode with V4A: 820Ω)
+  _epV4BMakeup = ctx.createGain();
+  _epV4BMakeup.gain.setValueAtTime(1.5, 0); // V4B is now unity-gain; makeup provides actual gain
+  _epV4BMakeup.connect(_epPowerDrive);
+
+  _epV4B = ctx.createWaveShaper();
+  // V4B LUT: 12AX7 normalized to unity center gain (no amplification in linear region)
+  // Small signals pass through unchanged (no intermodulation/metallic artifacts).
+  // Large signals get soft-clipped (tube compression for chords = "bloom").
+  // Raw 12AX7 LUT has center slope ~2.0; dividing by slope gives unity gain.
+  var v4bRaw = computePreampLUT_12AX7();
+  var v4bCenter = Math.floor(EP_LUT_SIZE / 2);
+  var v4bDx = 2.0 / EP_LUT_SIZE;
+  var v4bSlope = (v4bRaw[v4bCenter + 1] - v4bRaw[v4bCenter - 1]) / (2 * v4bDx);
+  if (v4bSlope > 1.0) {
+    for (var i = 0; i < EP_LUT_SIZE; i++) v4bRaw[i] /= v4bSlope;
+  }
+  _epV4B.curve = v4bRaw;
+  _epV4B.oversample = 'none';
+  _epV4B.connect(_epV4BMakeup);
+
+  // --- 4. Dry bus ---
+  // Per-voice V2B outputs sum here.
+  // In real circuit: V2B plate → 3.3MΩ/220kΩ divider → V4B grid (6.25% pass-through)
+  // The 10pF bright cap across 3.3MΩ preserves high frequencies in dry path.
+  // Web Audio gain calibrated for musical levels (not literal circuit ratios).
+  _epDryBus = ctx.createGain();
+  _epDryBus.gain.setValueAtTime(0.5, 0); // V4B WS has ~2× linear gain; compensated by V4B makeup
+  _epDryBus.connect(_epV4B);
+
+  // --- 5. Reverb send chain: HPF → V3 → spring → V4A → pot → V4B ---
+
+  // 5a. HPF: 500pF / 1MΩ RC network (-3dB at 318Hz)
+  // Keeps bass out of reverb — critical because spring tank input impedance
+  // is reactive (lower at low freq → bass draws more current → mud)
+  _epSendHPF = ctx.createBiquadFilter();
+  _epSendHPF.type = 'highpass';
+  _epSendHPF.frequency.setValueAtTime(318, 0);
+  _epSendHPF.Q.setValueAtTime(0.707, 0);
+
+  // 5b. LPF: reverb transformer + tank input bandwidth (~4kHz rolloff)
+  // Hammond 1750A transformer inductance + Accutronics transducer coil
+  // naturally limit high-frequency content entering the spring.
+  // Without this, metallic attack partials (7×, 20×, 40× f0) create
+  // unnatural high-frequency dispersion in the allpass cascade.
+  var _epSendLPF = ctx.createBiquadFilter();
+  _epSendLPF.type = 'lowpass';
+  _epSendLPF.frequency.setValueAtTime(4000, 0);
+  _epSendLPF.Q.setValueAtTime(0.707, 0);
+  _epSendHPF.connect(_epSendLPF);
+
+  // 5c. V3 reverb driver (12AT7 parallel triodes → transformer → tank)
+  // Current driver: low rp (5.5kΩ paralleled) into 22.8kΩ transformer primary
+  // Clean at normal Volume, gritty when pushed (grid conduction at Vgk > 0V)
+  _epV3LUT = computeV3DriverLUT_12AT7();
+  _epV3Driver = ctx.createWaveShaper();
+  _epV3Driver.curve = _epV3LUT;
+  _epV3Driver.oversample = 'none';
+  _epSendLPF.connect(_epV3Driver);
+
+  // 5c. Spring reverb (Accutronics 4AB3C1B, allpass cascade model)
+  _epSpringReverb = ctx.createConvolver();
+  _epSpringReverb.buffer = _createSpringReverbIR(ctx);
+  _epV3Driver.connect(_epSpringReverb);
+
+  // 5d. V4A recovery amp (~36dB voltage gain, essentially linear)
+  // Signal from tank output is millivolts — V4A brings it to line level.
+  // Shares 820Ω cathode resistor with V4B (runs clean due to tiny input signal)
+  _epV4AGain = ctx.createGain();
+  _epV4AGain.gain.setValueAtTime(0.5, 0); // low: V4B+poweramp WS gains amplify wet ~3×; keep reflections below dry
+  _epSpringReverb.connect(_epV4AGain);
+
+  // 5e. Reverb pot (100kΩ log, controls RETURN level — send is always full)
+  // Models 470kΩ/220kΩ resistive divider at V4B grid (passes 32%)
+  _epReverbPot = ctx.createGain();
+  _epReverbPot.gain.setValueAtTime(EpState.springReverbMix, 0);
+  _epV4AGain.connect(_epReverbPot);
+  _epReverbPot.connect(_epV4B); // wet → V4B (meets dry at same node)
 
   // Default LUTs
   epianoUpdateLUTs();
@@ -582,6 +917,19 @@ function epianoUpdateLUTs() {
     _epPowerampLUT = computePowerampLUT_SS();
   } else {
     _epPowerampLUT = null;
+  }
+
+  // Update shared WaveShapers (these persist across noteOn/noteOff)
+  if (_epSharedPoweramp && _epPowerampLUT) {
+    // Normalize to unity center gain (same as V4B — prevents hidden amplification
+    // that creates intermodulation and rounds off bell/chime quality)
+    var paCenter = Math.floor(EP_LUT_SIZE / 2);
+    var paDx = 2.0 / EP_LUT_SIZE;
+    var paSlope = (_epPowerampLUT[paCenter + 1] - _epPowerampLUT[paCenter - 1]) / (2 * paDx);
+    if (paSlope > 1.0) {
+      for (var i = 0; i < EP_LUT_SIZE; i++) _epPowerampLUT[i] /= paSlope;
+    }
+    _epSharedPoweramp.curve = _epPowerampLUT;
   }
 }
 
@@ -724,9 +1072,10 @@ function epianoNoteOn(ctx, midi, velocity, masterDest) {
     lastNode.connect(pickupWS);
     lastNode = pickupWS;
     nodes.push(pickupWS);
-    // Makeup gain: WaveShaper compresses signal (tanh), restore level
+    // Makeup gain: keep signal within ±1 for next WaveShaper stage
+    // Too high = inter-stage clipping (WS clamps beyond ±1 = digital crackle)
     var pickupMakeup = ctx.createGain();
-    pickupMakeup.gain.setValueAtTime(1.8, now);
+    pickupMakeup.gain.setValueAtTime(1.0, now);
     lastNode.connect(pickupMakeup);
     lastNode = pickupMakeup;
     nodes.push(pickupMakeup);
@@ -746,56 +1095,117 @@ function epianoNoteOn(ctx, midi, velocity, masterDest) {
     lastNode.connect(preampWS);
     lastNode = preampWS;
     nodes.push(preampWS);
-    // Makeup gain after preamp compression
+    // Makeup gain after preamp — keep within ±1 for next stage
     var preampMakeup = ctx.createGain();
-    preampMakeup.gain.setValueAtTime(1.5, now);
+    preampMakeup.gain.setValueAtTime(1.0, now);
     lastNode.connect(preampMakeup);
     lastNode = preampMakeup;
     nodes.push(preampMakeup);
   }
 
-  // --- 5. Tonestack (3 biquads) ---
+  // --- 4b. Cathode Follower (V2A) — impedance buffer ---
+  // AB763: V2A sits between V1A and tonestack. Gain ≈ 1 (slight loss from
+  // cathode follower topology), low output impedance to drive passive tonestack
+  // without loading. Minimal nonlinearity — modeled as simple gain.
+  if (preset.preampType === '12AX7' && EpState.use2ndPreamp) {
+    var cfGain = ctx.createGain();
+    cfGain.gain.setValueAtTime(0.95, now);
+    lastNode.connect(cfGain);
+    lastNode = cfGain;
+    nodes.push(cfGain);
+  }
+
+  // --- 5. Tonestack (Passive RC — linear filter only) ---
+  // AB763 TMB is a passive RC network: NO nonlinear behavior.
+  // Carbon comp resistor "nonlinearity" is unmeasurable in AC audio applications
+  // (no DC bias across signal components). WaveShaper removed (2026-03-23).
+  // Future: replace Biquad approximation with Yeh & Smith 3rd-order IIR (AudioWorklet).
   if (preset.useTonestack) {
-    var tsParams = computeTonestackBiquads(
-      EpState.tonestackBass, EpState.tonestackMid, EpState.tonestackTreble, ctx.sampleRate
+    var tsP = computeTonestackParams(
+      EpState.tonestackBass, EpState.tonestackMid, EpState.tonestackTreble,
+      EpState.brightSwitch
     );
-    for (var b = 0; b < tsParams.length; b++) {
-      var bq = ctx.createBiquadFilter();
-      bq.type = tsParams[b].type;
-      bq.frequency.setValueAtTime(tsParams[b].frequency, now);
-      if (tsParams[b].Q !== undefined) bq.Q.setValueAtTime(tsParams[b].Q, now);
-      if (tsParams[b].gain !== undefined) bq.gain.setValueAtTime(tsParams[b].gain, now);
-      lastNode.connect(bq);
-      lastNode = bq;
-      nodes.push(bq);
-    }
+
+    // 5a. DC blocking HPF
+    var tsHPF = ctx.createBiquadFilter();
+    tsHPF.type = tsP.hpf.type;
+    tsHPF.frequency.setValueAtTime(tsP.hpf.frequency, now);
+    tsHPF.Q.setValueAtTime(tsP.hpf.Q, now);
+    lastNode.connect(tsHPF);
+    lastNode = tsHPF;
+    nodes.push(tsHPF);
+
+    // 5b. Low shelf (bass)
+    var tsLow = ctx.createBiquadFilter();
+    tsLow.type = tsP.lowShelf.type;
+    tsLow.frequency.setValueAtTime(tsP.lowShelf.frequency, now);
+    tsLow.gain.setValueAtTime(tsP.lowShelf.gain, now);
+    lastNode.connect(tsLow);
+    lastNode = tsLow;
+    nodes.push(tsLow);
+
+    // 5c. Mid scoop (peaking EQ — THE Fender signature)
+    var tsMid = ctx.createBiquadFilter();
+    tsMid.type = tsP.midScoop.type;
+    tsMid.frequency.setValueAtTime(tsP.midScoop.frequency, now);
+    tsMid.Q.setValueAtTime(tsP.midScoop.Q, now);
+    tsMid.gain.setValueAtTime(tsP.midScoop.gain, now);
+    lastNode.connect(tsMid);
+    lastNode = tsMid;
+    nodes.push(tsMid);
+
+    // 5d. High shelf (treble + bright switch)
+    var tsHigh = ctx.createBiquadFilter();
+    tsHigh.type = tsP.highShelf.type;
+    tsHigh.frequency.setValueAtTime(tsP.highShelf.frequency, now);
+    tsHigh.gain.setValueAtTime(tsP.highShelf.gain, now);
+    lastNode.connect(tsHigh);
+    lastNode = tsHigh;
+    nodes.push(tsHigh);
   }
 
-  // --- 6. Poweramp ---
-  if (_epPowerampLUT) {
-    var powerampInputGain = ctx.createGain();
-    powerampInputGain.gain.setValueAtTime(EpState.powerampDrive, now);
-    lastNode.connect(powerampInputGain);
-    lastNode = powerampInputGain;
-    nodes.push(powerampInputGain);
-
-    var powerampWS = ctx.createWaveShaper();
-    powerampWS.curve = _epPowerampLUT;
-    powerampWS.oversample = '2x';
-    lastNode.connect(powerampWS);
-    lastNode = powerampWS;
-    nodes.push(powerampWS);
-    // Makeup gain after poweramp compression
-    var powerMakeup = ctx.createGain();
-    powerMakeup.gain.setValueAtTime(2.0, now);
-    lastNode.connect(powerMakeup);
-    lastNode = powerMakeup;
-    nodes.push(powerMakeup);
+  // --- 5.5. Reverb send (AB763: tonestack → HPF(318Hz) → V3 → spring → V4A → pot → V4B) ---
+  // Send taps after tonestack. HPF keeps bass out of reverb (spring tank is reactive).
+  // V3 (12AT7) drives the tank — mostly clean, gritty when pushed.
+  // Wet returns through V4A recovery and meets dry at V4B (shared "bloom" stage).
+  if (_epSendHPF && preset.useSpringReverb) {
+    lastNode.connect(_epSendHPF);
   }
 
-  // --- 7. Route to cabinet or direct ---
-  if (preset.useCabinet && _epCabinetNode) {
-    lastNode.connect(_epCabinetNode);
+  // --- 5b. 2nd Preamp Stage (V2B) — recovery amp after tonestack ---
+  // AB763: V2B recovers ~20dB tonestack loss. Same 12AX7 tube characteristics.
+  // The tonestack-shaped harmonics get another round of tube nonlinearity:
+  //   2nd-of-2nd = 4th harmonic, 2nd×3rd = 5th, beam mode 7.11× products
+  //   → intermodulation density and "shimmer" that 1 stage can't produce
+  if (preset.preampType === '12AX7' && _epPreampLUT && EpState.use2ndPreamp) {
+    var preamp2InputGain = ctx.createGain();
+    preamp2InputGain.gain.setValueAtTime(EpState.preampGain, now);
+    lastNode.connect(preamp2InputGain);
+    lastNode = preamp2InputGain;
+    nodes.push(preamp2InputGain);
+
+    var preamp2WS = ctx.createWaveShaper();
+    preamp2WS.curve = _epPreampLUT;
+    preamp2WS.oversample = 'none'; // latency budget: PU(none)+V1A(2x)+V2B(none)+power(2x) = 2 stages at 2x
+    lastNode.connect(preamp2WS);
+    lastNode = preamp2WS;
+    nodes.push(preamp2WS);
+
+    // Makeup gain — V2B recovery (tonestack is now normalized to 0dB peak,
+    // so this just compensates for WaveShaper's soft compression)
+    var preamp2Makeup = ctx.createGain();
+    preamp2Makeup.gain.setValueAtTime(1.0, now);
+    lastNode.connect(preamp2Makeup);
+    lastNode = preamp2Makeup;
+    nodes.push(preamp2Makeup);
+  }
+
+  // --- 6. Route to shared AB763 chain or direct output ---
+  // Cabinet presets: per-voice ends at V2B → shared dry bus → V4B → poweramp → cabinet
+  // DI preset: per-voice output goes directly to masterDest (no shared chain)
+  // Poweramp moved from per-voice to shared (real amp: all notes through ONE power stage)
+  if (preset.useCabinet && _epDryBus) {
+    lastNode.connect(_epDryBus);
   } else {
     lastNode.connect(masterDest);
   }

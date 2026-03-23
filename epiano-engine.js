@@ -449,6 +449,43 @@ function computeTonestackParams(bass, mid, treble, bright) {
 }
 
 // ========================================
+// RHODES 88-KEY PHYSICAL DATA TABLES
+// ========================================
+// Sources: Shear 2011 (UCSB), Rhodes Service Manual, EP-Forum
+
+// --- Q-value table (Shear 2011, 1974 Mark I, Tables 2.1 + 5.1) ---
+var _EP_Q_TABLE = [
+  [39,949],[51,731],[59,1101],[60,1238],[61,1040],
+  [62,1156],[64,1520],[75,2175],[87,1761],
+];
+
+function _interpolateQ(midi) {
+  var t = _EP_Q_TABLE;
+  if (midi <= t[0][0]) return t[0][1];
+  if (midi >= t[t.length - 1][0]) return t[t.length - 1][1];
+  for (var i = 0; i < t.length - 1; i++) {
+    if (midi >= t[i][0] && midi <= t[i + 1][0]) {
+      var frac = (midi - t[i][0]) / (t[i + 1][0] - t[i][0]);
+      return t[i][1] + frac * (t[i + 1][1] - t[i][1]);
+    }
+  }
+  return 1200;
+}
+
+// --- Hammer hardness zones (Rhodes Service Manual) ---
+function _getHammerHardness(midi) {
+  var key = midi - 20;
+  if (key <= 30)      return 0.15;   // Shore 30
+  else if (key <= 40) return 0.35;   // Shore 50
+  else if (key <= 50) return 0.55;   // Shore 70
+  else if (key <= 64) return 0.75;   // Shore 90
+  else                return 1.0;    // Maple wood tips
+}
+
+// --- Tonebar presence (Münster 2014, Service Manual) ---
+function _hasTonebar(midi) { return midi > 27; }
+
+// ========================================
 // PER-KEY VARIATION TABLE (Rhodes individuality)
 // ========================================
 // Real Rhodes pianos have per-key variation from manufacturing tolerances,
@@ -463,16 +500,12 @@ function _initKeyVariation() {
   if (_epKeyVariation) return;
   _epKeyVariation = new Array(128);
   for (var k = 0; k < 128; k++) {
-    // Simple deterministic hash per key (no Math.random — reproducible)
-    var seed = k * 2654435761; // Knuth multiplicative hash
+    var seed = k * 2654435761;
     var h = function(s) { s = ((s >>> 16) ^ s) * 0x45d9f3b; s = ((s >>> 16) ^ s) * 0x45d9f3b; return ((s >>> 16) ^ s) / 4294967296; };
     _epKeyVariation[k] = {
-      lverOffset:    (h(seed)     - 0.5) * 0.06,  // ±3% voicing alignment
-      lhorOffset:    (h(seed + 1) - 0.5) * 0.04,  // ±2% gap distance
-      // tonebarDetune removed: Münster 2014 proved tonebar vibrates at EXACTLY tine frequency
-      // (eigenfreq 100-3800 cents apart, yet perfectly enslaved). No beating in steady state.
-      decayScale:    0.92 + h(seed + 3) * 0.16,    // 0.92-1.08 decay variation
-      hammerHard:    0.90 + h(seed + 4) * 0.20,    // 0.90-1.10 hammer hardness
+      lverOffset:    (h(seed)     - 0.5) * 0.06,
+      lhorOffset:    (h(seed + 1) - 0.5) * 0.04,
+      decayScale:    0.92 + h(seed + 3) * 0.16,
     };
   }
 }
@@ -483,49 +516,48 @@ function _initKeyVariation() {
 
 function computeModeFrequencies(midiNote, velocity) {
   _initKeyVariation();
-  var kv = _epKeyVariation[midiNote] || _epKeyVariation[60]; // fallback to middle C
+  var kv = _epKeyVariation[midiNote] || _epKeyVariation[60];
 
   var f0 = 440 * Math.pow(2, (midiNote - 69) / 12);
   velocity = velocity || 0.5;
-  // Velocity scaling: harder hit excites upper modes disproportionately
-  // Hammer stiffens under compression → shorter contact → more HF energy
-  // Per-key hammer hardness variation affects this relationship
-  var velPow = Math.pow(velocity, 1.5) * kv.hammerHard;
-  var pitchScale = Math.pow(2, -(midiNote - 21) / 24); // higher pitch = faster decay
-  var decayVar = kv.decayScale; // per-key decay variation
 
-  // Beam mode decay: velocity-dependent (urinami-san 2026-03-22)
-  // Harder strike = shorter hammer contact = sharper excitation pulse
-  // = upper modes get MORE energy but also decay FASTER
-  // Soft strike = longer contact = gentler excitation = upper modes barely excited
-  var velDecayScale = 1.0 - velocity * 0.4; // hard hit: 0.6×, soft: 1.0×
+  // --- Module 2: Resonator (per-key physical data) ---
+  var Q = _interpolateQ(midiNote);
+  var tau = Q / (Math.PI * f0);
+  var decayVar = kv.decayScale;
+
+  // --- Module 1: Excitation (hammer zones) ---
+  var hammerHard = _getHammerHardness(midiNote);
+  var velPow = Math.pow(velocity, 1.5) * (0.5 + hammerHard * 0.5);
+
+  var velDecayScale = 1.0 - velocity * 0.4;
+
+  // --- Tonebar ---
+  var tonebarAmp = _hasTonebar(midiNote) ? 0.3 : 0.0;
+  var tonebarDecay = _hasTonebar(midiNote) ? tau * 1.6 : 0.001;
+
+  // Wood tips (keys 65-88): extra beam mode excitation
+  var isWoodTip = (midiNote - 20) >= 65;
+  var woodBoost = isWoodTip ? 1.5 : 1.0;
 
   return {
-    // === Physical basis (Münster 2014, Gabrielli 2020, Shear 2011) ===
-    //
-    // Tine = pure sine after 10-14ms transient (high-speed camera confirmed)
-    // Tonebar = vibrates at EXACTLY tine frequency (enslaved, Münster Table 1)
-    //   eigenfreq 757-3800 cents apart, yet perfectly synchronised
-    // Beam modes = 7.11× & 20.25× (Gabrielli measured) — transient only, 10-35ms
-    // ALL harmonics in output come from PU nonlinearity, not mechanical system
-    //
     frequencies: [
-      f0,                              // tine fundamental (pure sine)
-      f0,                              // tone bar (same freq — enslaved by tine, Münster 2014)
-      f0 * 7.11,                       // beam mode 2 — MEASURED (Gabrielli 2020)
-      f0 * 20.25,                      // beam mode 3 — MEASURED (Gabrielli 2020)
+      f0,
+      f0,
+      f0 * 7.11,
+      f0 * 20.25,
     ],
     amplitudes: [
-      1.0,                    // fundamental — always dominant
-      0.3,                    // tone bar — energy reservoir, extends sustain
-      0.08 + velPow * 0.15,   // beam mode 2 — velocity-dependent (0.08-0.23)
-      0.02 + velPow * 0.06,   // beam mode 3 — mostly on hard hits (0.02-0.08)
+      1.0,
+      tonebarAmp,
+      (0.08 + velPow * 0.15) * woodBoost,
+      (0.02 + velPow * 0.06) * woodBoost,
     ],
     decayTimes: [
-      2.5 * pitchScale * decayVar,                    // tine fundamental
-      4.0 * pitchScale * decayVar,                    // tone bar (longest — energy reservoir)
-      0.035 * pitchScale * decayVar * velDecayScale,   // beam mode 2 (10-14ms transient)
-      0.015 * pitchScale * decayVar * velDecayScale,   // beam mode 3 (dies fastest)
+      tau * decayVar,
+      tonebarDecay * decayVar,
+      0.035 * decayVar * velDecayScale,
+      0.015 * decayVar * velDecayScale,
     ],
   };
 }

@@ -911,15 +911,15 @@ function epianoInit(ctx, masterDest) {
   //   f_res = 1/(2π√(1.2 × 350e-12)) ≈ 7,800 Hz
   //   Q = (1/R) × √(L/C) ≈ (1/1440) × √(1.2/350e-12) ≈ 1.3
   // This is the real LPF that shapes the Rhodes output before the preamp.
-  // The gentle resonant peak at ~7.8kHz with Q≈1.3 adds a subtle presence lift
-  // before rolling off — contributing to the characteristic "bell" quality.
-  //
-  // Sources: Wheeler calc (L=150mH/unit), EP-Forum (R=1440Ω harp),
-  //          Shadetree Keys (wiring config), Horton & Moore (RLC methodology)
+  // With 20ft cable (650pF total) + Rhodes 25kΩ Volume pot loading:
+  //   f_res = 1/(2π√(1.2H × 650pF)) = 5,699Hz
+  //   Q = 0.6 (Volume pot at 25kΩ) to 1.1 (Volume pot full open at 50kΩ)
+  // Old: 7.8kHz/Q=1.3 (no cable, no volume pot load). Too bright, painful 2-5kHz.
+  // Sources: Wheeler calc, EP-Forum, cable capacitance 50pF/m standard
   var _epHarpLPF = ctx.createBiquadFilter();
   _epHarpLPF.type = 'lowpass';
-  _epHarpLPF.frequency.setValueAtTime(7800, 0);
-  _epHarpLPF.Q.setValueAtTime(1.3, 0);
+  _epHarpLPF.frequency.setValueAtTime(5700, 0);
+  _epHarpLPF.Q.setValueAtTime(0.8, 0); // Volume pot ~halfway between full(1.1) and half(0.6)
 
   // --- 4b. Dry bus ---
   // Per-voice V2B outputs sum here → through harp LPF → V4B.
@@ -1092,54 +1092,92 @@ function epianoNoteOn(ctx, midi, velocity, masterDest) {
   var modes = computeModeFrequencies(midi, velocity);
   var nodes = []; // track all nodes for cleanup
 
-  // --- 1. Modal synthesis: OscillatorNodes ---
-  // Hammer strike energy: physically limited by key travel distance.
-  // Velocity controls hammer speed, but tine displacement has a ceiling.
-  // Use sqrt curve to model this saturation (energy ∝ v², displacement ∝ √energy)
-  var tineAmplitude = Math.sqrt(velocity) * 0.3; // saturates naturally: 0.3 at v=1.0
+  // --- 1. Modal synthesis: hybrid (attack buffer + live sustain) ---
+  // The tine is ONE physical body. Attack transient (beam modes) must be
+  // phase-coherent → AudioBuffer. Sustain (fundamental) must be live → OscillatorNode.
+  //
+  // Attack buffer: all modes at phase 0, with decay envelopes.
+  //   Beam modes decay in ~35ms, so buffer only needs ~100ms.
+  //   Includes fundamental component that crossfades out as OscillatorNode takes over.
+  // Sustain oscillator: pure fundamental, starts at the same time.
+  //   Fades in over ~50ms to replace the fundamental in the attack buffer.
+  //
+  // Both sum at voiceMixer → PU WaveShaper sees ONE waveform at any instant.
+  // No separate beam mode oscillators → no beating with WS harmonics.
+
+  var tineAmplitude = Math.sqrt(velocity) * 0.3;
   var voiceMixer = ctx.createGain();
   voiceMixer.gain.setValueAtTime(tineAmplitude, now);
   nodes.push(voiceMixer);
 
   // --- PU electromagnetic damping (Lenz's law) ---
-  // PU magnetic field damps tine vibration: F_damp = -B²l²v/R.
-  // Effect: two-stage envelope:
-  //   Phase 1 (0-50ms): rapid initial decay from electromagnetic braking
-  //     Stronger at forte (larger tine velocity → more braking)
-  //     Time constant: tau_em ≈ 20-40ms (PU gap and velocity dependent)
-  //   Phase 2 (50ms+): normal Q-based mechanical decay
-  // This is the natural "compressor" built into every passive PU.
-  // Closer PU gap → stronger damping → more compression.
-  var puDampStrength = velocity * (1.1 - EpState.pickupDistance); // forte+close PU = max damping
+  var puDampStrength = velocity * (1.1 - EpState.pickupDistance);
   puDampStrength = Math.max(0, Math.min(1, puDampStrength));
-  // How much the initial amplitude drops during electromagnetic braking phase
-  var emDampRatio = 1.0 - puDampStrength * 0.4; // forte: drops to 0.6, piano: stays at ~1.0
-  var emDampTime = 0.025; // 25ms electromagnetic braking phase
+  var emDampRatio = 1.0 - puDampStrength * 0.4;
+  var emDampTime = 0.025;
 
-  var oscillators = [];
+  // --- Attack buffer (beam modes + fundamental onset, ~150ms) ---
+  var sampleRate = ctx.sampleRate;
+  var attackDur = 0.15; // 150ms covers beam mode decay (35ms) + settling
+  var attackLen = Math.ceil(attackDur * sampleRate);
+  var attackBuffer = ctx.createBuffer(1, attackLen, sampleRate);
+  var atkData = attackBuffer.getChannelData(0);
+  var crossfadeTime = 0.05; // 50ms crossfade from buffer fundamental → oscillator
+  var crossfadeSamples = Math.ceil(crossfadeTime * sampleRate);
+
   for (var m = 0; m < modes.frequencies.length; m++) {
     var freq = modes.frequencies[m];
-    if (freq > ctx.sampleRate / 2) continue; // skip above Nyquist
-
-    var osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, now);
-
-    var modeGain = ctx.createGain();
+    if (freq > sampleRate / 2) continue;
     var amp = modes.amplitudes[m];
-    // Two-stage envelope: electromagnetic braking → mechanical decay
-    // Phase 1: rapid drop (PU braking). Forte loses up to 40% in first 25ms.
-    modeGain.gain.setValueAtTime(amp, now);
-    modeGain.gain.setTargetAtTime(amp * emDampRatio, now, emDampTime);
-    // Phase 2: normal Q-based decay from the braked level
-    modeGain.gain.setTargetAtTime(0, now + emDampTime * 3, modes.decayTimes[m]);
+    if (Math.abs(amp) < 0.001) continue;
+    var tau_m = modes.decayTimes[m];
+    var omega = 2 * Math.PI * freq / sampleRate;
+    var isBeamMode = (m >= 2); // modes 0,1 = fundamental/tonebar, 2,3 = beam modes
+    var isFundamental = (m <= 1);
 
-    osc.connect(modeGain);
-    modeGain.connect(voiceMixer);
-    osc.start(now);
-    oscillators.push(osc);
-    nodes.push(osc, modeGain);
+    for (var i = 0; i < attackLen; i++) {
+      var t = i / sampleRate;
+      // Decay envelope (EM braking + mechanical)
+      var env;
+      if (t < emDampTime * 3) {
+        env = amp * (1.0 + (emDampRatio - 1.0) * (1 - Math.exp(-t / emDampTime)));
+      } else {
+        env = amp * emDampRatio * Math.exp(-(t - emDampTime * 3) / tau_m);
+      }
+      // Fundamental/tonebar: fade out in buffer as oscillator takes over
+      if (isFundamental && i > crossfadeSamples) {
+        var fadeFrac = (i - crossfadeSamples) / (attackLen - crossfadeSamples);
+        env *= (1.0 - fadeFrac); // linear fadeout
+      }
+      atkData[i] += env * Math.sin(omega * i);
+    }
   }
+
+  var attackSource = ctx.createBufferSource();
+  attackSource.buffer = attackBuffer;
+  attackSource.connect(voiceMixer);
+  attackSource.start(now);
+  nodes.push(attackSource);
+
+  // --- Sustain oscillator (fundamental only, live) ---
+  var f0 = modes.frequencies[0];
+  var sustainAmp = modes.amplitudes[0] * emDampRatio;
+  var sustainOsc = ctx.createOscillator();
+  sustainOsc.type = 'sine';
+  sustainOsc.frequency.setValueAtTime(f0, now);
+
+  var sustainGain = ctx.createGain();
+  // Fade in: silent during attack buffer's fundamental, then take over
+  sustainGain.gain.setValueAtTime(0, now);
+  sustainGain.gain.linearRampToValueAtTime(sustainAmp, now + attackDur);
+  // Then normal Q-based decay
+  sustainGain.gain.setTargetAtTime(0, now + attackDur, modes.decayTimes[0]);
+
+  sustainOsc.connect(sustainGain);
+  sustainGain.connect(voiceMixer);
+  sustainOsc.start(now);
+  var oscillators = [sustainOsc];
+  nodes.push(sustainOsc, sustainGain);
 
   // --- 2. Pickup nonlinearity ---
   // Physics: tine vibrates → passes through PU magnetic field → EMF = g(q) × dq/dt
@@ -1349,14 +1387,30 @@ function epianoNoteOn(ctx, midi, velocity, masterDest) {
     nodes.push(preamp2Makeup);
   }
 
-  // --- 6. Route to shared AB763 chain or direct output ---
-  // Cabinet presets: per-voice ends at V2B → shared dry bus → V4B → poweramp → cabinet
-  // DI preset: per-voice output goes directly to masterDest (no shared chain)
-  // Poweramp moved from per-voice to shared (real amp: all notes through ONE power stage)
+  // --- 6. Route to shared chain or direct output ---
+  // All presets go through harp LPF first (it's part of the INSTRUMENT, not the amp).
+  // Harp wiring (L=1.2H) + cable capacitance (650pF) + volume pot loading (25kΩ)
+  // → RLC resonance at 5.7kHz, Q≈0.8. This applies to ALL outputs including DI.
+  //
+  // Cabinet presets: harp LPF → dry bus → V4B → poweramp → cabinet
+  // DI preset: harp LPF → direct output
+  if (_epHarpLPF) {
+    lastNode.connect(_epHarpLPF);
+  }
   if (preset.useCabinet && _epDryBus) {
+    // Amp chain: harpLPF already connects to V4B via dryBus (in epianoInit)
+    // Per-voice connects to dryBus through the shared harpLPF
     lastNode.connect(_epDryBus);
   } else {
-    lastNode.connect(masterDest);
+    // DI: per-voice → harpLPF → masterDest
+    // Need a separate path since harpLPF is connected to V4B in shared chain
+    var diHarpLPF = ctx.createBiquadFilter();
+    diHarpLPF.type = 'lowpass';
+    diHarpLPF.frequency.setValueAtTime(5700, now);
+    diHarpLPF.Q.setValueAtTime(0.8, now);
+    lastNode.connect(diHarpLPF);
+    diHarpLPF.connect(masterDest);
+    nodes.push(diHarpLPF);
   }
 
   // --- Voice envelope object (matching existing interface) ---

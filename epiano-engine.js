@@ -472,18 +472,46 @@ function _interpolateQ(midi) {
   return 1200;
 }
 
-// --- Hammer hardness zones (Rhodes Service Manual) ---
-function _getHammerHardness(midi) {
+// --- Hammer contact time (Rhodes Service Manual + Hertz contact model) ---
+// Contact time determines excitation spectrum: fc = 1/(π×Tc)
+// Shorter contact → higher fc → more beam mode excitation
+// Sources: Chaigne & Askenfelt 1994, Rhodes Service Manual (Shore A values)
+// Returns { Tc: contact time, relMass: relative mass (Shore 70 = 1.0) }
+function _getHammerParams(midi, velocity) {
   var key = midi - 20;
-  if (key <= 30)      return 0.15;   // Shore 30
-  else if (key <= 40) return 0.35;   // Shore 50
-  else if (key <= 50) return 0.55;   // Shore 70
-  else if (key <= 64) return 0.75;   // Shore 90
-  else                return 1.0;    // Maple wood tips
+  // Contact time from hammer tip material (at moderate velocity)
+  // Mass: height × density (same diameter). Shore 70 = reference.
+  // Wood tip: maple core (ρ≈0.7) in neoprene tube. Lighter than full neoprene.
+  var Tc0, relMass;
+  if (key <= 30)      { Tc0 = 0.0035; relMass = 0.67; } // Shore 30: 6.35mm × 1.3
+  else if (key <= 40) { Tc0 = 0.0025; relMass = 0.83; } // Shore 50: 7.94mm × 1.3
+  else if (key <= 50) { Tc0 = 0.0017; relMass = 1.00; } // Shore 70: 9.53mm × 1.3 (ref)
+  else if (key <= 64) { Tc0 = 0.0012; relMass = 1.17; } // Shore 90: 11.11mm × 1.3
+  else                { Tc0 = 0.00015; relMass = 0.67; } // Wood: 11.11mm × 0.75
+  // Velocity shortens contact: Hertz model Tc ∝ v^(-1/(p+1)), p≈2.5 → v^(-0.286)
+  var Tc = Tc0 * Math.pow(Math.max(velocity, 0.1), -0.286);
+  return { Tc: Tc, relMass: relMass };
 }
 
-// --- Tonebar presence (Münster 2014, Service Manual) ---
+// --- Tonebar presence and phase (Münster 2014, Service Manual) ---
+// Münster Table 1: tonebars alternate in/anti phase depending on register.
+// Anti-phase: tonebar cancels part of fundamental → thinner tone.
+// In-phase: tonebar reinforces fundamental → fuller tone.
+// Lowest 7 keys (midi ≤ 27): no tonebar at all.
 function _hasTonebar(midi) { return midi > 27; }
+function _tonebarPhase(midi) {
+  // Münster 2014 measured 10 notes. Pattern: anti/anti/in/in/in/anti/anti/anti/in
+  // Maps roughly to pitch classes, but actually depends on bar length vs tine.
+  // Simplified: use chromatic note within octave (Eb=anti, F=in, G=in, etc.)
+  // Low end (below ~F3, midi<53): predominantly anti-phase
+  // Mid range (F3-B4, midi 53-71): predominantly in-phase
+  // Upper mid (C5-A5, midi 72-81): anti-phase
+  // High (B5+, midi 82+): in-phase
+  if (midi <= 52) return -1;  // anti (Münster: Eb,Bb = anti)
+  if (midi <= 71) return 1;   // in (Münster: F,C,G = in)
+  if (midi <= 81) return -1;  // anti (Münster: D,A,E = anti)
+  return 1;                   // in (Münster: B = in)
+}
 
 // ========================================
 // PER-KEY VARIATION TABLE (Rhodes individuality)
@@ -526,32 +554,62 @@ function computeModeFrequencies(midiNote, velocity) {
   var tau = Q / (Math.PI * f0);
   var decayVar = kv.decayScale;
 
-  // --- Module 1: Excitation (hammer zones) ---
-  var hammerHard = _getHammerHardness(midiNote);
-  var velPow = Math.pow(velocity, 1.5) * (0.5 + hammerHard * 0.5);
+  // --- Module 1: Excitation (hammer spectrum filter) ---
+  // Hammer contact time → cutoff frequency → spectral filter on each mode.
+  // Hammer mass → tine excitation energy (½mv²).
+  // No arbitrary "woodBoost" or "velPow" — physics determines everything.
+  // Ref: Chaigne & Askenfelt 1994, Hertz contact model
+  var hammer = _getHammerParams(midiNote, velocity);
+  var fc = 1 / (Math.PI * hammer.Tc); // hammer spectrum cutoff
+  // Energy scaling: tine amplitude ∝ sqrt(½mv²) = sqrt(m) × v
+  // Already in tineAmplitude via sqrt(velocity), so apply mass here.
+  var massScale = Math.sqrt(hammer.relMass); // Wood(0.82) vs Shore90(1.08)
 
   var velDecayScale = 1.0 - velocity * 0.4;
 
-  // --- Tonebar ---
-  var tonebarAmp = _hasTonebar(midiNote) ? 0.3 : 0.0;
-  var tonebarDecay = _hasTonebar(midiNote) ? tau * 1.6 : 0.001;
+  // --- Tonebar (Münster 2014: phase matters) ---
+  var hasTB = _hasTonebar(midiNote);
+  var tbPhase = hasTB ? _tonebarPhase(midiNote) : 0;
+  var tonebarAmp = hasTB ? 0.3 * tbPhase : 0.0;
+  // Tonebar is mechanically slaved to tine (Münster 2014: identical vibration frequency).
+  // Same coupled system → same decay rate. Old 1.6× had no physical basis and caused
+  // modulation artifacts (tonebar outlasting fundamental → changing harmonic balance).
+  var tonebarDecay = hasTB ? tau : 0.001;
 
-  // Wood tips (keys 65-88): extra beam mode excitation
-  var isWoodTip = (midiNote - 20) >= 65;
-  var woodBoost = isWoodTip ? 1.5 : 1.0;
+  // --- Beam modes ---
+  var beam1Freq = f0 * 7.11;
+  var beam2Freq = f0 * 20.25;
+
+  // Hammer spectrum filter: amplitude ∝ 1/(1 + (f/fc)²)
+  // This naturally handles all register/velocity combinations:
+  //   Shore 30 + low note → fc=91Hz, beam at 391Hz → 0.051 (barely excited)
+  //   Wood tip + high note → fc=2122Hz, beam at 7444Hz → 0.075 (excited)
+  var fundFilter = 1 / (1 + Math.pow(f0 / fc, 2));
+  var beam1Filter = 1 / (1 + Math.pow(beam1Freq / fc, 2));
+  var beam2Filter = 1 / (1 + Math.pow(beam2Freq / fc, 2));
+
+  // Scale beam modes relative to fundamental (fundamental normalized to 1.0)
+  // beam_relative = beamFilter / fundFilter × peak_beam_ratio
+  // peak_beam_ratio: maximum beam/fundamental ratio when fully excited.
+  // Gabrielli 2020: beam modes are clearly visible in laser vibrometry.
+  // Shear 2011: PU output has 2nd harmonic at -25dB (5.6%) — but that's PU-generated,
+  // not from beam modes. Beam modes are separate mechanical vibrations.
+  // Higher ratio → more bell quality. Tuned by ear (urinami-san).
+  var beam1Rel = (beam1Filter / Math.max(fundFilter, 0.01)) * 0.8;
+  var beam2Rel = (beam2Filter / Math.max(fundFilter, 0.01)) * 0.4;
 
   return {
     frequencies: [
       f0,
       f0,
-      f0 * 7.11,
-      f0 * 20.25,
+      beam1Freq,
+      beam2Freq,
     ],
     amplitudes: [
-      1.0,
-      tonebarAmp,
-      (0.08 + velPow * 0.15) * woodBoost,
-      (0.02 + velPow * 0.06) * woodBoost,
+      1.0 * massScale,
+      tonebarAmp * massScale,
+      beam1Rel * massScale,
+      beam2Rel * massScale,
     ],
     decayTimes: [
       tau * decayVar,
@@ -1043,6 +1101,21 @@ function epianoNoteOn(ctx, midi, velocity, masterDest) {
   voiceMixer.gain.setValueAtTime(tineAmplitude, now);
   nodes.push(voiceMixer);
 
+  // --- PU electromagnetic damping (Lenz's law) ---
+  // PU magnetic field damps tine vibration: F_damp = -B²l²v/R.
+  // Effect: two-stage envelope:
+  //   Phase 1 (0-50ms): rapid initial decay from electromagnetic braking
+  //     Stronger at forte (larger tine velocity → more braking)
+  //     Time constant: tau_em ≈ 20-40ms (PU gap and velocity dependent)
+  //   Phase 2 (50ms+): normal Q-based mechanical decay
+  // This is the natural "compressor" built into every passive PU.
+  // Closer PU gap → stronger damping → more compression.
+  var puDampStrength = velocity * (1.1 - EpState.pickupDistance); // forte+close PU = max damping
+  puDampStrength = Math.max(0, Math.min(1, puDampStrength));
+  // How much the initial amplitude drops during electromagnetic braking phase
+  var emDampRatio = 1.0 - puDampStrength * 0.4; // forte: drops to 0.6, piano: stays at ~1.0
+  var emDampTime = 0.025; // 25ms electromagnetic braking phase
+
   var oscillators = [];
   for (var m = 0; m < modes.frequencies.length; m++) {
     var freq = modes.frequencies[m];
@@ -1053,11 +1126,13 @@ function epianoNoteOn(ctx, midi, velocity, masterDest) {
     osc.frequency.setValueAtTime(freq, now);
 
     var modeGain = ctx.createGain();
-    // Amplitudes determined by physics (computeModeFrequencies), not user knobs.
     var amp = modes.amplitudes[m];
+    // Two-stage envelope: electromagnetic braking → mechanical decay
+    // Phase 1: rapid drop (PU braking). Forte loses up to 40% in first 25ms.
     modeGain.gain.setValueAtTime(amp, now);
-    // Exponential decay
-    modeGain.gain.setTargetAtTime(0, now, modes.decayTimes[m]);
+    modeGain.gain.setTargetAtTime(amp * emDampRatio, now, emDampTime);
+    // Phase 2: normal Q-based decay from the braked level
+    modeGain.gain.setTargetAtTime(0, now + emDampTime * 3, modes.decayTimes[m]);
 
     osc.connect(modeGain);
     modeGain.connect(voiceMixer);
@@ -1117,6 +1192,18 @@ function epianoNoteOn(ctx, midi, velocity, masterDest) {
     lastNode.connect(couplingHPF);
     lastNode = couplingHPF;
     nodes.push(couplingHPF);
+  }
+
+  // --- 3d. Input jack attenuator (AB763 Hi input) ---
+  // AB763 Normal channel Hi input: two 68kΩ resistors in voltage divider.
+  // Signal at grid = input × 68k/(68k+68k) = ×0.5 = -6dB.
+  // Lo input would be ~-20dB (additional 68kΩ to ground). Rhodes uses Hi.
+  if (preset.preampType) {
+    var inputAtten = ctx.createGain();
+    inputAtten.gain.setValueAtTime(0.5, now); // -6dB: AB763 Hi input divider
+    lastNode.connect(inputAtten);
+    lastNode = inputAtten;
+    nodes.push(inputAtten);
   }
 
   // --- 4. Preamp ---
@@ -1224,16 +1311,25 @@ function epianoNoteOn(ctx, midi, velocity, masterDest) {
     lastNode.connect(_epSendHPF);
   }
 
+  // --- 5a. Volume pot (AB763: between tonestack and V2B) ---
+  // AB763: Volume pot is an audio-taper potentiometer.
+  // At "5" (noon): approximately -10dB (0.32). At "10" (max): 0dB (1.0).
+  // Rhodes through Twin: typically Volume at 4-6 for clean tone.
+  // This is the PRIMARY gain control that was missing from our chain.
+  if (preset.useTonestack) {
+    var volumePot = ctx.createGain();
+    volumePot.gain.setValueAtTime(0.5, now); // Volume at "6-7" = -6dB (typical Rhodes clean setting)
+    lastNode.connect(volumePot);
+    lastNode = volumePot;
+    nodes.push(volumePot);
+  }
+
   // --- 5b. 2nd Preamp Stage (V2B) — recovery amp after tonestack ---
-  // AB763: V2B recovers the massive tonestack loss (×57 in real circuit).
-  // This is NOT a user-adjustable "drive" — it's a fixed circuit-determined recovery gain.
-  // Real V2B: 47mV in → 2.7V out. Our ×8 drive pushes post-loss signal to ~22% WS range.
-  // The tonestack-shaped harmonics get another round of tube nonlinearity:
-  //   2nd-of-2nd = 4th harmonic, 2nd×3rd = 5th, beam mode 7.11× products
-  //   → intermodulation density and "shimmer" that 1 stage can't produce
+  // AB763: V2B recovers the tonestack + volume pot loss (×57 in real circuit).
+  // Real V2B: 47mV in → 2.7V out.
   if (preset.preampType === '12AX7' && _epPreampLUT && EpState.use2ndPreamp) {
     var preamp2InputGain = ctx.createGain();
-    preamp2InputGain.gain.setValueAtTime(5.0, now); // fixed recovery: ×5 into WS → ~15% operating point
+    preamp2InputGain.gain.setValueAtTime(5.0, now); // fixed recovery
     lastNode.connect(preamp2InputGain);
     lastNode = preamp2InputGain;
     nodes.push(preamp2InputGain);

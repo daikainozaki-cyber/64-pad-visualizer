@@ -326,6 +326,18 @@ function puGapMm(midi) {
   return 1.588;
 }
 
+// --- Escapement distance (SM Figure 4-2) ---
+// Gap between hammer tip and tine at rest. Controls maximum tine displacement
+// and effective dynamic range per register.
+// Bass: 6.35-9.53mm (avg 7.94), Treble: 0.79-2.38mm (avg 1.59).
+// 8× variation across keyboard.
+function escapementMm(midi) {
+  var key = midi - 20;
+  if (key < 1) key = 1; if (key > 88) key = 88;
+  var t = (key - 1) / 87; // 0=bass, 1=treble
+  return 7.94 * (1 - t) + 1.59 * t;
+}
+
 // --- Hertz contact stiffness per hammer zone ---
 // K_H = (4/3) × E* × √R_tip
 // E* ≈ E_neoprene / (1-ν²) (steel is infinitely stiff by comparison)
@@ -573,8 +585,16 @@ function computeTineAmplitude(midi, velocity) {
   var xi = Math.min(xs_m / L_m, 0.95);
   var phi = modeExcitation(xi, 0);
 
-  // Raw amplitude: √(m / k) × √(vel) × φ — different for every key
-  var A_raw = Math.sqrt(m_hammer / k_eff) * Math.sqrt(velocity) * phi;
+  // --- Escapement dynamic range scaling (SM Fig 4-2) ---
+  // Smaller escapement (treble) = less room for hammer acceleration = less velocity sensitivity.
+  // Bass (7.94mm): full velocity range. Treble (1.59mm): compressed dynamic range.
+  // Physics: hammer travel distance limits kinetic energy transfer.
+  var escMm = escapementMm(midi);
+  var escDynamic = escMm / 7.94; // 1.0 at bass, 0.2 at treble
+  var velScaled = Math.pow(velocity, 1.0 / (0.5 + 0.5 * escDynamic));
+
+  // Raw amplitude: √(m / k) × √(velScaled) × φ — different for every key
+  var A_raw = Math.sqrt(m_hammer / k_eff) * Math.sqrt(velScaled) * phi;
 
   // Compute A4 reference (once) for LUT coordinate normalization
   if (TINE_A4_RAW === 0) {
@@ -591,11 +611,15 @@ function computeTineAmplitude(midi, velocity) {
 
   // Map to PU physical coordinates (25mm normalization):
   // A4 forte tip displacement ≈ 1.5mm (Falaize 2017 Fig 10a) → 1.5/25 = 0.06.
-  // Old value 0.3 = 7.5mm — drove tine deep into PU nonlinear region (H3 > H1).
-  // With 0.06, the tine stays in the mildly nonlinear region of g'(q),
-  // producing H2 ≈ -15dB (asymmetric PU field) and H3 < -35dB (Gabrielli 2020).
-  // PU_EMF_SCALE is recalibrated to maintain 74mV RMS output.
-  return (A_raw / TINE_A4_RAW) * 0.06;
+  var result = (A_raw / TINE_A4_RAW) * 0.06;
+
+  // --- Escapement hard clamp (SM Fig 4-2) ---
+  // Tine cannot displace further than the escapement gap.
+  // Normalize to PU coordinates (same 25mm scale as tineAmp).
+  var escNorm = escMm / 25.0;
+  if (result > escNorm) result = escNorm;
+
+  return result;
 }
 
 // --- Per-key variation (deterministic pseudo-random) ---

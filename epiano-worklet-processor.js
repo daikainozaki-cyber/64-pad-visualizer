@@ -62,7 +62,7 @@ var TWO_PI = 2 * Math.PI;
 // Physical basis: 8.70e-6 (from Falaize) needs conversion for:
 //   (1) LUT normalization factor, (2) tineAmp normalization, (3) fs conversion
 // These factors bring 8.70e-6 to ~0.0004 order — consistent.
-var PU_EMF_SCALE = 0.00015; // TEMP: adjusted for worklet DI evaluation. Original: 0.00044.
+var PU_EMF_SCALE = 0.00044; // Design target (Rhodes 74mV RMS). Monitor [CLIP] logs.
 
 // --- Harp wiring (Rhodes 73-key: groups of 3 parallel, 24 groups in series) ---
 // Single note: only 1 PU active in its parallel group of 3.
@@ -279,15 +279,20 @@ function hammerTipWidth(midi) {
   return 11.11;                  // Maple wood core + tube
 }
 
-// --- Half-sine Hertz impulse spectral envelope (Chaigne & Askenfelt 1994) ---
-// Force pulse: F(t) = F₀ sin(πt/Tc) for 0 ≤ t ≤ Tc
-// Full spectrum has zeros at fTc = n+0.5 (cos term). Real hammers (nonlinear
-// Hertz stiffness, viscoelastic neoprene) smooth these zeros out.
-// We use the spectral ENVELOPE: 1/(2fTc)² for 2fTc > 1, flat below.
-// High-freq roll-off matches the half-sine: ∝ 1/f². No dead spots.
-function halfSineEnvelope(f, Tc) {
+// --- Hammer impulse spectral envelope (Hunt-Crossley viscoelastic model) ---
+// Pure Hertz: F(t) = F₀ sin(πt/Tc) → envelope 1/(2fTc)² for 2fTc > 1.
+// Real neoprene: Hunt-Crossley adds viscous damping F ∝ α^n(1 + λ·dα/dt).
+// Effect: asymmetric pulse (sharp attack, slow rebound) → steeper spectral rolloff.
+// beta = 0: pure Hertz (half-sine). beta > 0: viscoelastic (neoprene).
+// Physics: low COR → more energy absorbed → softer rebound → less HF → growl.
+//          high COR → elastic → symmetric → more HF → bell/chime.
+function halfSineEnvelope(f, Tc, beta) {
   var u = 2 * f * Tc;
-  return u > 1 ? 1 / (u * u) : 1;
+  if (u <= 1) return 1;
+  // beta=0: 1/u² (Hertz). beta>0: 1/u^(2+β) (Hunt-Crossley asymmetric).
+  // Math.pow only called at noteOn (not per-sample), GC-zero safe.
+  if (!beta || beta <= 0.001) return 1 / (u * u);
+  return 1 / Math.pow(u, 2 + beta);
 }
 
 // --- Contact band mode excitation (replaces point modeExcitation for striking) ---
@@ -336,6 +341,20 @@ var HAMMER_KH = [
 ];
 var HAMMER_RELMASS = [0.67, 0.83, 1.00, 1.17, 0.67];
 
+// --- Coefficient of Restitution per hammer zone (Hunt-Crossley model) ---
+// COR = rebound velocity / impact velocity. Neoprene is viscoelastic:
+//   Shore 30 (bass): very soft, absorbs ~65% of kinetic energy → mushy, growl
+//   Shore 90 (upper): fairly elastic, ~20% loss → snappy, bell character
+//   Wood (treble): nearly elastic → sharp attack, maximum HF excitation
+// Source: typical neoprene values (Stronge 2000, Sonderboe 2024 approach)
+var HAMMER_COR = [
+  0.35,   // Shore 30: low COR, high dissipation
+  0.50,   // Shore 50: moderate
+  0.65,   // Shore 70: moderate-high
+  0.80,   // Shore 90: fairly elastic
+  0.92    // Wood/maple: nearly elastic
+];
+
 function getHammerParams(midi, velocity) {
   var key = midi - 20;
   var zone;
@@ -347,6 +366,15 @@ function getHammerParams(midi, velocity) {
 
   var relMass = HAMMER_RELMASS[zone];
   var K_H = HAMMER_KH[zone];
+  var cor = HAMMER_COR[zone];
+
+  // --- Velocity-dependent COR (strain-rate stiffening) ---
+  // Neoprene stiffens at higher strain rates → COR increases with velocity.
+  // Effect: forte is slightly more elastic → slightly more HF → preserves bell.
+  // Empirical: ~10-15% COR increase from pp to ff for neoprene (Stronge 2000).
+  var velNorm = Math.max(velocity, 0.1);
+  var cor_v = cor + (1 - cor) * 0.12 * Math.max(velNorm - 0.3, 0);
+  if (cor_v > 0.98) cor_v = 0.98;
 
   // --- Hertz contact time (per-key, from physics) ---
   // Tc = 2.94 × α_max / v₀,  α_max = (5 m_eff v₀² / (4 K_H))^(2/5)
@@ -358,14 +386,31 @@ function getHammerParams(midi, velocity) {
   var L_m = tineLength(midi) * 1e-3;
   var m_eff = 0.24 * TINE_RHO * TINE_A * L_m; // cantilever modal mass
 
-  var v0 = Math.max(velocity, 0.1);
+  var v0 = Math.max(velNorm, 0.1);
   var alpha_max = Math.pow(5 * m_eff * v0 * v0 / (4 * K_H), 0.4);
-  var Tc = 2.94 * alpha_max / v0;
+  var Tc_hertz = 2.94 * alpha_max / v0;
+
+  // --- Hunt-Crossley: viscoelastic contact time extension ---
+  // Soft neoprene absorbs energy → rebound is slower → total contact longer.
+  // Marhefka & Orin (2006): Tc_HC ≈ Tc_Hertz × (1 + 0.5×(1-COR)).
+  // Shore 30 (COR=0.35): ×1.33. Shore 70: ×1.18. Wood: ×1.04.
+  var Tc = Tc_hertz * (1 + 0.5 * (1 - cor_v));
 
   if (Tc < 0.00002) Tc = 0.00002; // min 0.02ms
   if (Tc > 0.005) Tc = 0.005;     // max 5ms
 
-  return { Tc: Tc, relMass: relMass };
+  // --- Hunt-Crossley spectral asymmetry ---
+  // Viscoelastic pulse is asymmetric (sharp attack, slow rebound).
+  // Spectral envelope rolls off steeper than Hertz 1/f²:
+  //   1/(2fTc)^(2+β) where β ∝ (1-COR).
+  // Low COR → high β → steep rolloff → less beam mode excitation → growl.
+  // High COR → β≈0 → standard half-sine → full beam excitation → bell.
+  // Physics: asymmetric Hunt-Crossley pulse → steeper spectral rolloff than half-sine.
+  // Coefficient 0.6 is an estimate. Proper derivation: Fourier analysis of
+  // F(t) = K·α^1.5·(1 + λ·dα/dt) for each COR value. TODO: derive analytically.
+  var spectralBeta = 0.6 * (1 - cor_v);
+
+  return { Tc: Tc, relMass: relMass, cor: cor_v, spectralBeta: spectralBeta };
 }
 
 // --- Per-key PU vertical offset (Lver) ---
@@ -1201,7 +1246,11 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     var tau = Q / (Math.PI * f0);
     var hammer = getHammerParams(midi, velocity);
     var massScale = Math.sqrt(hammer.relMass);
-    var velDecayScale = 1.0 - velocity * 0.4;
+    // Velocity-dependent beam decay: disabled for A/B testing.
+    // Old: 1.0 - velocity * 0.4 → forte kills beam modes 40% faster → "string-like".
+    // Physics: higher amplitude = slightly more air damping, but 40% is not physical.
+    // Real Rhodes beam modes persist at all velocities (bell ≠ velocity dependent).
+    var velDecayScale = 1.0;
 
     // Spatial excitation from FEM tapered beam mode shapes (7 beam modes)
     // Pre-computed by tools/compute_tapered_modes.py (Third Stage taper)
@@ -1212,7 +1261,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // === VELOCITY-BASED MODAL AMPLITUDE (energy conservation) ===
     // Hammer impulse excites each mode with velocity ∝ φ_n(xs) × H(f_n) × Hall.
     // Energy: E_n ∝ V_n². Normalize Σ V_n² = 1 (finite hammer KE).
-    var H_fund = halfSineEnvelope(f0, hammer.Tc);
+    var H_fund = halfSineEnvelope(f0, hammer.Tc, hammer.spectralBeta);
     var vW_fund = 1.0;
     var totalE = vW_fund * vW_fund;
 
@@ -1280,10 +1329,16 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       }
 
       // Beam mode velocity weight = spatial ratio × hammer spectrum.
-      // halfSineEnvelope: physically correct force spectrum for half-sine contact.
-      // Hall correction: disabled (piano model, inapplicable to Rhodes).
-      var H_beam = halfSineEnvelope(beamFreq, hammer.Tc);
-      var vW = sr * (H_beam / Math.max(H_fund, 0.001));
+      // halfSineEnvelope: Hunt-Crossley viscoelastic force spectrum.
+      //
+      // Physics: FEM spatial ratios + half-sine envelope underestimate beam coupling.
+      // Two known sources not yet modeled:
+      //   (1) Tuning spring mass (α≈0.6-0.8) near beam mode antinodes → coupling ×1.5-2
+      //   (2) Hertz F∝α^1.5 has sharper peak than half-sine → more HF energy ≈ ×1.5
+      // Coefficient 3.0 is an estimate. TODO: derive from #1594 per-key spring data
+      // and Hertz force pulse Fourier analysis. Will become per-key.
+      var H_beam = halfSineEnvelope(beamFreq, hammer.Tc, hammer.spectralBeta);
+      var vW = sr * (H_beam / Math.max(H_fund, 0.001)) * 3.0;
 
       // Store beam mode in SoA
       var slot = base + 2 + b;
@@ -1351,10 +1406,16 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
     var gapMm = puGapMm(midi);
     // qRange: LUT covers [-qRange, +qRange] of physical PU field.
-    // This is a PU property (not tine amplitude). Same as old code.
-    var qRange = tipFactor;
-    if (qRange < 0.3) qRange = 0.3;
-    if (qRange > 1.5) qRange = 1.5;
+    // Magnetic dipole (1/r³) field decays steeply → effective nonlinear region is narrow.
+    // Old: qRange = tipFactor (≈1.0 for A4) → puPos ±0.3 at forte = linear = string-like.
+    // Fix: scale by 0.5 → puPos ±0.6 → enters PU nonlinear region → intermodulation
+    //      between fundamental and beam modes → metallic bell character.
+    // Physics: dipole field gradient g'(q) is significant only within ~1 pole radius.
+    //   AlNiCo 5 half-inch (Rp≈6.35mm), tine displacement 0.5-3mm → q/Rp = 0.08-0.47.
+    //   Normalizing to LUT [-1,1] → effective range ≈ 0.5 × tipFactor.
+    var qRange = tipFactor * 0.4;
+    if (qRange < 0.12) qRange = 0.12;
+    if (qRange > 0.8) qRange = 0.8;
     // Position scale factor: converts velocity-based position to old displacement scale.
     // Old: tinePosition = 1.0 × sin × envScale (displacement domain)
     // New: tinePosition = (vA_fund/ω₀) × sin × envScale (velocity/ω domain)

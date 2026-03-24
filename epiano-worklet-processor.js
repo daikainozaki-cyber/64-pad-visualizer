@@ -334,11 +334,13 @@ function getHammerParams(midi, velocity) {
   //   C4 (262Hz): 2×262×0.8ms=0.42 < 1 ✓ (beam1 ~15-20%)
   // Upper (Shore 90): shortened from 1.2ms to 0.3ms
   // Wood: 0.15ms unchanged (already correct)
-  if (key <= 30)      { Tc0 = 0.0035; relMass = 0.67; }  // Shore 30 (soft neoprene)
-  else if (key <= 40) { Tc0 = 0.0008; relMass = 0.83; }  // Shore 50
-  else if (key <= 50) { Tc0 = 0.0005; relMass = 1.00; }  // Shore 70
-  else if (key <= 64) { Tc0 = 0.0003; relMass = 1.17; }  // Shore 90
-  else                { Tc0 = 0.00015; relMass = 0.67; }  // Wood/maple
+  // Tc0: shorter = broader spectrum = stronger beam modes.
+  // Target: beam1 at ~30-40% amplitude for mid keys (matches Shear -8 to -10dB).
+  if (key <= 30)      { Tc0 = 0.0025; relMass = 0.67; }  // Shore 30 (soft neoprene)
+  else if (key <= 40) { Tc0 = 0.0004; relMass = 0.83; }  // Shore 50
+  else if (key <= 50) { Tc0 = 0.00025; relMass = 1.00; }  // Shore 70
+  else if (key <= 64) { Tc0 = 0.00015; relMass = 1.17; }  // Shore 90
+  else                { Tc0 = 0.00008; relMass = 0.67; }  // Wood/maple
   var Tc = Tc0 * Math.pow(Math.max(velocity, 0.1), -0.286);
   return { Tc: Tc, relMass: relMass };
 }

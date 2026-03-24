@@ -1286,7 +1286,10 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     var hasTB = hasTonebar(midi);
     var tbDetuning = hasTB ? tonebarDetuning(midi) : 0;
     var tonebarFreq = f0 + tbDetuning;
-    var tonebarAmp = hasTB ? 0.3 * tonebarPhase(midi) : 0.0;
+    // Tonebar amplitude: coupled resonator, enslaved by tine (Münster 2014).
+    // Relative to fundamental energy. 0.06 matches tineAmp physical scale.
+    // Münster: tonebar vibrates at tine frequency with ~30% of tine amplitude.
+    var tonebarAmp = hasTB ? 0.06 * tonebarPhase(midi) : 0.0;
     var tonebarDecay = hasTB ? tau : 0.001;
 
     // Pre-compute beam mode data: freq, spatial ratio, velocity weight

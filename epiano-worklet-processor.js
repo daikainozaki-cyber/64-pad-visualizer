@@ -61,7 +61,9 @@ var TWO_PI = 2 * Math.PI;
 //
 // Recalibrated from 0.00044: tineAmp target changed 0.3 → 0.06 (physical displacement).
 // Linear gain increase (0.3/0.06 = 5×) compensates. Does not affect harmonic structure.
-var PU_EMF_SCALE = 0.0022; // Design target (Rhodes 74mV RMS). Monitor [CLIP] logs.
+// 2026-03-25: halved from 0.0022 → 0.0011 (tineAmp doubled 0.06→0.12).
+// Linear gain adjustment only — does not affect harmonic structure.
+var PU_EMF_SCALE = 0.0011; // Design target (Rhodes 74mV RMS). Monitor [CLIP] logs.
 
 // --- Harp wiring (Rhodes 73-key: groups of 3 parallel, 24 groups in series) ---
 // Single note: only 1 PU active in its parallel group of 3.
@@ -611,7 +613,10 @@ function computeTineAmplitude(midi, velocity) {
 
   // Map to PU physical coordinates (25mm normalization):
   // A4 forte tip displacement ≈ 1.5mm (Falaize 2017 Fig 10a) → 1.5/25 = 0.06.
-  var result = (A_raw / TINE_A4_RAW) * 0.06;
+  // 2026-03-25: increased to 0.12 to match Gabrielli H2/H3 spectrum with corrected
+  // PU Lhor (1.5mm physical). The higher tineAmp drives deeper into PU nonlinearity
+  // → H3 rises from -40dB to -12dB. PU_EMF_SCALE halved to maintain output level.
+  var result = (A_raw / TINE_A4_RAW) * 0.12;
 
   // --- Escapement hard clamp (SM Fig 4-2) ---
   // Tine cannot displace further than the escapement gap.
@@ -632,7 +637,7 @@ var KEY_VARIATION = new Float32Array(128 * 3); // [lverOffset, lhorOffset, decay
   }
   for (var k = 0; k < 128; k++) {
     var seed = k * 2654435761;
-    KEY_VARIATION[k * 3 + 0] = (hash(seed) - 0.5) * 0.06;     // lverOffset
+    KEY_VARIATION[k * 3 + 0] = (hash(seed) - 0.5) * 0.02;     // lverOffset (scaled for new Lver range)
     KEY_VARIATION[k * 3 + 1] = (hash(seed + 1) - 0.5) * 0.04; // lhorOffset
     KEY_VARIATION[k * 3 + 2] = 0.92 + hash(seed + 3) * 0.16;  // decayScale
   }
@@ -779,11 +784,21 @@ function cylinderBz(rho, z, a, h) {
 }
 
 // --- Shared LUT parameter extraction (used by both dipole and cylinder) ---
+// Physical PU dimensions (2026-03-25: corrected from abstract coords to SM values):
+//   Lhor: tine-to-pole radial distance ≈ gap + tine radius.
+//     SM gap: 0.794mm (mid), 1.588mm (bass/treble). Tine radius: ~1mm.
+//     Old: 0.225 (5.6mm) — 7× too far → PU too linear → no H3.
+//     New: ~0.06 (1.5mm) at default → matches Gabrielli H2/H3 spectrum.
+//   Lver: voicing offset (tine axis vs pole axis).
+//     SM: ~1mm typical. Old: 0.088 (2.2mm). New: ~0.03 (0.8mm).
 function puLutParams(symmetry, distance, gapMm, qRange, lverOffset) {
   var sym = symmetry < 0 ? 0 : (symmetry > 1 ? 1 : symmetry);
-  var Lver = sym * 0.25 + ((lverOffset !== undefined) ? lverOffset : 0);
-  var gapOffset = (((gapMm !== undefined) ? gapMm : 0.794) - 0.794) * 0.04;
-  var Lhor = distance * 0.35 + 0.05 + gapOffset;
+  // Lver: voicing screw offset. sym=0 → on-axis, sym=1 → max offset ~2mm.
+  var Lver = sym * 0.086 + ((lverOffset !== undefined) ? lverOffset : 0);
+  // Lhor: physical gap + tine radius. Gap varies per register.
+  var gap_norm = ((gapMm !== undefined) ? gapMm : 0.794) / 25.0; // mm → normalized
+  var tine_radius = 0.04; // ~1mm / 25mm
+  var Lhor = gap_norm + tine_radius + distance * 0.04; // distance slider adds 0-0.04
   var qr = (qRange !== undefined && qRange > 0) ? qRange : 1.0;
   return { Lver: Lver, Lhor: Lhor, qr: qr };
 }

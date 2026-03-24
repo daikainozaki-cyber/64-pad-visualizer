@@ -46,6 +46,8 @@ var EpwState = {
   brightSwitch: false,
   springReverbMix: 0.12,
   springDwell: 6.0,
+  puModel: 'cylinder', // 'cylinder' or 'dipole' (A/B comparison)
+  whirlEnabled: true,  // 2D tine whirling on/off
 };
 
 // ========================================
@@ -280,6 +282,8 @@ function _epwSendParams() {
     useSpringReverb: !!preset.useSpringReverb,
     preampType: preset.preampType || null,
     pickupType: preset.pickupType || 'rhodes',
+    puModel: EpwState.puModel || 'cylinder',
+    whirlEnabled: EpwState.whirlEnabled !== false,
   });
   // Switch main-thread routing: DI=direct, amp=V4B→poweramp→cabinet
   if (_epw_cabinetGain) _epw_cabinetGain.gain.setValueAtTime(isDI ? 0 : 6.0, 0);

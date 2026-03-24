@@ -62,7 +62,7 @@ var TWO_PI = 2 * Math.PI;
 // Physical basis: 8.70e-6 (from Falaize) needs conversion for:
 //   (1) LUT normalization factor, (2) tineAmp normalization, (3) fs conversion
 // These factors bring 8.70e-6 to ~0.0004 order — consistent.
-var PU_EMF_SCALE = 0.00044; // Physics + Rob Robinette calibration (× fs in constructor)
+var PU_EMF_SCALE = 0.00015; // TEMP: adjusted for worklet DI evaluation. Original: 0.00044.
 
 // --- Harp wiring (Rhodes 73-key: groups of 3 parallel, 24 groups in series) ---
 // Single note: only 1 PU active in its parallel group of 3.
@@ -680,51 +680,121 @@ function biquadHighShelf(freq, gainDB, fs) {
 }
 
 // ========================================
-// LUT COMPUTATION (same physics as epiano-engine.js)
+// LUT COMPUTATION
 // ========================================
 
-function computePickupLUT(symmetry, distance, gapMm, qRange, lverOffset) {
-  var lut = new Float32Array(LUT_SIZE);
+// --- B_z from uniformly magnetized cylinder (radius a, height h) at point (rho, z) ---
+// On-axis exact formula: B_z(0,z) = (M/2)[z/√(z²+a²) - (z+h)/√((z+h)²+a²)]
+// Off-axis extension: replace a² with (a²+ρ²) — "equivalent solenoid" approximation.
+//   Exact on-axis (ρ=0), correct far-field, singularity-free.
+//   Captures key physics: near-field gradient is steeper than dipole (1/r³).
+// z = distance above top face (positive). h = magnet height. a = pole radius.
+// Constant prefactor absorbed into reference normalization.
+function cylinderBz(rho, z, a, h) {
+  var a2rho2 = a * a + rho * rho;
+  var rt = Math.sqrt(z * z + a2rho2);
+  var zb = z + h;
+  var rb = Math.sqrt(zb * zb + a2rho2);
+  return z / rt - zb / rb;
+}
+
+// --- Shared LUT parameter extraction (used by both dipole and cylinder) ---
+function puLutParams(symmetry, distance, gapMm, qRange, lverOffset) {
   var sym = symmetry < 0 ? 0 : (symmetry > 1 ? 1 : symmetry);
-  // --- Magnetic dipole PU model (replaces Falaize two-pole) ---
-  // Physics: Φ(q) ∝ 1/r(q)³ where r = √(Lhor² + (Lver + q)²)
-  //   EMF = -dΦ/dt = g'(q) × dq/dt
-  //   g'(q) = dΦ/dq = -3(Lver + q) / r⁵
-  //
-  // Why dipole replaces Falaize:
-  //   Falaize two-pole model: poles partially cancel → flat g'(q) near center
-  //   → nonlinearity suppressed by 90° velocity-position phase offset.
-  //   Dipole 1/r³: steep gradient → nonlinearity strong even at intermediate q
-  //   where both displacement AND velocity are nonzero.
-  //
-  // Lver: voicing offset (symmetry slider + per-key variation).
   var Lver = sym * 0.25 + ((lverOffset !== undefined) ? lverOffset : 0);
-  // Gap → additive Lhor offset. Larger gap = farther = weaker coupling.
   var gapOffset = (((gapMm !== undefined) ? gapMm : 0.794) - 0.794) * 0.04;
   var Lhor = distance * 0.35 + 0.05 + gapOffset;
-  var Lhor2 = Lhor * Lhor;
   var qr = (qRange !== undefined && qRange > 0) ? qRange : 1.0;
+  return { Lver: Lver, Lhor: Lhor, qr: qr };
+}
 
-  // Rp² softening: the PU pole is a cylinder of radius Rp, not a point.
-  // r_eff² = Lhor² + (Lver+q)² + Rp²  (finite pole size prevents 1/r³ singularity)
-  // Physical effect: g'(0) is reduced (field gradient gentler at rest position)
-  // while g'(q) at large q stays steep → better nonlinear/linear ratio → bell character.
+// --- Dipole PU model (legacy, kept for A/B comparison) ---
+function computePickupLUT_dipole(symmetry, distance, gapMm, qRange, lverOffset) {
+  var lut = new Float32Array(LUT_SIZE);
+  var p = puLutParams(symmetry, distance, gapMm, qRange, lverOffset);
+  var Lhor2 = p.Lhor * p.Lhor;
   var Rp = 0.2;
   var Rp2 = Rp * Rp;
 
   for (var i = 0; i < LUT_SIZE; i++) {
-    var q = ((i / (LUT_SIZE - 1)) * 2 - 1) * qr;
-    var d = Lver + q;
-    var r2 = Lhor2 + d * d + Rp2; // softened dipole
+    var q = ((i / (LUT_SIZE - 1)) * 2 - 1) * p.qr;
+    var d = p.Lver + q;
+    var r2 = Lhor2 + d * d + Rp2;
     var r5 = r2 * r2 * Math.sqrt(r2);
-    // g'(q) = -3(Lver + q) / r_eff⁵
     lut[i] = -3.0 * d / r5;
   }
-  // Reference normalization: scale so g'(0) at reference position = 0.7.
   var refLver = 0.15, refLhor = 0.25;
   var refR2 = refLhor * refLhor + refLver * refLver + Rp2;
   var refR5 = refR2 * refR2 * Math.sqrt(refR2);
   var refPeak = Math.abs(-3.0 * refLver / refR5);
+  if (refPeak > 0) {
+    var scale = 0.7 / refPeak;
+    for (var i = 0; i < LUT_SIZE; i++) lut[i] *= scale;
+  }
+  return lut;
+}
+
+// --- Cylinder PU model (finite pole piece, physically accurate near-field) ---
+// Physics: uniformly magnetized AlNiCo 5 cylinder.
+//   a = 5mm (pole radius), h = 12.7mm (magnet height, 1/2 inch).
+//   Near-field gradient is much steeper than dipole → stronger nonlinearity
+//   at the same tine displacement → bell character.
+// LUT stores g'(q) = dBz/dq (axial gradient), computed by numerical differentiation.
+var CYL_A = 0.2;     // pole radius in normalized coords (5mm / 25mm)
+var CYL_H = 0.508;   // magnet height in normalized coords (12.7mm / 25mm)
+
+function computePickupLUT(symmetry, distance, gapMm, qRange, lverOffset) {
+  var lut = new Float32Array(LUT_SIZE);
+  var p = puLutParams(symmetry, distance, gapMm, qRange, lverOffset);
+  var dq = 2 * p.qr / (LUT_SIZE - 1);
+
+  // Compute Bz at each sample point
+  var Bz = new Float32Array(LUT_SIZE);
+  for (var i = 0; i < LUT_SIZE; i++) {
+    var q = ((i / (LUT_SIZE - 1)) * 2 - 1) * p.qr;
+    Bz[i] = cylinderBz(p.Lhor, p.Lver + q, CYL_A, CYL_H);
+  }
+
+  // Numerical derivative: g'(q) = dBz/dq (central difference)
+  for (var i = 1; i < LUT_SIZE - 1; i++) {
+    lut[i] = (Bz[i + 1] - Bz[i - 1]) / (2 * dq);
+  }
+  lut[0] = (Bz[1] - Bz[0]) / dq;
+  lut[LUT_SIZE - 1] = (Bz[LUT_SIZE - 1] - Bz[LUT_SIZE - 2]) / dq;
+
+  // Reference normalization: same convention as dipole (g'(0) at ref = 0.7)
+  var refBzP = cylinderBz(0.25, 0.15 + dq * 0.5, CYL_A, CYL_H);
+  var refBzM = cylinderBz(0.25, 0.15 - dq * 0.5, CYL_A, CYL_H);
+  var refPeak = Math.abs((refBzP - refBzM) / dq);
+  if (refPeak > 0) {
+    var scale = 0.7 / refPeak;
+    for (var i = 0; i < LUT_SIZE; i++) lut[i] *= scale;
+  }
+  return lut;
+}
+
+// --- Horizontal (radial) gradient LUT for 2D whirling ---
+// Computes g'_h(q) = dBz/dρ at (ρ=Lhor, z=Lver+q).
+// The tine's horizontal motion across the pole face creates EMF via this gradient.
+function computePickupLUT_horizontal(symmetry, distance, gapMm, qRange, lverOffset) {
+  var lut = new Float32Array(LUT_SIZE);
+  var p = puLutParams(symmetry, distance, gapMm, qRange, lverOffset);
+  var drho = p.Lhor * 0.001;  // small perturbation for numerical derivative
+  if (drho < 1e-6) drho = 1e-6;
+
+  for (var i = 0; i < LUT_SIZE; i++) {
+    var q = ((i / (LUT_SIZE - 1)) * 2 - 1) * p.qr;
+    var z_pos = p.Lver + q;
+    var BzP = cylinderBz(p.Lhor + drho, z_pos, CYL_A, CYL_H);
+    var BzM = cylinderBz(p.Lhor - drho, z_pos, CYL_A, CYL_H);
+    lut[i] = (BzP - BzM) / (2 * drho);
+  }
+
+  // Use same reference scale as vertical LUT for consistent physics
+  var dq = 2 * p.qr / (LUT_SIZE - 1);
+  var refBzP = cylinderBz(0.25, 0.15 + dq * 0.5, CYL_A, CYL_H);
+  var refBzM = cylinderBz(0.25, 0.15 - dq * 0.5, CYL_A, CYL_H);
+  var refPeak = Math.abs((refBzP - refBzM) / dq);
   if (refPeak > 0) {
     var scale = 0.7 / refPeak;
     for (var i = 0; i < LUT_SIZE; i++) lut[i] *= scale;
@@ -952,6 +1022,17 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.vPosScale     = new Float32Array(MAX_VOICES); // velocity-based position → old displacement scale
     for (var i = 0; i < MAX_VOICES; i++) this.vPuLUT[i] = null;
 
+    // --- 2D Whirling: horizontal fundamental oscillator per voice ---
+    // Physics: tine cross-section ≈ circular → 2 axes of similar stiffness.
+    // Tuning spring mass breaks symmetry → elliptical orbit.
+    // f_h ≈ f₀(1+Δf), A_h = whirlRatio × A_v, phase₀ = π/2.
+    this.vOmegaH       = new Float64Array(MAX_VOICES); // horizontal angular freq (rad/sample)
+    this.vPhaseH        = new Float64Array(MAX_VOICES); // horizontal phase accumulator
+    this.vAmpH          = new Float32Array(MAX_VOICES); // horizontal velocity amplitude
+    this.vDecayH        = new Float32Array(MAX_VOICES); // horizontal per-sample decay
+    this.vPuLUT_h       = new Array(MAX_VOICES);        // radial gradient LUT per voice
+    for (var i = 0; i < MAX_VOICES; i++) this.vPuLUT_h[i] = null;
+
     // Per-voice biquad filter states (coupling HPF)
     // [z1, z2] per voice
     this.vCouplingState = new Float32Array(MAX_VOICES * 2);
@@ -988,6 +1069,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.preampLUT   = this.preampLUT_12AX7;
     // V4B + poweramp now on main thread (Fix 3), but keep for future use
     this.pickupType  = 'rhodes'; // 'rhodes' or 'wurlitzer'
+    this.puModel     = 'cylinder'; // 'cylinder' (default) or 'dipole' (A/B comparison)
+    this.whirlEnabled = true;       // 2D whirling on/off (A/B comparison)
 
     // Per-voice coupling HPF coefficients (3.4Hz, subsonic)
     this.couplingCoeff = biquadHighpass(3.4, 0.707, fs);
@@ -1080,6 +1163,12 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     }
     if (msg.pickupType !== undefined) {
       this.pickupType = msg.pickupType || 'rhodes';
+    }
+    if (msg.puModel !== undefined) {
+      this.puModel = msg.puModel || 'cylinder';
+    }
+    if (msg.whirlEnabled !== undefined) {
+      this.whirlEnabled = !!msg.whirlEnabled;
     }
   }
 
@@ -1275,8 +1364,34 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     var lverOff = (midi >= 0 && midi < 128) ? KEY_VARIATION[midi * 3] : 0;
     if (this.pickupType === 'wurlitzer') {
       this.vPuLUT[vi] = computePickupLUT_Wurlitzer(this.pickupDistance);
+      this.vPuLUT_h[vi] = null; // no whirling for Wurlitzer (electrostatic, symmetric)
+    } else if (this.puModel === 'dipole') {
+      this.vPuLUT[vi] = computePickupLUT_dipole(this.pickupSymmetry, this.pickupDistance, gapMm, qRange, lverOff);
+      this.vPuLUT_h[vi] = null; // dipole has no horizontal LUT
     } else {
       this.vPuLUT[vi] = computePickupLUT(this.pickupSymmetry, this.pickupDistance, gapMm, qRange, lverOff);
+      this.vPuLUT_h[vi] = computePickupLUT_horizontal(this.pickupSymmetry, this.pickupDistance, gapMm, qRange, lverOff);
+    }
+
+    // --- 2D Whirling: horizontal fundamental oscillator ---
+    // Physics: tine cantilever with ~circular cross-section + spring mass asymmetry.
+    // keyNorm: 0 (bass) to 1 (treble). Bass has more spring effect → more whirl.
+    var keyNorm = Math.max(0, Math.min(1, (midi - 21) / 87));
+    // Detuning: 0.5-1.5% (bass has larger spring → more asymmetry → larger Δf)
+    var whirlDetuning = 0.005 + 0.01 * (1 - keyNorm);
+    // Amplitude ratio: 15-25% of vertical (spring mass creates substantial elliptical orbit)
+    var whirlRatio = 0.15 + 0.1 * (1 - keyNorm);
+
+    if (this.pickupType !== 'wurlitzer' && this.puModel !== 'dipole' && this.whirlEnabled) {
+      this.vOmegaH[vi] = omega0 * (1 + whirlDetuning);
+      this.vPhaseH[vi] = Math.PI * 0.5; // 90° offset → elliptical orbit
+      this.vAmpH[vi] = this.vAmp[base] * whirlRatio; // fraction of vertical fundamental
+      this.vDecayH[vi] = this.vDecayAlpha[base]; // same decay as vertical fundamental
+    } else {
+      this.vOmegaH[vi] = 0;
+      this.vPhaseH[vi] = 0;
+      this.vAmpH[vi] = 0;
+      this.vDecayH[vi] = 0;
     }
 
     // Reset filter states
@@ -1411,18 +1526,39 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           }
         }
 
-        // --- 2. PU EMF (Falaize 2017: EMF = N × g'(q) × dq/dt × constants) ---
-        // LUT = g'(q): position drives PU nonlinearity.
-        // Velocity-based: vVelScale converts energy-normalized velocity to physical EMF scale.
-        // vVelScale = ω₀/vA_fund: restores the ω-dependent cross-keyboard balance.
+        // --- 1b. Horizontal fundamental (2D whirling) ---
+        // Physics: tine whirls in elliptical orbit. Horizontal oscillator is slightly
+        // detuned from vertical → creates slow amplitude modulation (shimmer).
+        // Only fundamental whirls; beam modes have nodes that suppress horizontal motion.
+        var tineHVelocity = 0;
+        var omegaH = this.vOmegaH[v];
+        if (omegaH > 0) {
+          var ampH = this.vAmpH[v];
+          if (Math.abs(ampH) > 0.0001) {
+            var phaseH = this.vPhaseH[v];
+            tineHVelocity = ampH * Math.cos(phaseH) * envScale;
+            // Apply release envelope to horizontal too
+            if (this.vActive[v] === 3) tineHVelocity *= this.vReleaseGain[v];
+            // Decay and phase advance
+            this.vAmpH[v] = ampH * this.vDecayH[v];
+            this.vPhaseH[v] = phaseH + omegaH;
+            if (this.vPhaseH[v] > TWO_PI) this.vPhaseH[v] -= TWO_PI;
+          }
+        }
+
+        // --- 2. PU EMF (2D: vertical + horizontal) ---
+        // Vertical: g'_v(q_v) × dq_v/dt (axial field gradient × vertical velocity)
+        // Horizontal: g'_h(q_v) × dq_h/dt (radial gradient at current vertical pos × horizontal velocity)
         var puOut;
         if (this.vPuLUT[v]) {
-          // Scale velocity-based position to old displacement scale, then normalize to LUT range.
-          // vPosScale = ω₀/vA_fund converts (vAmp/ω)×sin back to ~disp×sin.
-          // Then ÷qRange maps to [-1, 1] for LUT.
           var puPos = tinePosition * this.vPosScale[v] / this.vQRange[v];
-          var gPrime = lutLookup(this.vPuLUT[v], puPos);
-          puOut = gPrime * tineVelocity * this.vVelScale[v] * this.vTipFactor[v] * this.puEmfScale;
+          var gPrimeV = lutLookup(this.vPuLUT[v], puPos);
+          puOut = gPrimeV * tineVelocity * this.vVelScale[v] * this.vTipFactor[v] * this.puEmfScale;
+          // Horizontal contribution (2D whirling)
+          if (this.vPuLUT_h[v] && tineHVelocity !== 0) {
+            var gPrimeH = lutLookup(this.vPuLUT_h[v], puPos);
+            puOut += gPrimeH * tineHVelocity * this.vVelScale[v] * this.vTipFactor[v] * this.puEmfScale;
+          }
         } else {
           puOut = tinePosition; // fallback: no LUT
         }
@@ -1578,6 +1714,16 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
       // ch0: main signal (→ ConvolverNode cabinet OR direct output on main thread)
       // ch1: reverb send (→ spring reverb AudioWorklet on main thread)
+      // DEBUG: hard limiter + peak logging to find clipping source
+      if (mainOut > 1.0 || mainOut < -1.0) {
+        if (this._clipCount === undefined) this._clipCount = 0;
+        this._clipCount++;
+        if (this._clipCount < 5) {
+          console.log('[CLIP] mainOut=' + mainOut.toFixed(4) + ' diSum=' + diSum.toFixed(4) + ' drySum=' + drySum.toFixed(4));
+        }
+      }
+      if (mainOut > 0.95) mainOut = 0.95;
+      if (mainOut < -0.95) mainOut = -0.95;
       outL[i] = mainOut;
       if (outR !== outL) {
         outR[i] = wetSignal; // reverb send on right channel

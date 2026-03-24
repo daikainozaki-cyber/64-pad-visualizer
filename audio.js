@@ -588,7 +588,7 @@ function _updateEpMixerVisibility() {
 
 function _saveEpMixer() {
   try {
-    localStorage.setItem('64pad-ep-mixer', JSON.stringify({
+    localStorage.setItem('64pad-ep-mixer-v2', JSON.stringify({
       pickupSymmetry: EpState.pickupSymmetry,
       springReverbMix: EpState.springReverbMix,
       springDwell: EpState.springDwell,
@@ -598,12 +598,19 @@ function _saveEpMixer() {
 
 function _loadEpMixer() {
   try {
-    var raw = localStorage.getItem('64pad-ep-mixer');
+    var raw = localStorage.getItem('64pad-ep-mixer-v2');
     if (!raw) return;
     var s = JSON.parse(raw);
-    ['pickupSymmetry','springReverbMix','springDwell'].forEach(function(key) {
+    // pickupSymmetry: always use HTML default (physics-calibrated).
+    // Old localStorage may have stale values from before PU model changes.
+    ['springReverbMix','springDwell'].forEach(function(key) {
       if (s[key] !== undefined) EpState[key] = s[key];
     });
+    // Clear stale pickupSymmetry from storage so it doesn't persist
+    if (s.pickupSymmetry !== undefined) {
+      delete s.pickupSymmetry;
+      localStorage.setItem('64pad-ep-mixer-v2', JSON.stringify(s));
+    }
     // Sync sliders
     var map = {pickupSymmetry:'ep-pu-sym', springReverbMix:'ep-rev', springDwell:'ep-dwell'};
     var valMap = {pickupSymmetry:'ep-pu-sym-val', springReverbMix:'ep-rev-val', springDwell:'ep-dwell-val'};

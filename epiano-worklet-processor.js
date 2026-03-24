@@ -785,7 +785,12 @@ function computePickupLUT_dipole(symmetry, distance, gapMm, qRange, lverOffset) 
 //   Near-field gradient is much steeper than dipole → stronger nonlinearity
 //   at the same tine displacement → bell character.
 // LUT stores g'(q) = dBz/dq (axial gradient), computed by numerical differentiation.
-var CYL_A = 0.2;     // pole radius in normalized coords (5mm / 25mm)
+// Rhodes PU: AlNiCo 5 (1/2" dia) with pole screw concentrator.
+// Effective pole radius = screw tip, not magnet diameter.
+// SM Chapter 10: pole screw tip ≈ 3.5mm diameter → radius 1.75mm.
+// In normalized coords (÷25mm): 1.75/25 ≈ 0.07. Using 0.14 (3.5mm radius)
+// as conservative estimate (field spreads slightly beyond screw tip).
+var CYL_A = 0.14;    // effective pole radius in normalized coords (3.5mm / 25mm)
 var CYL_H = 0.508;   // magnet height in normalized coords (12.7mm / 25mm)
 
 function computePickupLUT(symmetry, distance, gapMm, qRange, lverOffset) {
@@ -1124,6 +1129,10 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.tsCoeffs = computeTonestackBiquads(0.5, 0.5, 0.5, false, fs);
 
     // --- Parameters (updated via MessagePort) ---
+    // Voicing screw offset. 0=on-axis, 1=max offset.
+    // 0.3 → Lver=0.075 (1.9mm). SM data: ~1mm typical voicing offset.
+    // Lver affects fundamental H2/H3 (asymmetry) but NOT beam mode intermodulation
+    // (beam modes are ÷ω in position → invisible to g'(q)). Confirmed by ear test.
     this.pickupSymmetry = 0.3;
     this.pickupDistance  = 0.5;
     this.preampGain     = 1.0;

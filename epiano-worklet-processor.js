@@ -1020,6 +1020,7 @@ function computeTonestackBiquads(bass, mid, treble, bright, fs) {
 class EpianoWorkletProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
+    console.log('[EP-Worklet] ★ FM enslaving model loaded (b2531e9)');
 
     var fs = sampleRate;
     this.fs = fs;
@@ -1319,8 +1320,15 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     var tonebarInitFreq = hasTB ? tbEigenHz : f0;
     // Target frequency = tine fundamental (after enslaving complete)
     var tonebarTargetFreq = f0;
-    // Tonebar amplitude: coupled resonator (Münster: ~30% of tine amplitude).
-    // 0.06 matches tineAmp physical scale.
+    // Tonebar amplitude: coupled resonator (Münster 2014: ~30% of tine amplitude).
+    // Note: 30% is the STEADY STATE (after enslaving, both at f0 = reinforcement).
+    // During enslaving transition, TB eigen ≠ f0. High amplitude = audible dissonance.
+    // 0.06 = 6%: safe level where transition FM is subtle but tonebar contributes to timbre.
+    // TODO: implement true 2-DOF coupling where energy exchange creates harmonic sidebands.
+    // Tonebar amplitude: coupled resonator (Münster 2014: ~30% of tine amplitude).
+    // Note: 30% is the STEADY STATE (after enslaving, both at f0 = reinforcement).
+    // During enslaving transition, TB eigen ≠ f0. 0.06 (6%) keeps FM subtle.
+    // TODO: after true 2-DOF coupling, can increase toward physical 30%.
     var tonebarAmp = hasTB ? 0.06 * tonebarPhase(midi) : 0.0;
     var tonebarDecay = hasTB ? tau : 0.001;
 
@@ -1397,8 +1405,22 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       var H_beam = halfSineEnvelope(beamFreq, hammer.Tc, hammer.spectralBeta);
       var H_ratio = H_beam / Math.max(H_fund, 0.001);
       if (H_ratio > 1.0) H_ratio = 1.0;
+      // Beam boost: compensates for FEM+halfSine underestimation of beam coupling.
+      // Base 3.0 (spring + Hertz), scaled by hammer filtering.
+      // Cap: beam mode velocity weight must not exceed 0.3 (≈ -10dB re fundamental).
+      // Real Rhodes beam modes: -15 to -25dB (Gabrielli 2020).
+      // Without cap: bass beam1 reaches 0dB → chord intermod → pitch confusion.
       var beamBoost = 3.0 * (1.0 - 0.7 * H_ratio);
       var vW = sr * H_ratio * beamBoost;
+      // Beam mode amplitude clamp (2026-03-25, verified by ear test with urinami-san).
+      // Problem: beam modes at 7.11× (= H7 +27cents) are inharmonic partials.
+      // In chords, they beat against integer harmonics of other voices → pitch confusion.
+      // Gabrielli 2020 measured -15 to -25dB. At -20dB chords still sound bad.
+      // At -25dB (0.056) chords are clean. Matches Gabrielli's quiet end.
+      // Physics: real Rhodes beam modes ARE this quiet relative to fundamental.
+      var beamClamp = 0.056; // -25dB re fundamental
+      if (vW > beamClamp) vW = beamClamp;
+      if (vW < -beamClamp) vW = -beamClamp;
 
       // Store beam mode in SoA
       var slot = base + 2 + b;

@@ -55,14 +55,13 @@ var TWO_PI = 2 * Math.PI;
 // Target: Rhodes chord (4 notes) at forte → amp input = 74mV RMS ≈ 0.074 normalized.
 // Per-note contribution after harp ÷3: ~0.074/4×3 = 0.056 per voice.
 //
-// With tineAmp=0.3, omega~0.03, tipFactor~1.0, gPrime~0.3:
-//   puOut = 0.3 × (0.3 × 0.03) × 1.0 × puEmfScale = 0.0027 × puEmfScale
-//   Need 0.056 → puEmfScale ≈ 21 → PU_EMF_SCALE = 21/fs ≈ 0.00044
+// With tineAmp=0.06 (physical: 1.5mm/25mm), omega~0.03, tipFactor~1.0, gPrime~0.3:
+//   puOut = 0.06 × (0.3 × 0.03) × 1.0 × puEmfScale = 0.00054 × puEmfScale
+//   Need 0.056 → puEmfScale ≈ 104 → PU_EMF_SCALE = 104/fs ≈ 0.0022
 //
-// Physical basis: 8.70e-6 (from Falaize) needs conversion for:
-//   (1) LUT normalization factor, (2) tineAmp normalization, (3) fs conversion
-// These factors bring 8.70e-6 to ~0.0004 order — consistent.
-var PU_EMF_SCALE = 0.00044; // Design target (Rhodes 74mV RMS). Monitor [CLIP] logs.
+// Recalibrated from 0.00044: tineAmp target changed 0.3 → 0.06 (physical displacement).
+// Linear gain increase (0.3/0.06 = 5×) compensates. Does not affect harmonic structure.
+var PU_EMF_SCALE = 0.0022; // Design target (Rhodes 74mV RMS). Monitor [CLIP] logs.
 
 // --- Harp wiring (Rhodes 73-key: groups of 3 parallel, 24 groups in series) ---
 // Single note: only 1 PU active in its parallel group of 3.
@@ -581,10 +580,13 @@ function computeTineAmplitude(midi, velocity) {
     TINE_A4_RAW = Math.sqrt(m_ref / k_ref) * 1.0 * phir;
   }
 
-  // Map to LUT coordinates: A4 forte → 0.3 (keeps LUT in its operating range)
-  // Bass keys naturally get larger values (0.5-0.9) → deeper into PU nonlinearity
-  // Treble keys get smaller values (0.05-0.15) → stay in PU linear region
-  return (A_raw / TINE_A4_RAW) * 0.3;
+  // Map to PU physical coordinates (25mm normalization):
+  // A4 forte tip displacement ≈ 1.5mm (Falaize 2017 Fig 10a) → 1.5/25 = 0.06.
+  // Old value 0.3 = 7.5mm — drove tine deep into PU nonlinear region (H3 > H1).
+  // With 0.06, the tine stays in the mildly nonlinear region of g'(q),
+  // producing H2 ≈ -15dB (asymmetric PU field) and H3 < -35dB (Gabrielli 2020).
+  // PU_EMF_SCALE is recalibrated to maintain 74mV RMS output.
+  return (A_raw / TINE_A4_RAW) * 0.06;
 }
 
 // --- Per-key variation (deterministic pseudo-random) ---

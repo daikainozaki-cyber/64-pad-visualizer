@@ -1044,7 +1044,7 @@ function computeTonestackBiquads(bass, mid, treble, bright, fs) {
 class EpianoWorkletProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
-    console.log('[EP-Worklet] ★ Hammer impulse beam attack + bass TB fix loaded');
+    console.log('[EP-Worklet] ★ Pure physics beam modes (no boost, no clamp) + bass TB fix');
 
     var fs = sampleRate;
     this.fs = fs;
@@ -1485,45 +1485,14 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       // Physics: FEM spatial ratios + half-sine envelope underestimate beam coupling.
       // Two known sources not yet modeled:
       //   (1) Tuning spring mass (α≈0.6-0.8) near beam mode antinodes → coupling ×1.5-2
-      //   (2) Hertz F∝α^1.5 has sharper peak than half-sine → more HF energy ≈ ×1.5
-      // Base coefficient 3.0 is an estimate. TODO: derive from #1594 per-key spring data.
-      //
-      // Low-bass scaling fix (2026-03-24):
-      // Problem: long Tc (bass) → halfSineEnvelope passes all freqs → H_beam/H_fund ≈ 1.0
-      //   → beam mode amplitude = sr × 1.0 × 3.0 ≈ fundamental level (way too loud).
-      // Physics: neoprene is softer in bass → absorbs HF → beam modes should be WEAKER.
-      // Fix: scale beam boost by how much the hammer spectrum actually filters.
-      //   When H_ratio → 1.0 (no filtering, bass): boost → baseBoost × 0.3
-      //   When H_ratio → 0.0 (strong filtering, treble): boost → baseBoost × 1.0
-      //   beamBoost = baseBoost × (1.0 - 0.7 × H_ratio)
+      // --- Pure physics: no beamBoost, no clamp (2026-03-25 experiment) ---
+      // Let FEM spatial ratio × hammer spectrum determine beam mode amplitude.
+      // Previous: beamBoost=3.0 (estimate) → clamp=0.056 (ear-tuned) = double workaround.
+      // Now: physics only. If it sounds wrong, the physics model needs fixing.
       var H_beam = halfSineEnvelope(beamFreq, hammer.Tc, hammer.spectralBeta);
       var H_ratio = H_beam / Math.max(H_fund, 0.001);
       if (H_ratio > 1.0) H_ratio = 1.0;
-      // Beam boost: compensates for FEM+halfSine underestimation of beam coupling.
-      // Base 3.0 (spring + Hertz), scaled by hammer filtering.
-      // Cap: beam mode velocity weight must not exceed 0.3 (≈ -10dB re fundamental).
-      // Real Rhodes beam modes: -15 to -25dB (Gabrielli 2020).
-      // Without cap: bass beam1 reaches 0dB → chord intermod → pitch confusion.
-      var beamBoost = 3.0 * (1.0 - 0.7 * H_ratio);
-      var vW = sr * H_ratio * beamBoost;
-      // Beam mode amplitude clamp (2026-03-25, verified by ear test with urinami-san).
-      // Problem: beam modes at 7.11× (= H7 +27cents) are inharmonic partials.
-      // In chords, they beat against integer harmonics of other voices → pitch confusion.
-      // Gabrielli 2020 measured -15 to -25dB. At -20dB chords still sound bad.
-      // At -25dB (0.056) chords are clean. Matches Gabrielli's quiet end.
-      // Physics: real Rhodes beam modes ARE this quiet relative to fundamental.
-      // --- Beam attack impulse: store unclamped value for boost ratio ---
-      var vW_unclamped = vW;
-      var beamClamp = 0.056; // -25dB re fundamental (confirmed: -20dB still causes chord issues at F2)
-      if (vW > beamClamp) vW = beamClamp;
-      if (vW < -beamClamp) vW = -beamClamp;
-      // Track max boost ratio across all beam modes for this voice
-      var absUnclamped = Math.abs(vW_unclamped);
-      var absClamped = Math.abs(vW);
-      if (absClamped > 0.001) {
-        var ratio = absUnclamped / absClamped;
-        if (ratio > maxBeamBoostRatio) maxBeamBoostRatio = ratio;
-      }
+      var vW = sr * H_ratio;
 
       // Store beam mode in SoA
       var slot = base + 2 + b;
@@ -1545,20 +1514,10 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       this.vDecayAlpha[base + z] = 0;
     }
 
-    // --- Beam attack impulse envelope (hammer impact pulse) ---
-    // Physics: hammer broadband impulse excites all beam modes at full physical amplitude.
-    // During attack (~2-5ms), beam modes are LOUD → inharmonic "click" (コリッ).
-    // After attack, they settle to -25dB (beamClamp) → clean chords.
-    // τ_impulse: material damping of high-freq beam modes in spring steel.
-    //   Steel internal friction Q_material ≈ 50-100 at beam frequencies (kHz range).
-    //   For beam1 at 7.11×f0: f_beam ≈ 300-3000Hz → τ ≈ Q/(π×f) ≈ 5-50ms.
-    //   But perceptual: "click" must be brief (~3ms) to not muddy chords.
-    //   Use 3ms: matches Tc range (0.5-3ms) and perceptual click duration.
-    // Cap at 10× to avoid extreme transients (GC-zero: no dynamic allocation).
-    if (maxBeamBoostRatio > 10.0) maxBeamBoostRatio = 10.0;
-    var beamAttackTau = 0.003; // 3ms — hammer impulse duration
-    this.vBeamAttackGain[vi] = maxBeamBoostRatio;
-    this.vBeamAttackDecay[vi] = Math.exp(-this.invFs / beamAttackTau);
+    // Beam attack envelope: disabled for physics-only experiment.
+    // Will re-enable with correct values once base physics is right.
+    this.vBeamAttackGain[vi] = 1.0;
+    this.vBeamAttackDecay[vi] = 1.0;
 
     // Energy normalization: Σ V_n² = 1
     var eNorm = 1.0 / Math.sqrt(Math.max(totalE, 0.01));

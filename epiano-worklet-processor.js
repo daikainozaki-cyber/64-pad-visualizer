@@ -381,6 +381,32 @@ function tipDisplacementFactor(midi) {
 var TINE_EI = 180e9 * Math.PI * Math.pow(1e-3, 4) / 4; // 1.414e-4 N⋅m²
 var TINE_A4_RAW = 0; // cached: A4 raw amplitude for normalization to LUT coordinates
 
+// --- Hall (1986) finite hammer mass correction ---
+// "Piano string excitation in the case of small hammer mass" JASA 79(1):141
+// Mode energy rolls off at 6 dB/oct above n_max = 0.73 × M_tine / m_hammer.
+// For Rhodes: tine is MUCH lighter than hammer → n_max < 1 → all beam modes suppressed.
+// freqRatio = f_mode / f_fundamental (e.g., 7.11 for beam1).
+// Returns amplitude correction factor (0 to 1).
+var TINE_RHO = 7850;   // kg/m³ (ASTM A228 spring steel)
+var TINE_D = 0.001905;  // m (tine diameter, uniform for Original stage)
+var TINE_A = Math.PI * (TINE_D / 2) * (TINE_D / 2); // cross-section area
+var TINE_MODAL_MASS_FACTOR = 0.24; // cantilever effective modal mass = 0.24 × ρAL
+
+function hallMassCorrection(midi, freqRatio) {
+  var L_m = tineLength(midi) * 1e-3;
+  var M_tine = TINE_MODAL_MASS_FACTOR * TINE_RHO * TINE_A * L_m;
+  var hammer = getHammerParams(midi, 0.5);
+  var m_hammer = hammer.relMass * 0.030;
+  var n_max = 0.73 * M_tine / m_hammer;
+  // freqRatio acts as effective mode number (f_n/f_1)
+  if (freqRatio <= n_max) return 1.0;
+  // 6 dB/oct rolloff = amplitude ∝ 1/√(f/f_max) in energy, = (n_max/n)^0.5 for amplitude
+  // 6 dB/oct in energy = 3 dB/oct in amplitude = factor (n_max/n)
+  // Actually: 6 dB/oct = energy halves per octave = amplitude × 1/√2 per octave
+  // → amplitude factor = (n_max / n)^0.5
+  return Math.sqrt(n_max / freqRatio);
+}
+
 function computeTineAmplitude(midi, velocity) {
   var L_m = tineLength(midi) * 1e-3; // mm → m
   var hammer = getHammerParams(midi, velocity);
@@ -771,9 +797,9 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.fs = fs;
     this.invFs = 1.0 / fs;
 
-    // PU EMF scale: PU_EMF_SCALE × sampleRate converts ω (rad/sample) to physical velocity (rad/sec).
-    // omega in process() = 2πf/fs → physical velocity = amp × omega × fs × cos(phase).
-    // Absorbing fs here avoids a multiply per sample per mode.
+    // PU EMF scale: PU_EMF_SCALE × sampleRate converts to physical velocity.
+    // With velocity-based amps, the per-voice vVelScale restores the ω-dependent
+    // cross-keyboard balance that was implicit in the old displacement×ω scheme.
     this.puEmfScale = PU_EMF_SCALE * fs;
 
     // --- Voice SoA (Structure of Arrays) ---
@@ -794,11 +820,12 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.vTineAmp      = new Float32Array(MAX_VOICES);
 
     // Per-voice tip displacement factor (register-dependent physical amplitude scaling).
-    // Bass tines vibrate with much larger displacement than treble.
-    // tipFactor ∝ L^1.5 × φ₁(x_s/L) × √mass (Euler-Bernoulli).
-    // Applied to tineVelocity: physical velocity = normalized_velocity × tipFactor × fs.
-    // Without this, bass EMF is too low (small ω) even though real bass PU output is strong.
     this.vTipFactor    = new Float32Array(MAX_VOICES);
+
+    // Per-voice velocity→physical scale: restores ω-dependent cross-keyboard balance.
+    // With velocity-based amps, the old implicit ×ω is gone. This per-voice factor
+    // = ω₀_fund / vA_fund converts energy-normalized velocity back to physical EMF scale.
+    this.vVelScale     = new Float32Array(MAX_VOICES);
 
     // EM damping (Lenz's law): starts at 1.0, converges to emDampRatio over ~75ms.
     // One-pole smoother: gain = gain * alpha + target * (1 - alpha). No exp() in process().
@@ -824,6 +851,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
     // Per-voice PU LUT (each voice gets its own based on register)
     this.vPuLUT        = new Array(MAX_VOICES);
+    this.vQRange       = new Float32Array(MAX_VOICES); // LUT physical range per voice
+    this.vPosScale     = new Float32Array(MAX_VOICES); // velocity-based position → old displacement scale
     for (var i = 0; i < MAX_VOICES; i++) this.vPuLUT[i] = null;
 
     // Per-voice biquad filter states (coupling HPF)
@@ -1018,99 +1047,100 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     var beam1Freq = f0 * 7.11;
     var beam2Freq = f0 * 20.25;
 
-    // Hertz impulse spectral envelope (replaces steady-state 1/(1+(f/fc)²) + 1/n² fudge)
-    // Physics: hammer delivers force pulse of duration Tc.
-    // Spectral envelope: flat below fc=1/(2Tc), rolls off as 1/(2fTc)² above.
-    // Impulse response: mode displacement ∝ φ_n(xs) × H(f_n) / ω_n
-    // (displacement has 1/ω factor; velocity = displacement × ω has no ω factor)
+    // === VELOCITY-BASED MODAL AMPLITUDE (energy conservation) ===
+    // Hammer impulse excites each mode with velocity ∝ φ_n(xs) × H(f_n).
+    // Energy: E_n ∝ V_n². Normalize Σ V_n² = 1 (finite hammer KE).
+    // vAmp stores VELOCITY amplitude. process() uses:
+    //   velocity = vAmp × cos(phase)        [direct]
+    //   position = (vAmp/ω) × sin(phase)    [÷ω suppresses high-freq displacement]
     var H_fund  = halfSineEnvelope(f0, hammer.Tc);
     var H_beam1 = halfSineEnvelope(beam1Freq, hammer.Tc);
     var H_beam2 = halfSineEnvelope(beam2Freq, hammer.Tc);
-    var hamRatio1 = H_beam1 / Math.max(H_fund, 0.001);
-    var hamRatio2 = H_beam2 / Math.max(H_fund, 0.001);
 
-    // beam1Rel = displacement amplitude ratio (beam1 / fundamental).
-    // In process(), velocity = amp × ω, so EMF ratio = beam1Rel × (ω₁/ω₀).
-    // From impulse response: displacement ∝ φ_n × |F̂(f_n)| / ω_n
-    // → displacement ratio = spatialRatio × hamRatio × (f₀/f₁)
-    var beam1Rel = spatialRatio1 * hamRatio1 / 7.11;
-    var beam2Rel = spatialRatio2 * hamRatio2 / 20.25;
+    // Velocity weights: V_n ∝ φ_n(xs) × H(f_n) × Hall correction
+    // Hall (1986): finite hammer mass suppresses high-freq modes.
+    // Rhodes hammer (20g) >> tine (0.8g) → beam modes strongly suppressed.
+    var hall1 = hallMassCorrection(midi, 7.11);
+    var hall2 = hallMassCorrection(midi, 20.25);
+    var vW_fund  = 1.0;
+    var vW_beam1 = spatialRatio1 * (H_beam1 / Math.max(H_fund, 0.001)) * hall1;
+    var vW_beam2 = spatialRatio2 * (H_beam2 / Math.max(H_fund, 0.001)) * hall2;
 
-    // Tonebar coupled mode: detuned from f0 by Δf (Münster 2014 + coupled oscillator).
-    // Tine = mode A (at f0), tonebar = mode B (at f0 + Δf).
-    // Beating between A and B = "structural bell" (shimmer, chime).
+    // Energy normalization: Σ V_n² = 1
+    var totalE = vW_fund * vW_fund + vW_beam1 * vW_beam1 + vW_beam2 * vW_beam2;
+    var eNorm = 1.0 / Math.sqrt(Math.max(totalE, 0.01));
+    var vA_fund  = vW_fund  * eNorm;
+    var vA_beam1 = vW_beam1 * eNorm;
+    var vA_beam2 = vW_beam2 * eNorm;
+
+    // Tonebar coupled mode
     var tbDetuning = hasTB ? tonebarDetuning(midi) : 0;
     var tonebarFreq = f0 + tbDetuning;
 
-    // Store mode data: [fundamental, tonebar (detuned), beam1, beam2]
+    // Store mode data: vAmp = VELOCITY amplitude (energy-normalized)
     var base = vi * 4;
+    var omega0 = TWO_PI * f0 * this.invFs; // fundamental ω (rad/sample)
     var freqs = [f0, tonebarFreq, beam1Freq, beam2Freq];
-    var amps  = [1.0 * massScale, tonebarAmp * massScale, beam1Rel * massScale, beam2Rel * massScale];
-    var decays = [tau * decayScale, tonebarDecay * decayScale, 0.035 * decayScale * velDecayScale, 0.015 * decayScale * velDecayScale];
+    var amps  = [vA_fund * massScale, tonebarAmp * massScale, vA_beam1 * massScale, vA_beam2 * massScale];
+    // Beam decay: same tine → same Q → tau_n = Q/(πf_n) = tau_fund/freq_ratio
+    var beam1Tau = tau / 7.11;
+    var beam2Tau = tau / 20.25;
+    var decays = [tau * decayScale, tonebarDecay * decayScale, beam1Tau * decayScale * velDecayScale, beam2Tau * decayScale * velDecayScale];
 
     // EM damping (Lenz's law): per-key physics.
-    // Damping force ∝ (PU coupling)² / m_tine.
-    //   - Heavy tine (bass, long L): large mass → less deceleration → less compression
-    //   - Light tine (treble, short L): small mass → more deceleration → more compression
-    // This matches real Rhodes: treble has audible "bark compression", bass sustains more freely.
-    //
-    // Mass proxy: tine mass ∝ L (uniform cross-section, ASTM A228).
-    // Reference: A4 (MIDI 69) L=43mm → massRatio = L(midi)/43.
-    // Heavier tine → weaker EM damp → emDampRatio closer to 1.0.
     var L_mm = tineLength(midi);
-    var massRatio = L_mm / 43.0; // >1 for bass, <1 for treble
+    var massRatio = L_mm / 43.0;
     var puCoupling = 1.1 - this.pickupDistance;
     if (puCoupling < 0) puCoupling = 0;
     var puDampStrength = velocity * puCoupling / Math.max(massRatio, 0.3);
     if (puDampStrength > 1) puDampStrength = 1;
     var emDampRatio = 1.0 - puDampStrength * 0.4;
-    this.vEmDampGain[vi]   = 1.0;          // start at full amplitude
-    this.vEmDampTarget[vi] = emDampRatio;   // converge to this
-    // Time constant: heavier tine → slower convergence (more inertia)
-    var emTau = 0.025 * Math.sqrt(massRatio); // 25ms × √(mass ratio)
+    this.vEmDampGain[vi]   = 1.0;
+    this.vEmDampTarget[vi] = emDampRatio;
+    var emTau = 0.025 * Math.sqrt(massRatio);
     this.vEmDampCoeff[vi]  = Math.exp(-this.invFs / emTau);
 
     for (var m = 0; m < 4; m++) {
       this.vOmega[base + m] = TWO_PI * freqs[m] * this.invFs;
       this.vPhase[base + m] = 0;
-      this.vAmp[base + m]   = amps[m]; // FULL amplitude (EM damp applied per-sample)
-      // Per-sample decay: e^(-1/(tau*fs))
+      this.vAmp[base + m]   = amps[m];
       this.vDecayAlpha[base + m] = Math.exp(-this.invFs / Math.max(decays[m], 0.001));
     }
 
-    // Tine amplitude: per-key physics (Euler-Bernoulli beam, Falaize 2017)
-    // Each key computed from its own L, m_hammer, k_eff, striking point.
-    // Returns displacement in meters (A4 forte ≈ 1e-3 m = 1mm).
     this.vTineAmp[vi] = computeTineAmplitude(midi, velocity);
 
-    // Hammer contact envelope: half-sine onset over Tc.
-    // Tc from Hertz model (already computed in getHammerParams).
-    // Bass Tc ≈ 3.5ms (168 samples @48kHz), treble wood ≈ 0.15ms (7 samples).
     var onsetSamples = Math.max(Math.ceil(hammer.Tc * fs), 2);
     this.vOnsetLen[vi] = onsetSamples;
     this.vOnsetPhase[vi] = Math.PI / onsetSamples;
 
-    // Mechanical decay holdoff: 150ms (= old engine's attackDur).
     this.vDecayHoldoff[vi] = Math.ceil(0.15 * fs);
 
     // Per-voice physical parameters
     var tipFactor = tipDisplacementFactor(midi);
-    // Store tipFactor for velocity scaling in process().
-    // Physical velocity = tipFactor × normalized_velocity × sampleRate.
-    // Bass (tipFactor>>1): large displacement → high physical velocity despite low ω.
-    // Treble (tipFactor<<1): small displacement → low physical velocity despite high ω.
     this.vTipFactor[vi] = tipFactor;
+
+    // Velocity→physical scale: converts energy-normalized velocity to old EMF scale.
+    // Old scheme: EMF ∝ (disp × ω₀) × tipFactor × puEmfScale → ω₀ was implicit.
+    // New scheme: EMF ∝ vAmp × vVelScale × tipFactor × puEmfScale.
+    // Match condition: vA_fund × vVelScale = 1.0 × ω₀ → vVelScale = ω₀ / vA_fund.
+    this.vVelScale[vi] = omega0 / Math.max(vA_fund, 0.01);
+
     var gapMm = puGapMm(midi);
-    // qRange: LUT physical range. Cap at 1.5 to concentrate resolution near PU.
+    // qRange: LUT covers [-qRange, +qRange] of physical PU field.
+    // This is a PU property (not tine amplitude). Same as old code.
     var qRange = tipFactor;
     if (qRange < 0.3) qRange = 0.3;
     if (qRange > 1.5) qRange = 1.5;
-    // Per-key Lver micro-variation (existing KEY_VARIATION)
+    // Position scale factor: converts velocity-based position to old displacement scale.
+    // Old: tinePosition = 1.0 × sin × envScale (displacement domain)
+    // New: tinePosition = (vA_fund/ω₀) × sin × envScale (velocity/ω domain)
+    // → scale down by ω₀/vA_fund to match old LUT input range.
+    this.vQRange[vi] = qRange;
+    this.vPosScale[vi] = omega0 / Math.max(vA_fund, 0.01);
     var lverOff = (midi >= 0 && midi < 128) ? KEY_VARIATION[midi * 3] : 0;
     if (this.pickupType === 'wurlitzer') {
       this.vPuLUT[vi] = computePickupLUT_Wurlitzer(this.pickupDistance);
     } else {
-      // gapMm passed directly: converted to Lver inside computePickupLUT
       this.vPuLUT[vi] = computePickupLUT(this.pickupSymmetry, this.pickupDistance, gapMm, qRange, lverOff);
     }
 
@@ -1198,15 +1228,14 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           var phase = this.vPhase[base + m];
 
           // Mechanical decay starts immediately (no holdoff).
-          // Old engine's 150ms holdoff was an artifact of the hybrid architecture
-          // (AudioBuffer + OscillatorNode crossfade), not physics.
-          // In reality, air damping, mounting losses, and EM damping all begin at t=0.
-          // EM damping (vEmDampGain) handles the Lenz's law compression separately.
           var env = amp;
           this.vAmp[base + m] *= this.vDecayAlpha[base + m];
 
-          tinePosition += env * Math.sin(phase);
-          tineVelocity += env * omega * Math.cos(phase);
+          // Velocity-based: vAmp is velocity amplitude.
+          // Position = (V/ω) × sin(phase) — ÷ω suppresses high-freq displacement.
+          // Velocity = V × cos(phase) — direct from stored amplitude.
+          tinePosition += (env / omega) * Math.sin(phase);
+          tineVelocity += env * Math.cos(phase);
 
           // Advance phase
           this.vPhase[base + m] = phase + omega;
@@ -1223,16 +1252,14 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         }
 
         // Hammer contact envelope: during Tc, tine accelerates from rest.
-        // Hertz half-sine force pulse → displacement ∝ (1 - cos(πt/Tc))/2.
-        // After Tc, tine is at full amplitude (free vibration).
-        // This is applied to the entire tine output (position + velocity),
-        // modeling the physical fact that the tine hasn't reached full vibration yet.
+        // Hammer contact envelope: half-sine onset over Tc (Hertz model).
+        // During contact, tine accelerates from rest → displacement and velocity
+        // both ramp from zero. This is physically correct: no instant full-amplitude.
+        // With master compressor removed, this no longer creates "slow attack" illusion.
         var onsetGain = 1.0;
         if (age < this.vOnsetLen[v]) {
           onsetGain = (1.0 - Math.cos(age * this.vOnsetPhase[v])) * 0.5;
         }
-
-        // Apply tine amplitude, EM damping, and hammer onset to both position and velocity
         var envScale = this.vTineAmp[v] * this.vEmDampGain[v] * onsetGain;
         tinePosition *= envScale;
         tineVelocity *= envScale;
@@ -1250,15 +1277,17 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         }
 
         // --- 2. PU EMF (Falaize 2017: EMF = N × g'(q) × dq/dt × constants) ---
-        // LUT = g'(q): spatial derivative of magnetic flux (Falaize eq 25-27 bracket)
-        // × tineVelocity × tipFactor: physical velocity (displacement × angular freq)
-        //   Bass: large tipFactor compensates for small ω → balanced output across registers.
-        //   Treble: small tipFactor × large ω → also balanced.
-        // × puEmfScale: absorbs N=2900, physical constants, sampleRate
+        // LUT = g'(q): position drives PU nonlinearity.
+        // Velocity-based: vVelScale converts energy-normalized velocity to physical EMF scale.
+        // vVelScale = ω₀/vA_fund: restores the ω-dependent cross-keyboard balance.
         var puOut;
         if (this.vPuLUT[v]) {
-          var gPrime = lutLookup(this.vPuLUT[v], tinePosition);
-          puOut = gPrime * tineVelocity * this.vTipFactor[v] * this.puEmfScale;
+          // Scale velocity-based position to old displacement scale, then normalize to LUT range.
+          // vPosScale = ω₀/vA_fund converts (vAmp/ω)×sin back to ~disp×sin.
+          // Then ÷qRange maps to [-1, 1] for LUT.
+          var puPos = tinePosition * this.vPosScale[v] / this.vQRange[v];
+          var gPrime = lutLookup(this.vPuLUT[v], puPos);
+          puOut = gPrime * tineVelocity * this.vVelScale[v] * this.vTipFactor[v] * this.puEmfScale;
         } else {
           puOut = tinePosition; // fallback: no LUT
         }

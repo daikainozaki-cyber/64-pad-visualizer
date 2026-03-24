@@ -7,10 +7,11 @@ const _useEpianoWorklet = new URLSearchParams(window.location.search).get('workl
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // --- Master audio graph ---
-const masterComp = audioCtx.createDynamicsCompressor();
-masterComp.threshold.setValueAtTime(-12, 0);
-masterComp.ratio.setValueAtTime(4, 0);
-masterComp.knee.setValueAtTime(12, 0);
+// Master compressor bypassed: was squashing e-piano attack transients.
+// threshold=-12dB + ratio=4:1 → attack peak compressed → sustain louder → "slow attack" illusion.
+// TODO: re-evaluate if needed for other instruments (sampler, organ).
+const masterComp = audioCtx.createGain();
+masterComp.gain.setValueAtTime(1.0, 0);
 masterComp.connect(audioCtx.destination);
 
 const _sr = audioCtx.sampleRate;

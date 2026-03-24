@@ -1044,7 +1044,7 @@ function computeTonestackBiquads(bass, mid, treble, bright, fs) {
 class EpianoWorkletProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
-    console.log('[EP-Worklet] ★ Two-component TB model loaded (ba3ec66)');
+    console.log('[EP-Worklet] ★ Hammer impulse beam attack + bass TB fix loaded');
 
     var fs = sampleRate;
     this.fs = fs;
@@ -1089,6 +1089,20 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Mechanical decay holdoff: matches old engine where decay starts AFTER EM damp phase (75ms).
     // During holdoff, vAmp stays at initial value. Beam modes ring at full amplitude = bell character.
     this.vDecayHoldoff = new Uint32Array(MAX_VOICES);   // samples to wait before applying decayAlpha
+
+    // --- Hammer impulse beam attack envelope (2026-03-25) ---
+    // Physics: hammer impact pulse excites ALL beam modes at their full physical amplitude.
+    // These inharmonic partials create the attack "click" (コリッ) character.
+    // After ~2-5ms, they must decay to -25dB (beamClamp) to avoid chord pitch confusion.
+    // Same component, different TIME STRUCTURE: brief = character, sustained = problem.
+    // (Chaigne & Askenfelt 1994: broadband impulse; urinami-san 2026-03-25: "同じ成分でも時間構造が違う")
+    //
+    // Implementation: per-voice multiplicative envelope on beam modes only.
+    //   vBeamAttackGain starts at boostRatio (unclamped/clamped amplitude ratio),
+    //   decays exponentially to 1.0 with τ_impulse.
+    //   Effective beam amp = clamped_amp × beamAttackGain.
+    this.vBeamAttackGain  = new Float32Array(MAX_VOICES);  // starts at boostRatio, decays to 1.0
+    this.vBeamAttackDecay = new Float32Array(MAX_VOICES);  // per-sample decay coefficient
 
     // Hammer contact envelope (Hertz model: half-sine force pulse).
     // During hammer-tine contact (duration Tc), tine accelerates from rest.
@@ -1362,21 +1376,47 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       // --- Two-component tonebar model (new) ---
       // A = transient at TB eigenfreq, B = enslaved at tine f0
       var tbOmega = TWO_PI * tbEigenHz * this.invFs;
-      var tbTau = 0.005; // 5ms crossfade (Münster: 10-14ms visible, 5ms = 63%)
-      var tbDecay = Math.exp(-this.invFs / tbTau);
-      var tbAmpTarget = 0.30; // Münster: 30% of tine amplitude
 
-      // Component A: transient (starts at 30%, decays to 0)
+      // --- Coupling-dependent enslaving time (physics-based) ---
+      // Detuning ratio: how far TB eigenfreq is from tine f0.
+      // Small detuning (bass: TB=51Hz, f0=65Hz) → strong coupling → FAST enslaving.
+      // Large detuning (mid: TB=105Hz, f0=262Hz) → weak coupling → slower enslaving.
+      // Physics: forced oscillator response time ∝ 1/|Δω| (closer = faster lock).
+      // Münster: visible transition 10-14ms. This is for mid-range.
+      // Bass: detuning ~20% → τ ≈ 2ms. Mid: detuning ~60% → τ ≈ 5ms.
+      var detuningRatio = Math.abs(tbEigenHz - f0) / f0;
+      // Map: detuningRatio 0→τ=1.5ms, 0.3→τ=3ms, 0.7+→τ=5ms
+      var tbTau = 0.0015 + detuningRatio * 0.005;
+      if (tbTau > 0.005) tbTau = 0.005;
+      if (tbTau < 0.001) tbTau = 0.001;
+      var tbDecay = Math.exp(-this.invFs / tbTau);
+
+      // --- TB amplitude: scale by detuning (physics-based) ---
+      // When TB eigenfreq ≈ tine f0 (bass): transient at TB freq is nearly at f0.
+      //   Small frequency difference → beating (ugh), not FM sidebands (bell).
+      //   Real bass Rhodeses: TB transient is barely audible (strong coupling = fast lock).
+      // When TB eigenfreq << tine f0 (mid/treble): transient is distinctly different freq.
+      //   → FM sidebands → metallic bell character.
+      // Scale component A amplitude: full (30%) for large detuning, reduced for small.
+      var tbAmpBase = 0.30; // Münster: 30% of tine amplitude
+      // detuningRatio < 0.3 → scale down. > 0.5 → full.
+      var detuneScale = Math.min(detuningRatio / 0.5, 1.0);
+      if (detuneScale < 0.15) detuneScale = 0.15; // minimum: always some TB contribution
+      var tbAmpTarget = tbAmpBase * detuneScale;
+
+      // Component A: transient (starts at tbAmpTarget, decays to 0)
       this.vTbOmegaA[vi] = tbOmega;
       this.vTbPhaseA[vi] = 0;
       this.vTbAmpA[vi] = tbAmpTarget;
       this.vTbDecayA[vi] = tbDecay;
 
-      // Component B: enslaved (starts at 0, ramps to 30%)
+      // Component B: enslaved (starts at 0, ramps to tbAmpBase=30%)
+      // Note: B always targets full 30% (tonebar's steady-state contribution is
+      // independent of initial detuning — it's enslaved at f0 regardless).
       this.vTbOmegaB[vi] = omega0;
       this.vTbPhaseB[vi] = 0;
       this.vTbAmpB[vi] = 0;
-      this.vTbTargetB[vi] = tbAmpTarget;
+      this.vTbTargetB[vi] = tbAmpBase;
       this.vTbRampB[vi] = tbDecay;
 
       this.vTbSign[vi] = tonebarPhase(midi);
@@ -1406,6 +1446,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
     // Beam modes: slots 2..2+N_BEAM_MODES-1
     // Velocity weights for beam modes (pre-energy-normalization)
+    var maxBeamBoostRatio = 1.0; // track max unclamped/clamped ratio for attack envelope
     for (var b = 0; b < N_BEAM_MODES; b++) {
       var beamFreq = f0 * BEAM_FREQ_RATIOS[b];
       if (beamFreq >= nyquist) {
@@ -1471,9 +1512,18 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       // Gabrielli 2020 measured -15 to -25dB. At -20dB chords still sound bad.
       // At -25dB (0.056) chords are clean. Matches Gabrielli's quiet end.
       // Physics: real Rhodes beam modes ARE this quiet relative to fundamental.
+      // --- Beam attack impulse: store unclamped value for boost ratio ---
+      var vW_unclamped = vW;
       var beamClamp = 0.056; // -25dB re fundamental (confirmed: -20dB still causes chord issues at F2)
       if (vW > beamClamp) vW = beamClamp;
       if (vW < -beamClamp) vW = -beamClamp;
+      // Track max boost ratio across all beam modes for this voice
+      var absUnclamped = Math.abs(vW_unclamped);
+      var absClamped = Math.abs(vW);
+      if (absClamped > 0.001) {
+        var ratio = absUnclamped / absClamped;
+        if (ratio > maxBeamBoostRatio) maxBeamBoostRatio = ratio;
+      }
 
       // Store beam mode in SoA
       var slot = base + 2 + b;
@@ -1494,6 +1544,21 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       this.vAmp[base + z] = 0;
       this.vDecayAlpha[base + z] = 0;
     }
+
+    // --- Beam attack impulse envelope (hammer impact pulse) ---
+    // Physics: hammer broadband impulse excites all beam modes at full physical amplitude.
+    // During attack (~2-5ms), beam modes are LOUD → inharmonic "click" (コリッ).
+    // After attack, they settle to -25dB (beamClamp) → clean chords.
+    // τ_impulse: material damping of high-freq beam modes in spring steel.
+    //   Steel internal friction Q_material ≈ 50-100 at beam frequencies (kHz range).
+    //   For beam1 at 7.11×f0: f_beam ≈ 300-3000Hz → τ ≈ Q/(π×f) ≈ 5-50ms.
+    //   But perceptual: "click" must be brief (~3ms) to not muddy chords.
+    //   Use 3ms: matches Tc range (0.5-3ms) and perceptual click duration.
+    // Cap at 10× to avoid extreme transients (GC-zero: no dynamic allocation).
+    if (maxBeamBoostRatio > 10.0) maxBeamBoostRatio = 10.0;
+    var beamAttackTau = 0.003; // 3ms — hammer impulse duration
+    this.vBeamAttackGain[vi] = maxBeamBoostRatio;
+    this.vBeamAttackDecay[vi] = Math.exp(-this.invFs / beamAttackTau);
 
     // Energy normalization: Σ V_n² = 1
     var eNorm = 1.0 / Math.sqrt(Math.max(totalE, 0.01));
@@ -1710,6 +1775,13 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         var tinePosition = 0;
         var tineVelocity = 0;
 
+        // Beam attack impulse envelope: boost beam modes during hammer impact.
+        // Decays from boostRatio → 1.0 over ~3ms (hammer pulse duration).
+        var beamAttack = this.vBeamAttackGain[v];
+        if (beamAttack > 1.0) {
+          this.vBeamAttackGain[v] = 1.0 + (beamAttack - 1.0) * this.vBeamAttackDecay[v];
+        }
+
         for (var m = 0; m < MAX_MODES; m++) {
           var omega = this.vOmega[base + m];
           if (omega === 0) continue;
@@ -1722,6 +1794,13 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           // Mechanical decay starts immediately (no holdoff).
           var env = amp;
           this.vAmp[base + m] *= this.vDecayAlpha[base + m];
+
+          // Beam modes (slot 2+): apply hammer impulse attack envelope.
+          // During first ~3ms: beam modes at full physical amplitude → "click" (コリッ).
+          // After: decays to 1.0 × clamped amplitude → clean chords.
+          if (m >= 2 && beamAttack > 1.0) {
+            env *= beamAttack;
+          }
 
           // Velocity-based: vAmp is velocity amplitude.
           // Position = (V/ω) × sin(phase) — ÷ω suppresses high-freq displacement.

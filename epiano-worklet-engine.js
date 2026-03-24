@@ -121,7 +121,7 @@ function _epwCreateSpringReverbIR(ctx) {
 
 function _epwLoadSpringReverbWorklet(ctx) {
   if (!ctx.audioWorklet || _epw_springWorklet) return;
-  ctx.audioWorklet.addModule('spring-reverb-processor.js')
+  ctx.audioWorklet.addModule('spring-reverb-processor.js?v=' + (window.APP_VERSION || Date.now()))
     .then(function() {
       var workletNode = new AudioWorkletNode(ctx, 'spring-reverb-processor', {
         numberOfInputs: 1,
@@ -148,7 +148,8 @@ function _epwLoadSpringReverbWorklet(ctx) {
 function epianoWorkletInit(ctx, masterDest) {
   if (_epw_initialized) return Promise.resolve();
 
-  return ctx.audioWorklet.addModule('epiano-worklet-processor.js').then(function() {
+  var processorUrl = 'epiano-worklet-processor.js?v=' + (window.APP_VERSION || Date.now());
+  return ctx.audioWorklet.addModule(processorUrl).then(function() {
     // Create worklet node (stereo output: ch0=main, ch1=reverb send)
     _epw_node = new AudioWorkletNode(ctx, 'epiano-worklet-processor', {
       numberOfInputs: 0,

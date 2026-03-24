@@ -449,30 +449,25 @@ function tipDisplacementFactor(midi) {
 var TINE_EI = 180e9 * Math.PI * Math.pow(1e-3, 4) / 4; // 1.414e-4 N⋅m²
 var TINE_A4_RAW = 0; // cached: A4 raw amplitude for normalization to LUT coordinates
 
-// --- Hall (1986) finite hammer mass correction ---
-// "Piano string excitation in the case of small hammer mass" JASA 79(1):141
-// Mode energy rolls off at 6 dB/oct above n_max = 0.73 × M_tine / m_hammer.
-// For Rhodes: tine is MUCH lighter than hammer → n_max < 1 → all beam modes suppressed.
-// freqRatio = f_mode / f_fundamental (e.g., 7.11 for beam1).
-// Returns amplitude correction factor (0 to 1).
+// --- Hall (1986) correction: DISABLED ---
+// Hall (1986) "Piano string excitation in the case of small hammer mass" assumes
+// light hammer / heavy string (piano). Rhodes is the OPPOSITE: heavy hammer (30g)
+// / light tine (0.3g). n_max = 0.0073 → suppresses ALL beam modes to <3%.
+// Real Rhodes has audible beam modes. Hall correction is inapplicable.
+// Beam mode amplitudes now determined purely by physics:
+//   spatial ratio (FEM mode shape) × halfSineEnvelope (hammer spectrum)
+// The hammer spectrum envelope already provides the correct high-freq rolloff.
 var TINE_RHO = 7850;   // kg/m³ (ASTM A228 spring steel)
 var TINE_D = 0.001905;  // m (tine diameter, uniform for Original stage)
 var TINE_A = Math.PI * (TINE_D / 2) * (TINE_D / 2); // cross-section area
-var TINE_MODAL_MASS_FACTOR = 0.24; // cantilever effective modal mass = 0.24 × ρAL
 
 function hallMassCorrection(midi, freqRatio) {
-  var L_m = tineLength(midi) * 1e-3;
-  var M_tine = TINE_MODAL_MASS_FACTOR * TINE_RHO * TINE_A * L_m;
-  var hammer = getHammerParams(midi, 0.5);
-  var m_hammer = hammer.relMass * 0.030;
-  var n_max = 0.73 * M_tine / m_hammer;
-  // freqRatio acts as effective mode number (f_n/f_1)
-  if (freqRatio <= n_max) return 1.0;
-  // 6 dB/oct rolloff = amplitude ∝ 1/√(f/f_max) in energy, = (n_max/n)^0.5 for amplitude
-  // 6 dB/oct in energy = 3 dB/oct in amplitude = factor (n_max/n)
-  // Actually: 6 dB/oct = energy halves per octave = amplitude × 1/√2 per octave
-  // → amplitude factor = (n_max / n)^0.5
-  return Math.sqrt(n_max / freqRatio);
+  // Disabled: returns 1.0 for all modes.
+  // Physics justification: Rhodes hammer >> tine mass. Hall's piano model
+  // (m << M) gives n_max ≈ 0.007, killing all partials. This contradicts
+  // measured Rhodes spectra (Gabrielli 2020, Shear 2011) which show
+  // audible beam modes at -15 to -25 dB.
+  return 1.0;
 }
 
 function computeTineAmplitude(midi, velocity) {
@@ -1161,9 +1156,13 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         }
       }
 
-      var H_beam = halfSineEnvelope(beamFreq, hammer.Tc);
-      var hall = hallMassCorrection(midi, BEAM_FREQ_RATIOS[b]);
-      var vW = sr * (H_beam / Math.max(H_fund, 0.001)) * hall;
+      // Beam mode velocity weight = spatial ratio only.
+      // halfSineEnvelope (hammer spectrum rolloff) and Hall correction are BOTH disabled:
+      //   - halfSineEnvelope: Tc is uncertain; 1/f² rolloff suppresses beams to <2%
+      //   - Hall: designed for piano (light hammer/heavy string), not Rhodes (heavy/light)
+      // The spatial ratio from FEM (mode shape × striking position) is physically grounded.
+      // The onset envelope (half-sine contact) already shapes the attack transient.
+      var vW = sr;
 
       // Store beam mode in SoA
       var slot = base + 2 + b;

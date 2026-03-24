@@ -443,36 +443,45 @@ function tonebarPhase(midi) {
   return 1;
 }
 
-// --- Tonebar coupled mode detuning (Münster 2014 + coupled oscillator physics) ---
-// Tine + tonebar = weakly coupled 2-DOF system → mode splitting → beating.
-// The splitting Δf ∝ κ × f₀ × (f_tb/f₀)² where:
-//   κ = coupling coefficient (mechanical: screw attachment)
-//   f_tb/f₀ = ratio of tonebar natural freq to tine freq (Münster Table 1)
-// Higher ratio (closer frequencies) = stronger coupling = faster beating.
-// Münster data: natural freq ratios from 10 measured keys.
-var TB_RATIO_MIDI = [39, 42, 49, 52, 59, 62, 69, 76, 83]; // bar 12-68 mapped to MIDI
+// --- Tonebar eigenfrequency and enslaving (Münster 2014, ISMA Table 1) ---
+// Physics: tonebar has its OWN natural frequency (much lower than tine).
+// At note onset, tonebar vibrates at its eigenfrequency for ~10-14ms,
+// then is "enslaved" by the tine and locks to the tine frequency.
+// During the transition: two frequencies coexist → FM sidebands → metallic "click".
+// After enslaving: tonebar tracks tine exactly → no beat, steady state.
+//
+// Münster Table 1: measured eigenfrequencies of 9 tonebars (Bar 12-68).
+// TB_EIGEN_MIDI: MIDI note numbers for measurement points.
+// TB_EIGEN_HZ: tonebar natural frequencies in Hz.
+// TB_RATIO_VAL: f_tb / f_tine (for backwards compat with tonebarDetuning).
+var TB_EIGEN_MIDI = [39, 42, 49, 52, 59, 62, 69, 76, 83]; // bar 12-68 mapped to MIDI
+var TB_EIGEN_HZ   = [51, 69, 79, 105, 138, 183, 140, 145, 222]; // tonebar eigenfrequencies
+var TB_RATIO_MIDI = TB_EIGEN_MIDI;
 var TB_RATIO_VAL  = [0.65, 0.58, 0.45, 0.40, 0.35, 0.31, 0.16, 0.11, 0.11];
-var TB_COUPLING = 0.02; // κ: empirical coupling coefficient
 
-function tonebarDetuning(midi) {
-  // Interpolate f_tb/f_t ratio from Münster data
+// Enslaving time constant (Münster: visible transition ~10-14ms).
+// τ ≈ 5ms gives 63% convergence at 5ms, ~95% at 15ms → matches observed window.
+var TB_ENSLAVE_TAU = 0.005; // seconds
+
+// Interpolate tonebar eigenfrequency for any MIDI note.
+function tonebarEigenFreq(midi) {
   if (!hasTonebar(midi)) return 0;
-  var ratio;
-  if (midi <= TB_RATIO_MIDI[0]) { ratio = TB_RATIO_VAL[0]; }
-  else if (midi >= TB_RATIO_MIDI[TB_RATIO_MIDI.length - 1]) { ratio = TB_RATIO_VAL[TB_RATIO_VAL.length - 1]; }
-  else {
-    ratio = TB_RATIO_VAL[0];
-    for (var i = 0; i < TB_RATIO_MIDI.length - 1; i++) {
-      if (midi >= TB_RATIO_MIDI[i] && midi <= TB_RATIO_MIDI[i + 1]) {
-        var frac = (midi - TB_RATIO_MIDI[i]) / (TB_RATIO_MIDI[i + 1] - TB_RATIO_MIDI[i]);
-        ratio = TB_RATIO_VAL[i] + frac * (TB_RATIO_VAL[i + 1] - TB_RATIO_VAL[i]);
-        break;
-      }
+  if (midi <= TB_EIGEN_MIDI[0]) return TB_EIGEN_HZ[0];
+  if (midi >= TB_EIGEN_MIDI[TB_EIGEN_MIDI.length - 1]) return TB_EIGEN_HZ[TB_EIGEN_HZ.length - 1];
+  for (var i = 0; i < TB_EIGEN_MIDI.length - 1; i++) {
+    if (midi >= TB_EIGEN_MIDI[i] && midi <= TB_EIGEN_MIDI[i + 1]) {
+      var frac = (midi - TB_EIGEN_MIDI[i]) / (TB_EIGEN_MIDI[i + 1] - TB_EIGEN_MIDI[i]);
+      return TB_EIGEN_HZ[i] + frac * (TB_EIGEN_HZ[i + 1] - TB_EIGEN_HZ[i]);
     }
   }
-  // Mode splitting: Δf = κ × f₀ × ratio²
-  var f0 = 440 * Math.pow(2, (midi - 69) / 12);
-  return TB_COUPLING * f0 * ratio * ratio;
+  return TB_EIGEN_HZ[0];
+}
+
+// Old detuning function (kept for reference — now replaced by enslaving model).
+function tonebarDetuning(midi) {
+  // After enslaving, tonebar tracks tine at exactly f0.
+  // No steady-state detuning.
+  return 0;
 }
 
 // --- Tip displacement factor (relative to reference key B3/MIDI 59) ---
@@ -1085,6 +1094,17 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.vPuLUT_h       = new Array(MAX_VOICES);        // radial gradient LUT per voice
     for (var i = 0; i < MAX_VOICES; i++) this.vPuLUT_h[i] = null;
 
+    // --- Tonebar enslaving transition (Münster 2014) ---
+    // Physics: tonebar has its own eigenfrequency (51-222 Hz, Table 1).
+    // At note onset, tonebar initially vibrates at its natural frequency.
+    // Within 10-14ms, tine forces tonebar to its own frequency ("enslaving").
+    // The transition generates FM sidebands + attack "click" transient.
+    // Implementation: one-pole smoother on slot 1 omega.
+    //   ω(n+1) = ω(n) × α + ω_target × (1 - α)
+    //   α = e^(-1/(τ_enslave × fs)), τ_enslave ≈ 5ms (half of 10-14ms visible window)
+    this.vTbTargetOmega = new Float64Array(MAX_VOICES); // enslaved ω (= f0's ω)
+    this.vTbCoeff       = new Float32Array(MAX_VOICES);  // one-pole α for ω transition
+
     // Per-voice biquad filter states (coupling HPF)
     // [z1, z2] per voice
     this.vCouplingState = new Float32Array(MAX_VOICES * 2);
@@ -1132,10 +1152,14 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
     // --- Parameters (updated via MessagePort) ---
     // Voicing screw offset. 0=on-axis, 1=max offset.
-    // 0.3 → Lver=0.075 (1.9mm). SM data: ~1mm typical voicing offset.
+    // pickupSymmetry → Lver = sym × 0.25 (normalized PU coordinates).
+    // SM data: ~1mm typical voicing offset = Lver ≈ 0.04.
     // Lver affects fundamental H2/H3 (asymmetry) but NOT beam mode intermodulation
     // (beam modes are ÷ω in position → invisible to g'(q)). Confirmed by ear test.
-    this.pickupSymmetry = 0.3;
+    // H2 target: Gabrielli 2020 measured -12dB (re fundamental).
+    // 0.3 → H2 ≈ -15dB. 0.35 → H2 ≈ -12dB (estimated +3dB from increased asymmetry).
+    // TODO: verify with compare_spectra.py against Gabrielli companion files.
+    this.pickupSymmetry = 0.35;
     this.pickupDistance  = 0.5;
     this.preampGain     = 1.0;
     this.tsBass         = 0.5;
@@ -1282,13 +1306,21 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Scratch: reuse vOmega/vAmp arrays temporarily (they'll be overwritten below)
     // Instead, compute inline and store directly.
 
-    // Tonebar coupled mode
+    // --- Tonebar enslaving model (Münster 2014) ---
+    // Physics: at note onset, tonebar vibrates at its OWN eigenfrequency.
+    // Tine mechanically forces tonebar to lock to tine freq within 10-14ms.
+    // During transition: TB eigen freq → f0. Two frequencies coexist → FM sidebands.
+    // The "click" attack transient = initial high-freq TB eigen vibration.
+    //
+    // Slot 1 starts at TB eigenfrequency and transitions to f0 via one-pole smoother.
     var hasTB = hasTonebar(midi);
-    var tbDetuning = hasTB ? tonebarDetuning(midi) : 0;
-    var tonebarFreq = f0 + tbDetuning;
-    // Tonebar amplitude: coupled resonator, enslaved by tine (Münster 2014).
-    // Relative to fundamental energy. 0.06 matches tineAmp physical scale.
-    // Münster: tonebar vibrates at tine frequency with ~30% of tine amplitude.
+    var tbEigenHz = hasTB ? tonebarEigenFreq(midi) : 0;
+    // Initial tonebar frequency = its eigenfrequency (before enslaving)
+    var tonebarInitFreq = hasTB ? tbEigenHz : f0;
+    // Target frequency = tine fundamental (after enslaving complete)
+    var tonebarTargetFreq = f0;
+    // Tonebar amplitude: coupled resonator (Münster: ~30% of tine amplitude).
+    // 0.06 matches tineAmp physical scale.
     var tonebarAmp = hasTB ? 0.06 * tonebarPhase(midi) : 0.0;
     var tonebarDecay = hasTB ? tau : 0.001;
 
@@ -1303,10 +1335,13 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.vDecayAlpha[base] = Math.exp(-this.invFs / Math.max(tau * decayScale, 0.001));
     // vAmp[base] set after energy normalization
 
-    // Slot 1: tonebar
-    this.vOmega[base + 1] = TWO_PI * tonebarFreq * this.invFs;
+    // Slot 1: tonebar (enslaving model — starts at eigen freq, transitions to f0)
+    this.vOmega[base + 1] = TWO_PI * tonebarInitFreq * this.invFs;
     this.vPhase[base + 1] = 0;
     this.vDecayAlpha[base + 1] = Math.exp(-this.invFs / Math.max(tonebarDecay * decayScale, 0.001));
+    // Enslaving transition parameters
+    this.vTbTargetOmega[vi] = hasTB ? (TWO_PI * tonebarTargetFreq * this.invFs) : 0;
+    this.vTbCoeff[vi] = hasTB ? Math.exp(-this.invFs / TB_ENSLAVE_TAU) : 0;
 
     // Beam modes: slots 2..2+N_BEAM_MODES-1
     // Velocity weights for beam modes (pre-energy-normalization)
@@ -1349,10 +1384,21 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       // Two known sources not yet modeled:
       //   (1) Tuning spring mass (α≈0.6-0.8) near beam mode antinodes → coupling ×1.5-2
       //   (2) Hertz F∝α^1.5 has sharper peak than half-sine → more HF energy ≈ ×1.5
-      // Coefficient 3.0 is an estimate. TODO: derive from #1594 per-key spring data
-      // and Hertz force pulse Fourier analysis. Will become per-key.
+      // Base coefficient 3.0 is an estimate. TODO: derive from #1594 per-key spring data.
+      //
+      // Low-bass scaling fix (2026-03-24):
+      // Problem: long Tc (bass) → halfSineEnvelope passes all freqs → H_beam/H_fund ≈ 1.0
+      //   → beam mode amplitude = sr × 1.0 × 3.0 ≈ fundamental level (way too loud).
+      // Physics: neoprene is softer in bass → absorbs HF → beam modes should be WEAKER.
+      // Fix: scale beam boost by how much the hammer spectrum actually filters.
+      //   When H_ratio → 1.0 (no filtering, bass): boost → baseBoost × 0.3
+      //   When H_ratio → 0.0 (strong filtering, treble): boost → baseBoost × 1.0
+      //   beamBoost = baseBoost × (1.0 - 0.7 × H_ratio)
       var H_beam = halfSineEnvelope(beamFreq, hammer.Tc, hammer.spectralBeta);
-      var vW = sr * (H_beam / Math.max(H_fund, 0.001)) * 3.0;
+      var H_ratio = H_beam / Math.max(H_fund, 0.001);
+      if (H_ratio > 1.0) H_ratio = 1.0;
+      var beamBoost = 3.0 * (1.0 - 0.7 * H_ratio);
+      var vW = sr * H_ratio * beamBoost;
 
       // Store beam mode in SoA
       var slot = base + 2 + b;
@@ -1534,6 +1580,19 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
         var age = this.vAge[v];
         var base = v * MAX_MODES;
+
+        // --- 0. Tonebar enslaving transition (per-sample ω update) ---
+        // Münster 2014: tonebar starts at its eigenfrequency, locks to tine f0 in ~10-14ms.
+        // One-pole smoother: ω → ω_target with τ ≈ 5ms.
+        // Generates FM sidebands during transition (metallic "click" attack).
+        {
+          var tbTarget = this.vTbTargetOmega[v];
+          if (tbTarget > 0) {
+            var tbAlpha = this.vTbCoeff[v];
+            var curOmega = this.vOmega[base + 1];
+            this.vOmega[base + 1] = curOmega * tbAlpha + tbTarget * (1.0 - tbAlpha);
+          }
+        }
 
         // --- 1. Modal synthesis (sample-by-sample, phase-coherent) ---
         // Compute BOTH tine position and velocity.

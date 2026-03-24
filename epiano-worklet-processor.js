@@ -1044,7 +1044,7 @@ function computeTonestackBiquads(bass, mid, treble, bright, fs) {
 class EpianoWorkletProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
-    console.log('[EP-Worklet] ★ FM enslaving model loaded (b2531e9)');
+    console.log('[EP-Worklet] ★ Two-component TB model loaded (ba3ec66)');
 
     var fs = sampleRate;
     this.fs = fs;
@@ -1471,7 +1471,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       // Gabrielli 2020 measured -15 to -25dB. At -20dB chords still sound bad.
       // At -25dB (0.056) chords are clean. Matches Gabrielli's quiet end.
       // Physics: real Rhodes beam modes ARE this quiet relative to fundamental.
-      var beamClamp = 0.056; // -25dB re fundamental
+      var beamClamp = 0.056; // -25dB re fundamental (confirmed: -20dB still causes chord issues at F2)
       if (vW > beamClamp) vW = beamClamp;
       if (vW < -beamClamp) vW = -beamClamp;
 
@@ -1501,7 +1501,11 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
     // Write normalized amplitudes
     this.vAmp[base] = vA_fund * massScale; // fundamental
-    this.vAmp[base + 1] = tonebarAmp * massScale; // tonebar (not in energy budget)
+    // Slot 1 amplitude: set in noteOn tonebar branch (0 for coupled model, tonebarAmp for old)
+    // Only overwrite if old model is active (coupledTonebar already set vAmp[base+1] = 0)
+    if (!this.coupledTonebar || !hasTB) {
+      this.vAmp[base + 1] = (this.vAmp[base + 1] || 0) * massScale;
+    }
     for (var b = 0; b < N_BEAM_MODES; b++) {
       var slot = base + 2 + b;
       if (this.vOmega[slot] > 0) {
@@ -1679,12 +1683,14 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
               if (this.vTbPhaseA[v] > TWO_PI) this.vTbPhaseA[v] -= TWO_PI;
             }
 
-            // Component B: enslaved at tine f0 (ramping up)
+            // Component B: enslaved at tine f0 (ramping up, then decaying with tine)
             var tbOmegaB = this.vTbOmegaB[v];
             var ampB = this.vTbAmpB[v];
             var targetB = this.vTbTargetB[v];
             // One-pole ramp: ampB → targetB
             ampB = ampB * this.vTbRampB[v] + targetB * (1.0 - this.vTbRampB[v]);
+            // Decay target along with tine fundamental (same mechanical system)
+            this.vTbTargetB[v] = targetB * this.vDecayAlpha[base]; // fund decay
             this.vTbAmpB[v] = ampB;
             if (ampB > 0.0001) {
               var phaseB = this.vTbPhaseB[v];

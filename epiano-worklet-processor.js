@@ -325,11 +325,20 @@ function puGapMm(midi) {
 function getHammerParams(midi, velocity) {
   var key = midi - 20;
   var Tc0, relMass;
-  if (key <= 30)      { Tc0 = 0.0035; relMass = 0.67; }
-  else if (key <= 40) { Tc0 = 0.0025; relMass = 0.83; }
-  else if (key <= 50) { Tc0 = 0.0017; relMass = 1.00; }
-  else if (key <= 64) { Tc0 = 0.0012; relMass = 1.17; }
-  else                { Tc0 = 0.00015; relMass = 0.67; }
+  // Tc0: base contact time (seconds) at forte velocity.
+  // Physics: heavy hammer (30g) / light tine (0.3g) = short contact ("slap").
+  // Criterion: 2×f0×Tc < 1 so fundamental stays below halfSineEnvelope cutoff.
+  // This ensures beam modes get physically correct excitation levels.
+  // Bass (Shore 30): Tc=3.5ms → 2×55Hz×3.5ms=0.39 < 1 ✓ (beam modes ~15-40%)
+  // Mid (Shore 50-70): shortened from 2.5/1.7ms to 0.8/0.5ms
+  //   C4 (262Hz): 2×262×0.8ms=0.42 < 1 ✓ (beam1 ~15-20%)
+  // Upper (Shore 90): shortened from 1.2ms to 0.3ms
+  // Wood: 0.15ms unchanged (already correct)
+  if (key <= 30)      { Tc0 = 0.0035; relMass = 0.67; }  // Shore 30 (soft neoprene)
+  else if (key <= 40) { Tc0 = 0.0008; relMass = 0.83; }  // Shore 50
+  else if (key <= 50) { Tc0 = 0.0005; relMass = 1.00; }  // Shore 70
+  else if (key <= 64) { Tc0 = 0.0003; relMass = 1.17; }  // Shore 90
+  else                { Tc0 = 0.00015; relMass = 0.67; }  // Wood/maple
   var Tc = Tc0 * Math.pow(Math.max(velocity, 0.1), -0.286);
   return { Tc: Tc, relMass: relMass };
 }
@@ -1156,13 +1165,11 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         }
       }
 
-      // Beam mode velocity weight = spatial ratio only.
-      // halfSineEnvelope (hammer spectrum rolloff) and Hall correction are BOTH disabled:
-      //   - halfSineEnvelope: Tc is uncertain; 1/f² rolloff suppresses beams to <2%
-      //   - Hall: designed for piano (light hammer/heavy string), not Rhodes (heavy/light)
-      // The spatial ratio from FEM (mode shape × striking position) is physically grounded.
-      // The onset envelope (half-sine contact) already shapes the attack transient.
-      var vW = sr;
+      // Beam mode velocity weight = spatial ratio × hammer spectrum.
+      // halfSineEnvelope: physically correct force spectrum for half-sine contact.
+      // Hall correction: disabled (piano model, inapplicable to Rhodes).
+      var H_beam = halfSineEnvelope(beamFreq, hammer.Tc);
+      var vW = sr * (H_beam / Math.max(H_fund, 0.001));
 
       // Store beam mode in SoA
       var slot = base + 2 + b;

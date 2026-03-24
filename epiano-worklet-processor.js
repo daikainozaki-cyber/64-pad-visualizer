@@ -115,6 +115,53 @@ function strikingLine(midi) {
   return 57.15 * (1 - t) + 3.175 * t;
 }
 
+// --- Hammer tip height (Service Manual, per register) ---
+// Used as contact band width along tine axis.
+function hammerTipWidth(midi) {
+  var key = midi - 20;
+  if (key < 1) key = 1; if (key > 88) key = 88;
+  if (key <= 30) return 6.35;   // Shore A 30, neoprene/black
+  if (key <= 40) return 7.94;   // Shore A 50, neoprene/red
+  if (key <= 50) return 9.53;   // Shore A 70, neoprene/yellow
+  if (key <= 64) return 11.11;  // Shore A 90, neoprene/black
+  return 11.11;                  // Maple wood core + tube
+}
+
+// --- Half-sine Hertz impulse spectral envelope (Chaigne & Askenfelt 1994) ---
+// Force pulse: F(t) = F₀ sin(πt/Tc) for 0 ≤ t ≤ Tc
+// Full spectrum has zeros at fTc = n+0.5 (cos term). Real hammers (nonlinear
+// Hertz stiffness, viscoelastic neoprene) smooth these zeros out.
+// We use the spectral ENVELOPE: 1/(2fTc)² for 2fTc > 1, flat below.
+// High-freq roll-off matches the half-sine: ∝ 1/f². No dead spots.
+function halfSineEnvelope(f, Tc) {
+  var u = 2 * f * Tc;
+  return u > 1 ? 1 / (u * u) : 1;
+}
+
+// --- Contact band mode excitation (replaces point modeExcitation for striking) ---
+// Integrates mode shape over hammer contact band with raised-cosine (Hertz) weighting.
+// bandNorm = contact width / tine length (dimensionless).
+// For narrow bands, converges to point excitation.
+function bandModeExcitation(xi_center, bandNorm, m) {
+  if (bandNorm < 0.02) return cantileverPhi(xi_center, m) / PHI_TIP[m];
+  var hw = bandNorm / 2;
+  var xi_lo = xi_center - hw;
+  if (xi_lo < 0.001) xi_lo = 0.001;
+  var xi_hi = xi_center + hw;
+  if (xi_hi > 0.999) xi_hi = 0.999;
+  var N = 20;
+  var sumW = 0, sumF = 0;
+  for (var i = 0; i <= N; i++) {
+    var xi = xi_lo + (i / N) * (xi_hi - xi_lo);
+    var d = (xi - xi_center) / hw;
+    var w = Math.cos(d * 1.5707963); // cos(π/2 × d)
+    if (w < 0) w = 0;
+    sumW += w;
+    sumF += w * cantileverPhi(xi, m) / PHI_TIP[m];
+  }
+  return sumW > 0 ? sumF / sumW : cantileverPhi(xi_center, m) / PHI_TIP[m];
+}
+
 function puGapMm(midi) {
   var key = midi - 20;
   if (key < 1) key = 1; if (key > 88) key = 88;
@@ -849,7 +896,6 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     var Q = interpolateQ(midi);
     var tau = Q / (Math.PI * f0);
     var hammer = getHammerParams(midi, velocity);
-    var fc = 1 / (Math.PI * hammer.Tc);
     var massScale = Math.sqrt(hammer.relMass);
     var velDecayScale = 1.0 - velocity * 0.4;
 
@@ -858,27 +904,40 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     var tonebarAmp = hasTB ? 0.3 * tbPhase : 0.0;
     var tonebarDecay = hasTB ? tau : 0.001;
 
-    // Striking line spatial excitation
+    // Striking line spatial excitation with contact band (Service Manual tip width)
     var L_mm = tineLength(midi);
     var xs_mm = strikingLine(midi);
     var xi = Math.min(xs_mm / L_mm, 0.95);
-    var spatialFund = modeExcitation(xi, 0);
-    var spatialBeam1 = modeExcitation(xi, 1);
-    var spatialBeam2 = modeExcitation(xi, 2);
-    var spatialRatio1 = spatialBeam1 / Math.max(spatialFund, 0.001);
-    var spatialRatio2 = spatialBeam2 / Math.max(spatialFund, 0.001);
+    var tipW = hammerTipWidth(midi);
+    var bandNorm = tipW / L_mm; // contact band as fraction of tine length
+
+    // Contact band mode excitation: integrates over hammer width with Hertz weighting
+    var spatialFund  = bandModeExcitation(xi, bandNorm, 0);
+    var spatialBeam1 = bandModeExcitation(xi, bandNorm, 1);
+    var spatialBeam2 = bandModeExcitation(xi, bandNorm, 2);
+    var spatialRatio1 = spatialBeam1 / Math.max(Math.abs(spatialFund), 0.001);
+    var spatialRatio2 = spatialBeam2 / Math.max(Math.abs(spatialFund), 0.001);
 
     var beam1Freq = f0 * 7.11;
     var beam2Freq = f0 * 20.25;
 
-    var fundFilter = 1 / (1 + Math.pow(f0 / fc, 2));
-    var beam1Filter = 1 / (1 + Math.pow(beam1Freq / fc, 2));
-    var beam2Filter = 1 / (1 + Math.pow(beam2Freq / fc, 2));
+    // Hertz impulse spectral envelope (replaces steady-state 1/(1+(f/fc)²) + 1/n² fudge)
+    // Physics: hammer delivers force pulse of duration Tc.
+    // Spectral envelope: flat below fc=1/(2Tc), rolls off as 1/(2fTc)² above.
+    // Impulse response: mode displacement ∝ φ_n(xs) × H(f_n) / ω_n
+    // (displacement has 1/ω factor; velocity = displacement × ω has no ω factor)
+    var H_fund  = halfSineEnvelope(f0, hammer.Tc);
+    var H_beam1 = halfSineEnvelope(beam1Freq, hammer.Tc);
+    var H_beam2 = halfSineEnvelope(beam2Freq, hammer.Tc);
+    var hamRatio1 = H_beam1 / Math.max(H_fund, 0.001);
+    var hamRatio2 = H_beam2 / Math.max(H_fund, 0.001);
 
-    var freqResp1 = 1 / (7.11 * 7.11);
-    var freqResp2 = 1 / (20.25 * 20.25);
-    var beam1Rel = (beam1Filter / Math.max(fundFilter, 0.01)) * spatialRatio1 * freqResp1 * 6.5;
-    var beam2Rel = (beam2Filter / Math.max(fundFilter, 0.01)) * spatialRatio2 * freqResp2 * 9.5;
+    // beam1Rel = displacement amplitude ratio (beam1 / fundamental).
+    // In process(), velocity = amp × ω, so EMF ratio = beam1Rel × (ω₁/ω₀).
+    // From impulse response: displacement ∝ φ_n × |F̂(f_n)| / ω_n
+    // → displacement ratio = spatialRatio × hamRatio × (f₀/f₁)
+    var beam1Rel = spatialRatio1 * hamRatio1 / 7.11;
+    var beam2Rel = spatialRatio2 * hamRatio2 / 20.25;
 
     // Tonebar coupled mode: detuned from f0 by Δf (Münster 2014 + coupled oscillator).
     // Tine = mode A (at f0), tonebar = mode B (at f0 + Δf).

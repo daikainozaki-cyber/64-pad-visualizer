@@ -1119,16 +1119,21 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.vPuLUT_h       = new Array(MAX_VOICES);        // radial gradient LUT per voice
     for (var i = 0; i < MAX_VOICES; i++) this.vPuLUT_h[i] = null;
 
-    // --- Tonebar enslaving transition (Münster 2014) ---
-    // Physics: tonebar has its own eigenfrequency (51-222 Hz, Table 1).
-    // At note onset, tonebar initially vibrates at its natural frequency.
-    // Within 10-14ms, tine forces tonebar to its own frequency ("enslaving").
-    // The transition generates FM sidebands + attack "click" transient.
-    // Implementation: one-pole smoother on slot 1 omega.
-    //   ω(n+1) = ω(n) × α + ω_target × (1 - α)
-    //   α = e^(-1/(τ_enslave × fs)), τ_enslave ≈ 5ms (half of 10-14ms visible window)
-    this.vTbTargetOmega = new Float64Array(MAX_VOICES); // enslaved ω (= f0's ω)
-    this.vTbCoeff       = new Float32Array(MAX_VOICES);  // one-pole α for ω transition
+    // --- Tonebar two-component model (Münster 2014) ---
+    // Component A: transient at TB eigenfreq (decaying, "click" attack)
+    // Component B: enslaved at tine f0 (ramping up, steady-state 30%)
+    // Both are phase accumulators with amplitude envelopes. No ODE needed.
+    this.vTbOmegaA     = new Float64Array(MAX_VOICES);  // TB eigenfreq ω (rad/sample)
+    this.vTbPhaseA     = new Float64Array(MAX_VOICES);  // transient phase
+    this.vTbAmpA       = new Float32Array(MAX_VOICES);  // transient amplitude (30% → 0)
+    this.vTbDecayA     = new Float32Array(MAX_VOICES);  // per-sample decay: e^(-1/(τ×fs))
+    this.vTbOmegaB     = new Float64Array(MAX_VOICES);  // tine f0 ω (rad/sample)
+    this.vTbPhaseB     = new Float64Array(MAX_VOICES);  // enslaved phase
+    this.vTbAmpB       = new Float32Array(MAX_VOICES);  // enslaved amplitude (0 → 30%)
+    this.vTbTargetB    = new Float32Array(MAX_VOICES);  // target amplitude (30%)
+    this.vTbRampB      = new Float32Array(MAX_VOICES);  // per-sample ramp: e^(-1/(τ×fs))
+    this.vTbSign       = new Float32Array(MAX_VOICES);  // phase sign (+1/-1, Münster)
+    this.coupledTonebar = true; // A/B flag
 
     // Per-voice biquad filter states (coupling HPF)
     // [z1, z2] per voice
@@ -1331,30 +1336,15 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Scratch: reuse vOmega/vAmp arrays temporarily (they'll be overwritten below)
     // Instead, compute inline and store directly.
 
-    // --- Tonebar enslaving model (Münster 2014) ---
-    // Physics: at note onset, tonebar vibrates at its OWN eigenfrequency.
-    // Tine mechanically forces tonebar to lock to tine freq within 10-14ms.
-    // During transition: TB eigen freq → f0. Two frequencies coexist → FM sidebands.
-    // The "click" attack transient = initial high-freq TB eigen vibration.
-    //
-    // Slot 1 starts at TB eigenfrequency and transitions to f0 via one-pole smoother.
+    // --- Tonebar two-component model (Münster 2014) ---
+    // Physics: forced damped oscillator = transient at ω₂ + steady-state at ω₁.
+    // Instead of integrating the ODE (discretization issues at high damping),
+    // decompose into two components with crossfading envelopes:
+    //   Component A (transient): oscillates at TB eigenfreq, amplitude 30% → 0 (τ=5ms)
+    //   Component B (enslaved): oscillates at tine f0, amplitude 0 → 30% (τ=5ms)
+    //   Total always ≈ 30%. Frequency content changes over 10-14ms. FM sidebands natural.
     var hasTB = hasTonebar(midi);
     var tbEigenHz = hasTB ? tonebarEigenFreq(midi) : 0;
-    // Initial tonebar frequency = its eigenfrequency (before enslaving)
-    var tonebarInitFreq = hasTB ? tbEigenHz : f0;
-    // Target frequency = tine fundamental (after enslaving complete)
-    var tonebarTargetFreq = f0;
-    // Tonebar amplitude: coupled resonator (Münster 2014: ~30% of tine amplitude).
-    // Note: 30% is the STEADY STATE (after enslaving, both at f0 = reinforcement).
-    // During enslaving transition, TB eigen ≠ f0. High amplitude = audible dissonance.
-    // 0.06 = 6%: safe level where transition FM is subtle but tonebar contributes to timbre.
-    // TODO: implement true 2-DOF coupling where energy exchange creates harmonic sidebands.
-    // Tonebar amplitude: coupled resonator (Münster 2014: ~30% of tine amplitude).
-    // Note: 30% is the STEADY STATE (after enslaving, both at f0 = reinforcement).
-    // During enslaving transition, TB eigen ≠ f0. 0.06 (6%) keeps FM subtle.
-    // TODO: after true 2-DOF coupling, can increase toward physical 30%.
-    var tonebarAmp = hasTB ? 0.06 * tonebarPhase(midi) : 0.0;
-    var tonebarDecay = hasTB ? tau : 0.001;
 
     // Pre-compute beam mode data: freq, spatial ratio, velocity weight
     // Store in SoA slots directly. Slots: 0=fund, 1=tonebar, 2..2+N_BEAM_MODES-1=beams
@@ -1367,13 +1357,52 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.vDecayAlpha[base] = Math.exp(-this.invFs / Math.max(tau * decayScale, 0.001));
     // vAmp[base] set after energy normalization
 
-    // Slot 1: tonebar (enslaving model — starts at eigen freq, transitions to f0)
-    this.vOmega[base + 1] = TWO_PI * tonebarInitFreq * this.invFs;
-    this.vPhase[base + 1] = 0;
-    this.vDecayAlpha[base + 1] = Math.exp(-this.invFs / Math.max(tonebarDecay * decayScale, 0.001));
-    // Enslaving transition parameters
-    this.vTbTargetOmega[vi] = hasTB ? (TWO_PI * tonebarTargetFreq * this.invFs) : 0;
-    this.vTbCoeff[vi] = hasTB ? Math.exp(-this.invFs / TB_ENSLAVE_TAU) : 0;
+    // Slot 1: tonebar — forced damped oscillator OR old enslaving model
+    if (this.coupledTonebar && hasTB) {
+      // --- Two-component tonebar model (new) ---
+      // A = transient at TB eigenfreq, B = enslaved at tine f0
+      var tbOmega = TWO_PI * tbEigenHz * this.invFs;
+      var tbTau = 0.005; // 5ms crossfade (Münster: 10-14ms visible, 5ms = 63%)
+      var tbDecay = Math.exp(-this.invFs / tbTau);
+      var tbAmpTarget = 0.30; // Münster: 30% of tine amplitude
+
+      // Component A: transient (starts at 30%, decays to 0)
+      this.vTbOmegaA[vi] = tbOmega;
+      this.vTbPhaseA[vi] = 0;
+      this.vTbAmpA[vi] = tbAmpTarget;
+      this.vTbDecayA[vi] = tbDecay;
+
+      // Component B: enslaved (starts at 0, ramps to 30%)
+      this.vTbOmegaB[vi] = omega0;
+      this.vTbPhaseB[vi] = 0;
+      this.vTbAmpB[vi] = 0;
+      this.vTbTargetB[vi] = tbAmpTarget;
+      this.vTbRampB[vi] = tbDecay;
+
+      this.vTbSign[vi] = tonebarPhase(midi);
+
+      // Disable slot 1 phase accumulator (replaced by two-component)
+      this.vOmega[base + 1] = 0;
+      this.vPhase[base + 1] = 0;
+      this.vAmp[base + 1] = 0;
+      this.vDecayAlpha[base + 1] = 0;
+    } else if (hasTB) {
+      // --- Old slot 1 model (fallback) ---
+      this.vOmega[base + 1] = TWO_PI * tbEigenHz * this.invFs;
+      this.vPhase[base + 1] = 0;
+      this.vAmp[base + 1] = 0.06 * tonebarPhase(midi);
+      this.vDecayAlpha[base + 1] = Math.exp(-this.invFs / Math.max(tau * decayScale, 0.001));
+      this.vTbOmegaA[vi] = 0; this.vTbAmpA[vi] = 0;
+      this.vTbOmegaB[vi] = 0; this.vTbAmpB[vi] = 0;
+      this.vTbSign[vi] = 0;
+    } else {
+      // No tonebar
+      this.vOmega[base + 1] = 0; this.vPhase[base + 1] = 0;
+      this.vAmp[base + 1] = 0; this.vDecayAlpha[base + 1] = 0;
+      this.vTbOmegaA[vi] = 0; this.vTbAmpA[vi] = 0;
+      this.vTbOmegaB[vi] = 0; this.vTbAmpB[vi] = 0;
+      this.vTbSign[vi] = 0;
+    }
 
     // Beam modes: slots 2..2+N_BEAM_MODES-1
     // Velocity weights for beam modes (pre-energy-normalization)
@@ -1627,16 +1656,43 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         var age = this.vAge[v];
         var base = v * MAX_MODES;
 
-        // --- 0. Tonebar enslaving transition (per-sample ω update) ---
-        // Münster 2014: tonebar starts at its eigenfrequency, locks to tine f0 in ~10-14ms.
-        // One-pole smoother: ω → ω_target with τ ≈ 5ms.
-        // Generates FM sidebands during transition (metallic "click" attack).
+        // --- 0. Tonebar two-component model (Münster 2014) ---
+        // A = transient at TB eigenfreq (30% → 0, τ=5ms)
+        // B = enslaved at tine f0 (0 → 30%, τ=5ms)
+        // Both contribute to tinePosition/tineVelocity.
+        // FM sidebands arise naturally from A+B superposition through PU nonlinearity.
+        var tbContribPos = 0;
+        var tbContribVel = 0;
         {
-          var tbTarget = this.vTbTargetOmega[v];
-          if (tbTarget > 0) {
-            var tbAlpha = this.vTbCoeff[v];
-            var curOmega = this.vOmega[base + 1];
-            this.vOmega[base + 1] = curOmega * tbAlpha + tbTarget * (1.0 - tbAlpha);
+          var tbOmegaA = this.vTbOmegaA[v];
+          if (tbOmegaA > 0) {
+            var tbSign = this.vTbSign[v];
+
+            // Component A: transient at TB eigenfreq (decaying)
+            var ampA = this.vTbAmpA[v];
+            if (ampA > 0.0001) {
+              var phaseA = this.vTbPhaseA[v];
+              tbContribPos += (ampA / tbOmegaA) * Math.sin(phaseA) * tbSign;
+              tbContribVel += ampA * Math.cos(phaseA) * tbSign;
+              this.vTbAmpA[v] = ampA * this.vTbDecayA[v];
+              this.vTbPhaseA[v] = phaseA + tbOmegaA;
+              if (this.vTbPhaseA[v] > TWO_PI) this.vTbPhaseA[v] -= TWO_PI;
+            }
+
+            // Component B: enslaved at tine f0 (ramping up)
+            var tbOmegaB = this.vTbOmegaB[v];
+            var ampB = this.vTbAmpB[v];
+            var targetB = this.vTbTargetB[v];
+            // One-pole ramp: ampB → targetB
+            ampB = ampB * this.vTbRampB[v] + targetB * (1.0 - this.vTbRampB[v]);
+            this.vTbAmpB[v] = ampB;
+            if (ampB > 0.0001) {
+              var phaseB = this.vTbPhaseB[v];
+              tbContribPos += (ampB / tbOmegaB) * Math.sin(phaseB) * tbSign;
+              tbContribVel += ampB * Math.cos(phaseB) * tbSign;
+              this.vTbPhaseB[v] = phaseB + tbOmegaB;
+              if (this.vTbPhaseB[v] > TWO_PI) this.vTbPhaseB[v] -= TWO_PI;
+            }
           }
         }
 
@@ -1673,6 +1729,10 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
             this.vPhase[base + m] -= TWO_PI;
           }
         }
+
+        // Add tonebar forced oscillator contribution (before envScale)
+        tinePosition += tbContribPos;
+        tineVelocity += tbContribVel;
 
         // Apply EM damping (Lenz's law): one-pole smoother, 1.0 → emDampRatio over ~75ms.
         {

@@ -48,11 +48,45 @@ N_MODES = 3
 # Tine geometry
 # =============================================================================
 
+_TINE_LEN_TABLE = None  # Lazy-initialized piecewise table
+
+def _build_tine_table():
+    """Piecewise tine length model from SM Figure 6-2 + Gemini pixel analysis."""
+    t = {}
+    # Zone 1: keys 1-7, constant (SM label "0-(1-7)")
+    for k in range(1, 8):
+        t[k] = 157.0
+    # Zone 2: keys 8-35, Gemini pixel measurement from left column
+    gemini = {
+        8: 153.8, 9: 150.6, 10: 147.4, 11: 144.2, 12: 141.0,
+        13: 137.9, 14: 134.7, 15: 131.5, 16: 128.3, 17: 125.1,
+        18: 121.9, 19: 118.7, 20: 115.5, 21: 112.4, 22: 109.2,
+        23: 106.0, 24: 102.8, 25: 99.6, 26: 96.4, 27: 93.2,
+        28: 90.1, 29: 86.9, 30: 83.7, 31: 80.5, 32: 77.3,
+        33: 74.1, 34: 71.0, 35: 67.8,
+    }
+    t.update(gemini)
+    # Transition: keys 36-40
+    trans = {36: 65.4, 37: 63.0, 38: 60.6, 39: 58.3, 40: 56.0}
+    t.update(trans)
+    # Zone 3: keys 41-88, exponential (56mm@40 → 18mm@88)
+    b = -np.log(18.0 / 56.0) / (88 - 40)
+    for k in range(41, 89):
+        t[k] = 56.0 * np.exp(-b * (k - 40))
+    # Enforce monotonicity after Zone 1
+    for k in range(8, 89):
+        if t[k] >= t[k-1]:
+            t[k] = t[k-1] - 0.1
+    return t
+
 def tine_length_mm(midi):
-    """Exponential tine length (mm). EP Forum fit, Shear endpoints."""
+    """Piecewise tine length (mm) from SM Figure 6-2."""
+    global _TINE_LEN_TABLE
+    if _TINE_LEN_TABLE is None:
+        _TINE_LEN_TABLE = _build_tine_table()
     key = midi - 20
     key = max(1, min(88, key))
-    return 157.0 * np.exp(-0.0249 * (key - 1))
+    return _TINE_LEN_TABLE[key]
 
 def striking_line_mm(midi):
     """Linear striking line (mm). SM Ch.9."""

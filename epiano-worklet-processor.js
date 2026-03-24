@@ -1332,16 +1332,10 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
         } else {
           // === DI PATH (no amp chain) ===
-          // Per-voice harp LPF → direct output. Matches old engine exactly.
-          // Old engine: lastNode → diHarpLPF(5700Hz, Q=0.8) → masterDest
-          // Per-voice harp LPF (5700Hz, Q=0.8) — same as old engine diHarpLPF
-          var dhOff = v * 2;
-          var dhc = this.harpLPFCoeff; // same coefficients
-          var dhz1 = this.vDiHarpState[dhOff], dhz2 = this.vDiHarpState[dhOff + 1];
-          var dhOut = dhc[0] * sig + dhz1;
-          this.vDiHarpState[dhOff] = dhc[1] * sig - dhc[3] * dhOut + dhz2;
-          this.vDiHarpState[dhOff + 1] = dhc[2] * sig - dhc[4] * dhOut;
-          diSum += dhOut;
+          // No harp LPF: individual PU resonance is 18kHz (inaudible).
+          // The "harp wiring LPF" was based on guitar PU physics incorrectly
+          // applied to Rhodes (independent coils, no shared core, DI = no cable).
+          diSum += sig;
         }
         this.vAge[v]++;
       }
@@ -1404,16 +1398,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         // === AMP PATH: shared harpLPF → output ch0 (dry) ===
         // V4B + poweramp are on main thread (for wet/dry bloom mixing).
 
-        // Harp wiring: parallel group voltage divider + LPF (5.7kHz, shared)
-        {
-          var hc = this.harpLPFCoeff;
-          var hz1 = this.harpLPFState[0], hz2 = this.harpLPFState[1];
-          var hIn = (drySum / HARP_PARALLEL_DIV) * this.dryBusGain;
-          var hOut = hc[0] * hIn + hz1;
-          this.harpLPFState[0] = hc[1] * hIn - hc[3] * hOut + hz2;
-          this.harpLPFState[1] = hc[2] * hIn - hc[4] * hOut;
-          drySum = hOut;
-        }
+        // Harp parallel voltage divider (no LPF — see DI path comment)
+        drySum = (drySum / HARP_PARALLEL_DIV) * this.dryBusGain;
 
         // Output dry signal. V4B + poweramp + cabinet are on main thread
         // so wet (spring reverb return) can mix with dry at V4B = bloom.

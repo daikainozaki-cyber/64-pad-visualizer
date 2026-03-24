@@ -322,26 +322,49 @@ function puGapMm(midi) {
   return 1.588;
 }
 
+// --- Hertz contact stiffness per hammer zone ---
+// K_H = (4/3) × E* × √R_tip
+// E* ≈ E_neoprene / (1-ν²) (steel is infinitely stiff by comparison)
+// R_tip ≈ 4mm hemisphere (SM hammer tip geometry)
+// Shore A → Young's modulus (MPa): 30→1, 50→3, 70→7, 90→15, wood→10000
+var HAMMER_KH = [
+  112000,   // Shore 30: (4/3) × 1.33e6 × √0.004
+  337000,   // Shore 50: (4/3) × 4.00e6 × √0.004
+  785000,   // Shore 70: (4/3) × 9.33e6 × √0.004
+  1680000,  // Shore 90: (4/3) × 20.0e6 × √0.004
+  1.12e9    // Wood/maple: E ≈ 10 GPa
+];
+var HAMMER_RELMASS = [0.67, 0.83, 1.00, 1.17, 0.67];
+
 function getHammerParams(midi, velocity) {
   var key = midi - 20;
-  var Tc0, relMass;
-  // Tc0: base contact time (seconds) at forte velocity.
-  // Physics: heavy hammer (30g) / light tine (0.3g) = short contact ("slap").
-  // Criterion: 2×f0×Tc < 1 so fundamental stays below halfSineEnvelope cutoff.
-  // This ensures beam modes get physically correct excitation levels.
-  // Bass (Shore 30): Tc=3.5ms → 2×55Hz×3.5ms=0.39 < 1 ✓ (beam modes ~15-40%)
-  // Mid (Shore 50-70): shortened from 2.5/1.7ms to 0.8/0.5ms
-  //   C4 (262Hz): 2×262×0.8ms=0.42 < 1 ✓ (beam1 ~15-20%)
-  // Upper (Shore 90): shortened from 1.2ms to 0.3ms
-  // Wood: 0.15ms unchanged (already correct)
-  // Tc0: shorter = broader spectrum = stronger beam modes.
-  // Target: beam1 at ~30-40% amplitude for mid keys (matches Shear -8 to -10dB).
-  if (key <= 30)      { Tc0 = 0.0025; relMass = 0.67; }  // Shore 30 (soft neoprene)
-  else if (key <= 40) { Tc0 = 0.0004; relMass = 0.83; }  // Shore 50
-  else if (key <= 50) { Tc0 = 0.00025; relMass = 1.00; }  // Shore 70
-  else if (key <= 64) { Tc0 = 0.00015; relMass = 1.17; }  // Shore 90
-  else                { Tc0 = 0.00008; relMass = 0.67; }  // Wood/maple
-  var Tc = Tc0 * Math.pow(Math.max(velocity, 0.1), -0.286);
+  var zone;
+  if (key <= 30)      zone = 0;  // Shore 30
+  else if (key <= 40) zone = 1;  // Shore 50
+  else if (key <= 50) zone = 2;  // Shore 70
+  else if (key <= 64) zone = 3;  // Shore 90
+  else                zone = 4;  // Wood
+
+  var relMass = HAMMER_RELMASS[zone];
+  var K_H = HAMMER_KH[zone];
+
+  // --- Hertz contact time (per-key, from physics) ---
+  // Tc = 2.94 × α_max / v₀,  α_max = (5 m_eff v₀² / (4 K_H))^(2/5)
+  //
+  // Critical physics: m_eff = tine modal mass, NOT hammer mass.
+  // m_hammer (30g) >> m_tine (0.3-3g) → reduced mass ≈ m_tine.
+  // Result: Rhodes contact is SHORT (light tine bounces off heavy hammer).
+  // Each key has different Tc because tine length (= modal mass) varies.
+  var L_m = tineLength(midi) * 1e-3;
+  var m_eff = 0.24 * TINE_RHO * TINE_A * L_m; // cantilever modal mass
+
+  var v0 = Math.max(velocity, 0.1);
+  var alpha_max = Math.pow(5 * m_eff * v0 * v0 / (4 * K_H), 0.4);
+  var Tc = 2.94 * alpha_max / v0;
+
+  if (Tc < 0.00002) Tc = 0.00002; // min 0.02ms
+  if (Tc > 0.005) Tc = 0.005;     // max 5ms
+
   return { Tc: Tc, relMass: relMass };
 }
 

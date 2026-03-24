@@ -1485,10 +1485,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       // Physics: FEM spatial ratios + half-sine envelope underestimate beam coupling.
       // Two known sources not yet modeled:
       //   (1) Tuning spring mass (α≈0.6-0.8) near beam mode antinodes → coupling ×1.5-2
-      // --- Pure physics: no beamBoost, no clamp (2026-03-25 experiment) ---
-      // Let FEM spatial ratio × hammer spectrum determine beam mode amplitude.
-      // Previous: beamBoost=3.0 (estimate) → clamp=0.056 (ear-tuned) = double workaround.
-      // Now: physics only. If it sounds wrong, the physics model needs fixing.
+        // --- Pure physics: no beamBoost, no clamp (2026-03-25 experiment) ---
+      // Fundamental-only test: good. → Problem is beam mode interaction, not base signal.
       var H_beam = halfSineEnvelope(beamFreq, hammer.Tc, hammer.spectralBeta);
       var H_ratio = H_beam / Math.max(H_fund, 0.001);
       if (H_ratio > 1.0) H_ratio = 1.0;
@@ -1519,21 +1517,23 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.vBeamAttackGain[vi] = 1.0;
     this.vBeamAttackDecay[vi] = 1.0;
 
-    // Energy normalization: Σ V_n² = 1
-    var eNorm = 1.0 / Math.sqrt(Math.max(totalE, 0.01));
-    var vA_fund = vW_fund * eNorm;
+    // --- No energy normalization across modes (2026-03-25) ---
+    // Previous: Σ V_n² = 1 → beam modes steal energy from fundamental → quiet.
+    // New: fundamental amplitude = 1.0 × massScale (fixed).
+    // Beam modes are RELATIVE to fundamental (sr × H_ratio = fraction of fund).
+    // This preserves fundamental volume regardless of how many beam modes are active.
+    var vA_fund = 1.0;
 
-    // Write normalized amplitudes
+    // Write amplitudes: fundamental at full strength, beams as relative fractions
     this.vAmp[base] = vA_fund * massScale; // fundamental
     // Slot 1 amplitude: set in noteOn tonebar branch (0 for coupled model, tonebarAmp for old)
-    // Only overwrite if old model is active (coupledTonebar already set vAmp[base+1] = 0)
     if (!this.coupledTonebar || !hasTB) {
       this.vAmp[base + 1] = (this.vAmp[base + 1] || 0) * massScale;
     }
     for (var b = 0; b < N_BEAM_MODES; b++) {
       var slot = base + 2 + b;
       if (this.vOmega[slot] > 0) {
-        this.vAmp[slot] = this.vAmp[slot] * eNorm * massScale; // was raw weight, now normalized
+        this.vAmp[slot] = this.vAmp[slot] * massScale; // sr × H_ratio, no eNorm
       }
     }
 

@@ -135,6 +135,28 @@ function getHammerParams(midi, velocity) {
   return { Tc: Tc, relMass: relMass };
 }
 
+// --- Per-key PU vertical offset (Lver) ---
+// A well-voiced Rhodes has per-key PU adjustment via the voicing screw.
+// Physical basis:
+//   - Bass (large displacement): Lver small → tine stays centered in PU field
+//     → cleaner fundamental, avoids asymmetric clipping
+//   - Mid: moderate Lver → standard Rhodes character (even harmonics from asymmetry)
+//   - Treble (small displacement): larger Lver → even small oscillations
+//     produce asymmetry in g'(q) → maintains bell character
+//
+// Default PU Lver from data: 1mm (normalized: 0.04). The global pickupSymmetry
+// slider is additive on top of this per-key curve.
+// Returns an additive offset to Lver (in normalized PU coordinates).
+function perKeyLverOffset(midi) {
+  var key = midi - 20;
+  if (key < 1) key = 1; if (key > 88) key = 88;
+  var t = (key - 1) / 87; // 0 = lowest, 1 = highest
+  // Smooth curve: bass=−0.02, mid=0 (neutral), treble=+0.03
+  // Uses physics: bass needs centered (less asymmetry for large displacement),
+  // treble benefits from offset (more asymmetry for small displacement)
+  return -0.02 + t * 0.05;
+}
+
 function hasTonebar(midi) { return midi > 27; }
 
 function tonebarPhase(midi) {
@@ -142,6 +164,38 @@ function tonebarPhase(midi) {
   if (midi <= 71) return 1;
   if (midi <= 81) return -1;
   return 1;
+}
+
+// --- Tonebar coupled mode detuning (Münster 2014 + coupled oscillator physics) ---
+// Tine + tonebar = weakly coupled 2-DOF system → mode splitting → beating.
+// The splitting Δf ∝ κ × f₀ × (f_tb/f₀)² where:
+//   κ = coupling coefficient (mechanical: screw attachment)
+//   f_tb/f₀ = ratio of tonebar natural freq to tine freq (Münster Table 1)
+// Higher ratio (closer frequencies) = stronger coupling = faster beating.
+// Münster data: natural freq ratios from 10 measured keys.
+var TB_RATIO_MIDI = [39, 42, 49, 52, 59, 62, 69, 76, 83]; // bar 12-68 mapped to MIDI
+var TB_RATIO_VAL  = [0.65, 0.58, 0.45, 0.40, 0.35, 0.31, 0.16, 0.11, 0.11];
+var TB_COUPLING = 0.02; // κ: empirical coupling coefficient
+
+function tonebarDetuning(midi) {
+  // Interpolate f_tb/f_t ratio from Münster data
+  if (!hasTonebar(midi)) return 0;
+  var ratio;
+  if (midi <= TB_RATIO_MIDI[0]) { ratio = TB_RATIO_VAL[0]; }
+  else if (midi >= TB_RATIO_MIDI[TB_RATIO_MIDI.length - 1]) { ratio = TB_RATIO_VAL[TB_RATIO_VAL.length - 1]; }
+  else {
+    ratio = TB_RATIO_VAL[0];
+    for (var i = 0; i < TB_RATIO_MIDI.length - 1; i++) {
+      if (midi >= TB_RATIO_MIDI[i] && midi <= TB_RATIO_MIDI[i + 1]) {
+        var frac = (midi - TB_RATIO_MIDI[i]) / (TB_RATIO_MIDI[i + 1] - TB_RATIO_MIDI[i]);
+        ratio = TB_RATIO_VAL[i] + frac * (TB_RATIO_VAL[i + 1] - TB_RATIO_VAL[i]);
+        break;
+      }
+    }
+  }
+  // Mode splitting: Δf = κ × f₀ × ratio²
+  var f0 = 440 * Math.pow(2, (midi - 69) / 12);
+  return TB_COUPLING * f0 * ratio * ratio;
 }
 
 // --- Tip displacement factor (relative to reference key B3/MIDI 59) ---
@@ -370,42 +424,51 @@ function biquadHighShelf(freq, gainDB, fs) {
 // LUT COMPUTATION (same physics as epiano-engine.js)
 // ========================================
 
-function computePickupLUT(symmetry, distance, gapScale, qRange) {
+function computePickupLUT(symmetry, distance, gapMm, qRange, lverOffset) {
   var lut = new Float32Array(LUT_SIZE);
   var sym = symmetry < 0 ? 0 : (symmetry > 1 ? 1 : symmetry);
-  var Rp = 0.2;
-  var Lver = sym * 0.25;
-  var baseLhor = distance * 0.35 + 0.05;
-  var gs = (gapScale !== undefined) ? gapScale : 1.0;
-  var Lhor = baseLhor * gs;
+  // --- Magnetic dipole PU model (replaces Falaize two-pole) ---
+  // Physics: Φ(q) ∝ 1/r(q)³ where r = √(Lhor² + (Lver + q)²)
+  //   EMF = -dΦ/dt = g'(q) × dq/dt
+  //   g'(q) = dΦ/dq = -3(Lver + q) / r⁵
+  //
+  // Why dipole replaces Falaize:
+  //   Falaize two-pole model: poles partially cancel → flat g'(q) near center
+  //   → nonlinearity suppressed by 90° velocity-position phase offset.
+  //   Dipole 1/r³: steep gradient → nonlinearity strong even at intermediate q
+  //   where both displacement AND velocity are nonzero.
+  //
+  // Lver: voicing offset (symmetry slider + per-key variation).
+  var Lver = sym * 0.25 + ((lverOffset !== undefined) ? lverOffset : 0);
+  // Gap → additive Lhor offset. Larger gap = farther = weaker coupling.
+  var gapOffset = (((gapMm !== undefined) ? gapMm : 0.794) - 0.794) * 0.04;
+  var Lhor = distance * 0.35 + 0.05 + gapOffset;
   var Lhor2 = Lhor * Lhor;
   var qr = (qRange !== undefined && qRange > 0) ? qRange : 1.0;
 
+  // Rp² softening: the PU pole is a cylinder of radius Rp, not a point.
+  // r_eff² = Lhor² + (Lver+q)² + Rp²  (finite pole size prevents 1/r³ singularity)
+  // Physical effect: g'(0) is reduced (field gradient gentler at rest position)
+  // while g'(q) at large q stays steep → better nonlinear/linear ratio → bell character.
+  var Rp = 0.2;
+  var Rp2 = Rp * Rp;
+
   for (var i = 0; i < LUT_SIZE; i++) {
     var q = ((i / (LUT_SIZE - 1)) * 2 - 1) * qr;
-    var d1 = q - Rp + Lver;
-    var f1 = d1 * d1 + Lhor2;
-    var d2 = q + Rp + Lver;
-    var f2 = d2 * d2 + Lhor2;
-    lut[i] = (1.0 / f1 - 2.0 * Lhor2 / (f1 * f1)) - (1.0 / f2 - 2.0 * Lhor2 / (f2 * f2));
+    var d = Lver + q;
+    var r2 = Lhor2 + d * d + Rp2; // softened dipole
+    var r5 = r2 * r2 * Math.sqrt(r2);
+    // g'(q) = -3(Lver + q) / r_eff⁵
+    lut[i] = -3.0 * d / r5;
   }
-  // EMF model: do NOT remove DC offset.
-  // g'(0) is the PU's linear sensitivity at equilibrium — it produces the fundamental.
-  // Removing it kills the fundamental: g''(0)×sin(ωt) × ω×cos(ωt) = sin(2ωt)/2 only.
-  // The coupling HPF (3.4Hz) handles actual DC in the output.
-  //
-  // Unity-gain normalize to reference PU position
-  var refLhor = 0.25, refLhor2 = refLhor * refLhor;
-  var refD1 = 0 - Rp + 0.15, refF1 = refD1 * refD1 + refLhor2;
-  var refD2 = 0 + Rp + 0.15, refF2 = refD2 * refD2 + refLhor2;
-  var refPeak = Math.abs((1.0 / refF1 - 2.0 * refLhor2 / (refF1 * refF1)) - (1.0 / refF2 - 2.0 * refLhor2 / (refF2 * refF2)));
+  // Reference normalization: scale so g'(0) at reference position = 0.7.
+  var refLver = 0.15, refLhor = 0.25;
+  var refR2 = refLhor * refLhor + refLver * refLver + Rp2;
+  var refR5 = refR2 * refR2 * Math.sqrt(refR2);
+  var refPeak = Math.abs(-3.0 * refLver / refR5);
   if (refPeak > 0) {
     var scale = 0.7 / refPeak;
-    for (var i = 0; i < LUT_SIZE; i++) {
-      lut[i] *= scale;
-      if (lut[i] > 0.95) lut[i] = 0.95;
-      if (lut[i] < -0.95) lut[i] = -0.95;
-    }
+    for (var i = 0; i < LUT_SIZE; i++) lut[i] *= scale;
   }
   return lut;
 }
@@ -611,6 +674,14 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // During holdoff, vAmp stays at initial value. Beam modes ring at full amplitude = bell character.
     this.vDecayHoldoff = new Uint32Array(MAX_VOICES);   // samples to wait before applying decayAlpha
 
+    // Hammer contact envelope (Hertz model: half-sine force pulse).
+    // During hammer-tine contact (duration Tc), tine accelerates from rest.
+    // Tine displacement ∝ ∫∫F(t)dt ≈ (1 - cos(πt/Tc))/2 for half-sine force.
+    // After contact (t > Tc), tine vibrates freely at full amplitude.
+    // This prevents the unphysical instant-max-velocity at t=0.
+    this.vOnsetLen     = new Uint32Array(MAX_VOICES);   // Tc in samples
+    this.vOnsetPhase   = new Float32Array(MAX_VOICES);  // π / onsetLen (pre-computed increment)
+
     // Release envelope
     this.vReleaseAlpha = new Float32Array(MAX_VOICES);     // per-sample release decay
     this.vReleaseGain  = new Float32Array(MAX_VOICES);     // current release multiplier
@@ -809,21 +880,39 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     var beam1Rel = (beam1Filter / Math.max(fundFilter, 0.01)) * spatialRatio1 * freqResp1 * 6.5;
     var beam2Rel = (beam2Filter / Math.max(fundFilter, 0.01)) * spatialRatio2 * freqResp2 * 9.5;
 
-    // Store mode data: [fundamental, tonebar, beam1, beam2]
+    // Tonebar coupled mode: detuned from f0 by Δf (Münster 2014 + coupled oscillator).
+    // Tine = mode A (at f0), tonebar = mode B (at f0 + Δf).
+    // Beating between A and B = "structural bell" (shimmer, chime).
+    var tbDetuning = hasTB ? tonebarDetuning(midi) : 0;
+    var tonebarFreq = f0 + tbDetuning;
+
+    // Store mode data: [fundamental, tonebar (detuned), beam1, beam2]
     var base = vi * 4;
-    var freqs = [f0, f0, beam1Freq, beam2Freq];
+    var freqs = [f0, tonebarFreq, beam1Freq, beam2Freq];
     var amps  = [1.0 * massScale, tonebarAmp * massScale, beam1Rel * massScale, beam2Rel * massScale];
     var decays = [tau * decayScale, tonebarDecay * decayScale, 0.035 * decayScale * velDecayScale, 0.015 * decayScale * velDecayScale];
 
-    // EM damping: one-pole smoother (starts 1.0 → converges to emDampRatio over ~75ms).
-    // The initial full-amplitude transient hitting the PU hard = the bell character.
-    var puDampStrength = velocity * (1.1 - this.pickupDistance);
-    if (puDampStrength < 0) puDampStrength = 0;
+    // EM damping (Lenz's law): per-key physics.
+    // Damping force ∝ (PU coupling)² / m_tine.
+    //   - Heavy tine (bass, long L): large mass → less deceleration → less compression
+    //   - Light tine (treble, short L): small mass → more deceleration → more compression
+    // This matches real Rhodes: treble has audible "bark compression", bass sustains more freely.
+    //
+    // Mass proxy: tine mass ∝ L (uniform cross-section, ASTM A228).
+    // Reference: A4 (MIDI 69) L=43mm → massRatio = L(midi)/43.
+    // Heavier tine → weaker EM damp → emDampRatio closer to 1.0.
+    var L_mm = tineLength(midi);
+    var massRatio = L_mm / 43.0; // >1 for bass, <1 for treble
+    var puCoupling = 1.1 - this.pickupDistance;
+    if (puCoupling < 0) puCoupling = 0;
+    var puDampStrength = velocity * puCoupling / Math.max(massRatio, 0.3);
     if (puDampStrength > 1) puDampStrength = 1;
     var emDampRatio = 1.0 - puDampStrength * 0.4;
     this.vEmDampGain[vi]   = 1.0;          // start at full amplitude
     this.vEmDampTarget[vi] = emDampRatio;   // converge to this
-    this.vEmDampCoeff[vi]  = Math.exp(-this.invFs / 0.025); // 25ms time constant
+    // Time constant: heavier tine → slower convergence (more inertia)
+    var emTau = 0.025 * Math.sqrt(massRatio); // 25ms × √(mass ratio)
+    this.vEmDampCoeff[vi]  = Math.exp(-this.invFs / emTau);
 
     for (var m = 0; m < 4; m++) {
       this.vOmega[base + m] = TWO_PI * freqs[m] * this.invFs;
@@ -838,6 +927,13 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Returns displacement in meters (A4 forte ≈ 1e-3 m = 1mm).
     this.vTineAmp[vi] = computeTineAmplitude(midi, velocity);
 
+    // Hammer contact envelope: half-sine onset over Tc.
+    // Tc from Hertz model (already computed in getHammerParams).
+    // Bass Tc ≈ 3.5ms (168 samples @48kHz), treble wood ≈ 0.15ms (7 samples).
+    var onsetSamples = Math.max(Math.ceil(hammer.Tc * fs), 2);
+    this.vOnsetLen[vi] = onsetSamples;
+    this.vOnsetPhase[vi] = Math.PI / onsetSamples;
+
     // Mechanical decay holdoff: 150ms (= old engine's attackDur).
     this.vDecayHoldoff[vi] = Math.ceil(0.15 * fs);
 
@@ -849,14 +945,17 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Treble (tipFactor<<1): small displacement → low physical velocity despite high ω.
     this.vTipFactor[vi] = tipFactor;
     var gapMm = puGapMm(midi);
-    var gapScale = gapMm / 0.794;
+    // qRange: LUT physical range. Cap at 1.5 to concentrate resolution near PU.
     var qRange = tipFactor;
     if (qRange < 0.3) qRange = 0.3;
-    if (qRange > 5.0) qRange = 5.0;
+    if (qRange > 1.5) qRange = 1.5;
+    // Per-key Lver micro-variation (existing KEY_VARIATION)
+    var lverOff = (midi >= 0 && midi < 128) ? KEY_VARIATION[midi * 3] : 0;
     if (this.pickupType === 'wurlitzer') {
       this.vPuLUT[vi] = computePickupLUT_Wurlitzer(this.pickupDistance);
     } else {
-      this.vPuLUT[vi] = computePickupLUT(this.pickupSymmetry, this.pickupDistance, gapScale, qRange);
+      // gapMm passed directly: converted to Lver inside computePickupLUT
+      this.vPuLUT[vi] = computePickupLUT(this.pickupSymmetry, this.pickupDistance, gapMm, qRange, lverOff);
     }
 
     // Reset filter states
@@ -967,8 +1066,18 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           this.vEmDampGain[v] = this.vEmDampGain[v] * emAlpha + emTarget * (1.0 - emAlpha);
         }
 
-        // Apply tine amplitude and EM damping to both position and velocity
-        var envScale = this.vTineAmp[v] * this.vEmDampGain[v];
+        // Hammer contact envelope: during Tc, tine accelerates from rest.
+        // Hertz half-sine force pulse → displacement ∝ (1 - cos(πt/Tc))/2.
+        // After Tc, tine is at full amplitude (free vibration).
+        // This is applied to the entire tine output (position + velocity),
+        // modeling the physical fact that the tine hasn't reached full vibration yet.
+        var onsetGain = 1.0;
+        if (age < this.vOnsetLen[v]) {
+          onsetGain = (1.0 - Math.cos(age * this.vOnsetPhase[v])) * 0.5;
+        }
+
+        // Apply tine amplitude, EM damping, and hammer onset to both position and velocity
+        var envScale = this.vTineAmp[v] * this.vEmDampGain[v] * onsetGain;
         tinePosition *= envScale;
         tineVelocity *= envScale;
 

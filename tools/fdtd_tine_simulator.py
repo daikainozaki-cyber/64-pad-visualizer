@@ -21,6 +21,7 @@ Output: numpy .npz files in tools/fdtd_output/
 import sys
 import os
 import time
+import json
 import numpy as np
 from scipy.signal import decimate
 
@@ -238,7 +239,8 @@ def get_coupling_stiffness(midi):
     return TB_KC_REF * (TB_KC_REF_TOTAL_TURNS / total_turns)
 
 
-def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_iter=20):
+def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_iter=20,
+                     enable_tonebar=True):
     """
     Iteratively find the point mass (at spring_frac position) that tunes
     the FDTD beam to the target f0. Returns mass in kg.
@@ -246,16 +248,35 @@ def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_i
     This accounts for all numerical effects (dispersion, boundary conditions)
     and produces the physically correct f0 directly from the FDTD.
     The "mass" represents: spring + fixing block + solder + any other mass effect.
+
+    When enable_tonebar=True, uses a two-pass approach:
+      Pass 1: find bare-beam mass (always converges — proven)
+      Pass 2: refine with tonebar coupling using tight bracket around bare mass
+      Fallback: if Pass 2 doesn't converge (TMD zone), use bare-beam mass
+
+    Physics: near f_tine ≈ f_tb_eigen, the coupled system's modes hybridize
+    and Goertzel may pick up different modes at different masses, making the
+    f0(mass) curve non-monotonic. Bare-beam fallback is physically correct
+    in this regime — the FDTD table generation will capture the coupling.
     """
     key_idx = midi - 21
     f0_target = 440.0 * 2**((midi - 69) / 12.0)
     if spring_frac is None:
         spring_frac = get_spring_position_frac(key_idx)
 
-    # Start with bare beam f0 to estimate required mass
-    # Try a range of masses using bisection
-    m_lo = 0.0       # bare beam (too high f0)
-    m_hi = 0.020     # 20g (definitely too much mass → f0 too low)
+    # Two-pass approach for tonebar-coupled tuning
+    bare_mass = None
+    if enable_tonebar and has_tonebar(midi):
+        # Pass 1: find bare-beam mass (reliable — no TMD issues)
+        bare_mass = find_tuning_mass(midi, spring_frac=spring_frac, oversample=oversample,
+                                     tol_cents=tol_cents, max_iter=max_iter,
+                                     enable_tonebar=False)
+        # Pass 2: search around bare mass with tonebar
+        m_lo = bare_mass * 0.1
+        m_hi = bare_mass * 5.0
+    else:
+        m_lo = 0.0
+        m_hi = 0.020
 
     for iteration in range(max_iter):
         m_try = (m_lo + m_hi) / 2.0
@@ -306,7 +327,7 @@ def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_i
         u_curr[:N+1] = (np.arange(N + 1) / N)**2
         u_prev[:] = u_curr[:]
 
-        n_sim = int(0.04 * fs_sim)  # 40ms sufficient for Goertzel
+        n_sim = int(0.08 * fs_sim)  # 80ms (tonebar coupling needs longer settling)
         tip_signal = np.zeros(n_sim)
 
         # Vectorized interior slice: l = 2..N-2
@@ -327,6 +348,22 @@ def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_i
         C_N_Nm1 = (4.0*mu_b**2 + 4.0*s1kh2) * D_val
         M_N = 2.0*mu_b**2 * D_val
 
+        # --- Tonebar coupling (same physics as fdtd_simulate) ---
+        use_tb = enable_tonebar and has_tonebar(midi)
+        if use_tb:
+            m_tb = tonebar_mass(midi)
+            f_tb_eigen = tonebar_eigen_freq(midi)
+            omega_tb = 2.0 * np.pi * f_tb_eigen
+            k_tb = m_tb * omega_tb**2
+            c_tb = 2.0 * m_tb * omega_tb / TB_Q_TONEBAR
+            k_c_tb = get_coupling_stiffness(midi)
+            c_c_tb = 2.0 * TB_ZETA_COUPLING * np.sqrt(k_c_tb * m_tb)
+            # force_coeff = 1/(ρA*h) — already includes grid spacing, do NOT multiply by h again
+            force_coeff_spring = 1.0 / (rhoA_arr[l_spring] * h)
+            g_tb = k_t**2 * (1.0 / m_tb + force_coeff_spring * D_val)
+            y_tb_prev = 0.0
+            y_tb_curr = 0.0
+
         for n in range(n_sim):
             # Interior: numpy vectorized
             u_next[sl] = (C0[sl] * u_curr[sl]
@@ -344,23 +381,51 @@ def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_i
             u_next[N] = (C0_N*u_curr[N] + C_N_Nm1*u_curr[N-1]
                          - M_N*u_curr[N-2] + B0*u_prev[N]
                          - (4.0*s1kh2*D_val)*u_prev[N-1])
+
+            # --- Tonebar coupling (semi-implicit, linear) ---
+            if use_tb:
+                y_tb_star = (2.0 * y_tb_curr - y_tb_prev
+                             + (k_t**2 / m_tb) * (-k_tb * y_tb_curr
+                                                    - c_tb * (y_tb_curr - y_tb_prev) / k_t))
+                alpha_tb = y_tb_star - u_next[l_spring]
+                vel_diff_tb = ((y_tb_curr - y_tb_prev) / k_t
+                               - (u_curr[l_spring] - u_prev[l_spring]) / k_t)
+                denom_tb = 1.0 + g_tb * (k_c_tb + c_c_tb / (2.0 * k_t))
+                F_coupling = (k_c_tb * alpha_tb + c_c_tb * vel_diff_tb) / denom_tb
+                u_next[l_spring] += k_t**2 * force_coeff_spring * F_coupling * D_val
+                y_tb_next = y_tb_star - (k_t**2 / m_tb) * F_coupling
+                y_tb_prev = y_tb_curr
+                y_tb_curr = y_tb_next
+
             tip_signal[n] = u_next[N]
             u_prev, u_curr, u_next = u_curr, u_next, u_prev
 
         # NaN check: if simulation blew up, retry at 2× oversampling (recursive)
         if np.any(np.isnan(tip_signal)):
             if oversample < 128:
-                return find_tuning_mass(midi, spring_frac, oversample * 2, tol_cents, max_iter)
+                return find_tuning_mass(midi, spring_frac, oversample * 2, tol_cents, max_iter,
+                                        enable_tonebar)
             else:
                 print(f"  [tune] FATAL: NaN at 128x for MIDI {midi}")
                 return m_try
 
         # Measure f0 (Goertzel — sub-cent precision)
+        # Steady-state only: skip first 20ms (tonebar transient + pluck attack)
         dec = decimate(tip_signal, max(oversample, 16), ftype='iir', zero_phase=True)
-        dec_win = dec * np.hanning(len(dec))
+        steady_start = int(0.02 * FS_AUDIO)
+        dec_seg = dec[steady_start:] if len(dec) > steady_start + 256 else dec
+        dec_win = dec_seg * np.hanning(len(dec_seg))
         f0_meas = goertzel_frequency(dec_win, FS_AUDIO, f0_target, f_range=f0_target * 0.3)
 
-        cents = 1200 * np.log2(f0_meas / f0_target) if f0_meas > 0 and np.isfinite(f0_meas) else 999
+        # Sanity check: if f0 is way below target, the mass is too large.
+        # This prevents TMD zone from confusing the bisection.
+        if f0_meas < f0_target * 0.5 or f0_meas > f0_target * 2.0 or not np.isfinite(f0_meas):
+            m_hi = m_try
+            if iteration % 4 == 0:
+                print(f"  [tune] iter={iteration} m={m_try*1000:.2f}g f0={f0_meas:.1f}Hz (out of range)")
+            continue
+
+        cents = 1200 * np.log2(f0_meas / f0_target)
 
         if abs(cents) < tol_cents:
             print(f"  [tune] iter={iteration} m={m_try*1000:.2f}g f0={f0_meas:.1f}Hz ({cents:+.1f}c) ✓")
@@ -374,8 +439,63 @@ def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_i
         if iteration % 4 == 0 or abs(cents) < 20:
             print(f"  [tune] iter={iteration} m={m_try*1000:.2f}g f0={f0_meas:.1f}Hz ({cents:+.1f}c)")
 
+    # Fallback: if tonebar-coupled search didn't converge, use bare-beam mass
+    if bare_mass is not None:
+        print(f"  [tune] TB search did not converge ({cents:+.1f}c). Falling back to bare mass: {bare_mass*1000:.2f}g")
+        return bare_mass
     print(f"  [tune] WARNING: did not converge. Best m={m_try*1000:.2f}g f0={f0_meas:.1f}Hz ({cents:+.1f}c)")
     return m_try
+
+
+def tune_all(output_dir='tools/fdtd_output', enable_tonebar=True):
+    """
+    Find tuning mass for all 88 keys and save to JSON.
+    With enable_tonebar=True, masses are calibrated for the tonebar-coupled system.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    results = {}
+    t_start = time.time()
+
+    for midi in range(21, 109):
+        key_idx = midi - 21
+        f0 = 440 * 2**((midi - 69) / 12)
+        L = TINE_LENGTH_MM[key_idx]
+        ov = choose_oversample(midi)
+        spring_frac = get_spring_position_frac(key_idx)
+        tb_str = "+TB" if enable_tonebar and has_tonebar(midi) else ""
+
+        print(f"\n=== [{key_idx+1}/88] MIDI {midi} ({f0:.1f}Hz, L={L:.1f}mm{tb_str}) ===")
+        m = find_tuning_mass(midi, oversample=ov, enable_tonebar=enable_tonebar)
+        ratio = m / (RHO_STEEL * A_TINE * L * 1e-3) * 100
+
+        results[str(midi)] = {
+            'mass_kg': round(m, 8),
+            'mass_g': round(m * 1000, 3),
+            'f0_target': round(f0, 2),
+            'spring_frac': round(spring_frac, 3),
+            'enable_tonebar': enable_tonebar and has_tonebar(midi),
+        }
+        print(f"  Result: {m*1000:.2f}g ({ratio:.1f}% of tine)")
+
+    out_path = os.path.join(output_dir, 'tuning_mass_88.json')
+    with open(out_path, 'w') as f:
+        json.dump(results, f, indent=2)
+
+    elapsed = time.time() - t_start
+    print(f"\nSaved {len(results)} keys to {out_path}")
+    print(f"Total time: {elapsed:.0f}s ({elapsed/60:.1f}min)")
+    return results
+
+
+def load_tuning_masses(path='tools/fdtd_output/tuning_mass_88.json'):
+    """Load pre-computed tuning masses from JSON. Returns dict: midi_str → mass_kg."""
+    if not os.path.exists(path):
+        print(f"WARNING: {path} not found, using wire-only spring masses")
+        return {}
+    with open(path) as f:
+        data = json.load(f)
+    return {k: v['mass_kg'] for k, v in data.items()}
+
 
 # =============================================================================
 # Per-key data (from epiano-worklet-processor.js)
@@ -1032,11 +1152,20 @@ def choose_oversample(midi):
 VEL_LAYERS = [0.2, 0.5, 0.8, 1.0]
 
 def simulate_all(midi_list=None, output_dir='tools/fdtd_output'):
-    """Run FDTD for all specified keys and velocity layers."""
+    """Run FDTD for all specified keys and velocity layers.
+    Loads pre-computed tuning masses from tuning_mass_88.json."""
     os.makedirs(output_dir, exist_ok=True)
 
     if midi_list is None:
         midi_list = list(range(21, 109))  # All 88 keys
+
+    # Load tuning masses (computed by tune_all with tonebar coupling)
+    mass_path = os.path.join(output_dir, 'tuning_mass_88.json')
+    mass_table = load_tuning_masses(mass_path)
+    if mass_table:
+        print(f"Loaded tuning masses from {mass_path} ({len(mass_table)} keys)")
+    else:
+        print("WARNING: No tuning masses loaded — using wire-only spring masses")
 
     total = len(midi_list) * len(VEL_LAYERS)
     done = 0
@@ -1045,20 +1174,22 @@ def simulate_all(midi_list=None, output_dir='tools/fdtd_output'):
     results = {}
     for midi in midi_list:
         ov = choose_oversample(midi)
+        tm = mass_table.get(str(midi))
         for vel in VEL_LAYERS:
             done += 1
             key_idx = midi - 21
-            print(f"[{done}/{total}] MIDI {midi} (key {key_idx+1}/88) vel={vel:.1f} ov={ov}x ...",
+            tm_str = f" tm={tm*1000:.1f}g" if tm else " (wire-only)"
+            print(f"[{done}/{total}] MIDI {midi} (key {key_idx+1}/88) vel={vel:.1f} ov={ov}x{tm_str} ...",
                   end='', flush=True)
             t0 = time.time()
 
-            result = fdtd_simulate(midi, velocity=vel, oversample=ov)
+            result = fdtd_simulate(midi, velocity=vel, oversample=ov, tuning_mass_kg=tm)
 
             # NaN retry: if simulation blew up, double oversampling
             if np.any(np.isnan(result['disp_44k'])):
                 ov2 = min(ov * 2, 128)
                 print(f" NaN! retry ov={ov2}x ...", end='', flush=True)
-                result = fdtd_simulate(midi, velocity=vel, oversample=ov2)
+                result = fdtd_simulate(midi, velocity=vel, oversample=ov2, tuning_mass_kg=tm)
 
             dt = time.time() - t0
             f0_err = abs(result['f0_measured'] - result['f0_target'])
@@ -1139,7 +1270,11 @@ def validate_single(midi=45, velocity=0.8):
 if __name__ == '__main__':
     args = sys.argv[1:]
 
-    if '--tune' in args:
+    if '--tune-all' in args:
+        # Find tuning mass for all 88 keys (with tonebar coupling)
+        no_tb = '--no-tonebar' in args
+        tune_all(enable_tonebar=not no_tb)
+    elif '--tune' in args:
         # Find tuning mass for selected keys
         idx = args.index('--tune')
         midis = [int(m) for m in args[idx+1:] if m.isdigit()]

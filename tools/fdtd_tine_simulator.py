@@ -213,18 +213,49 @@ def tonebar_mass(midi):
 # At k_c=1000 (MIDI 52): beam modes +25.6dB, FM sidebands -10.9dB (parametric amplification).
 # Higher k_c (>2000) causes TMD (tuned mass damper) effect, killing beam modes.
 # Per-register scaling prevents TMD in treble where spring is stiffer (#2, 3 turns).
-TB_KC_REF = 1000.0        # N/m — reference k_c for spring #3 (3.5 turns/side)
+# --- NES coupling: modified NES model (linear + cubic) ---
+# Physics: Vakakis (2001), Kerschen et al. (2005).
+# F = k_lin × Δx + k_NL × Δx³ + c_c × Δv
+# Essential nonlinearity → amplitude-dependent coupling:
+#   Below A_crossover: linear dominates (weak coupling, sustain preserved)
+#   Above A_crossover: cubic dominates (strong coupling, attack shaping)
+# A_crossover = sqrt(k_lin / k_NL)
+#
+# TMD (old linear model) drained ALL tine energy in <200ms at k_c=1000.
+# NES fixes this: large amplitude → strong coupling (attack), small → weak (sustain).
+# See permanent note: Rhodesのトーンバーは非線形エネルギーシンクとして機能し
+# 高次モードのエネルギーを不可逆的に吸収する
+TB_K_LIN_REF = 0.0        # N/m — pure NES (no linear coupling). Vakakis (2001):
+                          # "essential nonlinearity" = zero linear term.
+                          # Physical basis: screw joint is friction-based → threshold behavior.
+TB_K_NL = 5.0e10           # N/m³ — cubic stiffness (tuned 2026-03-26).
+                          # At C4 forte (Δx~2.6e-4m): F_cubic=0.88N (strong attack shaping)
+                          # At C4 sustain (Δx~5e-5m): F_cubic=6.3e-3N (negligible → sustain preserved)
+                          # Attack Δ=-9.6pp, sustain Δ=-2.4pp vs noTB. Ratio 4×.
+# A_crossover = sqrt(150 / 1e9) ≈ 3.9e-4 m ≈ 0.39mm
+# At forte (alpha ~ 5e-4m): cubic/linear ≈ 1.7 (NES dominates)
+# At piano (alpha ~ 5e-5m): cubic/linear ≈ 0.017 (linear dominates)
+
 TB_KC_REF_TOTAL_TURNS = 2 * 3.5 + 0.5  # total active turns for reference spring
-TB_Q_TONEBAR = 10.0       # Tonebar internal Q (low: fast transient decay, matches Münster 10-14ms)
+TB_Q_TONEBAR = 50.0       # Tonebar internal Q. Metal bar Q=100-1000+.
+                          # Old: Q=10 for Münster 10-14ms enslaving, but with NES cubic coupling
+                          # the strong initial force drives fast enslaving even at higher Q.
+                          # Q=50: TB stores energy longer → beating (life) → sustain preserved.
 TB_ZETA_COUPLING = 0.05   # Coupling damping ratio
 
 
-def get_coupling_stiffness(midi):
+def get_nes_params(midi):
     """
-    Per-register coupling stiffness from spring physics.
-    k ∝ 1/n (coil spring stiffness inversely proportional to active coil count).
-    5 spring sizes (Vintage Vibe): #6(5t), #4(4t), #3(3.5t), #2(3t).
-    Reference: #3 at k_c=1000 N/m.
+    Per-register NES coupling parameters from spring physics.
+
+    Returns (k_lin, k_NL):
+      k_lin: linear coupling stiffness (N/m), scaled per register (k ∝ 1/n coils)
+      k_NL: cubic coupling stiffness (N/m³), uniform across registers (initial)
+
+    Physics: Vakakis (2001). The coupling is a modified NES (linear + cubic).
+    The linear term provides baseline weak coupling (screw contact).
+    The cubic term provides amplitude-dependent energy transfer (NES).
+    k_lin scales with spring stiffness (∝ 1/n coils), same as old get_coupling_stiffness.
     """
     key = max(1, min(88, midi - 20))
     if key <= 7:
@@ -236,7 +267,15 @@ def get_coupling_stiffness(midi):
     else:
         turns = 3.0    # #2
     total_turns = 2 * turns + 0.5
-    return TB_KC_REF * (TB_KC_REF_TOTAL_TURNS / total_turns)
+    k_lin = TB_K_LIN_REF * (TB_KC_REF_TOTAL_TURNS / total_turns)
+    return k_lin, TB_K_NL
+
+
+# Backward compatibility alias
+def get_coupling_stiffness(midi):
+    """Deprecated: use get_nes_params(). Returns k_lin for compatibility."""
+    k_lin, _ = get_nes_params(midi)
+    return k_lin
 
 
 def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_iter=20,
@@ -356,8 +395,8 @@ def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_i
             omega_tb = 2.0 * np.pi * f_tb_eigen
             k_tb = m_tb * omega_tb**2
             c_tb = 2.0 * m_tb * omega_tb / TB_Q_TONEBAR
-            k_c_tb = get_coupling_stiffness(midi)
-            c_c_tb = 2.0 * TB_ZETA_COUPLING * np.sqrt(k_c_tb * m_tb)
+            k_lin_tb, k_NL_tb = get_nes_params(midi)
+            c_c_tb = 2.0 * TB_ZETA_COUPLING * np.sqrt(k_lin_tb * m_tb)
             # force_coeff = 1/(ρA*h) — already includes grid spacing, do NOT multiply by h again
             force_coeff_spring = 1.0 / (rhoA_arr[l_spring] * h)
             g_tb = k_t**2 * (1.0 / m_tb + force_coeff_spring * D_val)
@@ -390,8 +429,10 @@ def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_i
                 alpha_tb = y_tb_star - u_next[l_spring]
                 vel_diff_tb = ((y_tb_curr - y_tb_prev) / k_t
                                - (u_curr[l_spring] - u_prev[l_spring]) / k_t)
-                denom_tb = 1.0 + g_tb * (k_c_tb + c_c_tb / (2.0 * k_t))
-                F_coupling = (k_c_tb * alpha_tb + c_c_tb * vel_diff_tb) / denom_tb
+                # NES coupling (Vakakis 2001): linear + cubic
+                F_cubic_tb = k_NL_tb * alpha_tb**3
+                denom_tb = 1.0 + g_tb * (k_lin_tb + c_c_tb / (2.0 * k_t))
+                F_coupling = (k_lin_tb * alpha_tb + F_cubic_tb + c_c_tb * vel_diff_tb) / denom_tb
                 u_next[l_spring] += k_t**2 * force_coeff_spring * F_coupling * D_val
                 y_tb_next = y_tb_star - (k_t**2 / m_tb) * F_coupling
                 y_tb_prev = y_tb_curr
@@ -874,15 +915,11 @@ def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16, tuning_mass
         omega_tb = 2.0 * np.pi * f_tb_eigen
         k_tb = m_tb * omega_tb**2                               # tonebar restoring stiffness
         c_tb = 2.0 * m_tb * omega_tb / TB_Q_TONEBAR             # tonebar internal damping
-        k_c = get_coupling_stiffness(midi)                           # per-register spring stiffness
-        c_c = 2.0 * TB_ZETA_COUPLING * np.sqrt(k_c * m_tb)      # coupling damping
+        k_lin, k_NL = get_nes_params(midi)                      # NES coupling (Vakakis 2001)
+        c_c = 2.0 * TB_ZETA_COUPLING * np.sqrt(k_lin * m_tb)    # coupling damping (based on k_lin)
 
-        # Semi-implicit coupling coefficient (linear — no Newton-Raphson needed)
-        # g_tb = k² × (1/m_tb + force_coeff[l_spring] × D[l_spring])
-        # force_coeff_arr[l] = 1/(ρA*h), already includes grid spacing.
-        # Beam response: Δu = k² × force_coeff × F × D
-        # Tonebar response: Δy = -k²/m_tb × F
-        # Total relative change per unit F = k² × (1/m_tb + force_coeff × D)
+        # Semi-implicit coupling coefficient
+        # Uses k_lin for the implicit part; k_NL (cubic) is explicit.
         g_tb = k**2 * (1.0 / m_tb + force_coeff_arr[l_spring] * D_arr[l_spring])
 
         # Tonebar state (3 time levels)
@@ -960,9 +997,12 @@ def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16, tuning_mass
             vel_diff_tb = ((y_tb_curr - y_tb_prev) / k
                            - (u_curr[l_spring] - u_prev[l_spring]) / k)
 
-            # Coupling force (exact implicit solution)
-            denom_tb = 1.0 + g_tb * (k_c + c_c / (2.0 * k))
-            F_coupling = (k_c * alpha_tb + c_c * vel_diff_tb) / denom_tb
+            # Coupling force: NES model (Vakakis 2001)
+            # Semi-implicit for linear term, explicit for cubic term.
+            # F = k_lin × Δx + k_NL × Δx³ + c_c × Δv
+            F_cubic = k_NL * alpha_tb**3
+            denom_tb = 1.0 + g_tb * (k_lin + c_c / (2.0 * k))
+            F_coupling = (k_lin * alpha_tb + F_cubic + c_c * vel_diff_tb) / denom_tb
 
             # Apply to beam at spring grid point
             u_next[l_spring] += (k**2 * force_coeff_arr[l_spring]

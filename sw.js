@@ -40,6 +40,8 @@ var ASSETS = [
   'favicon.svg',
   'img/icon-192.png',
   'img/icon-512.png',
+  'data/fdtd/attack_tables.bin',
+  'data/fdtd/manifest.json',
 ];
 
 self.addEventListener('install', function(e) {

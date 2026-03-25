@@ -251,6 +251,36 @@ function epianoWorkletInit(ctx, masterDest) {
 
     // Send initial parameters
     _epwSendParams();
+
+    // --- Load FDTD attack tables (Phase 5: progressive enhancement) ---
+    // Non-blocking: if fetch fails, pure modal synthesis continues.
+    _epwLoadFDTDTables();
+  });
+}
+
+function _epwLoadFDTDTables() {
+  if (!_epw_node) return;
+  var basePath = 'data/fdtd/';
+  Promise.all([
+    fetch(basePath + 'attack_tables.bin?v=' + (window.APP_VERSION || Date.now())).then(function(r) {
+      if (!r.ok) throw new Error('FDTD tables not found');
+      return r.arrayBuffer();
+    }),
+    fetch(basePath + 'manifest.json?v=' + (window.APP_VERSION || Date.now())).then(function(r) {
+      return r.json();
+    })
+  ]).then(function(results) {
+    var attackData = results[0];
+    var manifest = results[1];
+    console.log('[EP-Engine] FDTD tables fetched: ' + (attackData.byteLength / 1e6).toFixed(1) + 'MB');
+    // Transfer to worklet (zero-copy via Transferable)
+    _epw_node.port.postMessage({
+      type: 'fdtdTables',
+      attackData: attackData,
+      manifest: manifest
+    }, [attackData]);
+  }).catch(function(err) {
+    console.log('[EP-Engine] FDTD tables not available (pure modal): ' + err.message);
   });
 }
 

@@ -1105,19 +1105,6 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // During holdoff, vAmp stays at initial value. Beam modes ring at full amplitude = bell character.
     this.vDecayHoldoff = new Uint32Array(MAX_VOICES);   // samples to wait before applying decayAlpha
 
-    // --- FDTD Attack Table State (Phase 5: FDTD-Informed Modal Synthesis) ---
-    // When fdtdLoaded=true: attack phase reads displacement+velocity from pre-computed FDTD tables.
-    // Crossfade to modal synthesis at 40-80ms. Graceful degradation: if tables not loaded, pure modal.
-    this.fdtdTable = null;           // Float32Array: all 352 interleaved tables
-    this.fdtdManifest = null;        // {attack_samples, crossfade_start, vel_layers, ...}
-    this.fdtdLoaded = false;
-    this.vFdtdPhase  = new Uint8Array(MAX_VOICES);     // 0=modal, 1=attack(FDTD), 2=crossfade
-    this.vFdtdSample = new Uint32Array(MAX_VOICES);    // current sample in attack table
-    this.vFdtdOff0   = new Uint32Array(MAX_VOICES);    // base offset for lower vel layer
-    this.vFdtdOff1   = new Uint32Array(MAX_VOICES);    // base offset for upper vel layer
-    this.vFdtdVelFrac = new Float32Array(MAX_VOICES);  // interpolation fraction between vel layers
-    this.vFdtdDispScale = new Float32Array(MAX_VOICES); // physical meters → PU LUT coords
-
     // Hammer contact envelope (Hertz model: half-sine force pulse).
     // During hammer-tine contact (duration Tc), tine accelerates from rest.
     // Tine displacement ∝ ∫∫F(t)dt ≈ (1 - cos(πt/Tc))/2 for half-sine force.
@@ -1265,14 +1252,6 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       this._updateParams(msg);
     } else if (msg.type === 'allNotesOff') {
       for (var i = 0; i < MAX_VOICES; i++) this.vActive[i] = 0;
-    } else if (msg.type === 'fdtdTables') {
-      // Phase 5: receive FDTD attack tables from main thread (Transferable, zero-copy)
-      this.fdtdTable = new Float32Array(msg.attackData);
-      this.fdtdManifest = msg.manifest;
-      this.fdtdLoaded = true;
-      console.log('[EP-Worklet] FDTD tables loaded: ' +
-        (this.fdtdTable.length * 4 / 1e6).toFixed(1) + 'MB, ' +
-        this.fdtdManifest.n_keys + ' keys × ' + this.fdtdManifest.vel_layers.length + ' vel');
     }
   }
 
@@ -1643,48 +1622,6 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.vReleaseGain[vi] = 1.0;
     this.vReleaseAlpha[vi] = 1.0; // no release yet
 
-    // --- FDTD Attack Table Setup ---
-    if (this.fdtdLoaded && this.fdtdManifest) {
-      var m = this.fdtdManifest;
-      var keyIdx = midi - m.midi_start;
-      if (keyIdx >= 0 && keyIdx < m.n_keys) {
-        // Find velocity layers for interpolation
-        var vels = m.vel_layers;
-        var velLo = 0, velHi = 0;
-        for (var vl = 0; vl < vels.length - 1; vl++) {
-          if (velocity >= vels[vl]) velLo = vl;
-        }
-        velHi = Math.min(velLo + 1, vels.length - 1);
-        var velFrac = (velHi > velLo)
-          ? (velocity - vels[velLo]) / (vels[velHi] - vels[velLo])
-          : 0.0;
-
-        // Each entry: attack_samples × channels (1=disp only, 2=disp+vel interleaved)
-        var nCh = m.channels || 2;
-        var entrySamples = m.attack_samples * nCh;
-        var entryIdx0 = (keyIdx * vels.length + velLo) * entrySamples;
-        var entryIdx1 = (keyIdx * vels.length + velHi) * entrySamples;
-
-        this.vFdtdPhase[vi] = 1;  // attack phase
-        this.vFdtdSample[vi] = 0;
-        this.vFdtdOff0[vi] = entryIdx0;
-        this.vFdtdOff1[vi] = entryIdx1;
-        this.vFdtdVelFrac[vi] = velFrac;
-        // Scale: FDTD outputs physical displacement in meters.
-        // FDTD displacement (meters) → modal-synthesis-equivalent units.
-        // Modal tinePosition (after envScale) peaks at ~tineAmp (~0.12).
-        // FDTD peaks at ~5-16mm = 0.005-0.016 m.
-        // Simple conversion: meters / 0.025 → 25mm-normalized (0.005m → 0.2).
-        // Then scale by tineAmp to match modal output level.
-        // Result feeds into NORMAL PU path (posScale/qRange). No special FDTD PU branch.
-        this.vFdtdDispScale[vi] = this.vTineAmp[vi] / 0.025;
-      } else {
-        this.vFdtdPhase[vi] = 0; // out of range, use modal
-      }
-    } else {
-      this.vFdtdPhase[vi] = 0; // no FDTD data, pure modal
-    }
-
     // Activate
     this.vActive[vi] = 1;
     this.vMidi[vi] = midi;
@@ -1780,141 +1717,63 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           }
         }
 
-        // --- 1. Tine displacement + velocity ---
-        // Source: FDTD table (attack) or modal synthesis (steady state).
-        // FDTD provides physical displacement/velocity from offline simulation.
-        // Modal synthesis is the existing real-time oscillator bank.
+        // --- 1. Modal synthesis (sample-by-sample, phase-coherent) ---
+        // Compute BOTH tine position and velocity.
+        // Position q(t) = Σ(amp × sin(phase)) — drives PU LUT (= g'(q), Falaize eq 25-27)
+        // Velocity dq/dt = Σ(amp × ω × cos(phase)) — EMF ∝ g'(q) × dq/dt (Faraday)
+        // Velocity is computed analytically (no digital differentiation → no harmonic boost artifacts).
         var tinePosition = 0;
         var tineVelocity = 0;
-        var fdtdPhase = this.vFdtdPhase[v];
 
-        if (fdtdPhase > 0 && this.fdtdLoaded) {
-          // --- FDTD Table Playback (displacement only, velocity by finite diff) ---
-          // Table stores physical tine displacement (meters) at 44.1kHz.
-          // Displacement × dispScale → modal-equivalent units (same as tineAmp range).
-          // Velocity = (disp[n] - disp[n-1]) × dispScale (finite difference, per-sample).
-          // After crossfade_start: raised-cosine blend to modal synthesis.
-          var fdtdIdx = this.vFdtdSample[v];
-          var fdtdManif = this.fdtdManifest;
-          var attackLen = fdtdManif.attack_samples;
-          var xfadeStart = fdtdManif.crossfade_start;
-          var nChannels = fdtdManif.channels || 1;
+        for (var m = 0; m < MAX_MODES; m++) {
+          var omega = this.vOmega[base + m];
+          if (omega === 0) continue;
 
-          if (fdtdIdx < attackLen) {
-            var tbl = this.fdtdTable;
-            var frac = this.vFdtdVelFrac[v];
-            var dScale = this.vFdtdDispScale[v];
+          var amp = this.vAmp[base + m];
+          if (Math.abs(amp) < 0.0001) continue;
 
-            // Read displacement (single channel)
-            var off0 = this.vFdtdOff0[v] + fdtdIdx;
-            var off1 = this.vFdtdOff1[v] + fdtdIdx;
-            var fdtdDisp = (tbl[off0] * (1.0 - frac) + tbl[off1] * frac) * dScale;
+          var phase = this.vPhase[base + m];
 
-            // Velocity by finite difference (backward)
-            var fdtdVel = 0;
-            if (fdtdIdx > 0) {
-              var off0p = off0 - 1;
-              var off1p = off1 - 1;
-              var prevDisp = (tbl[off0p] * (1.0 - frac) + tbl[off1p] * frac) * dScale;
-              fdtdVel = fdtdDisp - prevDisp; // already per-sample (÷1 sample)
-            }
+          // Mechanical decay starts immediately (no holdoff).
+          var env = amp;
+          this.vAmp[base + m] *= this.vDecayAlpha[base + m];
 
-            if (fdtdIdx >= xfadeStart) {
-              // Crossfade: FDTD → modal (raised cosine over remaining samples)
-              var xfadeFrac = (fdtdIdx - xfadeStart) / (attackLen - xfadeStart);
-              var modalMix = 0.5 * (1.0 - Math.cos(xfadeFrac * Math.PI));
+          // Velocity-based: vAmp is velocity amplitude.
+          // Position = (V/ω) × sin(phase) — ÷ω suppresses high-freq displacement.
+          // Velocity = V × cos(phase) — direct from stored amplitude.
+          tinePosition += (env / omega) * Math.sin(phase);
+          tineVelocity += env * Math.cos(phase);
 
-              // Modal synthesis (for blending)
-              var modalPos = 0, modalVel = 0;
-              for (var m = 0; m < MAX_MODES; m++) {
-                var omega_m = this.vOmega[base + m];
-                if (omega_m === 0) continue;
-                var amp_m = this.vAmp[base + m];
-                if (Math.abs(amp_m) < 0.0001) continue;
-                var phase_m = this.vPhase[base + m];
-                this.vAmp[base + m] *= this.vDecayAlpha[base + m];
-                modalPos += (amp_m / omega_m) * Math.sin(phase_m);
-                modalVel += amp_m * Math.cos(phase_m);
-                this.vPhase[base + m] = phase_m + omega_m;
-                if (this.vPhase[base + m] > TWO_PI) this.vPhase[base + m] -= TWO_PI;
-              }
-              modalPos += tbContribPos;
-              modalVel += tbContribVel;
-              var envScaleModal = this.vTineAmp[v] * this.vEmDampGain[v];
-              modalPos *= envScaleModal;
-              modalVel *= envScaleModal;
-
-              tinePosition = fdtdDisp * (1.0 - modalMix) + modalPos * modalMix;
-              tineVelocity = fdtdVel * (1.0 - modalMix) + modalVel * modalMix;
-            } else {
-              // Pure FDTD (0 to crossfade_start)
-              tinePosition = fdtdDisp;
-              tineVelocity = fdtdVel;
-              // Advance modal phases (ready for crossfade)
-              for (var m = 0; m < MAX_MODES; m++) {
-                var omega_m = this.vOmega[base + m];
-                if (omega_m === 0) continue;
-                this.vAmp[base + m] *= this.vDecayAlpha[base + m];
-                this.vPhase[base + m] += omega_m;
-                if (this.vPhase[base + m] > TWO_PI) this.vPhase[base + m] -= TWO_PI;
-              }
-            }
-            this.vFdtdSample[v] = fdtdIdx + 1;
-          } else {
-            this.vFdtdPhase[v] = 0;
-            fdtdPhase = 0;
-          }
-
-          // EM damping (continues during FDTD)
-          {
-            var emAlpha = this.vEmDampCoeff[v];
-            var emTarget = this.vEmDampTarget[v];
-            this.vEmDampGain[v] = this.vEmDampGain[v] * emAlpha + emTarget * (1.0 - emAlpha);
+          // Advance phase
+          this.vPhase[base + m] = phase + omega;
+          if (this.vPhase[base + m] > TWO_PI) {
+            this.vPhase[base + m] -= TWO_PI;
           }
         }
 
-        if (fdtdPhase === 0) {
-          // --- Modal synthesis (existing code, unchanged) ---
-          for (var m = 0; m < MAX_MODES; m++) {
-            var omega = this.vOmega[base + m];
-            if (omega === 0) continue;
+        // Add tonebar forced oscillator contribution (before envScale)
+        tinePosition += tbContribPos;
+        tineVelocity += tbContribVel;
 
-            var amp = this.vAmp[base + m];
-            if (Math.abs(amp) < 0.0001) continue;
-
-            var phase = this.vPhase[base + m];
-            var env = amp;
-            this.vAmp[base + m] *= this.vDecayAlpha[base + m];
-
-            tinePosition += (env / omega) * Math.sin(phase);
-            tineVelocity += env * Math.cos(phase);
-
-            this.vPhase[base + m] = phase + omega;
-            if (this.vPhase[base + m] > TWO_PI) {
-              this.vPhase[base + m] -= TWO_PI;
-            }
-          }
-
-          // Add tonebar
-          tinePosition += tbContribPos;
-          tineVelocity += tbContribVel;
-
-          // EM damping
-          {
-            var emAlpha = this.vEmDampCoeff[v];
-            var emTarget = this.vEmDampTarget[v];
-            this.vEmDampGain[v] = this.vEmDampGain[v] * emAlpha + emTarget * (1.0 - emAlpha);
-          }
-
-          // Onset + amplitude envelope
-          var onsetGain = 1.0;
-          if (age < this.vOnsetLen[v]) {
-            onsetGain = (1.0 - Math.cos(age * this.vOnsetPhase[v])) * 0.5;
-          }
-          var envScale = this.vTineAmp[v] * this.vEmDampGain[v] * onsetGain;
-          tinePosition *= envScale;
-          tineVelocity *= envScale;
+        // Apply EM damping (Lenz's law): one-pole smoother, 1.0 → emDampRatio over ~75ms.
+        {
+          var emAlpha = this.vEmDampCoeff[v];
+          var emTarget = this.vEmDampTarget[v];
+          this.vEmDampGain[v] = this.vEmDampGain[v] * emAlpha + emTarget * (1.0 - emAlpha);
         }
+
+        // Hammer contact envelope: during Tc, tine accelerates from rest.
+        // Hammer contact envelope: half-sine onset over Tc (Hertz model).
+        // During contact, tine accelerates from rest → displacement and velocity
+        // both ramp from zero. This is physically correct: no instant full-amplitude.
+        // With master compressor removed, this no longer creates "slow attack" illusion.
+        var onsetGain = 1.0;
+        if (age < this.vOnsetLen[v]) {
+          onsetGain = (1.0 - Math.cos(age * this.vOnsetPhase[v])) * 0.5;
+        }
+        var envScale = this.vTineAmp[v] * this.vEmDampGain[v] * onsetGain;
+        tinePosition *= envScale;
+        tineVelocity *= envScale;
 
         // Apply release envelope
         if (this.vActive[v] === 3) {
@@ -1951,20 +1810,18 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         // --- 2. PU EMF (2D: vertical + horizontal) ---
         // Vertical: g'_v(q_v) × dq_v/dt (axial field gradient × vertical velocity)
         // Horizontal: g'_h(q_v) × dq_h/dt (radial gradient at current vertical pos × horizontal velocity)
-        // --- 2. PU EMF --- (same path for both FDTD and modal)
-        // tinePosition/tineVelocity are now in the same units regardless of source.
         var puOut;
         if (this.vPuLUT[v]) {
           var puPos = tinePosition * this.vPosScale[v] / this.vQRange[v];
           var gPrimeV = lutLookup(this.vPuLUT[v], puPos);
           puOut = gPrimeV * tineVelocity * this.vVelScale[v] * this.vTipFactor[v] * this.puEmfScale;
-          // Horizontal contribution (2D whirling — modal only, FDTD is 1D)
-          if (fdtdPhase === 0 && this.vPuLUT_h[v] && tineHVelocity !== 0) {
+          // Horizontal contribution (2D whirling)
+          if (this.vPuLUT_h[v] && tineHVelocity !== 0) {
             var gPrimeH = lutLookup(this.vPuLUT_h[v], puPos);
             puOut += gPrimeH * tineHVelocity * this.vVelScale[v] * this.vTipFactor[v] * this.puEmfScale;
           }
         } else {
-          puOut = tinePosition;
+          puOut = tinePosition; // fallback: no LUT
         }
 
         // --- 3. Coupling HPF (3.4Hz, removes DC) --- inline biquad (no array alloc)

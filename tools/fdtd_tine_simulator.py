@@ -143,6 +143,101 @@ def get_spring_position_frac(key_idx):
     return 0.65 * (1 - t) + 0.45 * t
 
 
+# =============================================================================
+# Tonebar data (Münster & Pfeifle 2014 ISMA Table 1)
+# =============================================================================
+# Physics: tine and tonebar form an asymmetric tuning fork coupled by the tuning spring.
+# The tonebar has its own eigenfrequency (much lower than tine f0).
+# Coupling through the spring creates energy transfer + FM sidebands = bell character.
+
+TB_EIGEN_MIDI = [39, 42, 49, 52, 59, 62, 69, 76, 83]  # bar 12-68 mapped to MIDI
+TB_EIGEN_HZ   = [51, 69, 79, 105, 138, 183, 140, 145, 222]  # tonebar eigenfrequencies
+TB_PHASE       = [-1, -1, 1, 1, 1, -1, -1, -1, 1]     # anti=-1, in=+1 (Münster Table 1)
+
+
+def has_tonebar(midi):
+    """Keys above MIDI 27 have tonebars (lowest 7 keys do not)."""
+    return midi > 27
+
+
+def tonebar_eigen_freq(midi):
+    """
+    Interpolate tonebar eigenfrequency from Münster Table 1 (9 measurement points).
+    Same algorithm as worklet tonebarEigenFreq().
+    """
+    if midi <= TB_EIGEN_MIDI[0]:
+        return TB_EIGEN_HZ[0]
+    if midi >= TB_EIGEN_MIDI[-1]:
+        return TB_EIGEN_HZ[-1]
+    for i in range(len(TB_EIGEN_MIDI) - 1):
+        if TB_EIGEN_MIDI[i] <= midi <= TB_EIGEN_MIDI[i + 1]:
+            frac = (midi - TB_EIGEN_MIDI[i]) / (TB_EIGEN_MIDI[i + 1] - TB_EIGEN_MIDI[i])
+            return TB_EIGEN_HZ[i] + frac * (TB_EIGEN_HZ[i + 1] - TB_EIGEN_HZ[i])
+    return TB_EIGEN_HZ[0]
+
+
+def tonebar_phase(midi):
+    """Münster 2014: in-phase (+1) or anti-phase (-1) per register."""
+    if midi <= 52:
+        return -1
+    if midi <= 71:
+        return 1
+    if midi <= 81:
+        return -1
+    return 1
+
+
+def tonebar_mass(midi):
+    """
+    Estimated tonebar effective mass (kg).
+    No full 88-key measurement exists. Estimated from bar geometry:
+    - Bass: longer/heavier bars ~12g
+    - Treble: shorter/lighter bars ~4g
+    Validated by: FDTD must produce enslaving within 10-14ms (Münster observation).
+    """
+    key = max(1, min(88, midi - 20))
+    t = (key - 1) / 87.0
+    return 0.012 * (1 - t) + 0.004 * t
+
+
+# Coupling spring stiffness estimate.
+# Physics: tuning spring is thin steel wire (~0.031" = 0.787mm diameter).
+# Coil spring formula: k = G*d^4 / (8*n*D^3)
+# G=80GPa, d=0.787mm, n≈8 coils, D≈2.4mm
+# k ≈ 80e9 * (0.787e-3)^4 / (8 * 8 * (2.4e-3)^3) ≈ 36 N/m
+# But spring wraps around tine → frictional coupling adds stiffness.
+# Starting estimate 500 N/m, validated by enslaving time.
+# Coupling stiffness: derived from spring physics (k ∝ 1/n, n=active coils).
+# Reference: spring #3 (3.5 turns/side, keys 19-55) → k_c = 1000 N/m.
+# At k_c=1000 (MIDI 52): beam modes +25.6dB, FM sidebands -10.9dB (parametric amplification).
+# Higher k_c (>2000) causes TMD (tuned mass damper) effect, killing beam modes.
+# Per-register scaling prevents TMD in treble where spring is stiffer (#2, 3 turns).
+TB_KC_REF = 1000.0        # N/m — reference k_c for spring #3 (3.5 turns/side)
+TB_KC_REF_TOTAL_TURNS = 2 * 3.5 + 0.5  # total active turns for reference spring
+TB_Q_TONEBAR = 10.0       # Tonebar internal Q (low: fast transient decay, matches Münster 10-14ms)
+TB_ZETA_COUPLING = 0.05   # Coupling damping ratio
+
+
+def get_coupling_stiffness(midi):
+    """
+    Per-register coupling stiffness from spring physics.
+    k ∝ 1/n (coil spring stiffness inversely proportional to active coil count).
+    5 spring sizes (Vintage Vibe): #6(5t), #4(4t), #3(3.5t), #2(3t).
+    Reference: #3 at k_c=1000 N/m.
+    """
+    key = max(1, min(88, midi - 20))
+    if key <= 7:
+        turns = 5.0    # #6
+    elif key <= 18:
+        turns = 4.0    # #4
+    elif key <= 55:
+        turns = 3.5    # #3 (reference)
+    else:
+        turns = 3.0    # #2
+    total_turns = 2 * turns + 0.5
+    return TB_KC_REF * (TB_KC_REF_TOTAL_TURNS / total_turns)
+
+
 def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_iter=20):
     """
     Iteratively find the point mass (at spring_frac position) that tunes
@@ -441,15 +536,18 @@ def compute_damping_coeffs(midi, f0):
 # FDTD Simulator Core
 # =============================================================================
 
-def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16, tuning_mass_kg=None):
+def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16, tuning_mass_kg=None,
+                   enable_tonebar=True):
     """
     Run FDTD simulation for one key at one velocity.
 
     Args:
       tuning_mass_kg: override spring mass with computed tuning mass (from Phase 1).
                       If None, uses get_spring_mass() (wire-only, ~220mg).
+      enable_tonebar: if True and key has tonebar, couple a single-DOF oscillator
+                      at the spring position (Münster 2014 asymmetric tuning fork model).
 
-    Returns dict with disp_44k, vel_44k, f0_measured, Tc_measured, etc.
+    Returns dict with disp_44k, vel_44k, f0_measured, Tc_measured, tb_disp_44k, etc.
     """
     # --- Tine parameters ---
     key_idx = midi - 21
@@ -554,11 +652,41 @@ def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16, tuning_mass
     v_hammer = velocity * 4.0  # initial velocity (m/s). velocity=1.0 → 4 m/s (Sonderboe Table 3.2)
     hammer_active = True
 
+    # --- Tonebar coupling (single-DOF oscillator at spring position) ---
+    # Physics: tonebar is an asymmetric tuning fork arm, coupled to tine through
+    # the tuning spring at l_spring. Modeled as a damped harmonic oscillator.
+    # Coupling force at l_spring creates energy transfer + FM sidebands.
+    use_tonebar = enable_tonebar and has_tonebar(midi)
+
+    if use_tonebar:
+        m_tb = tonebar_mass(midi)
+        f_tb_eigen = tonebar_eigen_freq(midi)
+        omega_tb = 2.0 * np.pi * f_tb_eigen
+        k_tb = m_tb * omega_tb**2                               # tonebar restoring stiffness
+        c_tb = 2.0 * m_tb * omega_tb / TB_Q_TONEBAR             # tonebar internal damping
+        k_c = get_coupling_stiffness(midi)                           # per-register spring stiffness
+        c_c = 2.0 * TB_ZETA_COUPLING * np.sqrt(k_c * m_tb)      # coupling damping
+
+        # Semi-implicit coupling coefficient (linear — no Newton-Raphson needed)
+        # g_tb = k² × (1/m_tb + force_coeff[l_spring] × D[l_spring])
+        # force_coeff_arr[l] = 1/(ρA*h), already includes grid spacing.
+        # Beam response: Δu = k² × force_coeff × F × D
+        # Tonebar response: Δy = -k²/m_tb × F
+        # Total relative change per unit F = k² × (1/m_tb + force_coeff × D)
+        g_tb = k**2 * (1.0 / m_tb + force_coeff_arr[l_spring] * D_arr[l_spring])
+
+        # Tonebar state (3 time levels)
+        y_tb_prev = 0.0
+        y_tb_curr = 0.0
+    else:
+        m_tb = 0.0
+
     # --- Output arrays ---
     n_samples = int(duration_s * fs_sim)
     disp_out = np.zeros(n_samples)
     vel_out = np.zeros(n_samples)
     force_out = np.zeros(n_samples)
+    tb_disp_out = np.zeros(n_samples)  # tonebar displacement (diagnostics)
 
     # --- Precompute semi-implicit coupling coefficient (Bilbao 2009 Ch.7) ---
     # g = k² × (1/m_h + Σ(force_coeff × contact_dist² × h² × D))
@@ -605,6 +733,38 @@ def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16, tuning_mass
                      - 2.0*mu_N**2 * u_curr[N-2]
                      + (-1.0 + sigma0*k + 4.0*sigma1*k/h**2) * u_prev[N]
                      - 4.0*sigma1*k/h**2 * u_prev[N-1]) * D_N
+
+        # === Tonebar coupling (semi-implicit, linear) ===
+        # Apply BEFORE hammer so both forces see u_star and modify u_next.
+        # The coupling is linear so exact implicit solution via single division.
+        if use_tonebar:
+            # Tonebar free prediction (no coupling force)
+            y_tb_star = (2.0 * y_tb_curr - y_tb_prev
+                         + (k**2 / m_tb) * (-k_tb * y_tb_curr
+                                             - c_tb * (y_tb_curr - y_tb_prev) / k))
+
+            # Displacement difference (predicted, at spring grid point)
+            alpha_tb = y_tb_star - u_next[l_spring]
+
+            # Velocity difference (from previous time step)
+            vel_diff_tb = ((y_tb_curr - y_tb_prev) / k
+                           - (u_curr[l_spring] - u_prev[l_spring]) / k)
+
+            # Coupling force (exact implicit solution)
+            denom_tb = 1.0 + g_tb * (k_c + c_c / (2.0 * k))
+            F_coupling = (k_c * alpha_tb + c_c * vel_diff_tb) / denom_tb
+
+            # Apply to beam at spring grid point
+            u_next[l_spring] += (k**2 * force_coeff_arr[l_spring]
+                                 * F_coupling * D_arr[l_spring])
+
+            # Apply to tonebar (Newton's 3rd law)
+            y_tb_next = y_tb_star - (k**2 / m_tb) * F_coupling
+
+            # Store TB displacement
+            tb_disp_out[n] = y_tb_curr
+        else:
+            y_tb_next = 0.0
 
         # === Semi-implicit hammer-tine contact (Bilbao 2009 Ch.7) ===
         # u_next is now u_star (beam prediction without force).
@@ -683,13 +843,16 @@ def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16, tuning_mass
 
         # === Swap state ===
         u_prev, u_curr, u_next = u_curr, u_next, u_prev
-        # Clear u_next for next iteration (it's now the oldest, will be overwritten)
-        # Actually in the swap, u_next now points to what was u_prev, which we'll overwrite.
-        # No need to clear since all points are written in the loop.
+
+        # Tonebar state swap
+        if use_tonebar:
+            y_tb_prev = y_tb_curr
+            y_tb_curr = y_tb_next
 
     # --- Decimate to 44.1kHz ---
     disp_44k = decimate(disp_out, oversample, ftype='iir', zero_phase=True)
     vel_44k = decimate(vel_out, oversample, ftype='iir', zero_phase=True)
+    tb_disp_44k = decimate(tb_disp_out, oversample, ftype='iir', zero_phase=True) if use_tonebar else np.zeros(len(disp_44k))
 
     # --- Measure fundamental frequency (Goertzel, sub-cent precision) ---
     steady_start_44k = int(0.03 * FS_AUDIO)  # 30ms onwards (after hammer contact)
@@ -711,6 +874,7 @@ def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16, tuning_mass
     return {
         'disp_44k': disp_44k,
         'vel_44k': vel_44k,
+        'tb_disp_44k': tb_disp_44k,
         'disp_full': disp_out,
         'force_full': force_out,
         'f0_target': f0,
@@ -722,7 +886,117 @@ def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16, tuning_mass
         'fs_sim': fs_sim,
         'midi': midi,
         'velocity': velocity,
+        'use_tonebar': use_tonebar,
     }
+
+
+# =============================================================================
+# Oversampling selection per key
+# =============================================================================
+# Table endpoint detection + modal handoff
+# =============================================================================
+
+# Beam mode frequency ratios (cantilever: (βₙL)² scaling)
+BEAM_FREQ_RATIOS = [7.11, 20.25]  # first two beam modes relative to f0
+
+
+def find_table_endpoint(disp_44k, f0, fs=44100, threshold_db=-40, beam_ratios=None):
+    """
+    Find the sample index where all beam mode energies are below threshold.
+    Uses short-time Goertzel to track beam mode amplitudes vs fundamental.
+
+    Physics: beam modes (non-integer harmonics at 7.11×, 20.25× f0) decay faster
+    than the fundamental. Once they're below the threshold, the signal is essentially
+    a single sinusoid and can be handed off to modal synthesis.
+
+    Returns:
+        endpoint_sample: index where beam modes are below threshold
+    """
+    if beam_ratios is None:
+        beam_ratios = BEAM_FREQ_RATIOS
+
+    win_ms = 10      # analysis window
+    hop_ms = 2       # hop
+    win_samples = int(win_ms * fs / 1000)
+    hop_samples = int(hop_ms * fs / 1000)
+
+    # Start searching after 20ms (hammer contact + initial transient)
+    start_search = int(0.02 * fs)
+
+    for start in range(start_search, len(disp_44k) - win_samples, hop_samples):
+        segment = disp_44k[start:start + win_samples]
+        segment = segment * np.hanning(win_samples)
+        fund_mag = goertzel_magnitude(segment, fs, f0)
+
+        if fund_mag < 1e-15:
+            continue
+
+        all_below = True
+        for ratio in beam_ratios:
+            beam_freq = f0 * ratio
+            if beam_freq >= fs / 2:
+                continue  # above Nyquist — irrelevant
+            beam_mag = goertzel_magnitude(segment, fs, beam_freq)
+            rel_db = 20 * np.log10(beam_mag / fund_mag + 1e-30)
+            if rel_db > threshold_db:
+                all_below = False
+                break
+
+        if all_below:
+            return start + win_samples  # endpoint = end of this window
+
+    return len(disp_44k)  # entire table if modes never decay
+
+
+def extract_modal_state(disp_44k, vel_44k, endpoint, f0, fs=44100):
+    """
+    Extract fundamental amplitude and phase at the table endpoint.
+    Used to initialize worklet modal synthesis for seamless handoff.
+
+    Physics: at the endpoint, the signal ≈ A*sin(ωt+φ)/ω (displacement)
+    and A*cos(ωt+φ) (velocity). From displacement d and velocity v:
+        A = sqrt((d*ω)² + v²)
+        φ = atan2(d*ω, v)
+
+    This is mathematically exact for a single sinusoid.
+    Beam modes are < threshold_db so the error is negligible.
+
+    Returns:
+        (A, phi) — amplitude and phase for modal synthesis initialization
+    """
+    omega = 2.0 * np.pi * f0 / fs  # rad/sample
+
+    idx = min(endpoint, len(disp_44k) - 1)
+    d = disp_44k[idx]
+    v = vel_44k[idx]
+
+    A = np.sqrt((d * omega) ** 2 + v ** 2)
+    phi = np.arctan2(d * omega, v)
+
+    return A, phi
+
+
+def extract_tonebar_state(tb_disp_44k, endpoint, f0, fs=44100):
+    """
+    Extract tonebar enslaved state (amplitude and phase at f_tine) at endpoint.
+    After enslaving, TB oscillates at f_tine (not f_tb_eigen).
+    """
+    omega = 2.0 * np.pi * f0 / fs
+    idx = min(endpoint, len(tb_disp_44k) - 1)
+
+    # TB velocity by finite difference
+    if idx > 0:
+        tb_vel = (tb_disp_44k[idx] - tb_disp_44k[idx - 1]) * fs
+    else:
+        tb_vel = 0.0
+
+    d = tb_disp_44k[idx]
+    v = tb_vel
+
+    A = np.sqrt((d * omega) ** 2 + v ** 2)
+    phi = np.arctan2(d * omega, v)
+
+    return A, phi
 
 
 # =============================================================================

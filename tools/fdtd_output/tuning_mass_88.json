@@ -1,0 +1,530 @@
+{
+  "21": {
+    "mass_kg": 0.01191406,
+    "mass_g": 11.914,
+    "f0_target": 27.5,
+    "spring_frac": 0.65
+  },
+  "22": {
+    "mass_kg": 0.01085937,
+    "mass_g": 10.859,
+    "f0_target": 29.14,
+    "spring_frac": 0.648
+  },
+  "23": {
+    "mass_kg": 0.01019531,
+    "mass_g": 10.195,
+    "f0_target": 30.87,
+    "spring_frac": 0.645
+  },
+  "24": {
+    "mass_kg": 0.00828125,
+    "mass_g": 8.281,
+    "f0_target": 32.7,
+    "spring_frac": 0.643
+  },
+  "25": {
+    "mass_kg": 0.00671875,
+    "mass_g": 6.719,
+    "f0_target": 34.65,
+    "spring_frac": 0.641
+  },
+  "26": {
+    "mass_kg": 0.00566406,
+    "mass_g": 5.664,
+    "f0_target": 36.71,
+    "spring_frac": 0.639
+  },
+  "27": {
+    "mass_kg": 0.00480469,
+    "mass_g": 4.805,
+    "f0_target": 38.89,
+    "spring_frac": 0.636
+  },
+  "28": {
+    "mass_kg": 0.00474609,
+    "mass_g": 4.746,
+    "f0_target": 41.2,
+    "spring_frac": 0.634
+  },
+  "29": {
+    "mass_kg": 0.00433594,
+    "mass_g": 4.336,
+    "f0_target": 43.65,
+    "spring_frac": 0.632
+  },
+  "30": {
+    "mass_kg": 0.00410156,
+    "mass_g": 4.102,
+    "f0_target": 46.25,
+    "spring_frac": 0.629
+  },
+  "31": {
+    "mass_kg": 0.00390625,
+    "mass_g": 3.906,
+    "f0_target": 49.0,
+    "spring_frac": 0.627
+  },
+  "32": {
+    "mass_kg": 0.00382812,
+    "mass_g": 3.828,
+    "f0_target": 51.91,
+    "spring_frac": 0.625
+  },
+  "33": {
+    "mass_kg": 0.00339844,
+    "mass_g": 3.398,
+    "f0_target": 55.0,
+    "spring_frac": 0.622
+  },
+  "34": {
+    "mass_kg": 0.00328125,
+    "mass_g": 3.281,
+    "f0_target": 58.27,
+    "spring_frac": 0.62
+  },
+  "35": {
+    "mass_kg": 0.00298828,
+    "mass_g": 2.988,
+    "f0_target": 61.74,
+    "spring_frac": 0.618
+  },
+  "36": {
+    "mass_kg": 0.00296875,
+    "mass_g": 2.969,
+    "f0_target": 65.41,
+    "spring_frac": 0.616
+  },
+  "37": {
+    "mass_kg": 0.00292969,
+    "mass_g": 2.93,
+    "f0_target": 69.3,
+    "spring_frac": 0.613
+  },
+  "38": {
+    "mass_kg": 0.00291016,
+    "mass_g": 2.91,
+    "f0_target": 73.42,
+    "spring_frac": 0.611
+  },
+  "39": {
+    "mass_kg": 0.00259766,
+    "mass_g": 2.598,
+    "f0_target": 77.78,
+    "spring_frac": 0.609
+  },
+  "40": {
+    "mass_kg": 0.00277344,
+    "mass_g": 2.773,
+    "f0_target": 82.41,
+    "spring_frac": 0.606
+  },
+  "41": {
+    "mass_kg": 0.00246094,
+    "mass_g": 2.461,
+    "f0_target": 87.31,
+    "spring_frac": 0.604
+  },
+  "42": {
+    "mass_kg": 0.00253906,
+    "mass_g": 2.539,
+    "f0_target": 92.5,
+    "spring_frac": 0.602
+  },
+  "43": {
+    "mass_kg": 0.00261719,
+    "mass_g": 2.617,
+    "f0_target": 98.0,
+    "spring_frac": 0.599
+  },
+  "44": {
+    "mass_kg": 0.00238281,
+    "mass_g": 2.383,
+    "f0_target": 103.83,
+    "spring_frac": 0.597
+  },
+  "45": {
+    "mass_kg": 0.00269531,
+    "mass_g": 2.695,
+    "f0_target": 110.0,
+    "spring_frac": 0.595
+  },
+  "46": {
+    "mass_kg": 0.00246094,
+    "mass_g": 2.461,
+    "f0_target": 116.54,
+    "spring_frac": 0.593
+  },
+  "47": {
+    "mass_kg": 0.00265625,
+    "mass_g": 2.656,
+    "f0_target": 123.47,
+    "spring_frac": 0.59
+  },
+  "48": {
+    "mass_kg": 0.00289062,
+    "mass_g": 2.891,
+    "f0_target": 130.81,
+    "spring_frac": 0.588
+  },
+  "49": {
+    "mass_kg": 0.00267578,
+    "mass_g": 2.676,
+    "f0_target": 138.59,
+    "spring_frac": 0.586
+  },
+  "50": {
+    "mass_kg": 0.00298828,
+    "mass_g": 2.988,
+    "f0_target": 146.83,
+    "spring_frac": 0.583
+  },
+  "51": {
+    "mass_kg": 0.00302734,
+    "mass_g": 3.027,
+    "f0_target": 155.56,
+    "spring_frac": 0.581
+  },
+  "52": {
+    "mass_kg": 0.00345703,
+    "mass_g": 3.457,
+    "f0_target": 164.81,
+    "spring_frac": 0.579
+  },
+  "53": {
+    "mass_kg": 0.00324219,
+    "mass_g": 3.242,
+    "f0_target": 174.61,
+    "spring_frac": 0.576
+  },
+  "54": {
+    "mass_kg": 0.00375,
+    "mass_g": 3.75,
+    "f0_target": 185.0,
+    "spring_frac": 0.574
+  },
+  "55": {
+    "mass_kg": 0.00441406,
+    "mass_g": 4.414,
+    "f0_target": 196.0,
+    "spring_frac": 0.572
+  },
+  "56": {
+    "mass_kg": 0.00392578,
+    "mass_g": 3.926,
+    "f0_target": 207.65,
+    "spring_frac": 0.57
+  },
+  "57": {
+    "mass_kg": 0.00443359,
+    "mass_g": 4.434,
+    "f0_target": 220.0,
+    "spring_frac": 0.567
+  },
+  "58": {
+    "mass_kg": 0.00511719,
+    "mass_g": 5.117,
+    "f0_target": 233.08,
+    "spring_frac": 0.565
+  },
+  "59": {
+    "mass_kg": 0.00451172,
+    "mass_g": 4.512,
+    "f0_target": 246.94,
+    "spring_frac": 0.563
+  },
+  "60": {
+    "mass_kg": 0.00527344,
+    "mass_g": 5.273,
+    "f0_target": 261.63,
+    "spring_frac": 0.56
+  },
+  "61": {
+    "mass_kg": 0.005,
+    "mass_g": 5.0,
+    "f0_target": 277.18,
+    "spring_frac": 0.558
+  },
+  "62": {
+    "mass_kg": 0.00398438,
+    "mass_g": 3.984,
+    "f0_target": 293.66,
+    "spring_frac": 0.556
+  },
+  "63": {
+    "mass_kg": 0.00414063,
+    "mass_g": 4.141,
+    "f0_target": 311.13,
+    "spring_frac": 0.553
+  },
+  "64": {
+    "mass_kg": 0.004375,
+    "mass_g": 4.375,
+    "f0_target": 329.63,
+    "spring_frac": 0.551
+  },
+  "65": {
+    "mass_kg": 0.00412109,
+    "mass_g": 4.121,
+    "f0_target": 349.23,
+    "spring_frac": 0.549
+  },
+  "66": {
+    "mass_kg": 0.00347656,
+    "mass_g": 3.477,
+    "f0_target": 369.99,
+    "spring_frac": 0.547
+  },
+  "67": {
+    "mass_kg": 0.00367187,
+    "mass_g": 3.672,
+    "f0_target": 392.0,
+    "spring_frac": 0.544
+  },
+  "68": {
+    "mass_kg": 0.00351562,
+    "mass_g": 3.516,
+    "f0_target": 415.3,
+    "spring_frac": 0.542
+  },
+  "69": {
+    "mass_kg": 0.00378906,
+    "mass_g": 3.789,
+    "f0_target": 440.0,
+    "spring_frac": 0.54
+  },
+  "70": {
+    "mass_kg": 0.00359375,
+    "mass_g": 3.594,
+    "f0_target": 466.16,
+    "spring_frac": 0.537
+  },
+  "71": {
+    "mass_kg": 0.00294922,
+    "mass_g": 2.949,
+    "f0_target": 493.88,
+    "spring_frac": 0.535
+  },
+  "72": {
+    "mass_kg": 0.00279297,
+    "mass_g": 2.793,
+    "f0_target": 523.25,
+    "spring_frac": 0.533
+  },
+  "73": {
+    "mass_kg": 0.00304688,
+    "mass_g": 3.047,
+    "f0_target": 554.37,
+    "spring_frac": 0.53
+  },
+  "74": {
+    "mass_kg": 0.00289062,
+    "mass_g": 2.891,
+    "f0_target": 587.33,
+    "spring_frac": 0.528
+  },
+  "75": {
+    "mass_kg": 0.00233398,
+    "mass_g": 2.334,
+    "f0_target": 622.25,
+    "spring_frac": 0.526
+  },
+  "76": {
+    "mass_kg": 0.00304688,
+    "mass_g": 3.047,
+    "f0_target": 659.26,
+    "spring_frac": 0.524
+  },
+  "77": {
+    "mass_kg": 0.00240234,
+    "mass_g": 2.402,
+    "f0_target": 698.46,
+    "spring_frac": 0.521
+  },
+  "78": {
+    "mass_kg": 0.00228516,
+    "mass_g": 2.285,
+    "f0_target": 739.99,
+    "spring_frac": 0.519
+  },
+  "79": {
+    "mass_kg": 0.00242188,
+    "mass_g": 2.422,
+    "f0_target": 783.99,
+    "spring_frac": 0.517
+  },
+  "80": {
+    "mass_kg": 0.00203125,
+    "mass_g": 2.031,
+    "f0_target": 830.61,
+    "spring_frac": 0.514
+  },
+  "81": {
+    "mass_kg": 0.00191406,
+    "mass_g": 1.914,
+    "f0_target": 880.0,
+    "spring_frac": 0.512
+  },
+  "82": {
+    "mass_kg": 0.00207031,
+    "mass_g": 2.07,
+    "f0_target": 932.33,
+    "spring_frac": 0.51
+  },
+  "83": {
+    "mass_kg": 0.00171875,
+    "mass_g": 1.719,
+    "f0_target": 987.77,
+    "spring_frac": 0.507
+  },
+  "84": {
+    "mass_kg": 0.0015918,
+    "mass_g": 1.592,
+    "f0_target": 1046.5,
+    "spring_frac": 0.505
+  },
+  "85": {
+    "mass_kg": 0.00175781,
+    "mass_g": 1.758,
+    "f0_target": 1108.73,
+    "spring_frac": 0.503
+  },
+  "86": {
+    "mass_kg": 0.00164063,
+    "mass_g": 1.641,
+    "f0_target": 1174.66,
+    "spring_frac": 0.501
+  },
+  "87": {
+    "mass_kg": 0.00183594,
+    "mass_g": 1.836,
+    "f0_target": 1244.51,
+    "spring_frac": 0.498
+  },
+  "88": {
+    "mass_kg": 0.00172852,
+    "mass_g": 1.729,
+    "f0_target": 1318.51,
+    "spring_frac": 0.496
+  },
+  "89": {
+    "mass_kg": 0.00139648,
+    "mass_g": 1.396,
+    "f0_target": 1396.91,
+    "spring_frac": 0.494
+  },
+  "90": {
+    "mass_kg": 0.00132812,
+    "mass_g": 1.328,
+    "f0_target": 1479.98,
+    "spring_frac": 0.491
+  },
+  "91": {
+    "mass_kg": 0.00113281,
+    "mass_g": 1.133,
+    "f0_target": 1567.98,
+    "spring_frac": 0.489
+  },
+  "92": {
+    "mass_kg": 0.00119141,
+    "mass_g": 1.191,
+    "f0_target": 1661.22,
+    "spring_frac": 0.487
+  },
+  "93": {
+    "mass_kg": 0.00101563,
+    "mass_g": 1.016,
+    "f0_target": 1760.0,
+    "spring_frac": 0.484
+  },
+  "94": {
+    "mass_kg": 0.00094727,
+    "mass_g": 0.947,
+    "f0_target": 1864.66,
+    "spring_frac": 0.482
+  },
+  "95": {
+    "mass_kg": 0.00098633,
+    "mass_g": 0.986,
+    "f0_target": 1975.53,
+    "spring_frac": 0.48
+  },
+  "96": {
+    "mass_kg": 0.00110352,
+    "mass_g": 1.104,
+    "f0_target": 2093.0,
+    "spring_frac": 0.478
+  },
+  "97": {
+    "mass_kg": 0.00103516,
+    "mass_g": 1.035,
+    "f0_target": 2217.46,
+    "spring_frac": 0.475
+  },
+  "98": {
+    "mass_kg": 0.00082031,
+    "mass_g": 0.82,
+    "f0_target": 2349.32,
+    "spring_frac": 0.473
+  },
+  "99": {
+    "mass_kg": 0.00079102,
+    "mass_g": 0.791,
+    "f0_target": 2489.02,
+    "spring_frac": 0.471
+  },
+  "100": {
+    "mass_kg": 0.00086914,
+    "mass_g": 0.869,
+    "f0_target": 2637.02,
+    "spring_frac": 0.468
+  },
+  "101": {
+    "mass_kg": 0.00080078,
+    "mass_g": 0.801,
+    "f0_target": 2793.83,
+    "spring_frac": 0.466
+  },
+  "102": {
+    "mass_kg": 0.00063477,
+    "mass_g": 0.635,
+    "f0_target": 2959.96,
+    "spring_frac": 0.464
+  },
+  "103": {
+    "mass_kg": 0.00059082,
+    "mass_g": 0.591,
+    "f0_target": 3135.96,
+    "spring_frac": 0.461
+  },
+  "104": {
+    "mass_kg": 0.00064453,
+    "mass_g": 0.645,
+    "f0_target": 3322.44,
+    "spring_frac": 0.459
+  },
+  "105": {
+    "mass_kg": 0.00060547,
+    "mass_g": 0.605,
+    "f0_target": 3520.0,
+    "spring_frac": 0.457
+  },
+  "106": {
+    "mass_kg": 0.00044922,
+    "mass_g": 0.449,
+    "f0_target": 3729.31,
+    "spring_frac": 0.455
+  },
+  "107": {
+    "mass_kg": 0.00039063,
+    "mass_g": 0.391,
+    "f0_target": 3951.07,
+    "spring_frac": 0.452
+  },
+  "108": {
+    "mass_kg": 0.00040039,
+    "mass_g": 0.4,
+    "f0_target": 4186.01,
+    "spring_frac": 0.45
+  }
+}

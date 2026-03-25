@@ -307,25 +307,38 @@ Q_TABLE_MIDI = np.array([39, 51, 59, 60, 61, 62, 64, 75, 87])
 Q_TABLE_VAL  = np.array([949, 731, 1101, 1238, 1040, 1156, 1520, 2175, 1761])
 
 # =============================================================================
-# Hammer contact model — Hunt & Crossley (Sonderboe 2024 Table 3.2)
+# Hammer contact model — Hunt & Crossley (Sonderboe 2024 Table 3.2 as basis)
 # =============================================================================
-# Sonderboe's FDTD-validated parameters (single set for all keys):
-#   k_h = 1.5e11 N/m^α, α = 2.8, m_h = 11g, λ = 9e10 N·s/m^(5/2)
+# Sonderboe's FDTD reference: k_h=1.5e11, α=2.8, m_h=11g, λ=9e10
+# But these are single-zone values. Real Rhodes has 5 hardness zones (SM Ch4).
 #
-# Our per-zone extension: COR varies by neoprene Shore A hardness,
-# mass varies by zone (SM measurements). K_H and ALPHA_H are Sonderboe's
-# values — they represent the FDTD contact stiffness, NOT the worklet's
-# onset envelope parameters (which are different quantities).
+# Per-zone K_H derivation:
+#   Shore A → Young's modulus via Gent equation
+#   K_H ∝ E (Hertz contact), referenced to Sonderboe K_H at Shore 70
+#   Shore 30→E=1.1MPa, Shore 50→2.5, Shore 70→5.5(ref), Shore 90→20.8, 95+→43.8
+#
+# Effective mass derivation:
+#   m_eff = m_arm/3 + m_tip (rotating lever, moment of inertia / d²)
+#   SM Ch4 tip: 9.525mm square cross-section, heights 6.35-11.11mm
+#   Tip mass: 0.69-1.36g (neoprene density 1.20-1.35 g/cm³ by Shore)
+#   Arm contribution: ~0.3-0.5g (m_arm/3 for ~1-1.5g wooden arm)
+#   Total m_eff ≈ 1.0-1.9g per zone
+#   Displacement validation: m_eff=1.5g → ~1.5mm tip disp at mf (matches PU gap)
 # =============================================================================
-HAMMER_KH_FDTD = 1.5e11        # Sonderboe Table 3.2: stiffness (N/m^α)
-HAMMER_ALPHA_H = 2.8            # Sonderboe Table 3.2: contact exponent
+HAMMER_ALPHA_H = 2.8            # Sonderboe Table 3.2: contact exponent (all zones)
 HAMMER_LAMBDA = 9e10            # Sonderboe Table 3.2: force damping weight
 
-# Per-zone COR and mass (from worklet/SM data, physically measured)
+# Per-zone parameters (SM Ch4 + Gent equation + SM tip dimensions)
+# [Zone1 keys1-30 Shore30, Zone2 31-40 Shore50, Zone3 41-50 Shore70,
+#  Zone4 51-64 Shore90, Zone5 65-88 Wrapped]
+HAMMER_KH_PER_ZONE = [3.10e10, 6.67e10, 1.50e11, 5.66e11, 1.19e12]  # Gent→Hertz, ref=Sonderboe@Shore70
 HAMMER_COR = [0.35, 0.50, 0.65, 0.80, 0.92]
-HAMMER_RELMASS = [0.67, 0.83, 1.00, 1.17, 0.67]
-HAMMER_MASS_REF = 0.030  # 30g reference (SM data)
-# Sonderboe uses 11g — our 30g × zone factor may be more accurate for Mk1
+
+# Effective mass per zone: m_eff = m_arm/3 + m_tip
+# Tip mass from SM Ch4 (9.525mm sq × height × neoprene density):
+#   Zone1=0.69g, Zone2=0.90g, Zone3=1.17g, Zone4=1.36g, Zone5≈1.0g(wood core)
+# Arm contribution ≈ 0.35g (uniform, m_arm≈1g, /3)
+HAMMER_MASS_PER_ZONE = [1.04e-3, 1.25e-3, 1.52e-3, 1.71e-3, 1.35e-3]  # kg
 
 # Striking line positions (mm) — linear interpolation
 def striking_line_mm(midi):
@@ -345,11 +358,18 @@ def get_q_value(midi):
 
 
 def get_hammer_params(midi, velocity=0.8):
-    """Get hammer zone parameters for a given MIDI note.
+    """Get per-zone hammer parameters for a given MIDI note.
+
+    Physics basis:
+      K_H: Hertz contact stiffness from Shore A hardness (Gent eq → E → K_H ∝ E)
+      COR: coefficient of restitution per neoprene hardness
+      m_hammer: effective mass at tine contact = m_arm/3 + m_tip (lever inertia)
+      mu_hc_coeff: Hunt-Crossley viscous coefficient = λ/K_H
+
+    SM Ch4: 5 hardness zones (Shore 30/50/70/90/wrapped).
+    K_H referenced to Sonderboe Table 3.2 at Shore 70.
 
     Returns (K_H, alpha_h, cor, mu_hc_coeff, m_hammer).
-    K_H and alpha_h are Sonderboe's FDTD contact parameters.
-    mu_hc_coeff = λ/k_h (Sonderboe convention: µ_h = lambda/k).
     """
     key = midi - 20
     if key <= 30:   zone = 0
@@ -358,20 +378,19 @@ def get_hammer_params(midi, velocity=0.8):
     elif key <= 64: zone = 3
     else:           zone = 4
 
-    K_H = HAMMER_KH_FDTD
+    K_H = HAMMER_KH_PER_ZONE[zone]
     alpha_h = HAMMER_ALPHA_H
     cor = HAMMER_COR[zone]
-    rel_mass = HAMMER_RELMASS[zone]
 
     # Velocity-dependent COR (strain-rate stiffening)
     vel_norm = max(velocity, 0.1)
     cor_v = cor + (1 - cor) * 0.12 * max(vel_norm - 0.3, 0)
     cor_v = min(cor_v, 0.98)
 
-    m_hammer = HAMMER_MASS_REF * rel_mass
+    m_hammer = HAMMER_MASS_PER_ZONE[zone]
 
-    # Hunt-Crossley damping: µ_h = λ/k (Sonderboe eq after 3.20)
-    mu_hc_coeff = HAMMER_LAMBDA / HAMMER_KH_FDTD
+    # Hunt-Crossley damping: µ_h = λ/K_H (Sonderboe eq after 3.20, per-zone K_H)
+    mu_hc_coeff = HAMMER_LAMBDA / K_H
 
     return K_H, alpha_h, cor_v, mu_hc_coeff, m_hammer
 

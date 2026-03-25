@@ -422,19 +422,15 @@ def compute_damping_coeffs(midi, f0):
 # FDTD Simulator Core
 # =============================================================================
 
-def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16):
+def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16, tuning_mass_kg=None):
     """
     Run FDTD simulation for one key at one velocity.
 
-    Returns dict with:
-      'disp_44k': displacement at PU position, 44.1kHz (np.float64)
-      'vel_44k':  velocity at PU position, 44.1kHz (np.float64)
-      'disp_full': displacement at full sim rate (for validation)
-      'f0_target': target fundamental frequency (Hz)
-      'f0_measured': measured fundamental from FDTD output (Hz)
-      'N_grid': number of grid points
-      'oversample': oversampling factor used
-      'Tc_measured': measured hammer contact time (s)
+    Args:
+      tuning_mass_kg: override spring mass with computed tuning mass (from Phase 1).
+                      If None, uses get_spring_mass() (wire-only, ~220mg).
+
+    Returns dict with disp_44k, vel_44k, f0_measured, Tc_measured, etc.
     """
     # --- Tine parameters ---
     key_idx = midi - 21
@@ -444,8 +440,8 @@ def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16):
     L = TINE_LENGTH_MM[key_idx] * 1e-3  # PHYSICAL tine length (meters)
     f0 = 440.0 * 2**((midi - 69) / 12.0)
 
-    # Tuning spring: point mass on the beam (replaces effective_length approach)
-    m_spring = get_spring_mass(key_idx)
+    # Tuning mass: use computed value if available, else wire-only spring mass
+    m_spring = tuning_mass_kg if tuning_mass_kg is not None else get_spring_mass(key_idx)
     spring_frac = get_spring_position_frac(key_idx)
 
     sigma0, sigma1 = compute_damping_coeffs(midi, f0)

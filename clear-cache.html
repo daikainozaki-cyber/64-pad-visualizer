@@ -1,20 +1,21 @@
 <!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Cache Clear</title></head>
-<body style="background:#1a1a2e;color:#fff;font-family:sans-serif;text-align:center;padding:40px;">
-<h2>キャッシュクリア中...</h2>
-<p id="status"></p>
+<html><body>
+<h2 id="s">Clearing everything...</h2>
 <script>
-(async function() {
-  var s = document.getElementById('status');
+(async () => {
+  var s = document.getElementById('s');
   try {
     var regs = await navigator.serviceWorker.getRegistrations();
-    for (var r of regs) await r.unregister();
-    s.textContent = 'SW ' + regs.length + '件解除。キャッシュ削除中...';
+    for (var i = 0; i < regs.length; i++) await regs[i].unregister();
     var keys = await caches.keys();
-    for (var k of keys) await caches.delete(k);
-    s.textContent = 'キャッシュ ' + keys.length + '件削除。リダイレクト...';
-  } catch(e) { s.textContent = 'Error: ' + e.message; }
-  setTimeout(function() { location.href = './?hps'; }, 500);
+    for (var i = 0; i < keys.length; i++) await caches.delete(keys[i]);
+    s.textContent = 'Cleared ' + regs.length + ' SW, ' + keys.length + ' caches. Redirecting...';
+    setTimeout(function() {
+      window.location.replace('http://localhost:8080/?worklet=1&t=' + Date.now());
+    }, 1000);
+  } catch(e) {
+    s.textContent = 'Error: ' + e.message;
+  }
 })();
 </script>
 </body></html>

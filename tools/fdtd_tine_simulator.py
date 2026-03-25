@@ -447,6 +447,96 @@ def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_i
     return m_try
 
 
+def find_tuning_mass_hammer(midi, oversample=None, tol_cents=5.0, max_iter=15,
+                            enable_tonebar=True, cal_duration=0.3, cal_velocity=0.8):
+    """
+    Hammer-based tuning mass calibration.
+
+    Uses fdtd_simulate (full hammer model + TB coupling) instead of pluck.
+    This ensures the calibrated mass gives the correct f0 in the actual
+    production simulation — no pluck/hammer excitation mismatch.
+
+    Physics:
+      The coupled tine+TB system has two modes. The Goertzel measurement
+      targets f0_target (tine mode). For keys where f_tine ≈ f_tb_eigen
+      (TMD zone), the two modes hybridize and the measurement may be noisy.
+      The bare-beam mass provides a reliable bracket.
+
+    Args:
+      cal_duration: simulation duration for each trial (default 0.3s).
+                    300ms gives ~270ms of steady-state data (after 30ms attack).
+      cal_velocity: fixed velocity for calibration (mf = 0.8).
+
+    Returns: mass in kg.
+    """
+    if oversample is None:
+        oversample = choose_oversample(midi)
+    f0_target = 440.0 * 2**((midi - 69) / 12.0)
+
+    # Step 1: bare-beam mass as reliable starting point (always converges)
+    m_bare = find_tuning_mass(midi, oversample=oversample, tol_cents=tol_cents,
+                              max_iter=20, enable_tonebar=False)
+    print(f"  [hammer-cal] bare mass: {m_bare*1000:.2f}g")
+
+    if not enable_tonebar or not has_tonebar(midi):
+        # No TB: bare mass IS the answer (already calibrated by pluck, confirmed by hammer)
+        return m_bare
+
+    # Step 2: bisect with hammer simulation + TB
+    # TB coupling adds restoring force → f0 rises → need MORE mass to compensate.
+    # Search bracket: [bare_mass, bare_mass × 4]
+    m_lo = m_bare * 0.8
+    m_hi = m_bare * 4.0
+
+    best_mass = m_bare
+    best_cents = 9999.0
+
+    for iteration in range(max_iter):
+        m_try = (m_lo + m_hi) / 2.0
+
+        # Short hammer simulation with TB
+        r = fdtd_simulate(midi, velocity=cal_velocity, duration_s=cal_duration,
+                          oversample=oversample, tuning_mass_kg=m_try,
+                          enable_tonebar=True)
+
+        f0_meas = r['f0_measured']
+
+        # Sanity check
+        if f0_meas < f0_target * 0.3 or f0_meas > f0_target * 3.0 or not np.isfinite(f0_meas):
+            # Measurement failed — mass too extreme
+            m_hi = m_try
+            if iteration % 3 == 0:
+                print(f"  [hammer-cal] iter={iteration} m={m_try*1000:.2f}g "
+                      f"f0={f0_meas:.1f}Hz (out of range)")
+            continue
+
+        cents = 1200 * np.log2(f0_meas / f0_target)
+
+        # Track best result
+        if abs(cents) < abs(best_cents):
+            best_cents = cents
+            best_mass = m_try
+
+        if abs(cents) < tol_cents:
+            print(f"  [hammer-cal] iter={iteration} m={m_try*1000:.2f}g "
+                  f"f0={f0_meas:.1f}Hz ({cents:+.1f}c) ✓")
+            return m_try
+
+        # Bisect: more mass → lower f0
+        if f0_meas > f0_target:
+            m_lo = m_try  # too high → need more mass
+        else:
+            m_hi = m_try  # too low → need less mass
+
+        if iteration % 3 == 0 or abs(cents) < 20:
+            print(f"  [hammer-cal] iter={iteration} m={m_try*1000:.2f}g "
+                  f"f0={f0_meas:.1f}Hz ({cents:+.1f}c)")
+
+    # Didn't converge — return best attempt
+    print(f"  [hammer-cal] WARNING: best m={best_mass*1000:.2f}g ({best_cents:+.1f}c)")
+    return best_mass
+
+
 def tune_all(output_dir='tools/fdtd_output', enable_tonebar=True):
     """
     Find tuning mass for all 88 keys and save to JSON.
@@ -1270,7 +1360,35 @@ def validate_single(midi=45, velocity=0.8):
 if __name__ == '__main__':
     args = sys.argv[1:]
 
-    if '--tune-all' in args:
+    if '--tune-hammer' in args:
+        # Hammer-based tuning mass for all 88 keys (correct method)
+        os.makedirs('tools/fdtd_output', exist_ok=True)
+        results = {}
+        t_start = time.time()
+        for midi in range(21, 109):
+            key_idx = midi - 21
+            f0 = 440 * 2**((midi - 69) / 12)
+            L = TINE_LENGTH_MM[key_idx]
+            ov = choose_oversample(midi)
+            tb_str = "+TB" if has_tonebar(midi) else ""
+            print(f"\n=== [{key_idx+1}/88] MIDI {midi} ({f0:.1f}Hz, L={L:.1f}mm{tb_str}) ===")
+            m = find_tuning_mass_hammer(midi, oversample=ov, enable_tonebar=True)
+            results[str(midi)] = {
+                'mass_kg': round(m, 8),
+                'mass_g': round(m * 1000, 3),
+                'f0_target': round(f0, 2),
+                'spring_frac': round(get_spring_position_frac(key_idx), 3),
+                'enable_tonebar': has_tonebar(midi),
+                'method': 'hammer',
+            }
+            print(f"  Result: {m*1000:.2f}g")
+        out_path = 'tools/fdtd_output/tuning_mass_88_hammer.json'
+        with open(out_path, 'w') as f:
+            json.dump(results, f, indent=2)
+        elapsed = time.time() - t_start
+        print(f"\nSaved {len(results)} keys to {out_path}")
+        print(f"Total time: {elapsed:.0f}s ({elapsed/60:.1f}min)")
+    elif '--tune-all' in args:
         # Find tuning mass for all 88 keys (with tonebar coupling)
         no_tb = '--no-tonebar' in args
         tune_all(enable_tonebar=not no_tb)

@@ -493,6 +493,7 @@ const ENGINES = {
     name: 'E.PIANO',
     presets: {
       'Rhodes DI':        { epiano: 'Rhodes DI', label: 'Rhodes Clean DI' },
+      'Rhodes Stage + Twin': { epiano: 'Rhodes Stage + Twin', label: 'Rhodes + Twin Reverb' },
     },
     defaultPreset: 'Rhodes DI',
   },

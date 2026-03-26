@@ -1181,6 +1181,132 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.sendLPF2Coeff = biquadLowpass(5000, 0.707, fs);
     this.sendLPF2State = new Float32Array(2);
 
+    // === SPRING REVERB — Abel waveguide (inline, zero-latency) ===
+    // Single mono spring. Eliminates main-thread round-trip latency.
+    // Abel & Berners US8391504B1: allpass dispersion outside feedback loop.
+    // Accutronics 4AB3C1B: Td=0.074s (avg of L/R springs)
+    {
+      var srTd = 0.074;
+      var srFc = 4300;
+      var srK = fs / (2 * srFc);
+      var srK1 = Math.floor(srK); if (srK1 < 1) srK1 = 1;
+      var srD = srK - srK1;
+      this.sr_K1 = srK1;
+      this.sr_a1 = (1 - srD) / (1 + srD);
+      this.sr_a2 = 0.75;
+
+      // DC block (HPF ~40Hz)
+      var srAdc = Math.tan(Math.PI / 4 - Math.PI * 40 / fs);
+      this.sr_dcGain = 0.5 * (1 + srAdc);
+      this.sr_dcA = srAdc;
+      this.sr_dcPrevX = 0;
+      this.sr_dcPrevY = 0;
+
+      // Feedback loop delay (round-trip, no AP group delay subtraction)
+      var srBaseDelay = Math.round(srTd * fs);
+      this.sr_baseDelay = srBaseDelay;
+      this.sr_gRipple = 0.1;
+      this.sr_gEcho = 0.1;
+      this.sr_lRipple = Math.round(2 * srK * 0.5);
+
+      var srDlSize = 256;
+      while (srDlSize < srBaseDelay + 128) srDlSize *= 2;
+      this.sr_dlLf = new Float32Array(srDlSize);
+      this.sr_dlLfMask = srDlSize - 1;
+      this.sr_dlLfWr = 0;
+
+      // Delay modulation
+      this.sr_gMod = 8;
+      this.sr_noiseAint = 0.93;
+      this.sr_noisePrev = 0;
+      this.sr_noiseSeed = 48271;
+
+      // Loss filter A(z): G(f) = 10^(-3D/(T60(f)*fs))
+      var srGDC = Math.pow(10, -3 * srBaseDelay / (3.0 * fs));
+      var srGNyq = Math.pow(10, -3 * srBaseDelay / (0.5 * fs));
+      var srP = (1 - srGNyq / srGDC) / (1 + srGNyq / srGDC);
+      this.sr_lossFiltB = srGDC * (1 - srP);
+      this.sr_lossFiltA = -srP;
+      this.sr_lossFiltPrevY = 0;
+      this.sr_lfFeedback = 0;
+
+      // Dispersion D(z): 20 stretched allpass (outside loop)
+      var srMd = 20;
+      this.sr_Md = srMd;
+      var srSL = 8;
+      while (srSL < srK1 + 2) srSL *= 2;
+      this.sr_SL = srSL;
+      this.sr_SM = srSL - 1;
+      this.sr_apX = new Float32Array(srMd * srSL);
+      this.sr_apY = new Float32Array(srMd * srSL);
+      this.sr_apPtr = new Int32Array(srMd);
+
+      // Spectral resonator (drip, 1kHz peak, 800Hz BW)
+      var srKeq = Math.floor(srK); if (srKeq < 1) srKeq = 1;
+      var srR = 1 - (Math.PI * 800 * srKeq) / fs;
+      if (srR < 0) srR = 0.01;
+      var srPCos0 = ((1 + srR * srR) / (2 * srR)) * Math.cos((2 * Math.PI * 1000 * srKeq) / fs);
+      this.sr_resA0half = (1 - srR * srR) / 2 / (1 + srR);
+      this.sr_resA1 = -2 * srR * srPCos0;
+      this.sr_resA2 = srR * srR;
+      this.sr_Keq = srKeq;
+      var srResBufSize = 4;
+      while (srResBufSize < 2 * srKeq + 4) srResBufSize *= 2;
+      this.sr_resIn = new Float32Array(srResBufSize);
+      this.sr_resOut = new Float32Array(srResBufSize);
+      this.sr_resMask = srResBufSize - 1;
+      this.sr_resWr = 0;
+
+      // LPF 6th-order Butterworth 4750Hz (3 biquad sections)
+      var srQs = [0.5176, 0.7071, 1.9319];
+      this.sr_lpfCoeff = [];
+      this.sr_lpfState = [];
+      for (var qi = 0; qi < 3; qi++) {
+        this.sr_lpfCoeff.push(biquadLowpass(4750, srQs[qi], fs));
+        this.sr_lpfState.push(new Float32Array(2));
+      }
+
+      // Output HPF 530Hz (AB763 return: .003µF + 100kΩ)
+      var srWcOut = Math.tan(Math.PI * 530 / fs);
+      this.sr_outHpfGain = 1 / (1 + srWcOut);
+      this.sr_outHpfA1 = (1 - srWcOut) / (1 + srWcOut);
+      this.sr_outHpfPrevX = 0;
+      this.sr_outHpfPrevY = 0;
+
+      // Pre-delay (one-way spring travel: Td/2)
+      var srPreDelay = Math.round(srTd * fs / 2);
+      var srPdSize = 256;
+      while (srPdSize < srPreDelay + 16) srPdSize *= 2;
+      this.sr_preDl = new Float32Array(srPdSize);
+      this.sr_preDlMask = srPdSize - 1;
+      this.sr_preDlWr = 0;
+      this.sr_preDelay = srPreDelay;
+
+      // HF chirps: 30 standard allpass (outside loop)
+      var srMh = 30;
+      this.sr_Mh = srMh;
+      this.sr_ah = 0.59;
+      this.sr_apHfPrevX = new Float32Array(srMh);
+      this.sr_apHfPrevY = new Float32Array(srMh);
+      var srHfBase = Math.round(srBaseDelay / 2.3);
+      this.sr_hfBaseDelay = srHfBase;
+      var srDlHfSize = 256;
+      while (srDlHfSize < srHfBase + 128) srDlHfSize *= 2;
+      this.sr_dlHf = new Float32Array(srDlHfSize);
+      this.sr_dlHfMask = srDlHfSize - 1;
+      this.sr_dlHfWr = 0;
+      this.sr_hfFeedback = 0;
+      // HF loss filter
+      var srGDChf = Math.pow(10, -3 * srHfBase / (2.0 * fs));
+      var srGNyqhf = Math.pow(10, -3 * srHfBase / (0.3 * fs));
+      var srPhf = (1 - srGNyqhf / srGDChf) / (1 + srGNyqhf / srGDChf);
+      this.sr_hfLossB = srGDChf * (1 - srPhf);
+      this.sr_hfLossA = -srPhf;
+      this.sr_hfLossPrevY = 0;
+      this.sr_c1 = 0.1;
+      this.sr_hfPrev = 0;
+    }
+
     // --- Shared LUTs (all presets pre-computed) ---
     this.preampLUT_12AX7 = computePreampLUT();
     this.preampLUT_NE5534 = computePreampLUT_NE5534();
@@ -1948,38 +2074,146 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           this.sendLPF2State[1] = lc2[2] * sendSum - lc2[4] * lOut2;
           sendSum = lOut2;
         }
-        // V4A recovery + reverb pot
-        // Note: actual spring reverb is EXTERNAL (separate AudioWorkletNode).
-        // We output the send signal on channel 1 (output[1] if stereo).
-        // The main thread routes: worklet ch1 → spring reverb → V4A gain → pot → mix at V4B.
-        // For now, we skip the spring and just output the processed send.
-        wetSignal = sendSum;
+        // === INLINE SPRING REVERB (Abel waveguide) ===
+        // Zero-latency: no main-thread round-trip.
+        // sendSum already processed through HPF→V3→tilt→LPF×2.
+        var srX = sendSum;
+
+        // DC block
+        var srDcOut = this.sr_dcGain * srX - this.sr_dcGain * this.sr_dcPrevX + this.sr_dcA * this.sr_dcPrevY;
+        this.sr_dcPrevX = srX;
+        this.sr_dcPrevY = srDcOut;
+
+        // Feedback injection + HF cross-coupling
+        var srLfIn = srDcOut + this.sr_lfFeedback + this.sr_c1 * this.sr_hfPrev;
+        var srHfIn = srDcOut + this.sr_hfFeedback;
+
+        // --- LF FEEDBACK LOOP (delay + loss only) ---
+        var srDlMask = this.sr_dlLfMask;
+        var srDlWr = this.sr_dlLfWr;
+        this.sr_dlLf[srDlWr] = srLfIn;
+
+        // Delay modulation
+        this.sr_noiseSeed = (this.sr_noiseSeed * 16807) % 2147483647;
+        var srNoiseRaw = this.sr_noiseSeed / 2147483647;
+        var srNoiseFilt = (1 - this.sr_noiseAint) * srNoiseRaw + this.sr_noiseAint * this.sr_noisePrev;
+        this.sr_noisePrev = srNoiseFilt;
+
+        var srL = this.sr_baseDelay + Math.round(this.sr_gMod * srNoiseFilt);
+        if (srL < 4) srL = 4;
+        var srLEcho = Math.round(srL / 5);
+        var srLRipple = this.sr_lRipple;
+        var srL0 = srL - srLEcho - srLRipple;
+        if (srL0 < 1) srL0 = 1;
+
+        // Multitap read
+        var srTap0 = this.sr_dlLf[(srDlWr - srL0                      + srDlMask + 1) & srDlMask];
+        var srTap1 = this.sr_dlLf[(srDlWr - srL0 - srLRipple          + srDlMask + 1) & srDlMask];
+        var srTap2 = this.sr_dlLf[(srDlWr - srL0 - srLEcho            + srDlMask + 1) & srDlMask];
+        var srTap3 = this.sr_dlLf[(srDlWr - srL0 - srLEcho - srLRipple + srDlMask + 1) & srDlMask];
+        var srRawFb = (this.sr_gEcho * this.sr_gRipple * srTap0
+                     + this.sr_gEcho * srTap1
+                     + this.sr_gRipple * srTap2
+                     + srTap3) * 0.826;
+
+        // Loss filter → feedback
+        var srLossOut = this.sr_lossFiltB * srRawFb - this.sr_lossFiltA * this.sr_lossFiltPrevY;
+        this.sr_lossFiltPrevY = srLossOut;
+        this.sr_lfFeedback = srLossOut;
+        this.sr_dlLfWr = (srDlWr + 1) & srDlMask;
+
+        // --- LF DISPERSION (20 stretched AP, outside loop) ---
+        var srApIn = srRawFb;
+        var srMd = this.sr_Md, srK1 = this.sr_K1;
+        var srA1 = this.sr_a1, srA2 = this.sr_a2, srA1A2 = srA1 * srA2;
+        var srSL = this.sr_SL, srSM = this.sr_SM;
+        for (var srS = 0; srS < srMd; srS++) {
+          var srBase = srS * srSL;
+          var srWr = this.sr_apPtr[srS];
+          this.sr_apX[srBase + srWr] = srApIn;
+          var srXn1  = this.sr_apX[srBase + ((srWr - 1      + srSL) & srSM)];
+          var srXnK  = this.sr_apX[srBase + ((srWr - srK1   + srSL) & srSM)];
+          var srXnK1 = this.sr_apX[srBase + ((srWr - srK1-1 + srSL) & srSM)];
+          var srYn1  = this.sr_apY[srBase + ((srWr - 1      + srSL) & srSM)];
+          var srYnK  = this.sr_apY[srBase + ((srWr - srK1   + srSL) & srSM)];
+          var srYnK1 = this.sr_apY[srBase + ((srWr - srK1-1 + srSL) & srSM)];
+          var srApOut = srA1 * srApIn + srA1A2 * srXn1 + srA2 * srXnK + srXnK1
+                      - srA2 * srYn1 - srA1A2 * srYnK - srA1 * srYnK1;
+          this.sr_apY[srBase + srWr] = srApOut;
+          this.sr_apPtr[srS] = (srWr + 1) & srSM;
+          srApIn = srApOut;
+        }
+
+        // Spectral resonator (drip)
+        var srKeq = this.sr_Keq, srRMask = this.sr_resMask, srRWr = this.sr_resWr;
+        this.sr_resIn[srRWr] = srApIn;
+        var srResIn2K  = this.sr_resIn[(srRWr - 2*srKeq + srRMask+1) & srRMask];
+        var srResOutK  = this.sr_resOut[(srRWr - srKeq  + srRMask+1) & srRMask];
+        var srResOut2K = this.sr_resOut[(srRWr - 2*srKeq + srRMask+1) & srRMask];
+        var srResResult = this.sr_resA0half * (srApIn - srResIn2K) - this.sr_resA1 * srResOutK - this.sr_resA2 * srResOut2K;
+        this.sr_resOut[srRWr] = srResResult;
+        this.sr_resWr = (srRWr + 1) & srRMask;
+
+        // --- HF BLOCK (delay+loss loop, AP outside) ---
+        var srHfDlMask = this.sr_dlHfMask, srHfDlWr = this.sr_dlHfWr;
+        this.sr_dlHf[srHfDlWr] = srHfIn;
+        var srLh = this.sr_hfBaseDelay + Math.round(this.sr_gMod * srNoiseFilt * 0.4);
+        if (srLh < 1) srLh = 1;
+        var srHfDelayed = this.sr_dlHf[(srHfDlWr - srLh + srHfDlMask+1) & srHfDlMask];
+        var srHfLoss = this.sr_hfLossB * srHfDelayed - this.sr_hfLossA * this.sr_hfLossPrevY;
+        this.sr_hfLossPrevY = srHfLoss;
+        this.sr_hfFeedback = srHfLoss;
+        this.sr_dlHfWr = (srHfDlWr + 1) & srHfDlMask;
+
+        // HF dispersion (30 standard AP, outside loop)
+        var srHfInput = srHfDelayed;
+        for (var srHS = 0; srHS < this.sr_Mh; srHS++) {
+          var srHpX = this.sr_apHfPrevX[srHS];
+          var srHpY = this.sr_apHfPrevY[srHS];
+          var srHo = this.sr_ah * srHfInput + srHpX - this.sr_ah * srHpY;
+          this.sr_apHfPrevX[srHS] = srHfInput;
+          this.sr_apHfPrevY[srHS] = srHo;
+          srHfInput = srHo;
+        }
+        this.sr_hfPrev = srHfInput;
+
+        // LPF 6th-order Butterworth
+        var srLpfIn = srResResult;
+        for (var srLi = 0; srLi < 3; srLi++) {
+          srLpfIn = biquadProcess(this.sr_lpfCoeff[srLi], this.sr_lpfState[srLi], srLpfIn);
+        }
+
+        // Output HPF 530Hz (AB763 return)
+        var srOutHpf = this.sr_outHpfGain * (srLpfIn - this.sr_outHpfPrevX) + this.sr_outHpfA1 * this.sr_outHpfPrevY;
+        this.sr_outHpfPrevX = srLpfIn;
+        this.sr_outHpfPrevY = srOutHpf;
+
+        // Pre-delay + combine
+        var srWetRaw = srOutHpf + srHfInput * 0.001;
+        var srPdMask = this.sr_preDlMask, srPdWr = this.sr_preDlWr;
+        this.sr_preDl[srPdWr] = srWetRaw;
+        var srWetDelayed = this.sr_preDl[(srPdWr - this.sr_preDelay + srPdMask+1) & srPdMask];
+        this.sr_preDlWr = (srPdWr + 1) & srPdMask;
+
+        // V4A recovery × reverb pot
+        wetSignal = srWetDelayed * this.v4aGain * this.reverbPot;
       }
 
       // --- Output routing ---
       var mainOut;
 
       if (this.useCabinet) {
-        // === AMP PATH: shared harpLPF → output ch0 (dry) ===
-        // V4B + poweramp are on main thread (for wet/dry bloom mixing).
-
-        // Harp parallel voltage divider (no LPF — see DI path comment)
+        // === AMP PATH: dry + wet mixed → ch0 → V4B(bloom) → poweramp → cabinet ===
         drySum = (drySum / HARP_PARALLEL_DIV) * this.dryBusGain;
-
-        // Output dry signal. V4B + poweramp + cabinet are on main thread
-        // so wet (spring reverb return) can mix with dry at V4B = bloom.
-        mainOut = drySum;
+        // Mix dry + wet here. V4B on main thread applies bloom to combined signal.
+        mainOut = drySum + wetSignal;
       } else {
         // === DI PATH: per-voice harp LPF already applied ===
-        // Harp wiring voltage divider: single note's PU is in a parallel group of 3.
-        // Other 2 PUs (silent) act as parallel impedance → V_out = V_pu / 3.
-        // Multiple simultaneous notes in different groups add linearly.
         mainOut = diSum / HARP_PARALLEL_DIV;
       }
 
-      // ch0: main signal (→ ConvolverNode cabinet OR direct output on main thread)
-      // ch1: reverb send (→ spring reverb AudioWorklet on main thread)
-      // DEBUG: hard limiter + peak logging to find clipping source
+      // ch0: dry+wet combined → main thread V4B → poweramp → cabinet
+      // ch1: 0 (spring reverb is now inline, no external routing needed)
       if (mainOut > 1.0 || mainOut < -1.0) {
         if (this._clipCount === undefined) this._clipCount = 0;
         this._clipCount++;
@@ -1991,7 +2225,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       if (mainOut < -0.95) mainOut = -0.95;
       outL[i] = mainOut;
       if (outR !== outL) {
-        outR[i] = wetSignal; // reverb send on right channel
+        outR[i] = 0; // ch1 unused (spring reverb is inline now)
       }
     }
 

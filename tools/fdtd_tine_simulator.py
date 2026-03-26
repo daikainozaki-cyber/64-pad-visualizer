@@ -225,10 +225,8 @@ def tonebar_mass(midi):
 # NES fixes this: large amplitude → strong coupling (attack), small → weak (sustain).
 # See permanent note: Rhodesのトーンバーは非線形エネルギーシンクとして機能し
 # 高次モードのエネルギーを不可逆的に吸収する
-TB_K_LIN_REF = 0.0        # N/m — pure NES (no linear coupling). Vakakis (2001):
-                          # "essential nonlinearity" = zero linear term.
-                          # Physical basis: screw joint is friction-based → threshold behavior.
-TB_K_NL = 5.0e10           # N/m³ — cubic stiffness (tuned 2026-03-26).
+TB_K_LIN_REF = float(os.environ.get('TB_K_LIN', '0.0'))  # N/m — overridable via env
+TB_K_NL = float(os.environ.get('TB_K_NL', '0.0'))         # N/m³ — default 0 (linear spring)
                           # At C4 forte (Δx~2.6e-4m): F_cubic=0.88N (strong attack shaping)
                           # At C4 sustain (Δx~5e-5m): F_cubic=6.3e-3N (negligible → sustain preserved)
                           # Attack Δ=-9.6pp, sustain Δ=-2.4pp vs noTB. Ratio 4×.
@@ -241,21 +239,47 @@ TB_Q_TONEBAR = 50.0       # Tonebar internal Q. Metal bar Q=100-1000+.
                           # Old: Q=10 for Münster 10-14ms enslaving, but with NES cubic coupling
                           # the strong initial force drives fast enslaving even at higher Q.
                           # Q=50: TB stores energy longer → beating (life) → sustain preserved.
-TB_ZETA_COUPLING = 0.05   # Coupling damping ratio
+TB_ZETA_COUPLING = 0.05   # Coupling damping ratio (legacy, for linear c_c)
+
+# Asymmetric coupling (2026-03-26 urinami-san insight).
+# Physics: screw/spring contact is asymmetric.
+#   Compression (Δx < 0, tine→TB): hard contact → full NES coupling
+#   Tension (Δx > 0, tine←TB): spring stretches, contact loosens → weaker coupling
+# TB_ASYM_RATIO=0: one-sided (compression only). =1: symmetric (current behavior).
+# Half-cycle coupling → beam modes retain energy longer → bell sustains, not tom.
+TB_ASYM_RATIO = float(os.environ.get('TB_ASYM', '1.0'))  # overridable via env
+
+# Nonlinear coupling damping (NES-consistent, Vakakis 2001 + Gaul 1997 bolted joints).
+# Physics: screw joint microslip converts vibration energy to heat.
+# Large amplitude → large contact stress → more microslip → more friction heat → irreversible.
+# Small amplitude → near-static friction → negligible loss → sustain preserved.
+# F_damp = c_NL × Δx² × Δẋ, where c_NL = 2ζ(key) × sqrt(k_NL × m_tb).
+#
+# Per-key scaling: ζ(key) = ζ_ref × (L_ref / L)^q
+# Physics basis (2026-03-26 urinami-san):
+#   1. Bass tines are longer → larger Δx → Δx² amplifies damping → need smaller ζ to compensate
+#   2. Bass springs have more coils → distributed friction → less microslip per contact
+#   Both effects point the same direction: ζ should decrease with tine length.
+#   q=1.0: cantilever tip displacement ∝ L → normalizes c_eff ∝ Δx² × ζ to ~Δx
+TB_ZETA_NL_REF = 0.15     # at C4 (L=62mm). "相当いい" (urinami-san ear test)
+TB_ZETA_NL_L_REF = 62.0   # mm — C4 tine length
+TB_ZETA_NL_EXPONENT = 1.0 # q: scaling exponent
 
 
 def get_nes_params(midi):
     """
     Per-register NES coupling parameters from spring physics.
 
-    Returns (k_lin, k_NL):
+    Returns (k_lin, k_NL, zeta_NL):
       k_lin: linear coupling stiffness (N/m), scaled per register (k ∝ 1/n coils)
-      k_NL: cubic coupling stiffness (N/m³), uniform across registers (initial)
+      k_NL: cubic coupling stiffness (N/m³), uniform across registers
+      zeta_NL: nonlinear coupling damping ratio, scaled per tine length
 
-    Physics: Vakakis (2001). The coupling is a modified NES (linear + cubic).
-    The linear term provides baseline weak coupling (screw contact).
-    The cubic term provides amplitude-dependent energy transfer (NES).
-    k_lin scales with spring stiffness (∝ 1/n coils), same as old get_coupling_stiffness.
+    Physics: Vakakis (2001) NES + Gaul (1997) bolted joint friction.
+    k_lin = 0 (pure NES). k_NL = cubic stiffness. zeta_NL = screw joint heat loss.
+    zeta_NL scales with tine length: ζ = ζ_ref × (L_ref/L)^q
+      Bass (long tine, large Δx): smaller ζ → less over-damping
+      Treble (short tine, small Δx): larger ζ → beam modes (if any) damp faster
     """
     key = max(1, min(88, midi - 20))
     if key <= 7:
@@ -268,13 +292,18 @@ def get_nes_params(midi):
         turns = 3.0    # #2
     total_turns = 2 * turns + 0.5
     k_lin = TB_K_LIN_REF * (TB_KC_REF_TOTAL_TURNS / total_turns)
-    return k_lin, TB_K_NL
+
+    # Per-key nonlinear damping ratio
+    L_mm = TINE_LENGTH_MM[key - 1]
+    zeta_NL = TB_ZETA_NL_REF * (TB_ZETA_NL_L_REF / L_mm) ** TB_ZETA_NL_EXPONENT
+
+    return k_lin, TB_K_NL, zeta_NL
 
 
 # Backward compatibility alias
 def get_coupling_stiffness(midi):
     """Deprecated: use get_nes_params(). Returns k_lin for compatibility."""
-    k_lin, _ = get_nes_params(midi)
+    k_lin, _, _ = get_nes_params(midi)
     return k_lin
 
 
@@ -395,8 +424,9 @@ def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_i
             omega_tb = 2.0 * np.pi * f_tb_eigen
             k_tb = m_tb * omega_tb**2
             c_tb = 2.0 * m_tb * omega_tb / TB_Q_TONEBAR
-            k_lin_tb, k_NL_tb = get_nes_params(midi)
-            c_c_tb = 2.0 * TB_ZETA_COUPLING * np.sqrt(k_lin_tb * m_tb)
+            k_lin_tb, k_NL_tb, zeta_NL_tb = get_nes_params(midi)
+            # Nonlinear coupling damping (same as fdtd_simulate, per-key ζ)
+            c_NL_tb = 2.0 * zeta_NL_tb * np.sqrt(k_NL_tb * m_tb)
             # force_coeff = 1/(ρA*h) — already includes grid spacing, do NOT multiply by h again
             force_coeff_spring = 1.0 / (rhoA_arr[l_spring] * h)
             g_tb = k_t**2 * (1.0 / m_tb + force_coeff_spring * D_val)
@@ -429,10 +459,12 @@ def find_tuning_mass(midi, spring_frac=None, oversample=16, tol_cents=5.0, max_i
                 alpha_tb = y_tb_star - u_next[l_spring]
                 vel_diff_tb = ((y_tb_curr - y_tb_prev) / k_t
                                - (u_curr[l_spring] - u_prev[l_spring]) / k_t)
-                # NES coupling (Vakakis 2001): linear + cubic
-                F_cubic_tb = k_NL_tb * alpha_tb**3
-                denom_tb = 1.0 + g_tb * (k_lin_tb + c_c_tb / (2.0 * k_t))
-                F_coupling = (k_lin_tb * alpha_tb + F_cubic_tb + c_c_tb * vel_diff_tb) / denom_tb
+                # Asymmetric NES + nonlinear damping (same physics as fdtd_simulate)
+                asym_tb = 1.0 if alpha_tb < 0 else TB_ASYM_RATIO
+                F_cubic_tb = asym_tb * k_NL_tb * alpha_tb**3
+                c_eff_tb = asym_tb * c_NL_tb * alpha_tb**2
+                denom_tb = 1.0 + g_tb * (k_lin_tb + c_eff_tb / (2.0 * k_t))
+                F_coupling = (k_lin_tb * alpha_tb + F_cubic_tb + c_eff_tb * vel_diff_tb) / denom_tb
                 u_next[l_spring] += k_t**2 * force_coeff_spring * F_coupling * D_val
                 y_tb_next = y_tb_star - (k_t**2 / m_tb) * F_coupling
                 y_tb_prev = y_tb_curr
@@ -931,8 +963,12 @@ def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16, tuning_mass
         omega_tb = 2.0 * np.pi * f_tb_eigen
         k_tb = m_tb * omega_tb**2                               # tonebar restoring stiffness
         c_tb = 2.0 * m_tb * omega_tb / TB_Q_TONEBAR             # tonebar internal damping
-        k_lin, k_NL = get_nes_params(midi)                      # NES coupling (Vakakis 2001)
-        c_c = 2.0 * TB_ZETA_COUPLING * np.sqrt(k_lin * m_tb)    # coupling damping (based on k_lin)
+        k_lin, k_NL, zeta_NL = get_nes_params(midi)              # NES coupling (Vakakis 2001)
+        # Nonlinear coupling damping: c_NL × Δx² × Δẋ (amplitude-dependent)
+        # Physics: screw joint microslip → heat. Large Δx → more friction → irreversible.
+        # c_NL = 2ζ(key) × sqrt(k_NL × m_tb). Per-key ζ compensates for bass Δx² amplification.
+        c_NL = 2.0 * zeta_NL * np.sqrt(k_NL * m_tb)
+        c_c = 0.0  # linear coupling damping disabled (pure NES: all damping is nonlinear)
 
         # Semi-implicit coupling coefficient
         # Uses k_lin for the implicit part; k_NL (cubic) is explicit.
@@ -1013,12 +1049,16 @@ def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16, tuning_mass
             vel_diff_tb = ((y_tb_curr - y_tb_prev) / k
                            - (u_curr[l_spring] - u_prev[l_spring]) / k)
 
-            # Coupling force: NES model (Vakakis 2001)
-            # Semi-implicit for linear term, explicit for cubic term.
-            # F = k_lin × Δx + k_NL × Δx³ + c_c × Δv
-            F_cubic = k_NL * alpha_tb**3
-            denom_tb = 1.0 + g_tb * (k_lin + c_c / (2.0 * k))
-            F_coupling = (k_lin * alpha_tb + F_cubic + c_c * vel_diff_tb) / denom_tb
+            # Coupling force: asymmetric NES (Vakakis 2001) + nonlinear damping (Gaul 1997)
+            # Physics: screw/spring contact is asymmetric (urinami-san 2026-03-26).
+            #   Compression (alpha_tb < 0): hard contact → full coupling + full friction
+            #   Tension (alpha_tb > 0): spring stretches → reduced coupling (TB_ASYM_RATIO)
+            # Asymmetry → half-cycle coupling → beam modes retain energy → bell, not tom.
+            asym = 1.0 if alpha_tb < 0 else TB_ASYM_RATIO
+            F_cubic = asym * k_NL * alpha_tb**3
+            c_eff = asym * c_NL * alpha_tb**2
+            denom_tb = 1.0 + g_tb * (k_lin + c_eff / (2.0 * k))
+            F_coupling = (k_lin * alpha_tb + F_cubic + c_eff * vel_diff_tb) / denom_tb
 
             # Apply to beam at spring grid point
             u_next[l_spring] += (k**2 * force_coeff_arr[l_spring]
@@ -1121,8 +1161,11 @@ def fdtd_simulate(midi, velocity=0.8, duration_s=0.1, oversample=16, tuning_mass
     tb_disp_44k = decimate(tb_disp_out, oversample, ftype='iir', zero_phase=True) if use_tonebar else np.zeros(len(disp_44k))
 
     # --- Measure fundamental frequency (Goertzel, sub-cent precision) ---
+    # Use 30-330ms window (300ms = sufficient for sub-cent precision at all pitches).
+    # Longer windows cause beam mode persistence to bias the measurement
+    # (忘れやすいこと: "0.3sでは+0.5c、2.0sでは-86c → 校正は短い窓で行え").
     steady_start_44k = int(0.03 * FS_AUDIO)  # 30ms onwards (after hammer contact)
-    steady_end_44k = len(disp_44k)
+    steady_end_44k = min(len(disp_44k), int(0.33 * FS_AUDIO))  # cap at 330ms
     if steady_end_44k > steady_start_44k + 256:
         segment = disp_44k[steady_start_44k:steady_end_44k]
         segment = segment * np.hanning(len(segment))  # window to reduce leakage

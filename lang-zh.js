@@ -423,7 +423,7 @@ I18N.addLang('zh', {
     sound_panel: '声音面板',
     sound_panel_desc: '选择音色和调整效果器。点击\u25B6按钮展开面板。',
     sound_presets: '音色预设',
-    sound_presets_desc: '可从ORGAN（4种）和E.PIANO（8种：Rhodes, FM EP, Clavinet, Sampler）中选择。',
+    sound_presets_desc: 'Rhodes物理建模音源（Clean DI）为默认音色。无需下载采样即可立即演奏。使用VOICING旋钮调整拾音器音色。',
     sound_effects: '效果器',
     sound_effects_desc: '拖动旋钮调整各项参数。',
     fx_drive: '模拟饱和。温暖的过载',

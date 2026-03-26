@@ -421,7 +421,7 @@ I18N.addLang('pt', {
     sound_panel: 'Painel de som',
     sound_panel_desc: 'Selecione presets de som e ajuste os efeitos. Clique no botão \u25B6 para expandir o painel.',
     sound_presets: 'Presets de som',
-    sound_presets_desc: 'Escolha entre ORGAN (4 tipos) e E.PIANO (8 tipos: Rhodes, FM EP, Clavinet, Sampler).',
+    sound_presets_desc: 'O motor de modelagem física Rhodes (Clean DI) é o padrão. Toque instantaneamente sem download de samples. Use o knob VOICING para ajustar o timbre do pickup.',
     sound_effects: 'Efeitos',
     sound_effects_desc: 'Arraste cada knob para ajustar os valores.',
     fx_drive: 'Saturação analógica. Distorção quente',

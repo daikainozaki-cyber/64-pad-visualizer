@@ -793,8 +793,12 @@ function cylinderBz(rho, z, a, h) {
 //     SM: ~1mm typical. Old: 0.088 (2.2mm). New: ~0.03 (0.8mm).
 function puLutParams(symmetry, distance, gapMm, qRange, lverOffset) {
   var sym = symmetry < 0 ? 0 : (symmetry > 1 ? 1 : symmetry);
-  // Lver: voicing screw offset. sym=0 → on-axis, sym=1 → max offset ~2mm.
-  var Lver = sym * 0.086 + ((lverOffset !== undefined) ? lverOffset : 0);
+  // Lver: voicing screw offset. sym=0 → on-axis, sym=1 → max offset ~5mm.
+  // 2026-03-27: increased from 0.086 (2.15mm) to 0.2 (5mm).
+  // With corrected Lhor=0.06 (1.5mm), old range was inaudible in bass register
+  // (large tine displacement makes LUT shift relatively small).
+  // Real voicing screw range: ~3-5mm physical travel.
+  var Lver = sym * 0.2 + ((lverOffset !== undefined) ? lverOffset : 0);
   // Lhor: physical gap + tine radius. Gap varies per register.
   var gap_norm = ((gapMm !== undefined) ? gapMm : 0.794) / 25.0; // mm → normalized
   var tine_radius = 0.04; // ~1mm / 25mm

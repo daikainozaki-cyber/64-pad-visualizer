@@ -2,8 +2,8 @@
 // AUDIO ENGINE
 // ========================================
 let _soundMuted = true; // Sound OFF by default — user turns on explicitly
-// A/B switch: ?worklet=1 in URL to use AudioWorklet e-piano engine
-const _useEpianoWorklet = new URLSearchParams(window.location.search).get('worklet') === '1';
+// AudioWorklet e-piano is default. ?node=1 falls back to Web Audio node version.
+const _useEpianoWorklet = new URLSearchParams(window.location.search).get('node') !== '1';
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // --- Master audio graph ---
@@ -287,14 +287,40 @@ flangerMix.connect(masterReverb);
 // Both coexist: amp's spring reverb colors the tone, master reverb adds room acoustics.
 const epianoDirectOut = audioCtx.createGain();
 epianoDirectOut.gain.setValueAtTime(0.6, 0); // match masterGain level
-epianoDirectOut.connect(masterComp);          // dry path to compressor
-// Room reverb send: controllable per preset.
-// Amp presets (Twin/Suitcase): room reverb adds space on top of spring reverb → send=1.0
-// DI preset: no processing at all → send=0.0
+// Master drive WaveShaper for e-piano (post-PU, pre-effects).
+// Per-voice saturation doesn't work for worklet (single output node).
+// This WaveShaper adds nonlinearity → shifts spectral centroid → bell character.
+const epianoDriveWS = audioCtx.createWaveShaper();
+epianoDriveWS.oversample = '2x';
+epianoDriveWS.curve = (function() { var n=256, c=new Float32Array(n); for(var i=0;i<n;i++) c[i]=(i*2/n-1); return c; })(); // linear (no drive)
+const epianoDriveMakeup = audioCtx.createGain();
+epianoDriveMakeup.gain.setValueAtTime(1.0, 0);
+epianoDirectOut.connect(epianoDriveWS);
+epianoDriveWS.connect(epianoDriveMakeup);
+function _updateEpianoDriveCurve(drive) {
+  var n = 256, curve = new Float32Array(n);
+  if (drive <= 0) {
+    // Linear passthrough
+    for (var i = 0; i < n; i++) curve[i] = (i * 2 / n - 1);
+  } else {
+    // Soft clipping: tanh(x * driveAmount) / tanh(driveAmount)
+    // drive 0→1 maps to gain 1→20 (same scale as per-voice saturation)
+    var d = 1 + drive * 19;
+    var tanhD = Math.tanh(d);
+    for (var i = 0; i < n; i++) {
+      var x = (i * 2) / n - 1;
+      curve[i] = Math.tanh(x * d) / tanhD;
+    }
+  }
+  epianoDriveWS.curve = curve;
+  // Makeup gain: soft clip reduces peak, compensate
+  epianoDriveMakeup.gain.setValueAtTime(drive > 0 ? 1 + drive * 0.5 : 1.0, 0);
+}
+// Route through master effects chain (tremolo→autoFilter→phaser→flanger→filters→comp+reverb).
+epianoDriveMakeup.connect(tremoloNode);
+// Keep epianoReverbSend as no-op for API compatibility (noteOn still references it).
 const epianoReverbSend = audioCtx.createGain();
-epianoReverbSend.gain.setValueAtTime(1.0, 0);
-epianoDirectOut.connect(epianoReverbSend);
-epianoReverbSend.connect(masterReverb);
+epianoReverbSend.gain.setValueAtTime(0, 0); // reverb now handled by effects chain
 
 // Rotary speaker / tremolo LFO (tremoloNode created above, near masterGain)
 const tremoloLFO = audioCtx.createOscillator();
@@ -318,7 +344,7 @@ function ensureAudioResumed() {
         if (inst.sampler) {
           _decodeSamplerZones(inst.sampler);
         } else if (inst.data) {
-          wafPlayer.loader.decodeAfterLoading(audioCtx, inst.data);
+          if (_ensureWafPlayer()) wafPlayer.loader.decodeAfterLoading(audioCtx, inst.data);
         }
       });
     });
@@ -329,8 +355,12 @@ document.addEventListener('touchstart', ensureAudioResumed, { once: true });
 
 function getAudioCtx() { ensureAudioResumed(); return audioCtx; }
 
-// --- WebAudioFont player + instrument presets ---
-const wafPlayer = new WebAudioFontPlayer();
+// --- WebAudioFont player (lazy — may not be loaded yet if CDN async) ---
+var wafPlayer = (typeof WebAudioFontPlayer !== 'undefined') ? new WebAudioFontPlayer() : null;
+function _ensureWafPlayer() {
+  if (!wafPlayer && typeof WebAudioFontPlayer !== 'undefined') wafPlayer = new WebAudioFontPlayer();
+  return wafPlayer;
+}
 
 // --- Sampler engine (velocity-layer-aware) ---
 const _samplerBuffers = new Map(); // 'instrumentName:zoneIdx' → AudioBuffer
@@ -459,44 +489,37 @@ function _samplerNoteOn(instrument, midi, velocity, dest) {
 
 // ======== SOUND ENGINES ========
 const ENGINES = {
-  organ: {
-    name: 'ORGAN',
-    presets: {
-      'Drawbar':    { data: _tone_0160_FluidR3_GM_sf2_file, label: 'Drawbar Organ' },
-      'Percussive': { data: _tone_0170_FluidR3_GM_sf2_file, label: 'Percussive Organ' },
-      'Rock':       { data: _tone_0180_FluidR3_GM_sf2_file, label: 'Rock Organ' },
-      'Church':     { data: _tone_0190_FluidR3_GM_sf2_file, label: 'Church Organ' },
-    },
-    defaultPreset: 'Drawbar',
-  },
-  ep: {
+  epiano: {
     name: 'E.PIANO',
     presets: {
-      'Rhodes 1': { data: _tone_0040_FluidR3_GM_sf2_file, label: 'Rhodes 1' },
-      'Rhodes 2': { data: _tone_0040_GeneralUserGS_sf2_file, label: 'Rhodes 2' },
-      'Rhodes 3': { data: _tone_0040_Chaos_sf2_file, label: 'Rhodes 3' },
-      'FM EP 1':  { data: _tone_0050_FluidR3_GM_sf2_file, label: 'FM EP 1' },
-      'FM EP 2':  { data: _tone_0050_GeneralUserGS_sf2_file, label: 'FM EP 2' },
-      'Clav 1':   { data: _tone_0070_FluidR3_GM_sf2_file, label: 'Clavinet 1' },
-      'Clav 2':   { data: _tone_0070_GeneralUserGS_sf2_file, label: 'Clavinet 2' },
-      'jRhodes3c': {
-        sampler: typeof _jRhodes3c !== 'undefined' ? _jRhodes3c : null,
-        label: '1977 Rhodes Mark I (Sampler)',
-      },
-    },
-    defaultPreset: 'Rhodes 1',
-  },
-  epiano: {
-    name: 'E.PIANO (Physics)',
-    presets: {
-      'Rhodes + Twin':    { epiano: 'Rhodes Stage + Twin', label: 'Rhodes Stage + Twin Reverb' },
-      'Rhodes Suitcase':  { epiano: 'Rhodes Suitcase', label: 'Rhodes Suitcase' },
-      'Wurlitzer 200A':   { epiano: 'Wurlitzer 200A', label: 'Wurlitzer 200A' },
       'Rhodes DI':        { epiano: 'Rhodes DI', label: 'Rhodes Clean DI' },
     },
-    defaultPreset: 'Rhodes + Twin',
+    defaultPreset: 'Rhodes DI',
   },
 };
+
+// Lazy-load jRhodes3c sampler in background (35MB).
+// Clean DI is playable immediately. Sampler appears in preset list when ready.
+function _lazyLoadSampler() {
+  var script = document.createElement('script');
+  script.src = 'jrhodes3c-samples.js?v=4.8.61';
+  script.onload = function() {
+    if (typeof _jRhodes3c === 'undefined') return;
+    // Add sampler preset to epiano engine
+    ENGINES.epiano.presets['jRhodes3c'] = {
+      sampler: _jRhodes3c,
+      label: '1977 Rhodes Mark I (Sampler)',
+    };
+    // Rebuild preset dropdown to show new option
+    if (typeof renderSoundControls === 'function') renderSoundControls();
+    // Decode sample zones
+    if (typeof _decodeSamplerZones === 'function') _decodeSamplerZones(_jRhodes3c);
+    console.log('[64PE] jRhodes3c sampler loaded (background)');
+  };
+  document.head.appendChild(script);
+}
+// Start loading after page is interactive (2s delay)
+setTimeout(_lazyLoadSampler, 2000);
 
 // --- Velocity-driven saturation (soft clipping) ---
 let saturationDrive = 0; // 0=off, 0.1-1.0=mild-heavy
@@ -522,10 +545,10 @@ function _createVoiceSaturation(velocity) {
 }
 
 const AudioState = {
-  engineKey: 'organ',
-  engine: ENGINES['organ'],
-  presetKey: 'Drawbar',
-  instrument: ENGINES['organ'].presets['Drawbar'],
+  engineKey: 'epiano',
+  engine: ENGINES['epiano'],
+  presetKey: 'Rhodes DI',
+  instrument: ENGINES['epiano'].presets['Rhodes DI'],
 };
 
 function setEngine(key) {
@@ -541,7 +564,7 @@ function setEngine(key) {
     if (p.sampler) {
       _decodeSamplerZones(p.sampler);
     } else if (p.data) {
-      wafPlayer.loader.decodeAfterLoading(audioCtx, p.data);
+      if (_ensureWafPlayer()) wafPlayer.loader.decodeAfterLoading(audioCtx, p.data);
     }
   });
   renderSoundControls();
@@ -561,7 +584,7 @@ function selectSound(combinedValue) {
     AudioState.engine = ENGINES[engKey];
     Object.values(AudioState.engine.presets).forEach(p => {
       if (p.sampler) _decodeSamplerZones(p.sampler);
-      else if (p.data) wafPlayer.loader.decodeAfterLoading(audioCtx, p.data);
+      else if (p.data && _ensureWafPlayer()) wafPlayer.loader.decodeAfterLoading(audioCtx, p.data);
     });
   }
   AudioState.presetKey = presetKey;
@@ -816,17 +839,17 @@ function noteOn(midi, velocity, poly, _retries) {
     // Physics engine: bypass per-voice saturation (physics chain has 3 nonlinear stages)
     if (sat.cleanup) sat.cleanup();
     EpState.preset = AudioState.instrument.epiano;
-    // DI = no room reverb send. Amp presets = room reverb adds space.
+    // Room reverb always available (REV knob controls level).
+    // Spring reverb is separate (inside amp chain, controlled by E.Piano Mixer).
     var epPreset = EP_AMP_PRESETS[EpState.preset];
-    epianoReverbSend.gain.setValueAtTime(
-      (epPreset && epPreset.useCabinet) ? 1.0 : 0.0, audioCtx.currentTime
-    );
+    epianoReverbSend.gain.setValueAtTime(1.0, audioCtx.currentTime);
     envelope = _useEpianoWorklet
       ? epianoWorkletNoteOn(audioCtx, midi, velocity, epianoDirectOut)
       : epianoNoteOn(audioCtx, midi, velocity, epianoDirectOut);
   } else if (AudioState.instrument.sampler) {
     envelope = _samplerNoteOn(AudioState.instrument.sampler, midi, velocity, sat.input);
   } else {
+    if (!_ensureWafPlayer()) return;
     envelope = wafPlayer.queueWaveTable(
       audioCtx, sat.input, AudioState.instrument.data,
       0, midi, 99999, velocity
@@ -858,7 +881,7 @@ function noteOffAll() {
   }
   activeVoices.clear();
   // Kill any lingering WebAudioFont voices not tracked in activeVoices
-  wafPlayer.cancelQueue(audioCtx);
+  if (wafPlayer) wafPlayer.cancelQueue(audioCtx);
 }
 
 // --- Velocity curve (Push 3-style 4-parameter) ---
@@ -973,14 +996,18 @@ onReady(() => {
       saveSoundSettings();
     });
   });
-  // Real-time VOL → masterGain (WebAudioFont)
+  // Real-time VOL → masterGain (WebAudioFont) + epianoDirectOut (worklet)
   const volSlider = document.getElementById('snd-volume');
   if (volSlider) volSlider.addEventListener('input', () => {
     const val = parseFloat(volSlider.value);
     masterGain.gain.setValueAtTime(val, audioCtx.currentTime);
+    epianoDirectOut.gain.setValueAtTime(val, audioCtx.currentTime);
   });
-  // Initialize masterGain from slider
-  if (volSlider) masterGain.gain.setValueAtTime(parseFloat(volSlider.value), 0);
+  // Initialize masterGain + epianoDirectOut from slider
+  if (volSlider) {
+    masterGain.gain.setValueAtTime(parseFloat(volSlider.value), 0);
+    epianoDirectOut.gain.setValueAtTime(parseFloat(volSlider.value), 0);
+  }
 
   // Real-time REV → masterReverbGain (master reverb only; spring reverb is separate)
   const revSlider = document.getElementById('snd-reverb');
@@ -1139,6 +1166,8 @@ onReady(() => {
     driveSlider.addEventListener('input', () => {
       saturationDrive = parseFloat(driveSlider.value);
       driveVal.textContent = parseFloat(driveSlider.value).toFixed(2);
+      // Update e-piano master drive WaveShaper
+      _updateEpianoDriveCurve(saturationDrive);
       saveSoundSettings();
     });
   }

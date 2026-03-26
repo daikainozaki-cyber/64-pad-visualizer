@@ -420,7 +420,7 @@ I18N.addLang('de', {
     sound_panel: 'Sound-Panel',
     sound_panel_desc: 'Sound-Presets auswählen und Effekte anpassen. Klicke auf \u25B6 um das Panel zu erweitern.',
     sound_presets: 'Sound-Presets',
-    sound_presets_desc: 'Wähle aus ORGAN (4 Typen) und E.PIANO (8 Typen: Rhodes, FM EP, Clavinet, Sampler).',
+    sound_presets_desc: 'Die Rhodes Physical-Modeling-Engine (Clean DI) ist der Standard. Sofort spielbar ohne Sample-Downloads. Verwende den VOICING-Regler, um den Pickup-Klang anzupassen.',
     sound_effects: 'Effekte',
     sound_effects_desc: 'Ziehe jeden Regler, um die Werte anzupassen.',
     fx_drive: 'Analoge Sättigung. Warme Verzerrung',

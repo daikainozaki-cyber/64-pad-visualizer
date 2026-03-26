@@ -410,7 +410,7 @@ I18N.addLang('ko', {
     sound_panel: '사운드 패널',
     sound_panel_desc: '음색 프리셋을 선택하고 이펙트를 조정합니다. \u25B6 버튼을 클릭하여 패널을 펼칩니다.',
     sound_presets: '음색 프리셋',
-    sound_presets_desc: 'ORGAN(4종)과 E.PIANO(8종: Rhodes, FM EP, Clavinet, Sampler)에서 선택할 수 있습니다.',
+    sound_presets_desc: 'Rhodes 물리 모델링 음원(Clean DI)이 기본값입니다. 샘플 다운로드 없이 바로 연주할 수 있습니다. VOICING 노브로 픽업 톤을 조절하세요.',
     sound_effects: '이펙트',
     sound_effects_desc: '각 노브를 드래그하여 값을 조정합니다.',
     fx_drive: '아날로그 새추레이션. 따뜻한 오버드라이브',

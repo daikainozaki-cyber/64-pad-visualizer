@@ -334,7 +334,7 @@ I18N.addLang('en', {
     sound_panel: 'Sound Panel',
     sound_panel_desc: 'Select sound presets and adjust effects. Click the \u25B6 button to expand the panel.',
     sound_presets: 'Sound Presets',
-    sound_presets_desc: 'Choose from ORGAN (4 types) and E.PIANO (8 types: Rhodes, FM EP, Clavinet, Sampler).',
+    sound_presets_desc: 'Rhodes physical modeling sound engine (Clean DI) is the default. Play instantly with no sample downloads. Use the VOICING knob to adjust pickup tone.',
     sound_effects: 'Effects',
     sound_effects_desc: 'Drag each knob to adjust values.',
     fx_drive: 'Analog saturation. Adds warm overdrive',

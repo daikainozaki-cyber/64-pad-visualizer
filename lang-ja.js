@@ -335,7 +335,7 @@ I18N.addLang('ja', {
     sound_panel: 'サウンドパネル',
     sound_panel_desc: 'サウンドパネルでは音色の選択とエフェクトの調整ができます。パネル右の\u25B6ボタンで展開します。',
     sound_presets: '音色プリセット',
-    sound_presets_desc: 'ORGAN（4種）とE.PIANO（8種：Rhodes, FM EP, Clavinet, Sampler）から選択できます。',
+    sound_presets_desc: 'Rhodesフィジカルモデリング音源（Clean DI）がデフォルトです。サンプルのダウンロード不要ですぐに演奏できます。VOICINGノブでピックアップの音色を調整できます。',
     sound_effects: 'エフェクト',
     sound_effects_desc: '各ノブをドラッグして値を調整します。',
     fx_drive: 'アナログサチュレーション。温かみのある歪み',

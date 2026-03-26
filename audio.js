@@ -134,7 +134,7 @@ for (let _ch = 0; _ch < 2; _ch++) {
 const masterReverb = audioCtx.createConvolver();
 masterReverb.buffer = _rvBuf;
 const masterReverbGain = audioCtx.createGain();
-masterReverbGain.gain.setValueAtTime(0.08, 0); // Fender reverb at "2-3": hot IR, low wet
+masterReverbGain.gain.setValueAtTime(0.25, 0); // urinami-san default: warm spring character
 masterReverb.connect(masterReverbGain);
 masterReverbGain.connect(masterComp);
 const masterGain = audioCtx.createGain();
@@ -286,7 +286,7 @@ flangerMix.connect(masterReverb);
 // "スプリングリバーブって音色なのよ。空間表現と言うより。" — urinami-san (2026-03-23)
 // Both coexist: amp's spring reverb colors the tone, master reverb adds room acoustics.
 const epianoDirectOut = audioCtx.createGain();
-epianoDirectOut.gain.setValueAtTime(0.6, 0); // match masterGain level
+epianoDirectOut.gain.setValueAtTime(0.49, 0); // urinami-san default VOL
 // Master drive WaveShaper for e-piano (post-PU, pre-effects).
 // Per-voice saturation doesn't work for worklet (single output node).
 // This WaveShaper adds nonlinearity → shifts spectral centroid → bell character.

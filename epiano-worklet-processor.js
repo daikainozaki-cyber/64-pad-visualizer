@@ -1208,7 +1208,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // H2 target: Gabrielli 2020 measured -12dB (re fundamental).
     // 0.3 → H2 ≈ -15dB. 0.35 → H2 ≈ -12dB (estimated +3dB from increased asymmetry).
     // TODO: verify with compare_spectra.py against Gabrielli companion files.
-    this.pickupSymmetry = 0.35;
+    this.pickupSymmetry = 0.50; // urinami-san default: bell sweet spot
     this.pickupDistance  = 0.5;
     this.preampGain     = 1.0;
     this.tsBass         = 0.5;

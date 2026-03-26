@@ -776,9 +776,25 @@ def compute_damping_coeffs(midi, f0):
     tau = Q / (np.pi * f0)
     sigma0 = 1.0 / tau
 
-    # Frequency-dependent damping (Sonderboe Table 3.1)
-    # Controls how fast beam modes decay relative to fundamental
-    sigma1 = 0.005  # m²/s — Sonderboe value
+    # Frequency-dependent damping — per-key scaling.
+    # Physics: σ₁ × ω² is each mode's decay contribution.
+    # σ₁=0.005 (Sonderboe) is optimal for C4 only:
+    #   Bass: beam modes decay too slowly → pitch drift (タム的ピッチ下降)
+    #   Treble: f0 itself decays too fast → woody, short sustain
+    #
+    # Per-key model: σ₁ = σ₁_ref × (f0_ref / f0)^p
+    #   p=0.7: C2 σ₁=0.0132 (2.6× → beam mode速く消す)
+    #          C4 σ₁=0.0050 (基準, 変化なし)
+    #          C6 σ₁=0.0019 (0.38× → サステイン延長)
+    #
+    # Ear test basis (urinami-san 2026-03-26):
+    #   C2 "pitch drops like a tom" → σ₁ too low, beam modes persist
+    #   C4 "bell" → σ₁=0.005 correct
+    #   C6 "woody" → σ₁ too high, sustain too short
+    SIGMA1_REF = 0.005    # m²/s — Sonderboe value, optimal at C4
+    F0_REF = 261.63       # Hz — C4 reference
+    SIGMA1_EXPONENT = 0.7 # per-key scaling exponent
+    sigma1 = SIGMA1_REF * (F0_REF / f0) ** SIGMA1_EXPONENT
 
     return sigma0, sigma1
 

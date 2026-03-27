@@ -24,6 +24,7 @@ let _lpDeviceByte = 0x0C;   // 0x0C = Launchpad X, 0x0D = Mini MK3
 let _isPush = false;         // true when Push 3 User Mode detected
 const _prevLEDState = new Array(64).fill(-1); // -1 = never sent
 let _lpLEDMode = 'full'; // 'full' | 'root' | 'off'
+let _lastLEDState = null; // cached render state for LED refresh on noteOn/noteOff
 
 // PUSHシリアル配列(row間8半音) → 4度クロマチック配列(row間5半音) 変換
 // baseMidi() を使用: octaveShift + semitoneShift 両方反映
@@ -59,6 +60,7 @@ function onMidiNoteOn(note, velocity) {
     }
   }
   midiActiveNotes.add(mapped);
+  refreshLaunchpadLEDs();
   ensureAudioResumed();
   noteOn(mapped, applyVelocityCurve(velocity || 100), true);
   // Plain mode: add to activeNotes (auto-start capture if idle)
@@ -82,6 +84,7 @@ function onMidiNoteOn(note, velocity) {
 function onMidiNoteOff(note) {
   const mapped = remapMidiNote(note);
   midiActiveNotes.delete(mapped);
+  refreshLaunchpadLEDs();
   noteOff(mapped);
   // Plain capture/edit: latch (don't remove on noteOff)
   if (AppState.mode === 'input' && PlainState.subMode !== 'idle') {
@@ -589,6 +592,9 @@ function initWebMIDI() {
 }
 
 // ======== LAUNCHPAD LED CONTROL ========
+// HPS exclusive feature (?hps gate): Push LED control without Ableton
+// - Scale colors on pads + white highlight on press (Scale mode only)
+// - Ableton不要でPushをスケール練習デバイスとして使える
 // Map 64PE pad state to Launchpad palette color index (0-127)
 // Launchpad palette: 0=off, 5=red, 9=orange, 21=green, 37=cyan, 45=blue, 53=purple, 79=yellow
 function _padColorToLP(state, row, col) {
@@ -598,6 +604,9 @@ function _padColorToLP(state, row, col) {
   var midi = bm + row * ROW_INTERVAL + col;
   var pc = midi % 12;
   var rootPC = state.rootPC;
+
+  // Highlight currently pressed pads (white)
+  if (midiActiveNotes.has(midi)) return 3;
 
   // Root-only mode: only light up root pitch class
   if (_lpLEDMode === 'root') {
@@ -702,6 +711,7 @@ function _exitLaunchpadProgrammerMode() {
 }
 
 function updateLaunchpadLEDs(state) {
+  _lastLEDState = state;
   if (!midiOutput || !_lpOutputActive || !_lpProgrammerMode) return;
   for (var row = 0; row < ROWS; row++) {
     for (var col = 0; col < COLS; col++) {
@@ -724,6 +734,11 @@ function updateLaunchpadLEDs(state) {
       }
     }
   }
+}
+
+// Re-run LED update with cached state (for noteOn/noteOff feedback)
+function refreshLaunchpadLEDs() {
+  if (_lastLEDState) updateLaunchpadLEDs(_lastLEDState);
 }
 
 function clearLaunchpadLEDs() {

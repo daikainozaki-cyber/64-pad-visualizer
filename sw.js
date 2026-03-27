@@ -1,4 +1,4 @@
-var CACHE_NAME = '64pad-v4.9.8';
+var CACHE_NAME = '64pad-v4.9.9';
 var ASSETS = [
   './',
   'index.html',

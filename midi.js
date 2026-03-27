@@ -605,8 +605,8 @@ function _padColorToLP(state, row, col) {
   var pc = midi % 12;
   var rootPC = state.rootPC;
 
-  // Highlight currently pressed pads (white)
-  if (midiActiveNotes.has(midi)) return 3;
+  // Highlight currently pressed pads (bright white — Push 3 palette: 122)
+  if (midiActiveNotes.has(midi)) return _isPush ? 122 : 3;
 
   // Root-only mode: only light up root pitch class
   if (_lpLEDMode === 'root') {

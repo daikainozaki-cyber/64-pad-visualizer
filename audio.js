@@ -609,6 +609,8 @@ function _updateEpMixerVisibility() {
   var sec = document.getElementById('ep-mixer-section');
   if (!sec) return;
   sec.style.display = (AudioState.instrument && AudioState.instrument.epiano) ? '' : 'none';
+  // R slider: always hidden. Calibration via console: EpState.beamDecayR=X; epianoWorkletUpdateParams({beamDecayR:X})
+  // Per-key curve is the default (beamDecayR=0). Override for A/B testing only.
 }
 
 function _saveEpMixer() {
@@ -617,18 +619,25 @@ function _saveEpMixer() {
       pickupSymmetry: EpState.pickupSymmetry,
       springReverbMix: EpState.springReverbMix,
       springDwell: EpState.springDwell,
+      beamDecayR: EpState.beamDecayR,
     }));
   } catch(_) {}
 }
 
 function _loadEpMixer() {
+  // ?reset=ep in URL → clear ALL sound localStorage and use HTML defaults
+  if (location.search.indexOf('reset=ep') >= 0) {
+    localStorage.removeItem('64pad-ep-mixer-v2');
+    localStorage.removeItem('64pad-sound');
+    return;
+  }
   try {
     var raw = localStorage.getItem('64pad-ep-mixer-v2');
     if (!raw) return;
     var s = JSON.parse(raw);
     // pickupSymmetry: always use HTML default (physics-calibrated).
     // Old localStorage may have stale values from before PU model changes.
-    ['springReverbMix','springDwell'].forEach(function(key) {
+    ['springReverbMix','springDwell','beamDecayR'].forEach(function(key) {
       if (s[key] !== undefined) EpState[key] = s[key];
     });
     // Clear stale pickupSymmetry from storage so it doesn't persist
@@ -637,13 +646,13 @@ function _loadEpMixer() {
       localStorage.setItem('64pad-ep-mixer-v2', JSON.stringify(s));
     }
     // Sync sliders
-    var map = {pickupSymmetry:'ep-pu-sym', springReverbMix:'ep-rev', springDwell:'ep-dwell'};
-    var valMap = {pickupSymmetry:'ep-pu-sym-val', springReverbMix:'ep-rev-val', springDwell:'ep-dwell-val'};
+    var map = {pickupSymmetry:'ep-pu-sym', springReverbMix:'ep-rev', springDwell:'ep-dwell', beamDecayR:'ep-beam-r'};
+    var valMap = {pickupSymmetry:'ep-pu-sym-val', springReverbMix:'ep-rev-val', springDwell:'ep-dwell-val', beamDecayR:'ep-beam-r-val'};
     Object.keys(map).forEach(function(key) {
       var sl = document.getElementById(map[key]);
       var vl = document.getElementById(valMap[key]);
       if (sl) sl.value = EpState[key];
-      if (vl) vl.textContent = EpState[key].toFixed(2);
+      if (vl) vl.textContent = (key === 'beamDecayR' && EpState[key] === 0) ? 'auto' : EpState[key].toFixed(2);
     });
   } catch(_) {}
 }
@@ -1245,6 +1254,19 @@ onReady(() => {
     }
     if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
       epianoWorkletUpdateParams({ springDwell: val });
+    }
+    _saveEpMixer();
+  });
+
+  // Beam decay R knob — per-mode decay multiplier (ear calibration)
+  var epBeamRSlider = document.getElementById('ep-beam-r');
+  var epBeamRVal = document.getElementById('ep-beam-r-val');
+  if (epBeamRSlider && epBeamRVal) epBeamRSlider.addEventListener('input', () => {
+    var val = parseFloat(epBeamRSlider.value);
+    EpState.beamDecayR = val;
+    epBeamRVal.textContent = val === 0 ? 'auto' : val.toFixed(1);
+    if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      epianoWorkletUpdateParams({ beamDecayR: val });
     }
     _saveEpMixer();
   });

@@ -1165,7 +1165,15 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.vTbTargetB    = new Float32Array(MAX_VOICES);  // target amplitude (30%)
     this.vTbRampB      = new Float32Array(MAX_VOICES);  // per-sample ramp: e^(-1/(τ×fs))
     this.vTbSign       = new Float32Array(MAX_VOICES);  // phase sign (+1/-1, Münster)
-    this.coupledTonebar = true; // A/B flag
+    this.coupledTonebar = false; // TB off default (2026-03-27: no perceptual difference confirmed)
+    // Per-mode decay multiplier (R). Scales beam mode decay rate relative to current model.
+    // Higher = faster beam decay = more transparent. Calibrated by ear.
+    // Per-key: linear interpolation from 2 calibration points (2026-03-27 urinami-san).
+    //   E2 (MIDI 40) = 2.1, C4 (MIDI 60) = 4.7
+    //   Below 40: 2.1 fixed. Above 60: 4.7 fixed.
+    //   Perception: bass needs less R (equal-loudness → HF beam modes less audible).
+    //   Physics prediction was opposite (bass R larger) — ear includes psychoacoustic filter.
+    this.beamDecayR = 0; // 0 = per-key curve (default). >0 = global override (UI slider).
 
     // Per-voice biquad filter states (coupling HPF)
     // [z1, z2] per voice
@@ -1414,6 +1422,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     if (msg.useTonestack !== undefined) this.useTonestack = msg.useTonestack;
     if (msg.useCabinet !== undefined) this.useCabinet = msg.useCabinet;
     if (msg.useSpringReverb !== undefined) this.useSpringReverb = msg.useSpringReverb;
+    if (msg.coupledTonebar !== undefined) this.coupledTonebar = msg.coupledTonebar;
+    if (msg.beamDecayR !== undefined) this.beamDecayR = msg.beamDecayR;
 
     // Recompute tonestack
     if (msg.tsBass !== undefined || msg.tsMid !== undefined || msg.tsTreble !== undefined || msg.brightSwitch !== undefined) {
@@ -1639,7 +1649,20 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       var slot = base + 2 + b;
       this.vOmega[slot] = TWO_PI * beamFreq * this.invFs;
       this.vPhase[slot] = 0;
-      var beamTau = tau / BEAM_FREQ_RATIOS[b];
+      // Per-key R: piecewise linear interpolation from 4 ear-calibration points.
+      // 2026-03-27 urinami-san: E1(28)=0.1, E2(40)=2.1, C4(60)=4.7, C6(84)=8.0
+      // UI slider overrides when > 0 (for calibration). 0 = use per-key curve.
+      var R;
+      if (this.beamDecayR > 0) {
+        R = this.beamDecayR;
+      } else {
+        if (midi <= 28) R = 0.1;
+        else if (midi <= 40) R = 0.1 + (2.1 - 0.1) * (midi - 28) / (40 - 28);
+        else if (midi <= 60) R = 2.1 + (4.7 - 2.1) * (midi - 40) / (60 - 40);
+        else if (midi <= 84) R = 4.7 + (8.0 - 4.7) * (midi - 60) / (84 - 60);
+        else R = 8.0;
+      }
+      var beamTau = tau / (BEAM_FREQ_RATIOS[b] * R);
       this.vDecayAlpha[slot] = Math.exp(-this.invFs / Math.max(beamTau * decayScale * velDecayScale, 0.001));
       // Store raw weight temporarily in vAmp (will be overwritten after normalization)
       this.vAmp[slot] = vW;

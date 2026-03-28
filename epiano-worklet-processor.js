@@ -2,8 +2,9 @@
 // E-PIANO AudioWorklet PROCESSOR
 // ========================================
 // All DSP runs sample-by-sample inside process(). No Web Audio nodes.
-// Modal synthesis (tine) → PU nonlinear (LUT) → coupling HPF → harp LCR (5700Hz)
-// → preamp → tonestack → V2B → V4B bloom → poweramp → output (ConvolverNode cabinet).
+// Modal synthesis (tine) → PU nonlinear (LUT) → coupling HPF
+// → [amp: harp LCR (5700Hz) → preamp → tonestack → V2B → V4B → poweramp → cabinet]
+// → [DI: transparent output (no cable LCR)]
 //
 // 3 axioms: ①process() self-contained ②Float32Array for-loops only ③GC zero
 //
@@ -2029,23 +2030,23 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           this.vCouplingState[stateOff + 1] = b2 * puOut - a2 * couplingOut;
         }
 
-        // --- 3b. Harp LCR (5700Hz, Q=1.7) ---
-        // 73 PU series: L=1.2H + cable C=650pF + Vol R=25kΩ → f₀=5700Hz
-        // Applied before amp/DI split (physical: PU → harp wiring → cable → output)
-        var harpOut;
-        {
-          var hOff = v * 2;
-          var hc = this.harpLPFCoeff;
-          var hz1 = this.vHarpLCRState[hOff], hz2 = this.vHarpLCRState[hOff + 1];
-          harpOut = hc[0] * couplingOut + hz1;
-          this.vHarpLCRState[hOff] = hc[1] * couplingOut - hc[3] * harpOut + hz2;
-          this.vHarpLCRState[hOff + 1] = hc[2] * couplingOut - hc[4] * harpOut;
-        }
-
-        var sig = harpOut;
+        var sig = couplingOut;
 
         if (this.useCabinet) {
           // === AMP PATH (Rhodes Stage + Twin, Suitcase, Wurlitzer) ===
+
+          // --- 3b. Harp LCR (5700Hz, Q=1.7) — amp path only ---
+          // 73 PU series L=1.2H + cable C=650pF + Vol R=25kΩ → f₀=5700Hz
+          // DI has no cable → internal C≈50-100pF → f₀>14kHz → transparent.
+          // LCR only applies when signal goes through cable to amp.
+          {
+            var hOff = v * 2;
+            var hc = this.harpLPFCoeff;
+            var hz1 = this.vHarpLCRState[hOff], hz2 = this.vHarpLCRState[hOff + 1];
+            sig = hc[0] * couplingOut + hz1;
+            this.vHarpLCRState[hOff] = hc[1] * couplingOut - hc[3] * sig + hz2;
+            this.vHarpLCRState[hOff + 1] = hc[2] * couplingOut - hc[4] * sig;
+          }
 
           // --- 4. Input jack attenuator (-6dB, AB763 Hi input) ---
           sig *= this.inputAtten;
@@ -2094,12 +2095,12 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
             sig *= this.v2bMakeup;
           }
 
-          // Sum to dry bus (harp LCR already applied per-voice → V4B → poweramp)
+          // Sum to dry bus (harp LCR applied per-voice in step 3b → V4B → poweramp)
           drySum += sig;
 
         } else {
           // === DI PATH (no amp chain) ===
-          // Harp LCR already applied per-voice (step 3b, before path split).
+          // DI = no cable → no LCR. Internal C≈50-100pF → f₀>14kHz → transparent.
           diSum += sig;
         }
         this.vAge[v]++;
@@ -2282,7 +2283,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         // Mix dry + wet here. V4B on main thread applies bloom to combined signal.
         mainOut = drySum + wetSignal;
       } else {
-        // === DI PATH: per-voice harp LCR applied in step 3b ===
+        // === DI PATH: no cable LCR, transparent output ===
         mainOut = diSum / HARP_PARALLEL_DIV;
       }
 

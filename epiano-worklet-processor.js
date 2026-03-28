@@ -2,8 +2,8 @@
 // E-PIANO AudioWorklet PROCESSOR
 // ========================================
 // All DSP runs sample-by-sample inside process(). No Web Audio nodes.
-// Modal synthesis (tine) → PU nonlinear (LUT) → preamp → tonestack → V2B → harp LPF
-// → V4B bloom → poweramp → output (to ConvolverNode cabinet on main thread).
+// Modal synthesis (tine) → PU nonlinear (LUT) → coupling HPF → harp LCR (5700Hz)
+// → preamp → tonestack → V2B → V4B bloom → poweramp → output (ConvolverNode cabinet).
 //
 // 3 axioms: ①process() self-contained ②Float32Array for-loops only ③GC zero
 //
@@ -1182,13 +1182,14 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Per-voice tonestack biquad states: 4 filters × 2 states = 8 per voice
     this.vTsState      = new Float32Array(MAX_VOICES * 8);
 
-    // Per-voice DI harp LPF states (only used in DI mode, per-voice like old engine)
-    this.vDiHarpState  = new Float32Array(MAX_VOICES * 2);
+    // Per-voice harp LCR filter states (both DI and amp paths)
+    // Physical: 73 PU series L=1.2H + cable C=650pF + Vol R=25kΩ → f₀=5700Hz, Q=1.7
+    this.vHarpLCRState = new Float32Array(MAX_VOICES * 2);
 
     // --- Shared chain state ---
-    // Harp LPF (shared across all voices, applied to summed signal — amp path only)
-    this.harpLPFCoeff  = biquadLowpass(5700, 0.8, fs);
-    this.harpLPFState  = new Float32Array(2);
+    // Harp LCR coefficients (shared — same physical circuit for all voices)
+    this.harpLPFCoeff  = biquadLowpass(5700, 1.7, fs);
+    this.harpLPFState  = new Float32Array(2); // legacy: per-voice state used instead
 
     // Reverb send HPF (318Hz, shared)
     this.sendHPFCoeff  = biquadHighpass(318, 0.707, fs);
@@ -1789,8 +1790,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.vCouplingState[vi * 2] = 0;
     this.vCouplingState[vi * 2 + 1] = 0;
     for (var j = 0; j < 8; j++) this.vTsState[vi * 8 + j] = 0;
-    this.vDiHarpState[vi * 2] = 0;
-    this.vDiHarpState[vi * 2 + 1] = 0;
+    this.vHarpLCRState[vi * 2] = 0;
+    this.vHarpLCRState[vi * 2 + 1] = 0;
     _os2x_prev[vi * 2 + _OS2X_PREAMP] = 0;
     _os2x_prev[vi * 2 + _OS2X_POWER] = 0;
 
@@ -2028,7 +2029,20 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           this.vCouplingState[stateOff + 1] = b2 * puOut - a2 * couplingOut;
         }
 
-        var sig = couplingOut;
+        // --- 3b. Harp LCR (5700Hz, Q=1.7) ---
+        // 73 PU series: L=1.2H + cable C=650pF + Vol R=25kΩ → f₀=5700Hz
+        // Applied before amp/DI split (physical: PU → harp wiring → cable → output)
+        var harpOut;
+        {
+          var hOff = v * 2;
+          var hc = this.harpLPFCoeff;
+          var hz1 = this.vHarpLCRState[hOff], hz2 = this.vHarpLCRState[hOff + 1];
+          harpOut = hc[0] * couplingOut + hz1;
+          this.vHarpLCRState[hOff] = hc[1] * couplingOut - hc[3] * harpOut + hz2;
+          this.vHarpLCRState[hOff + 1] = hc[2] * couplingOut - hc[4] * harpOut;
+        }
+
+        var sig = harpOut;
 
         if (this.useCabinet) {
           // === AMP PATH (Rhodes Stage + Twin, Suitcase, Wurlitzer) ===
@@ -2080,14 +2094,12 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
             sig *= this.v2bMakeup;
           }
 
-          // Sum to dry bus (→ shared harp LPF → V4B → poweramp)
+          // Sum to dry bus (harp LCR already applied per-voice → V4B → poweramp)
           drySum += sig;
 
         } else {
           // === DI PATH (no amp chain) ===
-          // No harp LPF: individual PU resonance is 18kHz (inaudible).
-          // The "harp wiring LPF" was based on guitar PU physics incorrectly
-          // applied to Rhodes (independent coils, no shared core, DI = no cable).
+          // Harp LCR already applied per-voice (step 3b, before path split).
           diSum += sig;
         }
         this.vAge[v]++;
@@ -2270,7 +2282,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         // Mix dry + wet here. V4B on main thread applies bloom to combined signal.
         mainOut = drySum + wetSignal;
       } else {
-        // === DI PATH: per-voice harp LPF already applied ===
+        // === DI PATH: per-voice harp LCR applied in step 3b ===
         mainOut = diSum / HARP_PARALLEL_DIV;
       }
 

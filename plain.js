@@ -954,7 +954,7 @@ function exportPlainMidi() {
   const full = new Uint8Array(header.length + trackBytes.length);
   full.set(header, 0);
   full.set(trackBytes, header.length);
-  const fileName = slots.map(s => s.chordName).join('_').replace(/△/g, 'M').replace(/[\/\\:*?"<>|#]/g, '').replace(/_+/g, '_') || 'pad-chords';
+  const fileName = slots.map(s => s.chordName).join('_').replace(/△/g, 'M').replace(/[\/\\:*?"<>|]/g, '').replace(/_+/g, '_') || 'pad-chords';
   downloadBinary(full, fileName + '.mid', 'audio/midi');
 }
 

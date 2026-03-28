@@ -1651,24 +1651,35 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       var slot = base + 2 + b;
       this.vOmega[slot] = TWO_PI * beamFreq * this.invFs;
       this.vPhase[slot] = 0;
-      // Per-key R: piecewise linear interpolation from 4 ear-calibration points.
-      // 2026-03-27 urinami-san: E1(28)=0.1, E2(40)=2.1, C4(60)=4.7, C6(84)=8.0
+      // Per-key R: piecewise linear interpolation from 5 ear-calibration points.
+      // R < 1: beam mode persists longer (bass). R > 1: beam mode decays faster (treble).
+      // R < 0: beam mode amplitude actively suppressed (init amplitude reduced).
+      // 2026-03-28: C1(21)=-0.9, E1(28)=0.1, E2(40)=2.1, C4(60)=4.7, C6(84)=8.0
       // UI slider overrides when > 0 (for calibration). 0 = use per-key curve.
       var R;
       if (this.beamDecayR > 0) {
         R = this.beamDecayR;
       } else {
-        if (midi <= 28) R = 0.1;
+        if (midi <= 21) R = -0.9;
+        else if (midi <= 28) R = -0.9 + (0.1 - (-0.9)) * (midi - 21) / (28 - 21);
         else if (midi <= 40) R = 0.1 + (2.1 - 0.1) * (midi - 28) / (40 - 28);
         else if (midi <= 60) R = 2.1 + (4.7 - 2.1) * (midi - 40) / (60 - 40);
         else if (midi <= 84) R = 4.7 + (8.0 - 4.7) * (midi - 60) / (84 - 60);
         else R = 8.0;
       }
-      var beamTau = tau / (BEAM_FREQ_RATIOS[b] * R);
+      // R < 0: suppress beam mode initial amplitude (not decay rate).
+      // R = -1 → beam amplitude × 0. R = -0.5 → beam amplitude × 0.5.
+      var beamAmpScale = 1.0;
+      var Reff = R;
+      if (R < 0) {
+        beamAmpScale = Math.max(0, 1.0 + R); // R=-0.5 → 0.5, R=-1 → 0
+        Reff = 0.1; // use minimal positive R for decay calc
+      }
+      var beamTau = tau / (BEAM_FREQ_RATIOS[b] * Reff);
       this.vDecayAlpha[slot] = Math.exp(-this.invFs / Math.max(beamTau * decayScale * velDecayScale, 0.001));
       // Store raw weight temporarily in vAmp (will be overwritten after normalization)
-      this.vAmp[slot] = vW;
-      totalE += vW_energy * vW_energy;
+      this.vAmp[slot] = vW * beamAmpScale;
+      totalE += (vW_energy * beamAmpScale) * (vW_energy * beamAmpScale);
       nActive = 2 + b + 1;
     }
 
@@ -2007,6 +2018,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         var puOut;
         if (this.vPuLUT[v]) {
           var puPos = tinePosition * this.vPosScale[v] / this.vQRange[v];
+          // (debug removed)
           var gPrimeV = lutLookup(this.vPuLUT[v], puPos);
           puOut = gPrimeV * tineVelocity * this.vVelScale[v] * this.vTipFactor[v] * this.puEmfScale;
           // Horizontal contribution (2D whirling)
@@ -2101,6 +2113,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         } else {
           // === DI PATH (no amp chain) ===
           // DI = no cable → no LCR. Internal C≈50-100pF → f₀>14kHz → transparent.
+          // (debug removed)
           diSum += sig;
         }
         this.vAge[v]++;

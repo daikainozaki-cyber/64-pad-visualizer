@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html><head><title>SW Reset</title></head>
+<body>
+<p>Service Worker をリセット中...</p>
+<script>
+(async function() {
+  var regs = await navigator.serviceWorker.getRegistrations();
+  for (var r of regs) { await r.unregister(); }
+  var keys = await caches.keys();
+  for (var k of keys) { await caches.delete(k); }
+  // Restore HPS flag for localhost dev
+  localStorage.setItem('64pad-hps-unlocked', 'true');
+  document.body.innerHTML = '<p>完了。リダイレクト中...</p>';
+  setTimeout(function() { location.href = '/'; }, 500);
+})();
+</script>
+</body>
+</html>

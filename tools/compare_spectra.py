@@ -27,10 +27,8 @@ LUT_SIZE = 1024
 TWO_PI = 2 * np.pi
 CYL_A = 0.14
 CYL_H = 0.508
-# Recalibrated: tineAmp target reduced from 0.3 to 0.04 (physical displacement).
-# Output level maintained by scaling up EMF: 0.00044 × (0.3/0.04) = 0.0033.
-# Recalibrated: tineAmp target 0.06. EMF scale = 0.00044 × (0.3/0.06) = 0.0022.
-PU_EMF_SCALE = 0.0022
+# 2026-03-25: halved from 0.0022 → 0.0011 (tineAmp doubled 0.06→0.12).
+PU_EMF_SCALE = 0.0011
 HARP_PARALLEL_DIV = 3.0
 
 # Beam mode frequency ratios (spring-corrected, Gabrielli 2020)
@@ -142,12 +140,45 @@ def cylinder_bz(rho, z, a, h):
     return z / rt - zb / rb
 
 
-def compute_pu_lut(symmetry=0.5, distance=0.5, gap_mm=0.794, q_range=1.0, lver_offset=0.0):
-    """Compute g'(q) LUT (cylinder model)."""
+def compute_pu_lut_dipole(symmetry=0.3, distance=0.5, gap_mm=0.794, q_range=1.0, lver_offset=0.0):
+    """Compute g'(q) LUT (dipole model). Matches worklet computePickupLUT_dipole()."""
     sym = np.clip(symmetry, 0, 1)
-    Lver = sym * 0.25 + lver_offset
-    gap_offset = (gap_mm - 0.794) * 0.04
-    Lhor = distance * 0.35 + 0.05 + gap_offset
+    Lver = sym * 0.2 + lver_offset
+    gap_norm = gap_mm / 25.0
+    tine_radius = 0.04
+    Lhor = gap_norm + tine_radius + distance * 0.04
+    Lhor2 = Lhor * Lhor
+    Rp = 0.2
+    Rp2 = Rp * Rp
+    qr = max(q_range, 0.01)
+
+    q_arr = np.linspace(-qr, qr, LUT_SIZE)
+    lut = np.zeros(LUT_SIZE)
+    for i, q in enumerate(q_arr):
+        d = Lver + q
+        r2 = Lhor2 + d * d + Rp2
+        r5 = r2 * r2 * np.sqrt(r2)
+        lut[i] = -3.0 * d / r5
+
+    # Reference normalization (same convention as cylinder)
+    refLver = 0.15
+    refLhor = 0.25
+    refR2 = refLhor**2 + refLver**2 + Rp2
+    refR5 = refR2**2 * np.sqrt(refR2)
+    refPeak = abs(-3.0 * refLver / refR5)
+    if refPeak > 0:
+        lut *= 0.7 / refPeak
+
+    return lut, qr
+
+
+def compute_pu_lut(symmetry=0.3, distance=0.5, gap_mm=0.794, q_range=1.0, lver_offset=0.0):
+    """Compute g'(q) LUT (cylinder model). Synced with worklet puLutParams()."""
+    sym = np.clip(symmetry, 0, 1)
+    Lver = sym * 0.2 + lver_offset
+    gap_norm = gap_mm / 25.0  # mm → normalized (same 25mm scale as worklet)
+    tine_radius = 0.04        # ~1mm / 25mm
+    Lhor = gap_norm + tine_radius + distance * 0.04
     qr = max(q_range, 0.01)
 
     dq = 2 * qr / (LUT_SIZE - 1)
@@ -204,10 +235,9 @@ def compute_tine_amplitude(midi, velocity):
     m_ref = 1.0 * 0.030
     A4_raw = np.sqrt(m_ref / k_ref) * 1.0 * 0.3
 
-    # Target: A4 forte tip displacement in normalized PU coordinates (25mm = 1.0).
-    # Falaize 2017 Fig 10a: A4 forte ≈ 1mm displacement at PU. 1mm / 25mm = 0.04.
-    # Old value 0.3 meant 7.5mm — 7.5× too large, causing excessive PU nonlinearity.
-    TINE_AMP_TARGET = 0.06  # A4 forte ≈ 1.5mm at PU. 1.5mm / 25mm = 0.06
+    # 2026-03-25: increased to 0.12 to match Gabrielli H2/H3 spectrum with corrected
+    # PU Lhor (1.5mm physical). PU_EMF_SCALE halved to maintain output level.
+    TINE_AMP_TARGET = 0.12  # A4 forte ≈ 3mm (2× physical, compensates cylinder model conservatism)
     return (A_raw / A4_raw) * TINE_AMP_TARGET
 
 
@@ -225,9 +255,10 @@ def tip_displacement_factor(midi):
     return mass_scale * L**1.5 * 0.3 / ref
 
 
-def synthesize_di(midi, velocity, duration_s, fs):
+def synthesize_di(midi, velocity, duration_s, fs, pu_model='cylinder'):
     """
     Synthesize DI output replicating the worklet's signal chain.
+    pu_model: 'cylinder' or 'dipole'.
     Returns mono float64 array.
     """
     f0 = 440 * 2**((midi - 69) / 12)
@@ -293,22 +324,17 @@ def synthesize_di(midi, velocity, duration_s, fs):
     tip_factor = tip_displacement_factor(midi)
     gap = 0.794 if 30 < (midi - 20) <= 65 else 1.588
 
-    # qRange: derived from PU field geometry, NOT tine length.
-    # L_field = √(a² + Lhor²) = characteristic width of g'(q).
-    # Coverage ×3.0: LUT spans ±3 field-lengths (full nonlinear→linear transition).
-    # Physics: qRange is a property of the magnet, not the tine.
-    symmetry = 0.5
+    # qRange: synced with worklet (tipFactor * 0.4, clamped [0.12, 0.8])
+    symmetry = 0.3
     distance = 0.5
-    gap_offset = (gap - 0.794) * 0.04
-    p_Lhor = distance * 0.35 + 0.05 + gap_offset
-    L_field = np.sqrt(CYL_A**2 + p_Lhor**2)
-    K_COVERAGE = 2.0  # Tunable: 2.0-4.0. Physical basis: LUT spans ±K field-lengths
-    q_range = L_field * K_COVERAGE
-    if q_range < 0.12:
-        q_range = 0.12
+    q_range = np.clip(tip_factor * 0.4, 0.12, 0.8)
 
-    lut, qr = compute_pu_lut(symmetry=symmetry, distance=distance, gap_mm=gap,
-                               q_range=q_range, lver_offset=0.0)
+    if pu_model == 'dipole':
+        lut, qr = compute_pu_lut_dipole(symmetry=symmetry, distance=distance, gap_mm=gap,
+                                         q_range=q_range, lver_offset=0.0)
+    else:
+        lut, qr = compute_pu_lut(symmetry=symmetry, distance=distance, gap_mm=gap,
+                                   q_range=q_range, lver_offset=0.0)
 
     omega0_val = modes[0]['omega']
     vA_fund = modes[0]['amp']
@@ -486,10 +512,15 @@ def main():
         print(f"  Beam modes: {f0*7.11:.1f} Hz (7.11×), {f0*20.25:.1f} Hz (20.25×)")
         print(f"{'='*70}")
 
-        # Our model
-        print("\n  --- OUR MODEL (DI output) ---")
-        our_output = synthesize_di(midi, velocity, duration, fs)
-        our_results = analyze_spectrum(our_output, fs, f0, "Our model", beam_ratios)
+        # Our model (cylinder)
+        print("\n  --- OUR MODEL: CYLINDER (current) ---")
+        our_output = synthesize_di(midi, velocity, duration, fs, pu_model='cylinder')
+        our_results = analyze_spectrum(our_output, fs, f0, "Cylinder", beam_ratios)
+
+        # Our model (dipole)
+        print("\n  --- OUR MODEL: DIPOLE ---")
+        dip_output = synthesize_di(midi, velocity, duration, fs, pu_model='dipole')
+        dip_results = analyze_spectrum(dip_output, fs, f0, "Dipole", beam_ratios)
 
         # Gabrielli sidebands
         gab_path = os.path.join(audio_dir, f"{name}-sidebands.wav")
@@ -502,15 +533,16 @@ def main():
             print(f"\n  --- GABRIELLI (sidebands, sr={sr}) ---")
             gab_results = analyze_spectrum(gab_data, sr, f0, "Gabrielli sidebands", beam_ratios)
 
-            # Direct comparison
-            print(f"\n  --- COMPARISON (Our - Gabrielli) ---")
-            print(f"  {'Component':>20s}  {'Ours':>7s}  {'Gab':>7s}  {'Diff':>7s}")
-            for key in sorted(set(list(our_results.keys()) + list(gab_results.keys()))):
-                ours = our_results.get(key, -100)
+            # Direct comparison: cylinder vs dipole vs Gabrielli
+            print(f"\n  --- COMPARISON (Cylinder vs Dipole vs Gabrielli) ---")
+            print(f"  {'Component':>20s}  {'Cyl':>7s}  {'Dip':>7s}  {'Gab':>7s}")
+            all_keys = sorted(set(list(our_results.keys()) + list(dip_results.keys()) + list(gab_results.keys())))
+            for key in all_keys:
+                cyl = our_results.get(key, -100)
+                dip = dip_results.get(key, -100)
                 gab = gab_results.get(key, -100)
-                if ours > -65 or gab > -65:
-                    diff = ours - gab
-                    print(f"  {key:>20s}  {ours:+7.1f}  {gab:+7.1f}  {diff:+7.1f}")
+                if cyl > -65 or dip > -65 or gab > -65:
+                    print(f"  {key:>20s}  {cyl:+7.1f}  {dip:+7.1f}  {gab:+7.1f}")
 
         # Gabrielli fund-only
         gab_fund_path = os.path.join(audio_dir, f"{name}-fund-only.wav")
@@ -523,23 +555,33 @@ def main():
             print(f"\n  --- GABRIELLI (fund-only) ---")
             analyze_spectrum(gab_fund, sr2, f0, "Gabrielli fund-only", beam_ratios)
 
-    # Also synthesize fund-only from our model for comparison
+    # Fund-only synthesis: cylinder vs dipole
     print(f"\n{'='*70}")
-    print("  FUND-ONLY SYNTHESIS (our model, fundamental only through PU)")
+    print("  FUND-ONLY SYNTHESIS (fundamental only through PU)")
     print(f"{'='*70}")
 
     for name, info in notes.items():
         midi = info["midi"]
         f0 = info["f0"]
 
-        # Synthesize with only fundamental (no beam modes)
-        # Temporarily patch BEAM_SPATIAL to all zeros
         orig = BEAM_SPATIAL.get(midi, [0]*7)
         BEAM_SPATIAL[midi] = [0]*7
 
-        our_fund = synthesize_di(midi, velocity, duration, fs)
-        print(f"\n  {name} fund-only:")
-        analyze_spectrum(our_fund, fs, f0, f"Our model (fund only)", beam_ratios[:2])
+        print(f"\n  {name} fund-only CYLINDER:")
+        cyl_fund = synthesize_di(midi, velocity, duration, fs, pu_model='cylinder')
+        cyl_r = analyze_spectrum(cyl_fund, fs, f0, "Cylinder fund-only", beam_ratios[:2])
+
+        print(f"\n  {name} fund-only DIPOLE:")
+        dip_fund = synthesize_di(midi, velocity, duration, fs, pu_model='dipole')
+        dip_r = analyze_spectrum(dip_fund, fs, f0, "Dipole fund-only", beam_ratios[:2])
+
+        print(f"\n  {name} fund-only COMPARISON (Cyl vs Dip):")
+        print(f"  {'Component':>10s}  {'Cyl':>7s}  {'Dip':>7s}  {'Diff':>7s}")
+        for key in sorted(set(list(cyl_r.keys()) + list(dip_r.keys()))):
+            c = cyl_r.get(key, -100)
+            d = dip_r.get(key, -100)
+            if c > -65 or d > -65:
+                print(f"  {key:>10s}  {c:+7.1f}  {d:+7.1f}  {c-d:+7.1f}")
 
         BEAM_SPATIAL[midi] = orig
 

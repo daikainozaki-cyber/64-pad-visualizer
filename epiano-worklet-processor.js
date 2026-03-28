@@ -92,8 +92,8 @@ var MAX_MODES = 10; // fund + tonebar + up to 8 beam modes (Nyquist-limited)
 // Real Rhodes: beam modes at -15dB during attack, settling to -25dB.
 // Physics: hammer broadband impulse excites all modes; radiation damps beam modes fast.
 // Perception: <14ms is pre-pitch-perception → louder beam modes = "コリッ" without chord issues.
-var BEAM_ATTACK_CLAMP = 0.18;    // -15dB re fundamental (Gabrielli 2020 attack range)
-var BEAM_SUSTAIN_CLAMP = 0.056;  // -25dB re fundamental (chord-safe, Gabrielli quiet end)
+var BEAM_ATTACK_CLAMP = 0.25;    // -12dB re fundamental (more metallic attack)
+var BEAM_SUSTAIN_CLAMP = 0.12;   // -18dB re fundamental (透明感: beam modes must be audible)
 var BEAM_ATTACK_MS = 14;         // Convergence time in ms (Munster 2014)
 
 // =================================================================
@@ -626,6 +626,17 @@ function computeTineAmplitude(midi, velocity) {
   // PU Lhor (1.5mm physical). The higher tineAmp drives deeper into PU nonlinearity
   // → H3 rises from -40dB to -12dB. PU_EMF_SCALE halved to maintain output level.
   var result = (A_raw / TINE_A4_RAW) * 0.12;
+
+  // --- Bass amplitude rolloff (2026-03-29) ---
+  // Rhodes low notes don't project like piano. Physical tineAmp overshoots
+  // because beam physics gives long tines large displacement, but real Rhodes
+  // has EM damping + mechanical losses that limit bass amplitude.
+  // Gentle rolloff below E2 (MIDI 40): linear taper to 70% at C1 (MIDI 24).
+  if (midi < 52) {
+    var bassScale = 0.4 + 0.6 * ((midi - 24) / (52 - 24));
+    if (bassScale < 0.4) bassScale = 0.4;
+    result *= bassScale;
+  }
 
   // --- Escapement hard clamp (SM Fig 4-2) ---
   // Tine cannot displace further than the escapement gap.
@@ -1340,7 +1351,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // V4B + poweramp now on main thread (Fix 3), but keep for future use
     this.pickupType  = 'rhodes'; // 'rhodes' or 'wurlitzer'
     this.puModel     = 'cylinder'; // 'cylinder' (default) or 'dipole' (A/B comparison)
-    this.whirlEnabled = true;       // 2D whirling on/off (A/B comparison)
+    this.whirlEnabled = false;      // OFF: pitch clash investigation (2026-03-29)
 
     // Per-voice coupling HPF coefficients (3.4Hz, subsonic)
     this.couplingCoeff = biquadHighpass(3.4, 0.707, fs);
@@ -1557,11 +1568,14 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       this.vAmp[base + 1] = 0;
       this.vDecayAlpha[base + 1] = 0;
     } else if (hasTB) {
-      // --- Old slot 1 model (fallback) ---
-      this.vOmega[base + 1] = TWO_PI * tbEigenHz * this.invFs;
+      // --- Old slot 1 model DISABLED (2026-03-29) ---
+      // TB eigenfreq (e.g. 164Hz at F4) is BELOW fundamental (349Hz) → sounds like
+      // a separate low sine wave, creates "muddy cylinder" perception.
+      // TB off until coupled model or correct parameters are implemented.
+      this.vOmega[base + 1] = 0;
       this.vPhase[base + 1] = 0;
-      this.vAmp[base + 1] = 0.06 * tonebarPhase(midi);
-      this.vDecayAlpha[base + 1] = Math.exp(-this.invFs / Math.max(tau * decayScale, 0.001));
+      this.vAmp[base + 1] = 0;
+      this.vDecayAlpha[base + 1] = 0;
       this.vTbOmegaA[vi] = 0; this.vTbAmpA[vi] = 0;
       this.vTbOmegaB[vi] = 0; this.vTbAmpB[vi] = 0;
       this.vTbSign[vi] = 0;
@@ -1654,18 +1668,20 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       // Per-key R: piecewise linear interpolation from 5 ear-calibration points.
       // R < 1: beam mode persists longer (bass). R > 1: beam mode decays faster (treble).
       // R < 0: beam mode amplitude actively suppressed (init amplitude reduced).
-      // 2026-03-28: C1(21)=-0.9, E1(28)=0.1, E2(40)=2.1, C4(60)=4.7, C6(84)=8.0
+      // 2026-03-29: R values halved from 3/28 to extend beam mode sustain (透明感).
+      // Old: C1=-0.9, E1=0.1, E2=2.1, C4=4.7, C6=8.0 → beam modes vanish too fast.
+      // New: flatter curve. Beam modes persist longer → richer spectrum → transparency.
       // UI slider overrides when > 0 (for calibration). 0 = use per-key curve.
       var R;
       if (this.beamDecayR > 0) {
         R = this.beamDecayR;
       } else {
-        if (midi <= 21) R = -0.9;
-        else if (midi <= 28) R = -0.9 + (0.1 - (-0.9)) * (midi - 21) / (28 - 21);
-        else if (midi <= 40) R = 0.1 + (2.1 - 0.1) * (midi - 28) / (40 - 28);
-        else if (midi <= 60) R = 2.1 + (4.7 - 2.1) * (midi - 40) / (60 - 40);
-        else if (midi <= 84) R = 4.7 + (8.0 - 4.7) * (midi - 60) / (84 - 60);
-        else R = 8.0;
+        if (midi <= 21) R = 0.08;
+        else if (midi <= 28) R = 0.08 + (0.12 - 0.08) * (midi - 21) / (28 - 21);
+        else if (midi <= 40) R = 0.12 + (0.5 - 0.12) * (midi - 28) / (40 - 28);
+        else if (midi <= 60) R = 0.5 + (1.5 - 0.5) * (midi - 40) / (60 - 40);
+        else if (midi <= 84) R = 2.0 + (3.5 - 2.0) * (midi - 60) / (84 - 60);
+        else R = 3.5;
       }
       // R < 0: suppress beam mode initial amplitude (not decay rate).
       // R = -1 → beam amplitude × 0. R = -0.5 → beam amplitude × 0.5.

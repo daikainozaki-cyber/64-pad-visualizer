@@ -493,8 +493,7 @@ const ENGINES = {
     name: 'E.PIANO',
     presets: {
       'Rhodes DI':        { epiano: 'Rhodes DI', label: 'Rhodes Clean DI' },
-      // 'Rhodes Stage + Twin' hidden until spring reverb is ready (separate release).
-      // Accidentally deployed — urinami-san caught it 2026-03-27.
+      // Amp hidden: tube/tonestack/cabinet are stub quality (2026-03-29 urinami-san confirmed)
     },
     defaultPreset: 'Rhodes DI',
   },

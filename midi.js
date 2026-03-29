@@ -615,7 +615,15 @@ function _padColorToLP(state, row, col) {
     return 0;
   }
 
-  // Full mode: mirror all pad colors
+  // Push LED: always show scale colors from AppState (mode-independent)
+  // In Input/TASTY/Stock modes, state.activePCS lacks scale info, so compute directly
+  var scale = SCALES[AppState.scaleIdx];
+  var scaleRoot = AppState.key;
+  var scalePCS = new Set(scale.pcs.map(function(p) { return (p + scaleRoot) % 12; }));
+
+  // Use scale-derived root for consistent display
+  if (_isPush && rootPC == null) rootPC = scaleRoot;
+
   var activePCS = state.activePCS;
   var bassPC = state.bassPC;
   var omittedPCS = state.omittedPCS;
@@ -624,10 +632,13 @@ function _padColorToLP(state, row, col) {
   var tensionPCS = state.tensionPCS;
   var avoidPCS = state.avoidPCS;
   var overlayPCS = state.overlayPCS;
-  var tastyMidiSet = state.tastyMidiSet;
 
-  // Push LED: always show scale colors regardless of mode
-  // (TASTY/Stock and Input mode use screen-only display; Push shows scale)
+  // For Push: use scale data when state doesn't have it (Input/TASTY/Stock modes)
+  if (_isPush && (!activePCS || activePCS.size === 0 || (AppState.mode !== 'scale' && AppState.mode !== 'chord'))) {
+    activePCS = scalePCS;
+    rootPC = scaleRoot;
+  }
+
   var isRoot = pc === rootPC && !omittedPCS.has(pc);
   var isBass = bassPC !== null && pc === bassPC;
   var isActive = activePCS.has(pc);

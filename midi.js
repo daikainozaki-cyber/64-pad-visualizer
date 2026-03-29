@@ -626,23 +626,8 @@ function _padColorToLP(state, row, col) {
   var overlayPCS = state.overlayPCS;
   var tastyMidiSet = state.tastyMidiSet;
 
-  // TASTY/Stock mode
-  if (tastyMidiSet && tastyMidiSet.size > 0) {
-    if (tastyMidiSet.has(midi)) {
-      return pc === rootPC ? 9 : 45;
-    }
-    return 0;
-  }
-
-  // Input mode
-  if (AppState.mode === 'input') {
-    if (PlainState.activeNotes.has(midi)) {
-      return pc === rootPC ? 9 : 45;
-    }
-    return 0;
-  }
-
-  // Scale/Chord modes
+  // Push LED: always show scale colors regardless of mode
+  // (TASTY/Stock and Input mode use screen-only display; Push shows scale)
   var isRoot = pc === rootPC && !omittedPCS.has(pc);
   var isBass = bassPC !== null && pc === bassPC;
   var isActive = activePCS.has(pc);

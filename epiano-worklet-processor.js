@@ -1253,6 +1253,17 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.trDelayLen       = micDelaySamples;
     this.trDelayBuf       = new Float32Array(micDelaySamples + 1);
     this.trDelayWr        = 0;
+
+    // Microphone transfer function (SM58-like dynamic mic)
+    // "マイクってPUじゃん" — mic = electromagnetic transducer with its own freq response.
+    // Applied to ALL mechanical noise (tine radiation + thud + everything acoustic).
+    this.micHPFCoeff  = biquadHighpass(200, 0.707, fs);   // transformer coupling roll-off
+    this.micHPFState  = new Float32Array(2);
+    this.micPeakCoeff = biquadPeaking(5000, 1.5, 4, fs);  // presence peak +4dB
+    this.micPeakState = new Float32Array(2);
+    this.micLPFCoeff  = biquadLowpass(12000, 0.707, fs);  // HF roll-off
+    this.micLPFState  = new Float32Array(2);
+
     // Attack metallic ring (damped sine at beam mode frequency)
     this.vAttackRingOmega  = new Float32Array(MAX_VOICES);     // beam mode angular freq (rad/sample)
     this.vAttackRingOmega2 = new Float32Array(MAX_VOICES);     // 2nd beam mode (for richness)
@@ -2587,7 +2598,23 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         mechanicalNoiseSum += delayedTine;
       }
 
-      // Mechanical noise: acoustic path (bypasses PU → amp chain)
+      // Microphone transfer function on all acoustic noise.
+      // HPF 200Hz (transformer) → presence +4dB @5kHz → LPF 12kHz.
+      {
+        var mhc = this.micHPFCoeff, mhs = this.micHPFState;
+        var mhOut = mhc[0] * mechanicalNoiseSum + mhs[0];
+        mhs[0] = mhc[1] * mechanicalNoiseSum - mhc[3] * mhOut + mhs[1];
+        mhs[1] = mhc[2] * mechanicalNoiseSum - mhc[4] * mhOut;
+        var mpc = this.micPeakCoeff, mps = this.micPeakState;
+        var mpOut = mpc[0] * mhOut + mps[0];
+        mps[0] = mpc[1] * mhOut - mpc[3] * mpOut + mps[1];
+        mps[1] = mpc[2] * mhOut - mpc[4] * mpOut;
+        var mlc = this.micLPFCoeff, mls = this.micLPFState;
+        var mlOut = mlc[0] * mpOut + mls[0];
+        mls[0] = mlc[1] * mpOut - mlc[3] * mlOut + mls[1];
+        mls[1] = mlc[2] * mpOut - mlc[4] * mlOut;
+        mechanicalNoiseSum = mlOut;
+      }
       mainOut += mechanicalNoiseSum;
 
       // ch0: dry+wet combined → main thread V4B → poweramp → cabinet

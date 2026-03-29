@@ -606,7 +606,8 @@ function _padColorToLP(state, row, col) {
   var rootPC = state.rootPC;
 
   // Highlight currently pressed pads (orange for Push 3, white for Launchpad)
-  if (midiActiveNotes.has(midi)) return _isPush ? 9 : 3;
+  // Push palette: 3=orange(255,100,0), see [[Push 2/3 LEDカラーパレット]]
+  if (midiActiveNotes.has(midi)) return _isPush ? 3 : 3;
 
   // Root-only mode: only light up root pitch class
   if (_lpLEDMode === 'root') {

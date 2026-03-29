@@ -316,6 +316,11 @@ function _epwSendParams() {
     puModel: EpwState.puModel || 'cylinder',
     whirlEnabled: EpwState.whirlEnabled !== false,
     beamDecayR: EpState.beamDecayR || 1.0,
+    attackNoise: EpState.attackNoise !== undefined ? EpState.attackNoise : 0.5,
+    releaseNoise: EpState.releaseNoise !== undefined ? EpState.releaseNoise : 0.5,
+    releaseRing: EpState.releaseNoise !== undefined ? EpState.releaseNoise : 0.5,
+    tineRadiation: EpState.tineRadiation !== undefined ? EpState.tineRadiation : 0,
+    rhodesLevel: EpState.rhodesLevel !== undefined ? EpState.rhodesLevel : 1.0,
   });
   // Switch main-thread routing: DI=direct, amp=V4B→poweramp→cabinet
   if (_epw_cabinetGain) _epw_cabinetGain.gain.setValueAtTime(isDI ? 0 : 6.0, 0);

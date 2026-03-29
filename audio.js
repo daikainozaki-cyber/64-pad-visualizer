@@ -616,7 +616,7 @@ function _saveEpMixer() {
       pickupSymmetry: EpState.pickupSymmetry,
       springReverbMix: EpState.springReverbMix,
       springDwell: EpState.springDwell,
-      // beamDecayR: per-key curve baked in worklet. No UI save needed.
+      attackNoise: EpState.attackNoise,
     }));
   } catch(_) {}
 }
@@ -634,7 +634,7 @@ function _loadEpMixer() {
     var s = JSON.parse(raw);
     // pickupSymmetry: always use HTML default (physics-calibrated).
     // Old localStorage may have stale values from before PU model changes.
-    ['springReverbMix','springDwell'].forEach(function(key) {
+    ['springReverbMix','springDwell','attackNoise'].forEach(function(key) {
       if (s[key] !== undefined) EpState[key] = s[key];
     });
     // Clear stale pickupSymmetry from storage so it doesn't persist
@@ -643,8 +643,8 @@ function _loadEpMixer() {
       localStorage.setItem('64pad-ep-mixer-v2', JSON.stringify(s));
     }
     // Sync sliders
-    var map = {pickupSymmetry:'ep-pu-sym', springReverbMix:'ep-rev', springDwell:'ep-dwell'};
-    var valMap = {pickupSymmetry:'ep-pu-sym-val', springReverbMix:'ep-rev-val', springDwell:'ep-dwell-val'};
+    var map = {pickupSymmetry:'ep-pu-sym', springReverbMix:'ep-rev', springDwell:'ep-dwell', attackNoise:'ep-mechanical'};
+    var valMap = {pickupSymmetry:'ep-pu-sym-val', springReverbMix:'ep-rev-val', springDwell:'ep-dwell-val', attackNoise:'ep-mechanical-val'};
     Object.keys(map).forEach(function(key) {
       var sl = document.getElementById(map[key]);
       var vl = document.getElementById(valMap[key]);
@@ -1251,6 +1251,45 @@ onReady(() => {
     }
     if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
       epianoWorkletUpdateParams({ springDwell: val });
+    }
+    _saveEpMixer();
+  });
+
+  // Mechanical noise — single knob controls all mechanical layers
+  var epMechSlider = document.getElementById('ep-mechanical');
+  var epMechVal = document.getElementById('ep-mechanical-val');
+  if (epMechSlider && epMechVal) epMechSlider.addEventListener('input', () => {
+    var val = parseFloat(epMechSlider.value);
+    EpState.attackNoise = val;
+    EpState.releaseNoise = val;
+    epMechVal.textContent = val.toFixed(2);
+    if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      epianoWorkletUpdateParams({ attackNoise: val, releaseNoise: val, releaseRing: val });
+    }
+    _saveEpMixer();
+  });
+
+  // Rhodes level — PU signal volume (0=mute, hear only mechanical)
+  var epRhodesSlider = document.getElementById('ep-rhodes');
+  var epRhodesVal = document.getElementById('ep-rhodes-val');
+  if (epRhodesSlider && epRhodesVal) epRhodesSlider.addEventListener('input', () => {
+    var val = parseFloat(epRhodesSlider.value);
+    EpState.rhodesLevel = val;
+    epRhodesVal.textContent = val.toFixed(2);
+    if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      epianoWorkletUpdateParams({ rhodesLevel: val });
+    }
+  });
+
+  // Tine radiation — acoustic tine radiation level
+  var epTineSlider = document.getElementById('ep-tine');
+  var epTineVal = document.getElementById('ep-tine-val');
+  if (epTineSlider && epTineVal) epTineSlider.addEventListener('input', () => {
+    var val = parseFloat(epTineSlider.value);
+    EpState.tineRadiation = val;
+    epTineVal.textContent = val.toFixed(2);
+    if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      epianoWorkletUpdateParams({ tineRadiation: val });
     }
     _saveEpMixer();
   });

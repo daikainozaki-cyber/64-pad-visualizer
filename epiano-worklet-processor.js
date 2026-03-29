@@ -121,12 +121,12 @@ var BEAM_ATTACK_MS = 14;         // Convergence time in ms (Munster 2014)
 // Soft mallet on mass: smooth rounded impulse, no ringing, no HF.
 // Duration = hammer contact time Tc (already computed per-key per-velocity).
 // "コツッ" = mass hitting something. Not hard click, not sine ring.
-var ATTACK_THUD_SCALE = 2.0;
+var ATTACK_THUD_SCALE = 6.0;
 // Release Layer 1: damper thud — harder than attack (keys/metal hitting)
 // "鍵とか金属が当たってるような音" — not a soft low thud but a harder click
-var RELEASE_THUD_SCALE = 0.20;
-var RELEASE_THUD_DECAY_MS = 5;    // longer = heavier, more mass
-var RELEASE_THUD_FREQ = 80;       // "ゴン" — very deep
+var RELEASE_THUD_SCALE = 1.2;
+var RELEASE_THUD_DECAY_MS = 2;    // muted bass drum — short, round
+var RELEASE_THUD_FREQ = 60;       // もっと低く太く
 // Release Layer 2: mid mechanism (disabled — TINE handles high content)
 var RELEASE_MID_SCALE = 0.0;
 var RELEASE_MID_DECAY_MS = 8;
@@ -1257,11 +1257,17 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Microphone transfer function (SM58-like dynamic mic)
     // "マイクってPUじゃん" — mic = electromagnetic transducer with its own freq response.
     // Applied to ALL mechanical noise (tine radiation + thud + everything acoustic).
-    this.micHPFCoeff  = biquadHighpass(200, 0.707, fs);   // transformer coupling roll-off
+    // SM58 frequency response (calibrated from Shure published data):
+    // 50Hz=-7dB, 80Hz=-3dB, 100Hz=-1dB, 200Hz=0dB, 5kHz=+5dB, 10kHz=+3dB, 12kHz=-3dB
+    this.micHPFCoeff  = biquadHighpass(100, 0.707, fs);     // -7dB@50Hz, -3dB@80Hz, -1dB@100Hz
     this.micHPFState  = new Float32Array(2);
-    this.micPeakCoeff = biquadPeaking(5000, 1.5, 4, fs);  // presence peak +4dB
+    this.micProxCoeff = biquadLowShelf(200, 6, fs);       // proximity effect: +6dB below 200Hz (close mic)
+    this.micProxState = new Float32Array(2);
+    this.micPeakCoeff = biquadPeaking(5000, 0.9, 5, fs);   // presence plateau +5dB (4-7kHz)
     this.micPeakState = new Float32Array(2);
-    this.micLPFCoeff  = biquadLowpass(12000, 0.707, fs);  // HF roll-off
+    this.micBrilCoeff = biquadPeaking(10000, 1.5, 3, fs);  // brilliance +3dB @10kHz
+    this.micBrilState = new Float32Array(2);
+    this.micLPFCoeff  = biquadLowpass(12000, 0.707, fs);   // steep roll-off above 12kHz
     this.micLPFState  = new Float32Array(2);
 
     // Attack metallic ring (damped sine at beam mode frequency)
@@ -2211,17 +2217,13 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           tineRadSum += trDiff * this.attackNoise * 1.15;
         }
 
-        // Attack thud: half-sine pulse AFTER hammer separation (t=Tc).
-        // "アタックよりちょっと後に感じる" — at separation, not during contact.
-        // Hertz rebound pulse: soft mallet bouncing off.
-        // Attack thud: soft mallet feel. t×exp(-t/τ) envelope = rises then fades.
-        // Fixed 12ms duration — not tied to Tc. Gives weight without clicks.
+        // Attack thud: single half-sine lobe (no oscillation, no pitch, no burst).
+        // sin(π×t/T): rises from 0, peaks, returns to 0. Completely smooth.
+        // "丸い" — like pressing a palm against a drum head.
         var noiseAge = age - this.vOnsetLen[v]; // 0 at separation moment
-        var atkThudSamples = Math.ceil(0.012 * this.fs); // 12ms fixed
-        if (noiseAge >= 0 && noiseAge < atkThudSamples) {
-          // t×exp(-t/τ): peaks at t=τ, smooth rise and decay. No click.
-          var tNorm = noiseAge / (atkThudSamples * 0.25); // peak at 25% of duration
-          var thudEnv = tNorm * Math.exp(1 - tNorm); // max = 1.0 at tNorm=1
+        var atkThudLen = Math.ceil(0.015 * this.fs); // 15ms — slow, round
+        if (noiseAge >= 0 && noiseAge < atkThudLen) {
+          var thudEnv = Math.sin(Math.PI * noiseAge / atkThudLen);
           mechanicalNoiseSum += thudEnv * this.vAttackThudAmp[v] * this.attackNoise * 2.0;
         }
 
@@ -2238,8 +2240,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           // Layer 1: Low thud — damped sine with soft onset (avoids click)
           var thudAmp = this.vReleaseThudAmp[v];
           if (thudAmp > 0.00001) {
-            // Fade-in over first 24 samples (~0.5ms) to avoid click
-            var fadein = relAge < 24 ? relAge / 24.0 : 1.0;
+            // Fade-in over first 96 samples (~2ms) — gentler, less harsh
+            var fadein = relAge < 96 ? relAge / 96.0 : 1.0;
             mechanicalNoiseSum += Math.sin(relAge * this.vReleaseThudOmega[v]) * thudAmp * fadein * this.releaseNoise * 2.0;
             this.vReleaseThudAmp[v] = thudAmp * this.vReleaseThudDecay[v];
           }
@@ -2605,14 +2607,25 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         var mhOut = mhc[0] * mechanicalNoiseSum + mhs[0];
         mhs[0] = mhc[1] * mechanicalNoiseSum - mhc[3] * mhOut + mhs[1];
         mhs[1] = mhc[2] * mechanicalNoiseSum - mhc[4] * mhOut;
+        // Proximity effect: close-mic low shelf boost +6dB@200Hz
+        var mxc = this.micProxCoeff, mxs = this.micProxState;
+        var mxOut = mxc[0] * mhOut + mxs[0];
+        mxs[0] = mxc[1] * mhOut - mxc[3] * mxOut + mxs[1];
+        mxs[1] = mxc[2] * mhOut - mxc[4] * mxOut;
+        mhOut = mxOut; // HPF then proximity boost
         var mpc = this.micPeakCoeff, mps = this.micPeakState;
         var mpOut = mpc[0] * mhOut + mps[0];
         mps[0] = mpc[1] * mhOut - mpc[3] * mpOut + mps[1];
         mps[1] = mpc[2] * mhOut - mpc[4] * mpOut;
+        // Brilliance peak +3dB @10kHz
+        var mbc = this.micBrilCoeff, mbs = this.micBrilState;
+        var mbOut = mbc[0] * mpOut + mbs[0];
+        mbs[0] = mbc[1] * mpOut - mbc[3] * mbOut + mbs[1];
+        mbs[1] = mbc[2] * mpOut - mbc[4] * mbOut;
         var mlc = this.micLPFCoeff, mls = this.micLPFState;
-        var mlOut = mlc[0] * mpOut + mls[0];
-        mls[0] = mlc[1] * mpOut - mlc[3] * mlOut + mls[1];
-        mls[1] = mlc[2] * mpOut - mlc[4] * mlOut;
+        var mlOut = mlc[0] * mbOut + mls[0];
+        mls[0] = mlc[1] * mbOut - mlc[3] * mlOut + mls[1];
+        mls[1] = mlc[2] * mbOut - mlc[4] * mlOut;
         mechanicalNoiseSum = mlOut;
       }
       mainOut += mechanicalNoiseSum;

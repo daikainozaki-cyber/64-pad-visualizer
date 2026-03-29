@@ -2192,7 +2192,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         // Implementation: differentiation (sample[n] - sample[n-1]) ≈ ×jω.
         // FIR — no feedback, no state accumulation, no residual noise.
         // Naturally boosts beam modes, suppresses fundamental. Physics, not workaround.
-        if (this.tineRadiation > 0) {
+        if (this.attackNoise > 0) {
           var acousticVel = tineVelocity * this.vVelScale[v] * this.vTipFactor[v] * this.puEmfScale;
           var trDiff = acousticVel - this.vTineRadPrev[v]; // ≈ d/dt ∝ ω → radiation ∝ f
           this.vTineRadPrev[v] = acousticVel;

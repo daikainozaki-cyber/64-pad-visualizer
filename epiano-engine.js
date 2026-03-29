@@ -71,7 +71,7 @@ var EP_AMP_PRESETS = {
     powerampType: '6L6',
     useTonestack: true,
     useCabinet: true,
-    useSpringReverb: true,   // Accutronics 4AB3C1B via V3 driver
+    useSpringReverb: false,  // OFF: Nyquist aliasing in spring reverb (chirp artifacts). Fix before re-enabling.
   },
   'Rhodes Suitcase': {
     pickupType: 'rhodes',

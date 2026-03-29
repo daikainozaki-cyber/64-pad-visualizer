@@ -667,16 +667,11 @@ function computeTineAmplitude(midi, velocity) {
   // → H3 rises from -40dB to -12dB. PU_EMF_SCALE halved to maintain output level.
   var result = (A_raw / TINE_A4_RAW) * 0.12;
 
-  // --- Bass amplitude rolloff (2026-03-29) ---
-  // Rhodes low notes don't project like piano. Physical tineAmp overshoots
-  // because beam physics gives long tines large displacement, but real Rhodes
-  // has EM damping + mechanical losses that limit bass amplitude.
-  // Gentle rolloff below E2 (MIDI 40): linear taper to 70% at C1 (MIDI 24).
-  if (midi < 52) {
-    var bassScale = 0.4 + 0.6 * ((midi - 24) / (52 - 24));
-    if (bassScale < 0.4) bassScale = 0.4;
-    result *= bassScale;
-  }
+  // --- Bass amplitude rolloff DISABLED (2026-03-30) ---
+  // Was: 40-100% taper below E3 for DI mode (bass too boomy).
+  // Removed: amp chain (V4B + cabinet HPF 180Hz) handles bass naturally.
+  // The cabinet's open-back cancellation below 180Hz is the physical bass control.
+  // DI mode may need a separate bass compensation if re-enabled later.
 
   // --- Escapement hard clamp (SM Fig 4-2) ---
   // Tine cannot displace further than the escapement gap.
@@ -1454,7 +1449,32 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.v3LUT       = computeV3DriverLUT();
     // Active LUT (switched by preset)
     this.preampLUT   = this.preampLUT_12AX7;
-    // V4B + poweramp now on main thread (Fix 3), but keep for future use
+    // V4B bloom (12AX7, unity-gain normalized) — worklet-internal
+    this.v4bLUT = normalizeLUTUnityGain(computePreampLUT());
+    // Poweramp (6L6 push-pull, unity-gain normalized) — worklet-internal
+    this.powerampLUT = normalizeLUTUnityGain(computePowerampLUT());
+    // Poweramp 2x oversampling state (shared, post-voice-sum)
+    this.paPrevSample = 0;
+
+    // Cabinet: Jensen C12N 2x12" open-back (parametric EQ from measured data)
+    // Framework §7: "帯域窓が音色を定義する"
+    // Source: Jensen C12N T-S params (Fs=113Hz, QTS=1.02, QES=1.18, QMS=7.52)
+    //
+    // HPF 60Hz: physical lower limit (cone excursion + OT saturation below this)
+    this.cabHPFCoeff  = biquadHighpass(60, 0.707, fs);
+    this.cabHPFState  = new Float32Array(2);
+    // Speaker resonance +6dB @ 113Hz Q=1.0: Jensen C12N Fs with QTS=1.02
+    // High QTS = underdamped resonance = bass boost. This is the "ボフボフ" physics.
+    this.cabResCoeff  = biquadPeaking(113, 1.0, 6.0, fs);
+    this.cabResState  = new Float32Array(2);
+    // Presence +8dB @ 2kHz Q=2: Jensen C12N measured peak (109dB vs ~101dB baseline)
+    // This is the "Twin Reverb chime" — bell emphasis from cone breakup
+    this.cabPeakCoeff = biquadPeaking(2000, 2.0, 8.0, fs);
+    this.cabPeakState = new Float32Array(2);
+    // LPF 6kHz: rolloff begins at 5kHz, steep above 10kHz. -3dB ≈ 6kHz.
+    this.cabLPFCoeff  = biquadLowpass(6000, 0.707, fs);
+    this.cabLPFState  = new Float32Array(2);
+
     this.pickupType  = 'rhodes'; // 'rhodes' or 'wurlitzer'
     this.puModel     = 'cylinder'; // 'cylinder' (default) or 'dipole' (A/B comparison)
     this.whirlEnabled = false;      // OFF: pitch clash investigation (2026-03-29)
@@ -1488,26 +1508,29 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.use2ndPreamp   = true;
     this.useTonestack   = true;
     this.useCabinet     = true;
-    this.useSpringReverb = true;
+    this.useSpringReverb = false; // OFF until Nyquist aliasing fixed
 
     // Mechanical noise parameters (0-1 knobs, scale internal constants)
     // Separate signal path: bypasses PU → amp chain (acoustic, not electromagnetic)
-    this.attackNoise   = 0.5;  // Attack thud (hammer separation)
-    this.releaseNoise  = 0.5;  // Release thud (damper felt contact)
-    this.releaseRing   = 0.5;  // Release metallic ring (damper kiss — beam mode re-excitation)
+    this.attackNoise   = 0;    // Attack thud (set by MECHANICAL slider via params)
+    this.releaseNoise  = 0;    // Release thud (set by MECHANICAL slider via params)
+    this.releaseRing   = 0;    // Release metallic ring (set by MECHANICAL slider via params)
     this.tineRadiation = 0.0;  // Acoustic tine radiation (-40 to -50dB, glockenspiel-like)
     this.rhodesLevel   = 1.0;  // PU signal level (0=mute PU, hear only mechanical)
 
-    // Shared chain gains
+    // === Gain staging from AB763 permanent note (Rob Robinette measured) ===
+    // Each tube LUT is unity-gain normalized. Real voltage gain applied AFTER LUT.
+    // Signal CAN exceed ±1 between stages (real amp has 460V+ supply).
+    // LUT inputs must stay ≤ ±1 (= ±grid swing of that tube).
+    this.inputAtten     = 0.5;    // AB763 Hi input -6dB (68kΩ/68kΩ divider)
+    this.v1aGain        = 43;     // 12AX7, Rp=100kΩ, Rk=1.5kΩ bypassed
+    this.cfGain         = 0.95;   // V2A cathode follower (Vibrato ch only)
+    this.tsInsertionLoss = 0.005; // Measured V4.9.70: V2Bout=3.5-6.4 at 0.02. Target V2Bout≈1.0-1.5
+    this.v2bGain        = 57;     // 12AX7, Rk=820Ω shared cathode with V4A
     this.dryBusGain     = 0.7;
-    this.v4bMakeup      = 1.5;
-    this.powerMakeup    = 2.0;
-    this.cabinetGain    = 6.0;
-    this.inputAtten     = 0.5;    // AB763 Hi input -6dB
-    this.cfGain         = 0.95;   // cathode follower
-    this.tsInsertionLoss = 0.2;   // passive TMB -14dB
-    this.v2bDrive       = 5.0;    // V2B recovery gain
-    this.v2bMakeup      = 1.5;
+    this.v4bGain        = 2;      // 12AX7, V4B bloom (unity-norm + ×2 real gain)
+    this.powerGain      = 1.14;   // 6L6×4 ×25-30 / OT ÷22 ≈ 1.14 (LINEAR for Rhodes)
+    this.cabinetGain    = 3.0;    // Final output scaling (tsInsertionLoss=0.005 needs more output gain)
     this.v4aGain        = 5.0;    // reverb recovery
     this.reverbPot      = 0.12;
 
@@ -1556,6 +1579,17 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     if (msg.releaseRing !== undefined) this.releaseRing = msg.releaseRing;
     if (msg.tineRadiation !== undefined) this.tineRadiation = msg.tineRadiation;
     if (msg.rhodesLevel !== undefined) this.rhodesLevel = msg.rhodesLevel;
+
+    // Amp chain params (dev sliders)
+    if (msg.v1aGain !== undefined) this.v1aGain = msg.v1aGain;
+    if (msg.v2bGain !== undefined) this.v2bGain = msg.v2bGain;
+    if (msg.v4bGain !== undefined) this.v4bGain = msg.v4bGain;
+    if (msg.powerGain !== undefined) this.powerGain = msg.powerGain;
+    if (msg.cabinetGain !== undefined) this.cabinetGain = msg.cabinetGain;
+    // Cabinet filter recomputation
+    if (msg.cabHPFFreq !== undefined) this.cabHPFCoeff = biquadHighpass(msg.cabHPFFreq, 0.707, this.fs);
+    if (msg.cabPeakFreq !== undefined) this.cabPeakCoeff = biquadPeaking(msg.cabPeakFreq, 2.0, 4.0, this.fs);
+    if (msg.cabLPFFreq !== undefined) this.cabLPFCoeff = biquadLowpass(msg.cabLPFFreq, 0.707, this.fs);
 
     // Recompute tonestack
     if (msg.tsBass !== undefined || msg.tsMid !== undefined || msg.tsTreble !== undefined || msg.brightSwitch !== undefined) {
@@ -1996,7 +2030,9 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     for (var i = 0; i < MAX_VOICES; i++) {
       if (this.vActive[i] > 0 && this.vMidi[i] === midi && this.vActive[i] !== 3) {
         this.vActive[i] = 3; // releasing
-        this.vReleaseAlpha[i] = Math.exp(-this.invFs / 0.05); // 50ms release
+        this.vReleaseAlpha[i] = Math.exp(-this.invFs / 0.015); // 15ms release
+        // Do NOT clear biquad states here — causes click from sudden state reset
+        // while PU signal is still decaying through the amp chain.
         // Trigger release noise: damper felt contacts vibrating tine → EMF spike.
         // Amplitude scales with CURRENT tine amplitude (not initial).
         // Staccato → tine still vibrating hard → louder release noise.
@@ -2350,9 +2386,12 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           // --- 4. Input jack attenuator (-6dB, AB763 Hi input) ---
           sig *= this.inputAtten;
 
-          // --- 5. Preamp V1A (12AX7 LUT, 2x oversampled — matches old engine) ---
+          // --- 5. Preamp V1A (12AX7 LUT, 2x oversampled) ---
+          // Input ~0.025-0.075 (Rhodes 74mV after -6dB). LUT unity-gain, then ×43 real gain.
+          // Output ~1-3V equivalent. Exceeds ±1 — OK, tonestack handles it linearly.
           sig *= this.preampGain;
           sig = lutLookup2x(this.preampLUT, sig, v, _OS2X_PREAMP);
+          sig *= this.v1aGain;
 
           // --- 5b. Cathode follower V2A ---
           if (this.use2ndPreamp) {
@@ -2387,14 +2426,17 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
             sig *= this.volumePot;
           }
 
-          // --- 8. V2B 2nd preamp stage (recovery after tonestack) ---
+          // --- 8. V2B recovery amp (12AX7, gain=57) ---
           if (this.use2ndPreamp) {
-            sig *= this.v2bDrive;
+            if (this._dbgLastV2Bin !== undefined) this._dbgLastV2Bin = sig; // DEBUG
             sig = lutLookup(this.preampLUT, sig);
-            sig *= this.v2bMakeup;
+            sig *= this.v2bGain;
           }
 
-          // Sum to dry bus (harp LCR applied per-voice in step 3b → V4B → poweramp)
+          // --- DEBUG: per-voice V2B output peak + V2B input ---
+          if (this._dbgPeakV2B !== undefined && Math.abs(sig) > this._dbgPeakV2B) this._dbgPeakV2B = Math.abs(sig);
+          if (this._dbgPeakV2Bin !== undefined && Math.abs(this._dbgLastV2Bin) > this._dbgPeakV2Bin) this._dbgPeakV2Bin = Math.abs(this._dbgLastV2Bin);
+          // Sum to dry bus
           drySum += sig;
 
         } else {
@@ -2578,10 +2620,54 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       var mainOut;
 
       if (this.useCabinet) {
-        // === AMP PATH: dry + wet mixed → ch0 → V4B(bloom) → poweramp → cabinet ===
+        // === AMP PATH: worklet-internal V4B → poweramp → cabinet ===
+        // Sample-by-sample processing eliminates 128-sample block jitter
+        // that amplifies through nonlinear stages (framework §3).
         drySum = (drySum / HARP_PARALLEL_DIV) * this.dryBusGain;
-        // Mix dry + wet here. V4B on main thread applies bloom to combined signal.
-        mainOut = (drySum + wetSignal) * this.rhodesLevel;
+
+        // V4B bloom: dry+wet → 12AX7 nonlinear mixing (gain=2)
+        // Real circuit: 470kΩ/220kΩ resistive divider at V4B grid passes 32%.
+        // 15.4V(V2B) × 0.5(Vol) × 0.32(divider) = 2.46V → within ±3V grid swing.
+        // Forte chord: 0.82 normalized → subtle soft-clip = bloom (NOT hard distortion).
+        var ampSig = (drySum + wetSignal) * this.rhodesLevel * 0.32;
+        // --- DEBUG: gain staging via MessagePort (worklet console.log not visible) ---
+        if (this._dbgCount === undefined) { this._dbgCount = 0; this._dbgPeakV4B = 0; this._dbgPeakDry = 0; this._dbgPeakV2B = 0; this._dbgPeakV2Bin = 0; this._dbgLastV2Bin = 0; }
+        if (Math.abs(ampSig) > this._dbgPeakV4B) this._dbgPeakV4B = Math.abs(ampSig);
+        if (Math.abs(drySum) > this._dbgPeakDry) this._dbgPeakDry = Math.abs(drySum);
+        this._dbgCount++;
+        if (this._dbgCount % 24000 === 0 && (this._dbgPeakV4B > 0.001 || this._dbgPeakDry > 0.001)) {
+          this.port.postMessage({ type: 'debug', v4bIn: this._dbgPeakV4B, dry: this._dbgPeakDry, v2b: this._dbgPeakV2B, v2bIn: this._dbgPeakV2Bin });
+          this._dbgPeakV4B = 0; this._dbgPeakDry = 0; this._dbgPeakV2B = 0; this._dbgPeakV2Bin = 0;
+        }
+        ampSig = lutLookup(this.v4bLUT, ampSig);
+        ampSig *= this.v4bGain;
+
+        // Power amp + OT: LINEAR for Rhodes (permanent note: "6L6GC doesn't clip")
+        // 6L6×4 gain ×25-30, OT step-down ÷22, net ≈ ×1.14
+        ampSig *= this.powerGain;
+
+        // Cabinet: Jensen C12N 2x12" open-back (4-stage parametric EQ)
+        // Gate: skip cabinet when signal is inaudible. Prevents biquad state
+        // residual from being amplified by cab resonance/presence peaks.
+        if (Math.abs(ampSig) > 1e-7) {
+          // HPF 60Hz: physical lower limit
+          ampSig = biquadProcess(this.cabHPFCoeff, this.cabHPFState, ampSig);
+          // Speaker resonance +6dB @ 113Hz: Fs peak (the "ボフボフ")
+          ampSig = biquadProcess(this.cabResCoeff, this.cabResState, ampSig);
+          // Presence +8dB @ 2kHz: cone breakup → bell emphasis
+          ampSig = biquadProcess(this.cabPeakCoeff, this.cabPeakState, ampSig);
+          // LPF 6kHz: cone mass → harshness removal
+          ampSig = biquadProcess(this.cabLPFCoeff, this.cabLPFState, ampSig);
+        } else {
+          // Clear cabinet biquad states when silent
+          this.cabHPFState[0] = 0; this.cabHPFState[1] = 0;
+          this.cabResState[0] = 0; this.cabResState[1] = 0;
+          this.cabPeakState[0] = 0; this.cabPeakState[1] = 0;
+          this.cabLPFState[0] = 0; this.cabLPFState[1] = 0;
+          ampSig = 0;
+        }
+
+        mainOut = ampSig * this.cabinetGain;
       } else {
         // === DI PATH: no cable LCR, transparent output ===
         mainOut = (diSum / HARP_PARALLEL_DIV) * this.rhodesLevel;
@@ -2602,7 +2688,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
       // Microphone transfer function on all acoustic noise.
       // HPF 200Hz (transformer) → presence +4dB @5kHz → LPF 12kHz.
-      {
+      // Skip when no acoustic signal (prevents biquad state residual → amp chain noise)
+      if (Math.abs(mechanicalNoiseSum) > 1e-10) {
         var mhc = this.micHPFCoeff, mhs = this.micHPFState;
         var mhOut = mhc[0] * mechanicalNoiseSum + mhs[0];
         mhs[0] = mhc[1] * mechanicalNoiseSum - mhc[3] * mhOut + mhs[1];
@@ -2630,8 +2717,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       }
       mainOut += mechanicalNoiseSum;
 
-      // ch0: dry+wet combined → main thread V4B → poweramp → cabinet
-      // ch1: 0 (spring reverb is now inline, no external routing needed)
+      // ch0: fully processed (V4B → poweramp → cabinet already applied above)
+      // Mechanical noise added post-cabinet (acoustic path, not through amp)
       if (mainOut > 1.0 || mainOut < -1.0) {
         if (this._clipCount === undefined) this._clipCount = 0;
         this._clipCount++;

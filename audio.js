@@ -4,6 +4,8 @@
 let _soundMuted = true; // Sound OFF by default — user turns on explicitly
 // AudioWorklet e-piano is default. ?node=1 falls back to Web Audio node version.
 const _useEpianoWorklet = new URLSearchParams(window.location.search).get('node') !== '1';
+// ?amp=twin forces amp preset (dev: V4B/poweramp/cabinet testing)
+const _ampPresetParam = new URLSearchParams(window.location.search).get('amp');
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // --- Master audio graph ---
@@ -637,6 +639,11 @@ function _loadEpMixer() {
     ['springReverbMix','springDwell','attackNoise'].forEach(function(key) {
       if (s[key] !== undefined) EpState[key] = s[key];
     });
+    // MECHANICAL knob controls all 3 noise params equally
+    if (s.attackNoise !== undefined) {
+      EpState.releaseNoise = s.attackNoise;
+      EpState.releaseRing = s.attackNoise;
+    }
     // Clear stale pickupSymmetry from storage so it doesn't persist
     if (s.pickupSymmetry !== undefined) {
       delete s.pickupSymmetry;
@@ -846,7 +853,10 @@ function noteOn(midi, velocity, poly, _retries) {
   if (AudioState.instrument.epiano) {
     // Physics engine: bypass per-voice saturation (physics chain has 3 nonlinear stages)
     if (sat.cleanup) sat.cleanup();
-    EpState.preset = AudioState.instrument.epiano;
+    EpState.preset = _ampPresetParam === 'twin' ? 'Rhodes Stage + Twin'
+                   : _ampPresetParam === 'suit' ? 'Rhodes Suitcase'
+                   : _ampPresetParam === 'wurl' ? 'Wurlitzer 200A'
+                   : AudioState.instrument.epiano;
     // Room reverb always available (REV knob controls level).
     // Spring reverb is separate (inside amp chain, controlled by E.Piano Mixer).
     var epPreset = EP_AMP_PRESETS[EpState.preset];
@@ -1298,4 +1308,50 @@ onReady(() => {
   loadSoundSettings();
   _loadEpMixer();
   _updateEpMixerVisibility();
+
+  // --- AMP CHAIN dev sliders (shown with ?amp=twin, AFTER mixer visibility) ---
+  if (_ampPresetParam) {
+    var ampSec = document.getElementById('ep-amp-section');
+    if (ampSec) ampSec.style.display = '';
+
+    function _ampSlider(id, valId, param, fmt) {
+      var sl = document.getElementById(id);
+      var vl = document.getElementById(valId);
+      if (!sl || !vl) return;
+      sl.addEventListener('input', function() {
+        var v = parseFloat(sl.value);
+        vl.textContent = fmt ? fmt(v) : v.toFixed(2);
+        var msg = {};
+        msg[param] = v;
+        if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+          epianoWorkletUpdateParams(msg);
+        }
+      });
+    }
+    _ampSlider('ep-v1a-gain', 'ep-v1a-gain-val', 'v1aGain', function(v) { return v.toFixed(0); });
+    _ampSlider('ep-v2b-gain', 'ep-v2b-gain-val', 'v2bGain', function(v) { return v.toFixed(0); });
+    _ampSlider('ep-v4b-gain', 'ep-v4b-gain-val', 'v4bGain', function(v) { return v.toFixed(1); });
+    _ampSlider('ep-pwr-gain', 'ep-pwr-gain-val', 'powerGain', function(v) { return v.toFixed(2); });
+    _ampSlider('ep-cab-gain', 'ep-cab-gain-val', 'cabinetGain', function(v) { return v.toFixed(1); });
+    _ampSlider('ep-cab-hpf', 'ep-cab-hpf-val', 'cabHPFFreq', function(v) { return v.toFixed(0); });
+    _ampSlider('ep-cab-peak', 'ep-cab-peak-val', 'cabPeakFreq', function(v) { return v.toFixed(0); });
+    _ampSlider('ep-cab-lpf', 'ep-cab-lpf-val', 'cabLPFFreq', function(v) { return v.toFixed(0); });
+    // Tonestack (Bass/Mid/Treble → worklet recomputes biquad coefficients)
+    function _tsSlider(id, valId, param) {
+      var sl = document.getElementById(id);
+      var vl = document.getElementById(valId);
+      if (!sl || !vl) return;
+      sl.addEventListener('input', function() {
+        var v = parseFloat(sl.value);
+        vl.textContent = v.toFixed(2);
+        EpState['tonestack' + param.charAt(0).toUpperCase() + param.slice(1)] = v;
+        if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+          epianoWorkletUpdateParams({});
+        }
+      });
+    }
+    _tsSlider('ep-ts-bass', 'ep-ts-bass-val', 'bass');
+    _tsSlider('ep-ts-mid', 'ep-ts-mid-val', 'mid');
+    _tsSlider('ep-ts-treble', 'ep-ts-treble-val', 'treble');
+  }
 });

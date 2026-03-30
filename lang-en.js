@@ -129,7 +129,8 @@ I18N.addLang('en', {
     slot_hint: '<span><b style="color:var(--text);opacity:0.6;">Click</b> select</span><span><b style="color:var(--text);opacity:0.6;">C</b> save</span><span><b style="color:var(--text);opacity:0.6;">Opt+key</b> save(all 16)</span><span><b style="color:var(--text);opacity:0.6;">Shift+Click</b> delete</span><span><b style="color:var(--text);opacity:0.6;">Opt+Drag</b> copy</span>',
     save_settings: 'Save Settings',
     sound_hint: 'Select a sound preset to enable audio',
-    tap_to_start: 'Tap to enable sound',
+    tap_to_start: 'Tap to start playing',
+    tap_to_start_sub: 'Your browser requires a tap before audio can play',
     tap_pads: 'Tap any pad to play!',
     input_keys_disabled: 'Key selection is not used in Input mode',
     load_vst: 'Load VST/AU Plugin...',
@@ -697,7 +698,7 @@ I18N.addLang('en', {
       step4_title: 'Memory & Banks',
       step4_msg: 'Option+1234/qwer/asdf/zxcv — Save to slot\n[ ] — Switch banks\nM — Memory view toggle\nP — Perform mode toggle\nSpace — Play\nShift+Space — Play All (sequential)',
       step5_title: 'More',
-      step5_msg: '? — Help (full shortcut list)\n⌘⌥+G/B/P/F/S — Instrument/Circle/Staff toggles\n⌘⌥+A/M/T/Q/V/K/H — Section toggles\nCmd/Ctrl+Z — Undo (up to 30 times)\nEsc — Deselect / Close modals',
+      step5_msg: '? — Help (full shortcut list)\n⌘⌥+G/B/P/F/S — Instrument/Circle/Staff toggles\n⌘⌥+A/M/T/Q/V/K/H — Section toggles\n⌘⌥+I — Toggle shortcut key indicators on buttons\nCmd/Ctrl+Z — Undo (up to 30 times)\nEsc — Deselect / Close modals',
     },
     // Settings tutorial
     link_title: 'Link Mode',

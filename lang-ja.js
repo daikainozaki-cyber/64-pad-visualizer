@@ -129,7 +129,8 @@ I18N.addLang('ja', {
     slot_hint: '<span><b style="color:var(--text);opacity:0.6;">Click</b> 選択</span><span><b style="color:var(--text);opacity:0.6;">C</b> 保存</span><span><b style="color:var(--text);opacity:0.6;">Opt+キー</b> 保存(1234/QWER/ASDF/ZXCV)</span><span><b style="color:var(--text);opacity:0.6;">Shift+Click</b> 削除</span><span><b style="color:var(--text);opacity:0.6;">Opt+Drag</b> コピー</span>',
     save_settings: '設定を保存',
     sound_hint: 'お好きな音色を選択してください',
-    tap_to_start: 'タップして音を有効にする',
+    tap_to_start: 'タップして演奏スタート',
+    tap_to_start_sub: 'ブラウザの仕様で、最初にタップが必要です',
     tap_pads: 'パッドをタップして演奏！',
     input_keys_disabled: 'Inputモードではキー指定は不要です',
     load_vst: 'VST/AU プラグインを読み込む...',
@@ -698,7 +699,7 @@ I18N.addLang('ja', {
       step4_title: 'メモリー & バンク',
       step4_msg: 'Option+1234/qwer/asdf/zxcv — スロットに保存\n[ ] — バンク切替\nM — Memory表示切替\nP — Performモード切替\nSpace — 再生\nShift+Space — 全スロット順次再生',
       step5_title: 'その他',
-      step5_msg: '? — ヘルプ（全ショートカット一覧）\n⌘⌥+G/B/P/F/S — 楽器・五度圏・譜面の表示切替\n⌘⌥+A/M/T/Q/V/K/H — セクション表示切替\nCmd/Ctrl+Z — Undo（最大30回）\nEsc — 選択解除 / モーダルを閉じる',
+      step5_msg: '? — ヘルプ（全ショートカット一覧）\n⌘⌥+G/B/P/F/S — 楽器・五度圏・譜面の表示切替\n⌘⌥+A/M/T/Q/V/K/H — セクション表示切替\n⌘⌥+I — ショートカットキー案内（ボタン隅の文字）の表示/非表示\nCmd/Ctrl+Z — Undo（最大30回）\nEsc — 選択解除 / モーダルを閉じる',
     },
     // 設定
     link_title: 'リンクモード',

@@ -926,13 +926,17 @@ function renderDiatonicBar() {
 
   // Determine if current scale is one of the 3 minor types
   var isMinorVariant = [5, 7, 14].indexOf(AppState.scaleIdx) !== -1;
+  var isMajorDiatonic = AppState.scaleIdx === 0; // Ionian (Major)
 
   // Show/hide toggles (always show for 7-note scales)
   extToggles.style.display = 'flex';
 
-  // Show/hide minor-specific toggle
+  // Show/hide minor-specific toggle (also visible for major key → relative minor 3 types)
   var minorBtn = document.getElementById('ext-minor-btn');
-  if (minorBtn) minorBtn.style.display = isMinorVariant ? '' : 'none';
+  if (minorBtn) {
+    minorBtn.style.display = (isMinorVariant || isMajorDiatonic) ? '' : 'none';
+    minorBtn.textContent = isMajorDiatonic ? '平行調' : 'Harm/Mel';
+  }
 
   // Update toggle button states
   if (minorBtn) minorBtn.classList.toggle('active', AppState.showMinorVariants);
@@ -944,8 +948,8 @@ function renderDiatonicBar() {
   if (fnBtn) fnBtn.classList.toggle('active', AppState.showHarmonicFn);
 
   // Render extension bars
-  if (AppState.showMinorVariants && isMinorVariant) {
-    _renderMinorVariants(extContainer, noteCount);
+  if (AppState.showMinorVariants && (isMinorVariant || isMajorDiatonic)) {
+    _renderMinorVariants(extContainer, noteCount, isMajorDiatonic);
   }
   if (AppState.showParallelKey) {
     _renderParallelKey(extContainer, noteCount);
@@ -953,6 +957,14 @@ function renderDiatonicBar() {
   if (AppState.showSecDom) {
     _renderSecondaryDominants(extContainer, tetrads);
   }
+}
+
+function toggleBadges() {
+  AppState.showBadges = !AppState.showBadges;
+  document.body.classList.toggle('hide-badges', !AppState.showBadges);
+  var cb = document.getElementById('badge-toggle');
+  if (cb) cb.checked = AppState.showBadges;
+  saveAppSettings();
 }
 
 function toggleMinorVariants() {
@@ -1001,16 +1013,30 @@ function _createExtBar(container, label, tetrads, isCurrent, scaleIdx) {
   container.appendChild(row);
 }
 
-function _renderMinorVariants(container, noteCount) {
-  // NM is already shown in the main diatonic bar — only show HM and MM
-  var minorScales = [
-    { idx: 7, label: 'HM' },
-    { idx: 14, label: 'MM' },
-  ];
-  minorScales.forEach(function(s) {
-    var tetrads = getDiatonicTetrads(SCALES[s.idx].pcs, AppState.key, noteCount);
-    _createExtBar(container, s.label, tetrads, AppState.scaleIdx === s.idx, s.idx);
-  });
+function _renderMinorVariants(container, noteCount, fromMajor) {
+  // From major key: show relative minor (平行調) 3 types — e.g., C Major → Am NM/HM/MM
+  // From minor key: NM is already in main bar — only show HM and MM at same root
+  if (fromMajor) {
+    var relMinorRoot = (AppState.key + 9) % 12; // relative minor root (平行調)
+    var minorScales = [
+      { idx: 5, label: 'NM' },
+      { idx: 7, label: 'HM' },
+      { idx: 14, label: 'MM' },
+    ];
+    minorScales.forEach(function(s) {
+      var tetrads = getDiatonicTetrads(SCALES[s.idx].pcs, relMinorRoot, noteCount);
+      _createExtBar(container, s.label, tetrads, false, s.idx);
+    });
+  } else {
+    var minorScales = [
+      { idx: 7, label: 'HM' },
+      { idx: 14, label: 'MM' },
+    ];
+    minorScales.forEach(function(s) {
+      var tetrads = getDiatonicTetrads(SCALES[s.idx].pcs, AppState.key, noteCount);
+      _createExtBar(container, s.label, tetrads, AppState.scaleIdx === s.idx, s.idx);
+    });
+  }
 }
 
 function _renderSecondaryDominants(container, mainTetrads) {

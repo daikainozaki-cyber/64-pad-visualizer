@@ -3,6 +3,7 @@
 // ========================================
 // Load saved settings BEFORE UI init (so AppState has restored values)
 loadAppSettings();
+if (!AppState.showBadges) document.body.classList.add('hide-badges');
 
 // TASTY Mode: HPS auth + data loading
 TastyState.hpsUnlocked = new URLSearchParams(window.location.search).has('hps');
@@ -274,6 +275,8 @@ document.addEventListener('keydown', (e) => {
     if (cmdOptCode === 'KeyL') { e.preventDefault(); toggleLinkMode(); return; }
     if (cmdOptCode === 'KeyK') { e.preventDefault(); toggleKeyDisplay(); return; }
     if (cmdOptCode === 'KeyH') { e.preventDefault(); toggleHeader(); return; }
+    // Shortcut key indicators
+    if (cmdOptCode === 'KeyI') { e.preventDefault(); toggleBadges(); return; }
     // Diatonic extensions
     if (cmdOptCode === 'KeyN') { e.preventDefault(); toggleMinorVariants(); return; }
     if (cmdOptCode === 'KeyD') { e.preventDefault(); toggleSecDom(); return; }

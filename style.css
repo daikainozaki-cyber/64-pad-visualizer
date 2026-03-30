@@ -595,6 +595,9 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   .voicing-btn:has(.kbd-hint) { padding-top: 5px; }
   .inst-toggle:has(.kbd-hint) { padding-bottom: 2px; }
 }
+.hide-badges .kbd-hint { display: none !important; }
+.hide-badges .voicing-btn:has(.kbd-hint) { padding-top: 5px; }
+.hide-badges .inst-toggle:has(.kbd-hint) { padding-bottom: 2px; }
 
 /* === Grid === */
 .pad { cursor: pointer; transition: opacity 0.15s; }
@@ -736,6 +739,11 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   color: #fff;
   font-weight: 700;
   letter-spacing: 0.5px;
+}
+.audio-start-sub {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.5);
+  margin-top: 8px;
 }
 @keyframes audio-start-pulse {
   0%, 100% { opacity: 0.7; transform: scale(1); }
@@ -1311,6 +1319,7 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   border-radius: 6px; border: 1px solid var(--accent);
   color: var(--accent); font-weight: 700; font-size: 1.1rem;
   transition: background 0.1s, transform 0.1s; user-select: none;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; box-sizing: border-box;
 }
 .detect-candidate-best:hover { background: rgba(160,160,160,0.15); transform: scale(1.05); }
 .detect-candidate {

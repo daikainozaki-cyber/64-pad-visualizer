@@ -1,7 +1,7 @@
 // ========================================
 // AUDIO ENGINE
 // ========================================
-let _soundMuted = true; // Sound OFF by default — user turns on explicitly
+let _soundMuted = false; // Sound ON by default — first pad tap plays immediately
 // AudioWorklet e-piano is default. ?node=1 falls back to Web Audio node version.
 const _useEpianoWorklet = new URLSearchParams(window.location.search).get('node') !== '1';
 // ?amp=twin forces amp preset (dev: V4B/poweramp/cabinet testing)
@@ -354,6 +354,10 @@ function ensureAudioResumed() {
         }
       });
     });
+    // Pre-initialize e-piano worklet so first noteOn plays immediately
+    if (_useEpianoWorklet && typeof epianoWorkletInit === 'function') {
+      epianoWorkletInit(audioCtx, epianoDirectOut || masterComp);
+    }
   }
 }
 document.addEventListener('mousedown', ensureAudioResumed, { once: true });
@@ -694,8 +698,6 @@ function _showFirstTimeHint() {
   hint.textContent = typeof t === 'function' ? t('ui.sound_hint') : 'Select a preset to enable sound';
   hint.style.cssText = 'font-size:0.65rem;color:#a0a0a0;text-align:center;padding:2px 0;animation:hint-pulse 2s ease-in-out infinite';
   header.parentNode.insertBefore(hint, header);
-  // Also show the fullscreen audio overlay for first-time users
-  _showAudioOverlay();
 }
 
 function _hideFirstTimeHint() {
@@ -712,9 +714,14 @@ function dismissAudioOverlay() {
   var overlay = document.getElementById('audio-start-overlay');
   if (overlay) overlay.classList.remove('active');
   ensureAudioResumed();
+  // Pre-initialize e-piano worklet so first noteOn isn't silent
+  if (_useEpianoWorklet && typeof epianoWorkletInit === 'function') {
+    var epDest = epianoDirectOut || masterComp;
+    epianoWorkletInit(audioCtx, epDest);
+  }
   // Auto-select Organ if no engine set yet (first-time user)
   if (_soundMuted) {
-    setEngine('organ');
+    setEngine('epiano');
     // Expand Sound panel so first-time users see presets/volume
     if (typeof soundExpanded !== 'undefined' && !soundExpanded && typeof toggleSoundExpand === 'function') {
       toggleSoundExpand();
@@ -756,8 +763,8 @@ function loadSoundSettings() {
       // Sync dropdown to combined value
       var sel = document.getElementById('organ-preset');
       if (sel) sel.value = AudioState.engineKey + ':' + AudioState.presetKey;
-      // Restore muted state from saved settings (default: muted)
-      _soundMuted = s.soundMuted !== undefined ? s.soundMuted : true;
+      // Restore muted state from saved settings (default: unmuted)
+      _soundMuted = s.soundMuted !== undefined ? s.soundMuted : false;
       _updateMuteBtn();
     }
     ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut','snd-af-depth','snd-af-speed','snd-af-q','snd-drive'].forEach(id => {

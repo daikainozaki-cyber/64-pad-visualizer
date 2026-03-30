@@ -47,6 +47,7 @@ const AppState = {
   velCompand: 0,     // -64 to +64: dynamic range compress(+)/expand(-)
   velRange: 127,     // 1-127: max output velocity
   showTips: true,    // startup tips for returning users
+  showBadges: true,  // voicing box badge (A, B, C…) visibility
 };
 
 const BuilderState = {
@@ -188,6 +189,7 @@ function saveAppSettings() {
       banks: BankState.banks,
       activeBankId: BankState.activeBankId,
       showTips: AppState.showTips,
+      showBadges: AppState.showBadges,
     };
     localStorage.setItem('64pad-settings', JSON.stringify(s));
   } catch(_) {}
@@ -222,6 +224,7 @@ function loadAppSettings() {
     if (s.showParallelKey !== undefined) AppState.showParallelKey = s.showParallelKey;
     if (s.showHarmonicFn !== undefined) AppState.showHarmonicFn = s.showHarmonicFn;
     if (s.showTips === false) AppState.showTips = false;
+    if (s.showBadges !== undefined) AppState.showBadges = s.showBadges;
     // Migration: banks
     if (Array.isArray(s.banks) && s.banks.length > 0) {
       BankState.banks = s.banks;

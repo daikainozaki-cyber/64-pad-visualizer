@@ -289,6 +289,10 @@ flangerMix.connect(masterReverb);
 // Both coexist: amp's spring reverb colors the tone, master reverb adds room acoustics.
 const epianoDirectOut = audioCtx.createGain();
 epianoDirectOut.gain.setValueAtTime(0.49, 0); // urinami-san default VOL
+// Amp output: worklet (with internal amp chain) bypasses DI effects chain → masterComp direct
+const epianoAmpOut = audioCtx.createGain();
+epianoAmpOut.gain.setValueAtTime(0.49, 0);
+epianoAmpOut.connect(masterComp);
 // Master drive WaveShaper for e-piano (post-PU, pre-effects).
 // Per-voice saturation doesn't work for worklet (single output node).
 // This WaveShaper adds nonlinearity → shifts spectral centroid → bell character.
@@ -862,8 +866,8 @@ function noteOn(midi, velocity, poly, _retries) {
     var epPreset = EP_AMP_PRESETS[EpState.preset];
     epianoReverbSend.gain.setValueAtTime(1.0, audioCtx.currentTime);
     envelope = _useEpianoWorklet
-      ? epianoWorkletNoteOn(audioCtx, midi, velocity, epianoDirectOut)
-      : epianoNoteOn(audioCtx, midi, velocity, epianoDirectOut);
+      ? epianoWorkletNoteOn(audioCtx, midi, velocity, epianoAmpOut)  // amp chain in worklet → bypass DI effects
+      : epianoNoteOn(audioCtx, midi, velocity, epianoDirectOut);     // non-worklet → DI effects chain
   } else if (AudioState.instrument.sampler) {
     envelope = _samplerNoteOn(AudioState.instrument.sampler, midi, velocity, sat.input);
   } else {

@@ -1117,8 +1117,11 @@ function computeTonestackBiquads(bass, mid, treble, bright, fs) {
   var b = bass < 0 ? 0 : (bass > 1 ? 1 : bass);
   var m = mid < 0 ? 0 : (mid > 1 ? 1 : mid);
   var t = treble < 0 ? 0 : (treble > 1 ? 1 : treble);
+  // DC blocking removed: coupling HPF (3.4Hz) already handles DC.
+  // Real Fender tonestack has no separate DC block — coupling cap is upstream.
+  // The 30Hz HPF created subsonic transients at release → V2B LUT converted
+  // them to audible harmonics → sounded like mechanical release noise.
   return [
-    biquadHighpass(30, 0.707, fs),                             // DC blocking (passive network)
     biquadLowShelf(100, -16 + b * 16, fs),                    // Bass: -16 to 0 dB at 100Hz
     biquadPeaking(600, 0.8, -17 + m * 14, fs),                // Mid scoop: -17 to -3 dB, Q=0.8 (Fender TMB)
     biquadHighShelf(bright ? 1500 : 3000, -14 + t * 14, fs)   // Treble: -14 to 0 dB
@@ -1293,7 +1296,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.vCouplingState = new Float32Array(MAX_VOICES * 2);
 
     // Per-voice tonestack biquad states: 4 filters × 2 states = 8 per voice
-    this.vTsState      = new Float32Array(MAX_VOICES * 8);
+    this.vTsState      = new Float32Array(MAX_VOICES * 6); // 3 filters × 2 states (DC HPF removed)
 
     // Per-voice harp LCR filter states (both DI and amp paths)
     // Physical: 73 PU series L=1.2H + cable C=650pF + Vol R=25kΩ → f₀=5700Hz, Q=1.7
@@ -1970,7 +1973,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Reset filter states
     this.vCouplingState[vi * 2] = 0;
     this.vCouplingState[vi * 2 + 1] = 0;
-    for (var j = 0; j < 8; j++) this.vTsState[vi * 8 + j] = 0;
+    for (var j = 0; j < 6; j++) this.vTsState[vi * 6 + j] = 0;
     this.vHarpLCRState[vi * 2] = 0;
     this.vHarpLCRState[vi * 2 + 1] = 0;
     _os2x_prev[vi * 2 + _OS2X_PREAMP] = 0;
@@ -2044,8 +2047,6 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         this.vReleaseMidAmp[i] = RELEASE_MID_SCALE * currentAmp;
         this.vReleaseRingAmp[i] = RELEASE_RING_SCALE * currentAmp;
         this.vReleaseNoiseAge[i] = 0;
-        this.vReleaseBPFState[i * 2] = 0;
-        this.vReleaseBPFState[i * 2 + 1] = 0;
         this.vReleaseMidBPFState[i * 2] = 0;
         this.vReleaseMidBPFState[i * 2 + 1] = 0;
       }
@@ -2398,10 +2399,10 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
             sig *= this.cfGain;
           }
 
-          // --- 6. Tonestack (4 × biquad IIR) ---
+          // --- 6. Tonestack (3 × biquad IIR, DC HPF removed) ---
           if (this.useTonestack) {
-            var tsBase = v * 8;
-            for (var f = 0; f < 4; f++) {
+            var tsBase = v * 6;
+            for (var f = 0; f < 3; f++) {
               var coeff = this.tsCoeffs[f];
               var sOff = tsBase + f * 2;
               var cb0 = coeff[0], cb1 = coeff[1], cb2 = coeff[2], ca1 = coeff[3], ca2 = coeff[4];
@@ -2426,10 +2427,12 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
             sig *= this.volumePot;
           }
 
-          // --- 8. V2B recovery amp (12AX7, gain=57) ---
+          // --- 8. V2B recovery amp (gain only, LUT bypassed) ---
+          // LUT bypass: tsInsertionLoss=0.005 puts V2B input at ~0.00006 (0.03 LUT steps).
+          // At this level, LUT≈linear (no tube character) but creates release transient
+          // artifacts. Gain-only is sonically identical until tsInsertionLoss is corrected
+          // to physical value (~0.2). Re-enable LUT when gain chain is recalibrated.
           if (this.use2ndPreamp) {
-            if (this._dbgLastV2Bin !== undefined) this._dbgLastV2Bin = sig; // DEBUG
-            sig = lutLookup(this.preampLUT, sig);
             sig *= this.v2bGain;
           }
 

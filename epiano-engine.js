@@ -50,7 +50,7 @@ var EpState = {
   tonestackMid: 0.5,       // 0..1
   tonestackTreble: 0.5,    // 0..1
   powerampDrive: 1.0,      // 0.5..3.0
-  preset: 'Rhodes Stage + Twin',
+  preset: 'Rhodes DI',  // DI default. Amp chain (Stage+Twin) is WIP — gain staging needs recalibration.
   // Tine/tonebar/beam mode amplitudes are determined by physics, not user knobs.
   // Year/model variation → presets (Mark I '73, Mark II, Suitcase, etc.)
   // Individual key variation → per-key hash table (_epKeyVariation)
@@ -58,7 +58,7 @@ var EpState = {
   brightSwitch: false,     // AB763 bright cap bypass (increases C1 → more treble)
   springReverbMix: 0.12,   // Spring reverb wet level (Fender "2-3" ≈ 0.08-0.15)
   springDwell: 6.0,        // Spring reverb send drive (V3 driver gain, higher = more saturation)
-  attackNoise: 0.5,        // Mechanical noise (single knob: attack + release)
+  attackNoise: 0,           // Mechanical noise (single knob: attack + release). Default 0.
 };
 
 // ========================================

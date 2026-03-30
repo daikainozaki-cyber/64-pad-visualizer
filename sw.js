@@ -1,42 +1,42 @@
-var CACHE_NAME = '64pad-v4.9.81';
+var CACHE_NAME = '64pad-v4.9.82-debug';
 var ASSETS = [
   './',
   'index.html',
-  'style.css?v=4.9.81',
-  'pad-core/data.js?v=4.9.81',
-  'pad-core/theory.js?v=4.9.81',
-  'pad-core/render.js?v=4.9.81',
-  'pad-core/circle.js?v=4.9.81',
-  'data.js?v=4.9.81',
-  'audio.js?v=4.9.81',
-  'theory.js?v=4.9.81',
-  'tasty-stock.js?v=4.9.81',
-  'staff.js?v=4.9.81',
-  'instruments.js?v=4.9.81',
-  'circle-ui.js?v=4.9.81',
-  'parent-scales-ui.js?v=4.9.81',
-  'play-controls.js?v=4.9.81',
-  'render.js?v=4.9.81',
-  'builder.js?v=4.9.81',
-  'midi.js?v=4.9.81',
-  'plain.js?v=4.9.81',
-  'perform.js?v=4.9.81',
-  'i18n.js?v=4.9.81',
-  'main.js?v=4.9.81',
-  'tutorial-data.js?v=4.9.81',
-  'tutorial.js?v=4.9.81',
-  'lang-en.js?v=4.9.81',
-  'lang-ja.js?v=4.9.81',
-  'lang-zh.js?v=4.9.81',
-  'lang-es.js?v=4.9.81',
-  'lang-fr.js?v=4.9.81',
-  'lang-pt.js?v=4.9.81',
-  'lang-de.js?v=4.9.81',
-  'lang-ko.js?v=4.9.81',
-  'lang-it.js?v=4.9.81',
-  'epiano-engine.js?v=4.9.81',
-  'spring-reverb-processor.js?v=4.9.81',
-  'data/tasty-recipes.json?v=4.9.81',
+  'style.css?v=4.9.82',
+  'pad-core/data.js?v=4.9.82',
+  'pad-core/theory.js?v=4.9.82',
+  'pad-core/render.js?v=4.9.82',
+  'pad-core/circle.js?v=4.9.82',
+  'data.js?v=4.9.82',
+  'audio.js?v=4.9.82',
+  'theory.js?v=4.9.82',
+  'tasty-stock.js?v=4.9.82',
+  'staff.js?v=4.9.82',
+  'instruments.js?v=4.9.82',
+  'circle-ui.js?v=4.9.82',
+  'parent-scales-ui.js?v=4.9.82',
+  'play-controls.js?v=4.9.82',
+  'render.js?v=4.9.82',
+  'builder.js?v=4.9.82',
+  'midi.js?v=4.9.82',
+  'plain.js?v=4.9.82',
+  'perform.js?v=4.9.82',
+  'i18n.js?v=4.9.82',
+  'main.js?v=4.9.82',
+  'tutorial-data.js?v=4.9.82',
+  'tutorial.js?v=4.9.82',
+  'lang-en.js?v=4.9.82',
+  'lang-ja.js?v=4.9.82',
+  'lang-zh.js?v=4.9.82',
+  'lang-es.js?v=4.9.82',
+  'lang-fr.js?v=4.9.82',
+  'lang-pt.js?v=4.9.82',
+  'lang-de.js?v=4.9.82',
+  'lang-ko.js?v=4.9.82',
+  'lang-it.js?v=4.9.82',
+  'epiano-engine.js?v=4.9.82',
+  'spring-reverb-processor.js?v=4.9.82',
+  'data/tasty-recipes.json?v=4.9.82',
   'favicon.svg',
   'img/icon-192.png',
   'img/icon-512.png',
@@ -70,7 +70,12 @@ self.addEventListener('activate', function(e) {
 });
 
 self.addEventListener('fetch', function(e) {
-  // Network first for navigation, cache first for assets
+  // localhost = dev mode: always fetch from network (no stale cache)
+  if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+  // Production: network first for navigation, cache first for assets
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request).catch(function() {

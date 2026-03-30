@@ -498,10 +498,10 @@ const ENGINES = {
   epiano: {
     name: 'E.PIANO',
     presets: {
-      'Rhodes DI':        { epiano: 'Rhodes DI', label: 'Rhodes Clean DI' },
-      // Amp hidden: tube/tonestack/cabinet are stub quality (2026-03-29 urinami-san confirmed)
+      'Rhodes DI':        { epiano: 'Rhodes DI', label: 'Pad Sensei MK1' },
+      // Amp hidden: tube/tonestack/cabinet are WIP (gain staging needs recalibration)
     },
-    defaultPreset: 'Rhodes DI',
+    defaultPreset: 'Rhodes DI',  // internal key unchanged (EP_AMP_PRESETS reference)
   },
 };
 

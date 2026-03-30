@@ -865,9 +865,11 @@ function noteOn(midi, velocity, poly, _retries) {
     // Spring reverb is separate (inside amp chain, controlled by E.Piano Mixer).
     var epPreset = EP_AMP_PRESETS[EpState.preset];
     epianoReverbSend.gain.setValueAtTime(1.0, audioCtx.currentTime);
+    // DI mode → effects chain (epianoDirectOut). Amp mode → masterComp direct (epianoAmpOut).
+    var epDest = (epPreset && epPreset.useCabinet) ? epianoAmpOut : epianoDirectOut;
     envelope = _useEpianoWorklet
-      ? epianoWorkletNoteOn(audioCtx, midi, velocity, epianoAmpOut)  // amp chain in worklet → bypass DI effects
-      : epianoNoteOn(audioCtx, midi, velocity, epianoDirectOut);     // non-worklet → DI effects chain
+      ? epianoWorkletNoteOn(audioCtx, midi, velocity, epDest)
+      : epianoNoteOn(audioCtx, midi, velocity, epianoDirectOut);
   } else if (AudioState.instrument.sampler) {
     envelope = _samplerNoteOn(AudioState.instrument.sampler, midi, velocity, sat.input);
   } else {

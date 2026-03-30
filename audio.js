@@ -503,7 +503,9 @@ const ENGINES = {
     name: 'E.PIANO',
     presets: {
       'Rhodes DI':        { epiano: 'Rhodes DI', label: 'Pad Sensei MK1' },
-      // Amp hidden: tube/tonestack/cabinet are WIP (gain staging needs recalibration)
+      'Rhodes DI + V1A':  { epiano: 'Rhodes DI + V1A', label: 'MK1 + V1A' },
+      'Rhodes DI + V1A+TS': { epiano: 'Rhodes DI + V1A+TS', label: 'MK1 + V1A+TS' },
+      'Rhodes Stage + Twin': { epiano: 'Rhodes Stage + Twin', label: 'MK1 + Twin' },
     },
     defaultPreset: 'Rhodes DI',  // internal key unchanged (EP_AMP_PRESETS reference)
   },

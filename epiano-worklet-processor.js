@@ -1526,6 +1526,11 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Signal CAN exceed ±1 between stages (real amp has 460V+ supply).
     // LUT inputs must stay ≤ ±1 (= ±grid swing of that tube).
     this.inputAtten     = 0.5;    // AB763 Hi input -6dB (68kΩ/68kΩ divider)
+    // V1A grid normalization: maps digital signal to physical grid swing fraction.
+    // Physics: Rhodes 212mV peak → atten(0.5) → 106mV into ±3V grid = 0.035 fraction.
+    // Digital: PU_EMF_SCALE calibrates peak dry≈0.384 → ×atten = 0.192.
+    // gridNorm = 0.035 / 0.192 = 0.18. This is a physical constant, not a tuning knob.
+    this.v1aGridNorm    = 0.18;   // Digital-to-grid-fraction (derived from PU_EMF_SCALE + grid swing)
     this.v1aGain        = 43;     // 12AX7, Rp=100kΩ, Rk=1.5kΩ bypassed
     this.cfGain         = 0.95;   // V2A cathode follower (Vibrato ch only)
     this.tsInsertionLoss = 0.005; // Measured V4.9.70: V2Bout=3.5-6.4 at 0.02. Target V2Bout≈1.0-1.5
@@ -2388,9 +2393,12 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           sig *= this.inputAtten;
 
           // --- 5. Preamp V1A (12AX7 LUT, 2x oversampled) ---
-          // Input ~0.025-0.075 (Rhodes 74mV after -6dB). LUT unity-gain, then ×43 real gain.
-          // Output ~1-3V equivalent. Exceeds ±1 — OK, tonestack handles it linearly.
+          // gridNorm maps digital level to physical grid swing fraction.
+          // Rhodes forte chord: digital 0.192 × gridNorm(0.18) = 0.035 (3.5% of ±3V grid).
+          // LUT output ≈ 0.035 (near-linear, subtle H2). Post-LUT ×43 = physical voltage gain.
+          // Output ~1.5 exceeds ±1 — OK, tonestack is linear.
           sig *= this.preampGain;
+          sig *= this.v1aGridNorm;
           sig = lutLookup2x(this.preampLUT, sig, v, _OS2X_PREAMP);
           sig *= this.v1aGain;
 

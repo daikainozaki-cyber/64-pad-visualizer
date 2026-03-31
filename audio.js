@@ -4,8 +4,6 @@
 let _soundMuted = false; // Sound ON by default — first pad tap plays immediately
 // AudioWorklet e-piano is default. ?node=1 falls back to Web Audio node version.
 const _useEpianoWorklet = new URLSearchParams(window.location.search).get('node') !== '1';
-// ?amp=twin forces amp preset (dev: V4B/poweramp/cabinet testing)
-const _ampPresetParam = new URLSearchParams(window.location.search).get('amp');
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // --- Master audio graph ---
@@ -502,10 +500,8 @@ const ENGINES = {
   epiano: {
     name: 'E.PIANO',
     presets: {
-      'Rhodes DI':        { epiano: 'Rhodes DI', label: 'Pad Sensei MK1' },
-      'Rhodes DI + V1A':  { epiano: 'Rhodes DI + V1A', label: 'MK1 + V1A' },
-      'Rhodes DI + V1A+TS': { epiano: 'Rhodes DI + V1A+TS', label: 'MK1 + V1A+TS' },
-      'Rhodes Stage + Twin': { epiano: 'Rhodes Stage + Twin', label: 'MK1 + Twin' },
+      'Rhodes DI':           { epiano: 'Rhodes DI', label: 'Pad Sensei MK1' },
+      'Rhodes Stage + Twin': { epiano: 'Rhodes Stage + Twin', label: 'Pad Sensei Stage' },
     },
     defaultPreset: 'Rhodes DI',  // internal key unchanged (EP_AMP_PRESETS reference)
   },
@@ -619,7 +615,14 @@ function setPreset(name) {
 function _updateEpMixerVisibility() {
   var sec = document.getElementById('ep-mixer-section');
   if (!sec) return;
-  sec.style.display = (AudioState.instrument && AudioState.instrument.epiano) ? '' : 'none';
+  var isEpiano = AudioState.instrument && AudioState.instrument.epiano;
+  sec.style.display = isEpiano ? '' : 'none';
+  // Tonestack: visible when preset has useTonestack (Stage)
+  var tsSec = document.getElementById('ep-tonestack-section');
+  if (tsSec) {
+    var preset = isEpiano ? EP_AMP_PRESETS[AudioState.instrument.epiano] : null;
+    tsSec.style.display = (preset && preset.useTonestack) ? '' : 'none';
+  }
 }
 
 function _saveEpMixer() {
@@ -629,6 +632,10 @@ function _saveEpMixer() {
       springReverbMix: EpState.springReverbMix,
       springDwell: EpState.springDwell,
       attackNoise: EpState.attackNoise,
+      tonestackBass: EpState.tonestackBass,
+      tonestackMid: EpState.tonestackMid,
+      tonestackTreble: EpState.tonestackTreble,
+      volumePot: EpState.volumePot,
     }));
   } catch(_) {}
 }
@@ -646,8 +653,13 @@ function _loadEpMixer() {
     var s = JSON.parse(raw);
     // pickupSymmetry: always use HTML default (physics-calibrated).
     // Old localStorage may have stale values from before PU model changes.
-    ['springReverbMix','springDwell','attackNoise'].forEach(function(key) {
+    ['springReverbMix','springDwell','attackNoise','tonestackBass','tonestackMid','tonestackTreble','volumePot'].forEach(function(key) {
       if (s[key] !== undefined) EpState[key] = s[key];
+    });
+    // Sync tonestack sliders from loaded values
+    [['ep-ts-bass','ep-ts-bass-val','tonestackBass'],['ep-ts-mid','ep-ts-mid-val','tonestackMid'],['ep-ts-treble','ep-ts-treble-val','tonestackTreble'],['ep-amp-vol','ep-amp-vol-val','volumePot']].forEach(function(t) {
+      var sl = document.getElementById(t[0]), vl = document.getElementById(t[1]);
+      if (sl && vl && s[t[2]] !== undefined) { sl.value = s[t[2]]; vl.textContent = parseFloat(s[t[2]]).toFixed(2); }
     });
     // MECHANICAL knob controls all 3 noise params equally
     if (s.attackNoise !== undefined) {
@@ -866,18 +878,15 @@ function noteOn(midi, velocity, poly, _retries) {
   if (AudioState.instrument.epiano) {
     // Physics engine: bypass per-voice saturation (physics chain has 3 nonlinear stages)
     if (sat.cleanup) sat.cleanup();
-    EpState.preset = _ampPresetParam === 'twin' ? 'Rhodes Stage + Twin'
-                   : _ampPresetParam === 'suit' ? 'Rhodes Suitcase'
-                   : _ampPresetParam === 'wurl' ? 'Wurlitzer 200A'
-                   : AudioState.instrument.epiano;
+    EpState.preset = AudioState.instrument.epiano;
     // Room reverb always available (REV knob controls level).
     // Spring reverb is separate (inside amp chain, controlled by E.Piano Mixer).
     var epPreset = EP_AMP_PRESETS[EpState.preset];
     epianoReverbSend.gain.setValueAtTime(1.0, audioCtx.currentTime);
-    // DI mode → effects chain (epianoDirectOut). Amp mode → masterComp direct (epianoAmpOut).
-    var epDest = (epPreset && epPreset.useCabinet) ? epianoAmpOut : epianoDirectOut;
+    // Worklet always → epianoDirectOut (effects chain applies to both MK1 and Stage).
+    // Amp chain is internal to worklet; external effects (trem/phase/rev) stack on top.
     envelope = _useEpianoWorklet
-      ? epianoWorkletNoteOn(audioCtx, midi, velocity, epDest)
+      ? epianoWorkletNoteOn(audioCtx, midi, velocity, epianoDirectOut)
       : epianoNoteOn(audioCtx, midi, velocity, epianoDirectOut);
   } else if (AudioState.instrument.sampler) {
     envelope = _samplerNoteOn(AudioState.instrument.sampler, midi, velocity, sat.input);
@@ -1324,49 +1333,35 @@ onReady(() => {
   _loadEpMixer();
   _updateEpMixerVisibility();
 
-  // --- AMP CHAIN dev sliders (shown with ?amp=twin, AFTER mixer visibility) ---
-  if (_ampPresetParam) {
-    var ampSec = document.getElementById('ep-amp-section');
-    if (ampSec) ampSec.style.display = '';
-
-    function _ampSlider(id, valId, param, fmt) {
-      var sl = document.getElementById(id);
-      var vl = document.getElementById(valId);
-      if (!sl || !vl) return;
-      sl.addEventListener('input', function() {
-        var v = parseFloat(sl.value);
-        vl.textContent = fmt ? fmt(v) : v.toFixed(2);
-        var msg = {};
-        msg[param] = v;
-        if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
-          epianoWorkletUpdateParams(msg);
-        }
-      });
-    }
-    _ampSlider('ep-v1a-gain', 'ep-v1a-gain-val', 'v1aGain', function(v) { return v.toFixed(0); });
-    _ampSlider('ep-v2b-gain', 'ep-v2b-gain-val', 'v2bGain', function(v) { return v.toFixed(0); });
-    _ampSlider('ep-v4b-gain', 'ep-v4b-gain-val', 'v4bGain', function(v) { return v.toFixed(1); });
-    _ampSlider('ep-pwr-gain', 'ep-pwr-gain-val', 'powerGain', function(v) { return v.toFixed(2); });
-    _ampSlider('ep-cab-gain', 'ep-cab-gain-val', 'cabinetGain', function(v) { return v.toFixed(1); });
-    _ampSlider('ep-cab-hpf', 'ep-cab-hpf-val', 'cabHPFFreq', function(v) { return v.toFixed(0); });
-    _ampSlider('ep-cab-peak', 'ep-cab-peak-val', 'cabPeakFreq', function(v) { return v.toFixed(0); });
-    _ampSlider('ep-cab-lpf', 'ep-cab-lpf-val', 'cabLPFFreq', function(v) { return v.toFixed(0); });
-    // Tonestack (Bass/Mid/Treble → worklet recomputes biquad coefficients)
-    function _tsSlider(id, valId, param) {
-      var sl = document.getElementById(id);
-      var vl = document.getElementById(valId);
-      if (!sl || !vl) return;
-      sl.addEventListener('input', function() {
-        var v = parseFloat(sl.value);
-        vl.textContent = v.toFixed(2);
-        EpState['tonestack' + param.charAt(0).toUpperCase() + param.slice(1)] = v;
-        if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
-          epianoWorkletUpdateParams({});
-        }
-      });
-    }
-    _tsSlider('ep-ts-bass', 'ep-ts-bass-val', 'bass');
-    _tsSlider('ep-ts-mid', 'ep-ts-mid-val', 'mid');
-    _tsSlider('ep-ts-treble', 'ep-ts-treble-val', 'treble');
+  // --- Tonestack sliders (visible when Stage preset selected) ---
+  function _tsSlider(id, valId, param) {
+    var sl = document.getElementById(id);
+    var vl = document.getElementById(valId);
+    if (!sl || !vl) return;
+    sl.addEventListener('input', function() {
+      var v = parseFloat(sl.value);
+      vl.textContent = v.toFixed(2);
+      EpState['tonestack' + param.charAt(0).toUpperCase() + param.slice(1)] = v;
+      if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+        epianoWorkletUpdateParams({});
+      }
+      _saveEpMixer();
+    });
   }
+  _tsSlider('ep-ts-bass', 'ep-ts-bass-val', 'bass');
+  _tsSlider('ep-ts-mid', 'ep-ts-mid-val', 'mid');
+  _tsSlider('ep-ts-treble', 'ep-ts-treble-val', 'treble');
+
+  // --- Amp Volume Pot (controls drive into V2B/V4B → more volume = more distortion) ---
+  var ampVolSlider = document.getElementById('ep-amp-vol');
+  var ampVolVal = document.getElementById('ep-amp-vol-val');
+  if (ampVolSlider && ampVolVal) ampVolSlider.addEventListener('input', function() {
+    var v = parseFloat(ampVolSlider.value);
+    ampVolVal.textContent = v.toFixed(2);
+    EpState.volumePot = v;
+    if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      epianoWorkletUpdateParams({ volumePot: v });
+    }
+    _saveEpMixer();
+  });
 });

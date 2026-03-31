@@ -1533,12 +1533,12 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.v1aGridNorm    = 0.18;   // Digital-to-grid-fraction (derived from PU_EMF_SCALE + grid swing)
     this.v1aGain        = 43;     // 12AX7, Rp=100kΩ, Rk=1.5kΩ bypassed
     this.cfGain         = 0.95;   // V2A cathode follower (Vibrato ch only)
-    this.tsInsertionLoss = 0.005; // Measured V4.9.70: V2Bout=3.5-6.4 at 0.02. Target V2Bout≈1.0-1.5
+    this.tsInsertionLoss = 0.2;   // AB763 passive TMB network: -14dB (physical value from Yeh/Smith)
     this.v2bGain        = 57;     // 12AX7, Rk=820Ω shared cathode with V4A
     this.dryBusGain     = 0.7;
     this.v4bGain        = 2;      // 12AX7, V4B bloom (unity-norm + ×2 real gain)
     this.powerGain      = 1.14;   // 6L6×4 ×25-30 / OT ÷22 ≈ 1.14 (LINEAR for Rhodes)
-    this.cabinetGain    = 3.0;    // Final output scaling (tsInsertionLoss=0.005 needs more output gain)
+    this.cabinetGain    = 0.08;   // Adjusted: tsInsertionLoss 40× higher → output 40× louder → cab gain ÷40
     this.v4aGain        = 5.0;    // reverb recovery
     this.reverbPot      = 0.12;
 
@@ -2444,9 +2444,6 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
             sig *= this.v2bGain;
           }
 
-          // --- DEBUG: per-voice V2B output peak + V2B input ---
-          if (this._dbgPeakV2B !== undefined && Math.abs(sig) > this._dbgPeakV2B) this._dbgPeakV2B = Math.abs(sig);
-          if (this._dbgPeakV2Bin !== undefined && Math.abs(this._dbgLastV2Bin) > this._dbgPeakV2Bin) this._dbgPeakV2Bin = Math.abs(this._dbgLastV2Bin);
           // Sum to dry bus
           drySum += sig;
 
@@ -2641,15 +2638,6 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         // 15.4V(V2B) × 0.5(Vol) × 0.32(divider) = 2.46V → within ±3V grid swing.
         // Forte chord: 0.82 normalized → subtle soft-clip = bloom (NOT hard distortion).
         var ampSig = (drySum + wetSignal) * this.rhodesLevel * 0.32;
-        // --- DEBUG: gain staging via MessagePort (worklet console.log not visible) ---
-        if (this._dbgCount === undefined) { this._dbgCount = 0; this._dbgPeakV4B = 0; this._dbgPeakDry = 0; this._dbgPeakV2B = 0; this._dbgPeakV2Bin = 0; this._dbgLastV2Bin = 0; }
-        if (Math.abs(ampSig) > this._dbgPeakV4B) this._dbgPeakV4B = Math.abs(ampSig);
-        if (Math.abs(drySum) > this._dbgPeakDry) this._dbgPeakDry = Math.abs(drySum);
-        this._dbgCount++;
-        if (this._dbgCount % 24000 === 0 && (this._dbgPeakV4B > 0.001 || this._dbgPeakDry > 0.001)) {
-          this.port.postMessage({ type: 'debug', v4bIn: this._dbgPeakV4B, dry: this._dbgPeakDry, v2b: this._dbgPeakV2B, v2bIn: this._dbgPeakV2Bin });
-          this._dbgPeakV4B = 0; this._dbgPeakDry = 0; this._dbgPeakV2B = 0; this._dbgPeakV2Bin = 0;
-        }
         ampSig = lutLookup(this.v4bLUT, ampSig);
         ampSig *= this.v4bGain;
 

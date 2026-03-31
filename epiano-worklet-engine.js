@@ -55,13 +55,6 @@ function epianoWorkletInit(ctx, masterDest) {
     // ch0 → masterDest (worklet output is already fully processed)
     _epw_node.connect(masterDest);
 
-    // Debug: forward worklet gain measurements to main-thread console
-    _epw_node.port.onmessage = function(e) {
-      if (e.data && e.data.type === 'debug') {
-        console.log('[GAIN] V2Bin=' + (e.data.v2bIn||0).toFixed(4) + ' V2Bout=' + e.data.v2b.toFixed(4) + ' dry=' + e.data.dry.toFixed(4) + ' V4Bin=' + e.data.v4bIn.toFixed(4));
-      }
-    };
-
     _epw_initialized = true;
 
     // Send initial parameters
@@ -117,7 +110,7 @@ function _epwSendParams() {
     tsTreble: EpState.tonestackTreble,
     brightSwitch: EpState.brightSwitch,
     powerampDrive: EpState.powerampDrive,
-    volumePot: 0.5,
+    volumePot: EpState.volumePot,
     springReverbMix: EpState.springReverbMix,
     springDwell: EpState.springDwell,
     use2ndPreamp: preset.preampType === '12AX7' && EpState.use2ndPreamp,

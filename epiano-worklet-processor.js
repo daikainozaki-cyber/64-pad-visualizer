@@ -599,6 +599,7 @@ function tipDisplacementFactor(midi) {
 var TINE_EI = 180e9 * Math.PI * Math.pow(1e-3, 4) / 4; // 1.414e-4 N⋅m²
 var TINE_A4_RAW = 0; // cached: A4 raw amplitude for normalization to LUT coordinates
 
+
 // --- Hall (1986) correction: DISABLED ---
 // Hall (1986) "Piano string excitation in the case of small hammer mass" assumes
 // light hammer / heavy string (piano). Rhodes is the OPPOSITE: heavy hammer (30g)
@@ -710,10 +711,82 @@ function lutLookup(lut, x) {
   return lut[idx] + frac * (lut[idx + 1] - lut[idx]);
 }
 
-// --- 2x oversampled LUT lookup (matches WaveShaperNode oversample='2x') ---
-// Reduces aliasing from nonlinear stages (preamp, poweramp).
+// --- LUT lookup (cubic Catmull-Rom interpolation) ---
+// C1 continuous: first derivative is continuous across LUT boundaries.
+// Eliminates the kinks of linear interpolation that create non-harmonic artifacts.
+// Cost: 4 LUT reads + ~10 multiplies per sample (vs 2 reads + 1 multiply for linear).
+// Use for waveshaper stages (V4B, PI) where interpolation quality matters.
+function lutLookupCubic(lut, x) {
+  var pos = (x * 0.5 + 0.5) * LUT_MASK;
+  if (pos < 0) pos = 0;
+  if (pos > LUT_MASK) pos = LUT_MASK;
+  var idx = pos | 0;
+  var t = pos - idx;
+  // 4 sample points: p0, p1, p2, p3 (clamped at boundaries)
+  var i0 = idx > 0 ? idx - 1 : 0;
+  var i1 = idx;
+  var i2 = idx < LUT_MASK ? idx + 1 : LUT_MASK;
+  var i3 = idx < LUT_MASK - 1 ? idx + 2 : LUT_MASK;
+  var p0 = lut[i0], p1 = lut[i1], p2 = lut[i2], p3 = lut[i3];
+  // Catmull-Rom: tangents = (next - prev) / 2
+  // y = ((2p1-2p2+m0+m1)t³ + (-3p1+3p2-2m0-m1)t² + m0·t + p1)
+  // where m0 = (p2-p0)/2, m1 = (p3-p1)/2
+  var m0 = (p2 - p0) * 0.5;
+  var m1 = (p3 - p1) * 0.5;
+  var t2 = t * t;
+  var t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * p1 + (t3 - 2 * t2 + t) * m0 +
+         (-2 * t3 + 3 * t2) * p2 + (t3 - t2) * m1;
+}
+
+// --- ADAA: Antiderivative Anti-Aliasing (Parker et al. 2016) ---
+// Mathematically exact band-limited nonlinear processing.
+// For waveshaper f(x), pre-compute F(x) = ∫f(x)dx (antiderivative).
+// Output = (F(x_n) - F(x_{n-1})) / (x_n - x_{n-1})  when |x_n - x_{n-1}| > ε
+//        = f(x_n)                                       when |x_n - x_{n-1}| ≤ ε
+// Cost: 2 LUT lookups (antiderivative) + 1 division per sample.
+// Zero aliasing regardless of input frequency or nonlinearity depth.
+
+// Compute antiderivative LUT from a waveshaper LUT (trapezoidal integration).
+// Input LUT maps [-1,+1] → f(x). Output ADAA LUT maps [-1,+1] → F(x) = ∫f(x)dx.
+// The integration variable is the normalized x coordinate (not the index).
+function computeADAALut(lut) {
+  var adaa = new Float32Array(LUT_SIZE);
+  var dx = 2.0 / LUT_MASK; // step size in x-space: [-1,+1] over LUT_SIZE samples
+  adaa[0] = 0;
+  for (var i = 1; i < LUT_SIZE; i++) {
+    // Trapezoidal rule: F[i] = F[i-1] + (f[i-1] + f[i]) / 2 × dx
+    adaa[i] = adaa[i - 1] + (lut[i - 1] + lut[i]) * 0.5 * dx;
+  }
+  return adaa;
+}
+
+// ADAA LUT lookup: antiderivative interpolation with numerical stability guard.
+// adaaLut = pre-computed antiderivative. lut = original waveshaper (fallback).
+// Returns band-limited f(x) using first-order ADAA.
+var ADAA_EPS = 1e-5; // threshold for x_n ≈ x_{n-1} fallback
+
+function adaaLookup(lut, adaaLut, x, prevX) {
+  var diff = x - prevX;
+  if (diff > ADAA_EPS || diff < -ADAA_EPS) {
+    // Normal ADAA: (F(x_n) - F(x_{n-1})) / (x_n - x_{n-1})
+    // lutLookup works for both lut and adaaLut (same index mapping)
+    return (lutLookup(adaaLut, x) - lutLookup(adaaLut, prevX)) / diff;
+  }
+  // Fallback: direct evaluation (avoids division by ~zero)
+  return lutLookup(lut, x);
+}
+
+// Per-voice ADAA state: previous input sample for each nonlinear stage.
+// [preamp_prev, pu_prev] per voice. V4B is shared (not per-voice).
+var _adaa_prev = new Float32Array(MAX_VOICES * 2);
+var _ADAA_PREAMP = 0;
+var _ADAA_PU = 1;
+// Shared stage (V4B) previous sample — single value, not per-voice.
+var _adaa_v4b_prev = 0;
+
+// --- 2x oversampled LUT lookup (reduces aliasing from nonlinear stages) ---
 // Method: linear-interpolate upsample → 2x LUT → 3-tap halfband downsample.
-// Per-voice state: previous input sample (for interpolation).
 var _os2x_prev = new Float32Array(MAX_VOICES * 2); // [preamp_prev, poweramp_prev] per voice
 var _OS2X_PREAMP = 0;
 var _OS2X_POWER = 1;
@@ -722,12 +795,21 @@ function lutLookup2x(lut, x, voiceIdx, stageIdx) {
   var prevIdx = voiceIdx * 2 + stageIdx;
   var prev = _os2x_prev[prevIdx];
   _os2x_prev[prevIdx] = x;
-  // 2 interpolated samples at 2x rate
-  var mid = (prev + x) * 0.5; // midpoint between previous and current
-  // LUT at both points
+  var mid = (prev + x) * 0.5;
   var y0 = lutLookup(lut, mid);
   var y1 = lutLookup(lut, x);
-  // Halfband downsample: weighted average (simple but effective)
+  return y0 * 0.25 + y1 * 0.75;
+}
+
+// Phase inverter 2x oversampling state (shared stage, not per-voice)
+var _pi_os_prev = 0;
+
+function lutLookup2x_shared(lut, x) {
+  var prev = _pi_os_prev;
+  _pi_os_prev = x;
+  var mid = (prev + x) * 0.5;
+  var y0 = lutLookup(lut, mid);
+  var y1 = lutLookup(lut, x);
   return y0 * 0.25 + y1 * 0.75;
 }
 
@@ -1066,6 +1148,60 @@ function computePowerampLUT() {
   return lut;
 }
 
+function computePILUT() {
+  // 12AT7 Long Tail Pair (AB763 Twin Reverb V6 phase inverter)
+  // LTP: differential pair — two triodes sharing a tail resistor.
+  // Input drives triodeA grid; triodeB grid is AC-grounded.
+  // Differential output = Vp_b - Vp_a → naturally asymmetric clipping.
+  // This asymmetry produces even harmonics → "warm" distortion character.
+  //
+  // AB763 circuit: B+=420V, Rp=100kΩ (both plates), Rt=22kΩ (tail to ground)
+  // Tail current ≈ 420V / (22kΩ + 2×100kΩ) ≈ 1.9mA shared between triodes.
+  // Bias: Vgk ≈ -1.8V (from tail current × Rt/2 division)
+  // Grid swing: ±30V (V4B plate through 220kΩ mixing resistor)
+  var lut = new Float32Array(LUT_SIZE);
+  var mu = 60, ex = 1.35, kG1 = 460, kP = 300, kVB = 300;
+  var Vb = 420, Rp = 100000, Vgk_bias = -1.8, gridSwing = 30.0;
+  var rawOut = new Float32Array(LUT_SIZE);
+  for (var i = 0; i < LUT_SIZE; i++) {
+    var x = (i / (LUT_SIZE - 1)) * 2 - 1; // [-1, +1]
+    var Vin = x * gridSwing;
+    // Triode A: driven by input (bias + input)
+    var Vgk_a = Vgk_bias + Vin;
+    if (Vgk_a > 0.3) Vgk_a = 0.3 + (Vgk_a - 0.3) * 0.02; // grid current limiting
+    var Vp_a = 210; // initial guess
+    for (var iter = 0; iter < 3; iter++) {
+      var E1a = Math.log(1 + Math.exp(kP * (1 / mu + Vgk_a / Math.sqrt(kVB + Vp_a * Vp_a)))) / kP;
+      var Ip_a = Math.pow(Math.max(E1a, 0), ex) / kG1;
+      Vp_a = Vb - Ip_a * Rp;
+      if (Vp_a < 0) Vp_a = 0;
+    }
+    // Triode B: grounded grid (bias - input via tail coupling)
+    var Vgk_b = Vgk_bias - Vin;
+    if (Vgk_b > 0.3) Vgk_b = 0.3 + (Vgk_b - 0.3) * 0.02;
+    var Vp_b = 210;
+    for (var iter = 0; iter < 3; iter++) {
+      var E1b = Math.log(1 + Math.exp(kP * (1 / mu + Vgk_b / Math.sqrt(kVB + Vp_b * Vp_b)))) / kP;
+      var Ip_b = Math.pow(Math.max(E1b, 0), ex) / kG1;
+      Vp_b = Vb - Ip_b * Rp;
+      if (Vp_b < 0) Vp_b = 0;
+    }
+    // Differential output: Vp_b - Vp_a (inverted by convention)
+    rawOut[i] = Vp_b - Vp_a;
+  }
+  // Normalize: remove DC offset, scale to [-1, +1]
+  var center = rawOut[LUT_SIZE >> 1];
+  var maxSwing = 0;
+  for (var i = 0; i < LUT_SIZE; i++) {
+    rawOut[i] -= center;
+    if (Math.abs(rawOut[i]) > maxSwing) maxSwing = Math.abs(rawOut[i]);
+  }
+  if (maxSwing > 0) {
+    for (var i = 0; i < LUT_SIZE; i++) lut[i] = rawOut[i] / maxSwing;
+  }
+  return lut;
+}
+
 function computeV3DriverLUT() {
   // Exact copy of epiano-engine.js computeV3DriverLUT_12AT7()
   // 12AT7 reverb driver — Koren model, both triode sections paralleled
@@ -1200,9 +1336,10 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
     // Per-voice PU LUT (each voice gets its own based on register)
     this.vPuLUT        = new Array(MAX_VOICES);
+    this.vPuADAA       = new Array(MAX_VOICES);        // per-voice PU antiderivative LUT
     this.vQRange       = new Float32Array(MAX_VOICES); // LUT physical range per voice
     this.vPosScale     = new Float32Array(MAX_VOICES); // velocity-based position → old displacement scale
-    for (var i = 0; i < MAX_VOICES; i++) this.vPuLUT[i] = null;
+    for (var i = 0; i < MAX_VOICES; i++) { this.vPuLUT[i] = null; this.vPuADAA[i] = null; }
 
     // --- 2D Whirling: horizontal fundamental oscillator per voice ---
     // Physics: tine cross-section ≈ circular → 2 axes of similar stiffness.
@@ -1456,8 +1593,15 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.v4bLUT = normalizeLUTUnityGain(computePreampLUT());
     // Poweramp (6L6 push-pull, unity-gain normalized) — worklet-internal
     this.powerampLUT = normalizeLUTUnityGain(computePowerampLUT());
-    // Poweramp 2x oversampling state (shared, post-voice-sum)
-    this.paPrevSample = 0;
+    // Phase inverter (12AT7 LTP, unity-gain normalized) — first stage to clip in AB763
+    this.piLUT = normalizeLUTUnityGain(computePILUT());
+
+    // ADAA antiderivative LUTs for all fixed nonlinear stages
+    this.preampADAA_12AX7 = computeADAALut(this.preampLUT_12AX7);
+    this.preampADAA_NE5534 = computeADAALut(this.preampLUT_NE5534);
+    this.preampADAA_BJT = computeADAALut(this.preampLUT_BJT);
+    this.preampADAA = this.preampADAA_12AX7; // active (switches with preset)
+    this.v4bADAA = computeADAALut(this.v4bLUT);
 
     // Cabinet: Jensen C12N 2x12" open-back (parametric EQ from measured data)
     // Framework §7: "帯域窓が音色を定義する"
@@ -1530,15 +1674,18 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Physics: Rhodes 212mV peak → atten(0.5) → 106mV into ±3V grid = 0.035 fraction.
     // Digital: PU_EMF_SCALE calibrates peak dry≈0.384 → ×atten = 0.192.
     // gridNorm = 0.035 / 0.192 = 0.18. This is a physical constant, not a tuning knob.
-    this.v1aGridNorm    = 0.18;   // Digital-to-grid-fraction (derived from PU_EMF_SCALE + grid swing)
-    this.v1aGain        = 43;     // 12AX7, Rp=100kΩ, Rk=1.5kΩ bypassed
+    this.v1aGridNorm    = 0.18;   // (retained for reference / future LUT re-enable)
+    this.v1aGain        = 7.74;   // Net V1A gain: gridNorm(0.18) × tubeGain(43) = 7.74 (LUT bypassed)
     this.cfGain         = 0.95;   // V2A cathode follower (Vibrato ch only)
     this.tsInsertionLoss = 0.2;   // AB763 passive TMB network: -14dB (physical value from Yeh/Smith)
     this.v2bGain        = 57;     // 12AX7, Rk=820Ω shared cathode with V4A
+    this.v2bGridNorm    = 0.25;   // Tonestack output → V2B grid fraction (post-vol signal to ±3V grid)
     this.dryBusGain     = 0.7;
     this.v4bGain        = 2;      // 12AX7, V4B bloom (unity-norm + ×2 real gain)
+    this.piGridNorm     = 0.5;    // V4B plate → 220kΩ mixer → PI grid scaling
+    this.piGain         = 2.0;    // PI output gain (compensates piGridNorm attenuation)
     this.powerGain      = 1.14;   // 6L6×4 ×25-30 / OT ÷22 ≈ 1.14 (LINEAR for Rhodes)
-    this.cabinetGain    = 0.08;   // Adjusted: tsInsertionLoss 40× higher → output 40× louder → cab gain ÷40
+    this.cabinetGain    = 0.5;    // Post-cabinet makeup (compensates 0.32→0.64 V4B drive increase)
     this.v4aGain        = 5.0;    // reverb recovery
     this.reverbPot      = 0.12;
 
@@ -1609,9 +1756,9 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
     // Preset-specific LUT switching
     if (msg.preampType !== undefined) {
-      if (msg.preampType === 'NE5534') this.preampLUT = this.preampLUT_NE5534;
-      else if (msg.preampType === 'BJT') this.preampLUT = this.preampLUT_BJT;
-      else this.preampLUT = this.preampLUT_12AX7;
+      if (msg.preampType === 'NE5534') { this.preampLUT = this.preampLUT_NE5534; this.preampADAA = this.preampADAA_NE5534; }
+      else if (msg.preampType === 'BJT') { this.preampLUT = this.preampLUT_BJT; this.preampADAA = this.preampADAA_BJT; }
+      else { this.preampLUT = this.preampLUT_12AX7; this.preampADAA = this.preampADAA_12AX7; }
     }
     if (msg.pickupType !== undefined) {
       this.pickupType = msg.pickupType || 'rhodes';
@@ -1926,13 +2073,11 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
     var gapMm = puGapMm(midi);
     // qRange: LUT covers [-qRange, +qRange] of physical PU field.
-    // Magnetic dipole (1/r³) field decays steeply → effective nonlinear region is narrow.
-    // Old: qRange = tipFactor (≈1.0 for A4) → puPos ±0.3 at forte = linear = string-like.
-    // Fix: scale by 0.5 → puPos ±0.6 → enters PU nonlinear region → intermodulation
-    //      between fundamental and beam modes → metallic bell character.
-    // Physics: dipole field gradient g'(q) is significant only within ~1 pole radius.
-    //   AlNiCo 5 half-inch (Rp≈6.35mm), tine displacement 0.5-3mm → q/Rp = 0.08-0.47.
-    //   Normalizing to LUT [-1,1] → effective range ≈ 0.5 × tipFactor.
+    // TODO: PU geometry-based qRange alone doesn't solve bass distortion.
+    // puOut ∝ g'(q) × ω₀ — bass ω₀ is small, so PU output is inherently quiet.
+    // Bass distortion in real Rhodes comes from amp-side frequency-dependent
+    // behavior (coupling caps, cathode bypass, PSU sag), not PU alone.
+    // See permanent note: "RhodesのDIバスファット感はPU非線形のパルス生成が..."
     var qRange = tipFactor * 0.4;
     if (qRange < 0.12) qRange = 0.12;
     if (qRange > 0.8) qRange = 0.8;
@@ -1945,14 +2090,16 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     var lverOff = (midi >= 0 && midi < 128) ? KEY_VARIATION[midi * 3] : 0;
     if (this.pickupType === 'wurlitzer') {
       this.vPuLUT[vi] = computePickupLUT_Wurlitzer(this.pickupDistance);
-      this.vPuLUT_h[vi] = null; // no whirling for Wurlitzer (electrostatic, symmetric)
+      this.vPuLUT_h[vi] = null;
     } else if (this.puModel === 'dipole') {
       this.vPuLUT[vi] = computePickupLUT_dipole(this.pickupSymmetry, this.pickupDistance, gapMm, qRange, lverOff);
-      this.vPuLUT_h[vi] = null; // dipole has no horizontal LUT
+      this.vPuLUT_h[vi] = null;
     } else {
       this.vPuLUT[vi] = computePickupLUT(this.pickupSymmetry, this.pickupDistance, gapMm, qRange, lverOff);
       this.vPuLUT_h[vi] = computePickupLUT_horizontal(this.pickupSymmetry, this.pickupDistance, gapMm, qRange, lverOff);
     }
+    // ADAA antiderivative for per-voice PU LUT
+    this.vPuADAA[vi] = this.vPuLUT[vi] ? computeADAALut(this.vPuLUT[vi]) : null;
 
     // --- 2D Whirling: horizontal fundamental oscillator ---
     // Physics: tine cantilever with ~circular cross-section + spring mass asymmetry.
@@ -1981,8 +2128,11 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     for (var j = 0; j < 6; j++) this.vTsState[vi * 6 + j] = 0;
     this.vHarpLCRState[vi * 2] = 0;
     this.vHarpLCRState[vi * 2 + 1] = 0;
+    // Reset oversampling + ADAA state
     _os2x_prev[vi * 2 + _OS2X_PREAMP] = 0;
     _os2x_prev[vi * 2 + _OS2X_POWER] = 0;
+    _adaa_prev[vi * 2 + _ADAA_PREAMP] = 0;
+    _adaa_prev[vi * 2 + _ADAA_PU] = 0;
 
     // Reset release
     this.vReleaseGain[vi] = 1.0;
@@ -2348,11 +2498,11 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         if (this.vPuLUT[v]) {
           var puPos = tinePosition * this.vPosScale[v] / this.vQRange[v];
           // (debug removed)
-          var gPrimeV = lutLookup(this.vPuLUT[v], puPos);
+          var gPrimeV = lutLookup(this.vPuLUT[v], puPos); // PU: g'(q) is a coefficient, not a waveshaper — no oversampling needed
           puOut = gPrimeV * tineVelocity * this.vVelScale[v] * this.vTipFactor[v] * this.puEmfScale;
           // Horizontal contribution (2D whirling)
           if (this.vPuLUT_h[v] && tineHVelocity !== 0) {
-            var gPrimeH = lutLookup(this.vPuLUT_h[v], puPos);
+            var gPrimeH = lutLookup(this.vPuLUT_h[v], puPos); // horizontal: low amplitude, aliasing negligible
             puOut += gPrimeH * tineHVelocity * this.vVelScale[v] * this.vTipFactor[v] * this.puEmfScale;
           }
         } else {
@@ -2397,9 +2547,9 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           // Rhodes forte chord: digital 0.192 × gridNorm(0.18) = 0.035 (3.5% of ±3V grid).
           // LUT output ≈ 0.035 (near-linear, subtle H2). Post-LUT ×43 = physical voltage gain.
           // Output ~1.5 exceeds ±1 — OK, tonestack is linear.
+          // V1A: gain-only (Rhodes signal is <5% of grid swing → V1A operates linearly.
+          // PI handles nonlinear character. LUT removed to eliminate interpolation artifacts.)
           sig *= this.preampGain;
-          sig *= this.v1aGridNorm;
-          sig = lutLookup2x(this.preampLUT, sig, v, _OS2X_PREAMP);
           sig *= this.v1aGain;
 
           // --- 5b. Cathode follower V2A ---
@@ -2435,11 +2585,10 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
             sig *= this.volumePot;
           }
 
-          // --- 8. V2B recovery amp (gain only, LUT bypassed) ---
-          // LUT bypass: tsInsertionLoss=0.005 puts V2B input at ~0.00006 (0.03 LUT steps).
-          // At this level, LUT≈linear (no tube character) but creates release transient
-          // artifacts. Gain-only is sonically identical until tsInsertionLoss is corrected
-          // to physical value (~0.2). Re-enable LUT when gain chain is recalibrated.
+          // --- 8. V2B recovery amp (gain only) ---
+          // V2B LUT disabled: even at tsInsertionLoss=0.2, signal is <5% of LUT range
+          // during release → LUT quantization creates audible noise on release tail.
+          // PI (Step 4) now handles the nonlinear character. V2B is linear gain recovery.
           if (this.use2ndPreamp) {
             sig *= this.v2bGain;
           }
@@ -2637,9 +2786,17 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         // Real circuit: 470kΩ/220kΩ resistive divider at V4B grid passes 32%.
         // 15.4V(V2B) × 0.5(Vol) × 0.32(divider) = 2.46V → within ±3V grid swing.
         // Forte chord: 0.82 normalized → subtle soft-clip = bloom (NOT hard distortion).
-        var ampSig = (drySum + wetSignal) * this.rhodesLevel * 0.32;
-        ampSig = lutLookup(this.v4bLUT, ampSig);
+        var ampSig = (drySum + wetSignal) * this.rhodesLevel * 0.64;
+        // V4B bloom: cubic interpolation (C1 continuous — no kink artifacts)
+        ampSig = lutLookupCubic(this.v4bLUT, ampSig);
         ampSig *= this.v4bGain;
+
+        // Phase inverter: 12AT7 LTP — first stage to clip in AB763 Twin BF channel.
+        // V4B plate (3.8V) → 220kΩ mixing resistor → PI grid.
+        // Asymmetric LTP clipping → even harmonics → "warm" distortion.
+        ampSig *= this.piGridNorm;
+        ampSig = lutLookupCubic(this.piLUT, ampSig);
+        ampSig *= this.piGain;
 
         // Power amp + OT: LINEAR for Rhodes (permanent note: "6L6GC doesn't clip")
         // 6L6×4 gain ×25-30, OT step-down ÷22, net ≈ ×1.14

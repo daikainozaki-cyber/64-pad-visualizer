@@ -371,7 +371,20 @@ function computeAndDrawVoicingBoxes(svg, offsets, targetPC, strokeColor, badgeCo
     const safeIdx = VoicingState.lastBoxes[idx].currentAlt;
     return b.alternatives[safeIdx];
   });
-  drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleableSet);
+  // Save draw params for deferred rendering (compute-then-draw pattern)
+  VoicingState._pendingDraw = { vpArray, strokeColor, badgeColor, dupSet, cycleableSet };
+  if (svg) {
+    drawVoicingBoxes(svg, vpArray, strokeColor, badgeColor, dupSet, cycleableSet);
+  }
+}
+
+// Draw voicing boxes from pre-computed data (call after renderPads)
+function drawPendingVoicingBoxes(svg) {
+  const p = VoicingState._pendingDraw;
+  if (p && svg) {
+    drawVoicingBoxes(svg, p.vpArray, p.strokeColor, p.badgeColor, p.dupSet, p.cycleableSet);
+    VoicingState._pendingDraw = null;
+  }
 }
 
 function calcVoicingOffsets(chordPCS, inversion, drop) {

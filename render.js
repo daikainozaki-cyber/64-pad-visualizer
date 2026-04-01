@@ -411,12 +411,14 @@ function renderVoicingBoxes(svg, state) {
   if ((TastyState.enabled && TastyState.midiNotes.length > 0) ||
       (StockState.enabled && StockState.currentIndex >= 0)) {
     VoicingState.lastBoxes = [];
+    VoicingState._pendingDraw = null;
     return;
   }
   // Reset computed boxes (will be populated if any chord bounding boxes are drawn)
   const hasChordNotes = AppState.mode === 'chord' && activePCS instanceof Set && activePCS.size > 0;
   if (!hasChordNotes) {
     VoicingState.lastBoxes = [];
+    VoicingState._pendingDraw = null;
     if (VoicingState.selectedBoxIdx !== null) resetVoicingSelection();
   }
 
@@ -621,9 +623,14 @@ function render() {
   }
 
   const state = computeRenderState();
+  // Compute voicing boxes BEFORE renderPads so pad dimming uses current box positions
+  const showVoicingBoxes = AppState.mode !== 'input' && !TastyState.enabled && !StockState.enabled && !(_voicingReflectMode && _guitarSyncSource === 'position') && !_stockReflectMode;
+  if (showVoicingBoxes) {
+    renderVoicingBoxes(null, state);  // compute only (updates VoicingState.lastBoxes)
+  }
   renderPads(svg, state);
-  if (AppState.mode !== 'input' && !TastyState.enabled && !StockState.enabled && !(_voicingReflectMode && _guitarSyncSource === 'position') && !_stockReflectMode) {
-    renderVoicingBoxes(svg, state);
+  if (showVoicingBoxes) {
+    drawPendingVoicingBoxes(svg);     // draw voicing box overlays
   }
   renderLegend(state);
 

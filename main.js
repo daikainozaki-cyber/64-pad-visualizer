@@ -644,6 +644,29 @@ function toggleSection(name) {
   } catch(_) {}
 })();
 
+// Update notice banner: show if user hasn't dismissed this version's notice
+(function() {
+  try {
+    var banner = document.getElementById('update-notice');
+    var bannerText = document.getElementById('update-notice-text');
+    if (!banner || !bannerText) return;
+    var msg = bannerText.textContent.trim();
+    if (!msg) return;
+    var ver = document.querySelector('.version-tag');
+    var currentVer = ver ? ver.textContent.trim() : '';
+    var dismissed = localStorage.getItem('64pad-notice-dismissed');
+    if (dismissed === currentVer) return;
+    banner.style.display = '';
+    var closeBtn = document.getElementById('update-notice-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function() {
+        banner.style.display = 'none';
+        if (currentVer) localStorage.setItem('64pad-notice-dismissed', currentVer);
+      });
+    }
+  } catch(_) {}
+})();
+
 // ========================================
 // HEADER TOGGLE (⌘⌥H)
 // ========================================

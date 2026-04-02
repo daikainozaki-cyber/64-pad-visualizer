@@ -629,16 +629,38 @@ function toggleSection(name) {
   } catch(_) {}
 })();
 
-// Update notification: glow tutorial button after SW update
+// Update notification: glow tutorial button + show update banner after SW update
 (function() {
   try {
     if (localStorage.getItem('64pad-just-updated') === '1') {
       localStorage.removeItem('64pad-just-updated');
+      // Glow tutorial button (existing behavior)
       var btn = document.getElementById('tut-btn');
       if (btn) {
         btn.style.animation = 'hint-pulse 1.5s ease-in-out 3';
         btn.style.color = 'var(--accent)';
         setTimeout(function() { btn.style.animation = ''; btn.style.color = ''; }, 5000);
+      }
+      // Show update notice banner
+      var banner = document.getElementById('update-notice');
+      var bannerText = document.getElementById('update-notice-text');
+      if (banner && bannerText) {
+        var msg = bannerText.textContent.trim();
+        if (!msg) return; // Empty message — don't show
+        // Check if user already dismissed this version's banner
+        var ver = document.querySelector('.version-tag');
+        var currentVer = ver ? ver.textContent.trim() : '';
+        var dismissed = localStorage.getItem('64pad-notice-dismissed');
+        if (dismissed === currentVer) return;
+        banner.style.display = '';
+        // Close button
+        var closeBtn = document.getElementById('update-notice-close');
+        if (closeBtn) {
+          closeBtn.addEventListener('click', function() {
+            banner.style.display = 'none';
+            if (currentVer) localStorage.setItem('64pad-notice-dismissed', currentVer);
+          });
+        }
       }
     }
   } catch(_) {}

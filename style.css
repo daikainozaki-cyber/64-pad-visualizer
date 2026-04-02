@@ -1631,3 +1631,53 @@ h1 { font-size: 1.3rem; color: var(--accent); text-align: center; margin-bottom:
   cursor: pointer;
   font-size: 0.7rem;
 }
+
+/* === Update Notice Banner === */
+#update-notice {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  margin: 0 0 8px 0;
+  animation: update-notice-in 0.4s ease-out;
+}
+.update-notice-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  gap: 12px;
+}
+#update-notice-text {
+  font-size: 0.78rem;
+  color: var(--text);
+  line-height: 1.5;
+  flex: 1;
+}
+#update-notice-text a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+#update-notice-text a:hover {
+  color: var(--text);
+}
+#update-notice-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: color 0.2s, background 0.2s;
+}
+#update-notice-close:hover {
+  color: var(--text);
+  background: var(--border);
+}
+@keyframes update-notice-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

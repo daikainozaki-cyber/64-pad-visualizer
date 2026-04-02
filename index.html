@@ -760,7 +760,6 @@ document.addEventListener('click', function(e) {
 </div>
 <script>if(/64-pad-dev|64-pad-chs/.test(location.pathname)){var _h=document.querySelectorAll('#affiliate-section,.ja-affiliate');for(var _i=0;_i<_h.length;_i++)_h[_i].style.display='none';}</script>
 
-
 <script>
 // Language-based affiliate toggle.
 (function(){
@@ -772,6 +771,14 @@ document.addEventListener('click', function(e) {
     for (var i = 0; i < nonJaAff.length; i++) nonJaAff[i].style.display = '';
   }
 })();
+</script>
+
+<!-- HPS members: hide all affiliate links for ad-free experience -->
+<script>
+if (new URLSearchParams(window.location.search).has('hps')) {
+  var _aff = document.querySelectorAll('#affiliate-section, .ja-affiliate');
+  for (var _j = 0; _j < _aff.length; _j++) _aff[_j].style.display = 'none';
+}
 </script>
 
 <!-- Sound Credits -->

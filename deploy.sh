@@ -30,6 +30,15 @@ if command -v npm &> /dev/null && [[ -f "${SCRIPT_DIR}/package.json" ]]; then
     echo ""
 fi
 
+# note RSS からバナー更新
+echo -e "${BLUE}📰 noteバナー更新中...${NC}"
+if python3 "${SCRIPT_DIR}/tools/update_note_banner.py"; then
+    echo -e "${GREEN}✅ バナー更新完了${NC}"
+else
+    echo -e "${RED}⚠️  バナー更新スキップ（既存テキスト維持）${NC}"
+fi
+echo ""
+
 # デプロイ実行
 echo -e "${BLUE}📤 デプロイ中...${NC}"
 rsync -avz \

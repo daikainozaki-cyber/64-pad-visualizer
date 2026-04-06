@@ -509,28 +509,9 @@ const ENGINES = {
   },
 };
 
-// Lazy-load jRhodes3c sampler in background (35MB).
-// Clean DI is playable immediately. Sampler appears in preset list when ready.
-function _lazyLoadSampler() {
-  var script = document.createElement('script');
-  script.src = 'jrhodes3c-samples.js?v=4.8.61';
-  script.onload = function() {
-    if (typeof _jRhodes3c === 'undefined') return;
-    // Add sampler preset to epiano engine
-    ENGINES.epiano.presets['jRhodes3c'] = {
-      sampler: _jRhodes3c,
-      label: '1977 Rhodes Mark I (Sampler)',
-    };
-    // Rebuild preset dropdown to show new option
-    if (typeof renderSoundControls === 'function') renderSoundControls();
-    // Decode sample zones
-    if (typeof _decodeSamplerZones === 'function') _decodeSamplerZones(_jRhodes3c);
-    console.log('[64PE] jRhodes3c sampler loaded (background)');
-  };
-  document.head.appendChild(script);
-}
-// Start loading after page is interactive (2s delay)
-setTimeout(_lazyLoadSampler, 2000);
+// 2026-04-07: jRhodes3c sampler REMOVED.
+// Physical model (Pad Sensei MK1) surpassed sampler — urinami-san confirmed.
+// Saves 35MB lazy-load. Sampler engine code kept in audio.js for future instruments.
 
 // --- Velocity-driven saturation (soft clipping) ---
 let saturationDrive = 0; // 0=off, 0.1-1.0=mild-heavy

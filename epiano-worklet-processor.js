@@ -370,14 +370,23 @@ function bandModeExcitation(xi_center, bandNorm, m) {
 }
 
 function puGapMm(midi) {
-  // 2026-04-07: unified to 0.794mm (well-voiced mid-register reference).
-  // Old: bass/treble=1.588, mid=0.794. This hardcoded 2x gap made the PU LUT
-  // g'(q) curve shallower for bass → killed saturation and dynamic range.
-  // Physics: SM gap is an adjustable voicing range (1/16"-1/8"), not a fixed law.
-  // Well-voiced Rhodes (e.g., Buz Watson 1972) are set uniformly close.
-  // Codex audit 2026-04-07: "immutable bass=1.588 inside LUT is too strong a claim."
-  // Bass 'boom' comes from larger tine displacement (alphaMax), not wider gap.
-  return 0.794;
+  // 2026-04-07: gradual curve instead of step function.
+  // Old: bass/treble=1.588, mid=0.794 (2x step → LUT too shallow for bass).
+  // v1 unified 0.794: bass output exploded → D2以下 silence (PU too close, g'(q) overflow).
+  // v2 gradual: smooth taper from bass (1.1mm) to mid (0.794mm) to treble (1.1mm).
+  // Physics: SM voicing range is 1/16"-1/8" (1.588-3.175mm) adjustable.
+  // Well-voiced Rhodes sits closer than SM max. Bass slightly wider for clearance.
+  var key = midi - 20;
+  if (key < 1) key = 1; if (key > 88) key = 88;
+  if (key <= 30) {
+    // Bass: taper from 1.1mm (key 1) to 0.794mm (key 30)
+    var t = (key - 1) / 29;
+    return 1.1 * (1 - t) + 0.794 * t;
+  }
+  if (key <= 65) return 0.794;
+  // Treble: taper from 0.794mm (key 65) to 1.1mm (key 88)
+  var t2 = (key - 65) / 23;
+  return 0.794 * (1 - t2) + 1.1 * t2;
 }
 
 // --- Escapement distance (SM Figure 4-2) ---
@@ -701,11 +710,15 @@ function computeTineAmplitude(midi, velocity) {
   // The cabinet's open-back cancellation below 180Hz is the physical bass control.
   // DI mode may need a separate bass compensation if re-enabled later.
 
-  // --- Escapement hard clamp (SM Fig 4-2) ---
-  // Tine cannot displace further than the escapement gap.
-  // Normalize to PU coordinates (same 25mm scale as tineAmp).
-  var escNorm = escMm / 25.0;
-  if (result > escNorm) result = escNorm;
+  // --- Escapement hard clamp DISABLED (2026-04-07) ---
+  // Was: cap tineAmp at escMm/25. But escapement limits HAMMER travel,
+  // not tine displacement. Tine amplitude is set by tine stiffness + hammer energy.
+  // L644 velScaled already applies escapement to input energy (correct side).
+  // This output-side clamp was double-counting AND killing bass dynamic range:
+  //   bass escNorm=0.318, but tineAmp with alphaNorm wants ~0.9 → clamped to 0.318.
+  // Codex audit 2026-04-07: "escapement clamp on wrong side of model."
+  // var escNorm = escMm / 25.0;
+  // if (result > escNorm) result = escNorm;
 
   return result;
 }

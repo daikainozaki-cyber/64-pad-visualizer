@@ -1976,13 +1976,14 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     //   → qRange should NOT scale linearly with tipFactor.
     //
     // Fix: compress tipFactor influence with pow(0.15).
-    //   v1 pow(0.3): Bass puPos +22-62%. Urinami-san: "needs more saturation, more DR".
-    //   v2 pow(0.15): much stronger compression + bass floor boost.
-    //   Bass (tipFactor~5): pow(5, 0.15) × 0.4 = 0.50 → puPos_max ≈ 2.0
-    //   Mid  (tipFactor~2): pow(2, 0.15) × 0.4 = 0.44 → puPos_max ≈ 2.3
-    //   A4   (tipFactor~1): pow(1, 0.15) × 0.4 = 0.40 → puPos_max ≈ 2.5 (unchanged)
-    //   → Bass now reaches same nonlinear depth as treble.
-    var qRange = Math.pow(tipFactor, 0.15) * 0.4;
+    //   v1 pow(0.3): Bass puPos +22-62%.
+    //   v2 pow(0.15): urinami-san confirmed "ローズになった".
+    //   v3 fixed 0.35: too much distortion — reverted.
+    //   urinami-san: 歪んじゃダメ。DI is clean. Body without distortion.
+    //   v4: 0.5 — still too much distortion.
+    //   v5: 0.65 — "歪むちょっと前" = just before distortion onset.
+    //   DI should be clean so amp adds distortion only on accents.
+    var qRange = Math.pow(tipFactor, 0.15) * 0.65;
     if (qRange < 0.12) qRange = 0.12;
     if (qRange > 0.8) qRange = 0.8;
     // Position scale factor: converts velocity-based position to old displacement scale.

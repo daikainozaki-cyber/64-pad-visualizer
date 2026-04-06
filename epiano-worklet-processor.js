@@ -2700,8 +2700,11 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         ampSig = lutLookup(this.v4bLUT, ampSig);
         ampSig *= this.v4bGain;
 
-        // Power amp + OT: LINEAR for Rhodes (permanent note: "6L6GC doesn't clip")
-        // 6L6×4 gain ×25-30, OT step-down ÷22, net ≈ ×1.14
+        // Power amp + OT: currently linear placeholder.
+        // TODO: BF breaks up (dynamic bias + coupling C sag). SF has more headroom.
+        // Suitcase (Peterson) = germanium push-pull, entirely different topology.
+        // "6L6 doesn't clip" was a false negative conclusion — see 忘れやすいこと.md.
+        // 6L6×4 gain ×25-30, OT step-down ÷22, net ≈ ×1.14 (SF approximation only)
         ampSig *= this.powerGain;
 
         // Cabinet: Jensen C12N 2x12" open-back (4-stage parametric EQ)

@@ -370,23 +370,11 @@ function bandModeExcitation(xi_center, bandNorm, m) {
 }
 
 function puGapMm(midi) {
-  // 2026-04-07: gradual curve instead of step function.
-  // Old: bass/treble=1.588, mid=0.794 (2x step → LUT too shallow for bass).
-  // v1 unified 0.794: bass output exploded → D2以下 silence (PU too close, g'(q) overflow).
-  // v2 gradual: smooth taper from bass (1.1mm) to mid (0.794mm) to treble (1.1mm).
-  // Physics: SM voicing range is 1/16"-1/8" (1.588-3.175mm) adjustable.
-  // Well-voiced Rhodes sits closer than SM max. Bass slightly wider for clearance.
   var key = midi - 20;
   if (key < 1) key = 1; if (key > 88) key = 88;
-  if (key <= 30) {
-    // Bass: taper from 1.1mm (key 1) to 0.794mm (key 30)
-    var t = (key - 1) / 29;
-    return 1.1 * (1 - t) + 0.794 * t;
-  }
+  if (key <= 30) return 1.588;
   if (key <= 65) return 0.794;
-  // Treble: taper from 0.794mm (key 65) to 1.1mm (key 88)
-  var t2 = (key - 65) / 23;
-  return 0.794 * (1 - t2) + 1.1 * t2;
+  return 1.588;
 }
 
 // --- Escapement distance (SM Figure 4-2) ---
@@ -484,11 +472,7 @@ function getHammerParams(midi, velocity) {
   // F(t) = K·α^1.5·(1 + λ·dα/dt) for each COR value. TODO: derive analytically.
   var spectralBeta = 0.6 * (1 - cor_v);
 
-  // 2026-04-06: expose alpha_max for displacement coupling.
-  // Codex audit: K_H varies 10-15x across keyboard but was NOT feeding into
-  // computeTineAmplitude(). Soft bass hammers (Shore 30, K_H low) produce
-  // larger alpha_max → more physical displacement → more PU drive.
-  return { Tc: Tc, relMass: relMass, cor: cor_v, spectralBeta: spectralBeta, alphaMax: alpha_max };
+  return { Tc: Tc, relMass: relMass, cor: cor_v, spectralBeta: spectralBeta };
 }
 
 // --- Per-key PU vertical offset (Lver) ---
@@ -614,7 +598,6 @@ function tipDisplacementFactor(midi) {
 // Material: ASTM A228 spring steel (Falaize Table 4)
 var TINE_EI = 180e9 * Math.PI * Math.pow(1e-3, 4) / 4; // 1.414e-4 N⋅m²
 var TINE_A4_RAW = 0; // cached: A4 raw amplitude for normalization to LUT coordinates
-var TINE_A4_ALPHA = 0; // cached: A4 alphaMax for hammer compliance normalization
 
 // --- Hall (1986) correction: DISABLED ---
 // Hall (1986) "Piano string excitation in the case of small hammer mass" assumes
@@ -664,17 +647,6 @@ function computeTineAmplitude(midi, velocity) {
   // Raw amplitude: √(m / k) × √(velScaled) × φ — different for every key
   var A_raw = Math.sqrt(m_hammer / k_eff) * Math.sqrt(velScaled) * phi;
 
-  // 2026-04-06: couple hammer compliance (alphaMax) into displacement.
-  // Codex audit: K_H varies 10-15x (Shore 30→wood) but was NOT in this path.
-  // Physics: soft bass hammer (low K_H) → larger Hertz deformation (alphaMax) →
-  //   tine receives more impulse → more physical displacement.
-  // alphaMax = (5 m_eff v² / (4 K_H))^0.4 — already computed in getHammerParams.
-  // IMPORTANT: use fixed velocity (0.5) for compliance comparison only.
-  //   alphaMax depends on v0^0.8 — velocity is already in velScaled.
-  //   We only want the K_H and m_eff variation across the keyboard.
-  var hammerRef = getHammerParams(midi, 0.5); // fixed vel for compliance ratio
-  var alphaScale = hammerRef.alphaMax;
-
   // Compute A4 reference (once) for LUT coordinate normalization
   if (TINE_A4_RAW === 0) {
     var Lr = tineLength(69) * 1e-3; // A4 = MIDI 69
@@ -686,23 +658,14 @@ function computeTineAmplitude(midi, velocity) {
     var xir = Math.min(xsr / Lr, 0.95);
     var phir = modeExcitation(xir, 0);
     TINE_A4_RAW = Math.sqrt(m_ref / k_ref) * 1.0 * phir;
-    // Store A4 alphaMax for normalization (fixed vel=0.5, same as per-key)
-    var hrAlpha = getHammerParams(69, 0.5);
-    TINE_A4_ALPHA = hrAlpha.alphaMax;
   }
-  // Normalize: bass alphaMax / A4 alphaMax. Bass (soft hammer, low K_H) > 1.0.
-  var alphaNorm = alphaScale / Math.max(TINE_A4_ALPHA, 1e-6);
 
   // Map to PU physical coordinates (25mm normalization):
   // A4 forte tip displacement ≈ 1.5mm (Falaize 2017 Fig 10a) → 1.5/25 = 0.06.
   // 2026-03-25: increased to 0.12 to match Gabrielli H2/H3 spectrum with corrected
   // PU Lhor (1.5mm physical). The higher tineAmp drives deeper into PU nonlinearity
   // → H3 rises from -40dB to -12dB. PU_EMF_SCALE halved to maintain output level.
-  // 2026-04-06: multiply by alphaNorm (hammer compliance coupling).
-  //   Bass (Shore 30, low K_H): alphaNorm > 1.0 → more displacement → more PU drive.
-  //   A4 (Shore 70): alphaNorm = 1.0 (reference, unchanged).
-  //   Treble (wood): alphaNorm < 1.0 → less displacement.
-  var result = (A_raw / TINE_A4_RAW) * alphaNorm * 0.12;
+  var result = (A_raw / TINE_A4_RAW) * 0.12;
 
   // --- Bass amplitude rolloff DISABLED (2026-03-30) ---
   // Was: 40-100% taper below E3 for DI mode (bass too boomy).
@@ -710,15 +673,11 @@ function computeTineAmplitude(midi, velocity) {
   // The cabinet's open-back cancellation below 180Hz is the physical bass control.
   // DI mode may need a separate bass compensation if re-enabled later.
 
-  // --- Escapement hard clamp DISABLED (2026-04-07) ---
-  // Was: cap tineAmp at escMm/25. But escapement limits HAMMER travel,
-  // not tine displacement. Tine amplitude is set by tine stiffness + hammer energy.
-  // L644 velScaled already applies escapement to input energy (correct side).
-  // This output-side clamp was double-counting AND killing bass dynamic range:
-  //   bass escNorm=0.318, but tineAmp with alphaNorm wants ~0.9 → clamped to 0.318.
-  // Codex audit 2026-04-07: "escapement clamp on wrong side of model."
-  // var escNorm = escMm / 25.0;
-  // if (result > escNorm) result = escNorm;
+  // --- Escapement hard clamp (SM Fig 4-2) ---
+  // Tine cannot displace further than the escapement gap.
+  // Normalize to PU coordinates (same 25mm scale as tineAmp).
+  var escNorm = escMm / 25.0;
+  if (result > escNorm) result = escNorm;
 
   return result;
 }
@@ -1963,26 +1922,13 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     var gapMm = puGapMm(midi);
     // qRange: LUT covers [-qRange, +qRange] of physical PU field.
     // Magnetic dipole (1/r³) field decays steeply → effective nonlinear region is narrow.
-    //
-    // 2026-04-06 fix (Codex audit + signal path trace):
-    // Old: qRange = tipFactor × 0.4. Bass tipFactor ~5 → qRange 0.8 (capped).
-    //   Result: puPos_max ≈ sin/0.8 = 1.25 → barely reaches PU nonlinear region.
-    //   A4:     puPos_max ≈ sin/0.4 = 2.5  → deep into nonlinear → rich H2/H3.
-    //   Root cause of thin bass: 3× less PU nonlinearity than treble.
-    //
-    // Physics: PU nonlinear region width is set by AlNiCo pole radius (Rp≈6.35mm),
-    //   NOT by tine displacement. Longer tines move more, but the "interesting"
-    //   g'(q) nonlinear zone is the same physical width for every key.
-    //   → qRange should NOT scale linearly with tipFactor.
-    //
-    // Fix: compress tipFactor influence with pow(0.15).
-    //   v1 pow(0.3): Bass puPos +22-62%. Urinami-san: "needs more saturation, more DR".
-    //   v2 pow(0.15): much stronger compression + bass floor boost.
-    //   Bass (tipFactor~5): pow(5, 0.15) × 0.4 = 0.50 → puPos_max ≈ 2.0
-    //   Mid  (tipFactor~2): pow(2, 0.15) × 0.4 = 0.44 → puPos_max ≈ 2.3
-    //   A4   (tipFactor~1): pow(1, 0.15) × 0.4 = 0.40 → puPos_max ≈ 2.5 (unchanged)
-    //   → Bass now reaches same nonlinear depth as treble.
-    var qRange = Math.pow(tipFactor, 0.15) * 0.4;
+    // Old: qRange = tipFactor (≈1.0 for A4) → puPos ±0.3 at forte = linear = string-like.
+    // Fix: scale by 0.5 → puPos ±0.6 → enters PU nonlinear region → intermodulation
+    //      between fundamental and beam modes → metallic bell character.
+    // Physics: dipole field gradient g'(q) is significant only within ~1 pole radius.
+    //   AlNiCo 5 half-inch (Rp≈6.35mm), tine displacement 0.5-3mm → q/Rp = 0.08-0.47.
+    //   Normalizing to LUT [-1,1] → effective range ≈ 0.5 × tipFactor.
+    var qRange = tipFactor * 0.4;
     if (qRange < 0.12) qRange = 0.12;
     if (qRange > 0.8) qRange = 0.8;
     // Position scale factor: converts velocity-based position to old displacement scale.

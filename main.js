@@ -147,27 +147,9 @@ _landscapeMediaQuery.addEventListener('change', handleLandscapeChange);
 // ========================================
 // VERSION UPDATE NOTIFICATION
 // ========================================
-var _versionNoticeShown = (function showVersionNotice() {
-  var ver = document.querySelector('.version-tag');
-  if (!ver) return false;
-  var current = ver.textContent.replace(/^V/, '');
-  var lastSeen = localStorage.getItem('64pad-lastVersion');
-  localStorage.setItem('64pad-lastVersion', current);
-  if (!lastSeen || lastSeen === current) return false;
-  // Version changed — show What's New (takes priority over startup tip)
-  var whatsNew = t('whats_new') || "What's New";
-  var msg = t('whats_new_497') || 'Tremolo is now physically modeled (Peterson incandescent bulb + CdS)! HPS members get Pad Sensei MK1 Suitcase (Ge amp chain physical modeling).';
-  var el = document.createElement('div');
-  el.id = 'startup-tip';
-  el.innerHTML = '<span class="tip-text">\u2728 <b>' + whatsNew + ' (' + current + ')</b> \u2014 ' + msg + '</span>' +
-    '<span class="tip-keys"><kbd>Space</kbd></span>';
-  var grid = document.getElementById('pad-grid');
-  if (grid) grid.parentNode.insertBefore(el, grid);
-  setTimeout(function() {
-    if (el.parentNode) { el.classList.add('tip-fade'); setTimeout(function() { if (el.parentNode) el.remove(); }, 300); }
-  }, 12000);
-  return true;
-})();
+// Version notification is now injected into the persistent update-notice banner
+// (see banner block below). This keeps it visible until the user dismisses it.
+var _versionNoticeShown = false;
 
 // ========================================
 // STARTUP TIPS (returning users)
@@ -644,16 +626,30 @@ function toggleSection(name) {
   } catch(_) {}
 })();
 
-// Update notice banner: show if user hasn't dismissed this version's notice
+// Update notice banner: blog/HPS updates + version release notes (prepended on version change)
 (function() {
   try {
     var banner = document.getElementById('update-notice');
     var bannerText = document.getElementById('update-notice-text');
     if (!banner || !bannerText) return;
+    var ver = document.querySelector('.version-tag');
+    var currentVer = ver ? ver.textContent.trim() : '';  // "V4.9.99"
+    var currentVerPlain = currentVer.replace(/^V/, '');
+
+    // Prepend version release notes if user's lastSeen version differs from current
+    var lastSeen = localStorage.getItem('64pad-lastVersion');
+    localStorage.setItem('64pad-lastVersion', currentVerPlain);
+    if (lastSeen && lastSeen !== currentVerPlain) {
+      var whatsNew = (typeof t === 'function' ? t('whats_new') : '') || "What's New";
+      var relMsg = (typeof t === 'function' ? t('whats_new_497') : '') ||
+        'Tremolo is now physically modeled (Peterson incandescent bulb + CdS)! HPS members get Pad Sensei MK1 Suitcase (Ge amp chain physical modeling).';
+      var releaseHtml = '\u2728 <b>' + whatsNew + ' (' + currentVer + ')</b> ' + relMsg + '&nbsp;&nbsp;';
+      bannerText.innerHTML = releaseHtml + bannerText.innerHTML;
+      _versionNoticeShown = true;
+    }
+
     var msg = bannerText.textContent.trim();
     if (!msg) return;
-    var ver = document.querySelector('.version-tag');
-    var currentVer = ver ? ver.textContent.trim() : '';
     var dismissed = localStorage.getItem('64pad-notice-dismissed');
     if (dismissed === currentVer) return;
     banner.style.display = '';

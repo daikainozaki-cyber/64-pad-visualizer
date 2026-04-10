@@ -156,7 +156,7 @@ var _versionNoticeShown = (function showVersionNotice() {
   if (!lastSeen || lastSeen === current) return false;
   // Version changed — show What's New (takes priority over startup tip)
   var whatsNew = t('whats_new') || "What's New";
-  var msg = t('whats_new_33000') || 'Tutorial system! Click the book icon to learn Scale mode, Chord mode, and more.';
+  var msg = t('whats_new_497') || 'Tremolo is now physically modeled (Peterson incandescent bulb + CdS)! HPS members get Pad Sensei MK1 Suitcase (Ge amp chain physical modeling).';
   var el = document.createElement('div');
   el.id = 'startup-tip';
   el.innerHTML = '<span class="tip-text">\u2728 <b>' + whatsNew + ' (' + current + ')</b> \u2014 ' + msg + '</span>' +

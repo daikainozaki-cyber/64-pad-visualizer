@@ -3009,8 +3009,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         mainOut = ampSig * this.cabinetGain;
       } else {
         // === DI PATH: no cable LCR, transparent output ===
-        // DI boost 1.5x: level-match to Pad Sensei MK1 Suitcase (2026-04-10 urinami-san)
-        mainOut = (diSum / HARP_PARALLEL_DIV) * this.rhodesLevel * 1.5;
+        // DI boost 1.8x: level-match to Pad Sensei MK1 Suitcase (2026-04-10 urinami-san)
+        mainOut = (diSum / HARP_PARALLEL_DIV) * this.rhodesLevel * 1.8;
       }
 
       // Tine radiation: delayed by mic distance (2ms) for natural phase relationship

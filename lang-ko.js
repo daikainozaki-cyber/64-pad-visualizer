@@ -436,6 +436,7 @@ I18N.addLang('ko', {
     feat_midi_sens: '<strong>MIDI 벨로시티 감도</strong> \u2014 Push 3 스타일 4파라미터 (Threshold, Drive, Compand, Range) 벨로시티 커브 조정. 실시간 커브 시각화. 모든 MIDI 컨트롤러에서 작동',
     feat_push_oct: '<strong>Push 3 옥타브 동기화</strong> \u2014 Push 3 옥타브 \u25B2\u25BC 버튼이 앱의 옥타브 이동과 자동 동기화',
     version_history: '\uBC84\uC804 \uAE30\uB85D',
+    vh_497: '<b>V4.9.7</b> \u2014 \uD2B8\uB808\uBAA8\uB85C\uAC00 \uBB3C\uB9AC \uBAA8\uB378\uB9C1\uB418\uC5C8\uC2B5\uB2C8\uB2E4 (Peterson \uBC31\uC5F4 \uC804\uAD6C + CdS \uAD11\uC804\uC9C0, Vactrol \uC2A4\uD14C\uB808\uC624 \uD2B8\uB808\uBAA8\uB85C). HPS \uD68C\uC6D0\uC740 Pad Sensei MK1 Suitcase \uC0AC\uC6A9 \uAC00\uB2A5: \uC804\uCCB4 Ge \uBB3C\uB9AC \uBAA8\uB378\uB9C1 \uC564\uD504 \uCCB4\uC778 (\uD504\uB9AC\uC564\uD504 \u2192 \uB2E8\uAC04 \uD2B8\uB79C\uC2A4 \u2192 \uD30C\uC6CC \uC564\uD504 \u2192 \uCE90\uBE44\uB137)',
     vh_340: '<b>V3.40</b> \u2014 TASTY/Stock \uCEF4\uD329\uD2B8 \uBC30\uCE58: 64\uD328\uB4DC \uADF8\uB9AC\uB4DC\uC5D0 \uBCF4\uC774\uC2F1 \uC790\uB3D9 \uCD5C\uC801 \uBC30\uCE58. "To Pad" \uBC84\uD2BC \uC81C\uAC70. TASTY/Stock \uBAA8\uB4DC \uC911 \uBCF4\uC774\uC2F1 \uBC15\uC2A4 \uC228\uAE40',
     vh_336: '<b>V3.36</b> \u2014 \uAE30\uD0C0 \uBCF4\uC774\uC2F1 \uC5D4\uC9C4 v2: \uC7A5\uB974 \uD504\uB9AC\uC14B(Jazz/Bossa/Funk), \uB808\uD37C\uB7F0\uC2A4 \uD14C\uC774\uBE14(120\uC885\u00D712\uD0A4), \uBC14\uB808 \uAC10\uC9C0 \uC790\uB3D9 \uD551\uAC70\uB9C1',
     vh_335: '<b>V3.35</b> \u2014 \uD29C\uD1A0\uB9AC\uC5BC UX \uAC1C\uC120 (\uCD08\uBCF4\uC790 \uB9AC\uBDF0). \uBAA8\uB4E0 \uD234\uD301 9\uAC1C \uC5B8\uC5B4\uB85C \uBC88\uC5ED. \uAC00\uC774\uB4DC: \uC0AC\uC6B4\uB4DC \uD328\uB110 \uBC0F \uD5E4\uB354 \uC544\uC774\uCF58 \uC139\uC158 \uCD94\uAC00',
@@ -502,6 +503,7 @@ I18N.addLang('ko', {
   ],
   tips_off: '팁 숨기기',
   whats_new: '새 기능',
+  whats_new_497: '\uD2B8\uB808\uBAA8\uB85C\uAC00 \uBB3C\uB9AC \uBAA8\uB378\uB9C1\uB418\uC5C8\uC2B5\uB2C8\uB2E4 (Peterson \uBC31\uC5F4 \uC804\uAD6C + CdS)! HPS \uD68C\uC6D0\uC740 Pad Sensei MK1 Suitcase (Ge \uC564\uD504 \uCCB4\uC778 \uBB3C\uB9AC \uBAA8\uB378\uB9C1) \uC0AC\uC6A9 \uAC00\uB2A5.',
   whats_new_32427: '기타 보이싱 \u2192 패드 반영 (V키). 기타형 / 컴팩트 레이아웃 전환',
   whats_new_33000: '튜토리얼 시스템! 헤더의 책 아이콘을 클릭하여 Scale 모드, Chord 모드 등을 배워보세요.',
 

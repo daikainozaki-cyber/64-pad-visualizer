@@ -432,6 +432,7 @@ I18N.addLang('es', {
     sound_autofilter: 'Auto-Filtro (Auto-Wah)',
     sound_autofilter_desc: 'Filtro de envolvente. Ajusta FREQ, RESO, SENS y DECAY.',
     version_history: 'Historial de versiones',
+    vh_497: '<b>V4.9.7</b> \u2014 Tremolo ahora es f\u00EDsicamente modelado (bombilla incandescente Peterson + fotoc\u00E9lula CdS, tremolo est\u00E9reo Vactrol). Los miembros HPS obtienen Pad Sensei MK1 Suitcase: cadena de amplificador Ge con modelado f\u00EDsico completo (preamp \u2192 transformador interetapa \u2192 etapa de potencia \u2192 gabinete)',
     vh_3377: '<b>V3.37.7</b> \u2014 Revisión de usuarios: corrección de tonalidad relativa menor, badges en Title Case, fuente sans-serif en pads, toggles accesibles para daltónicos (verde\u2192azul), panel Sound abierto por defecto, corrección de desplazamiento de layout, overlay de spotlight en tutoriales, soporte de octava en Launchpad + seguimiento automático de octava para todos los controladores MIDI',
     vh_340: '<b>V3.40</b> \u2014 Posicionamiento compacto TASTY/Stock: disposici\u00F3n \u00F3ptima autom\u00E1tica en la cuadr\u00EDcula de 64 pads. Bot\u00F3n "To Pad" eliminado. Cajas de voicing ocultas durante modo TASTY/Stock',
     vh_336: '<b>V3.36</b> \u2014 Motor de voicing guitarra v2: presets de g\u00E9nero (Jazz/Bossa/Funk), tabla de referencia (120 tipos \u00D7 12 tonos), asignaci\u00F3n autom\u00E1tica de dedos con detecci\u00F3n de cejilla',
@@ -499,6 +500,7 @@ I18N.addLang('es', {
   ],
   tips_off: 'No mostrar consejos',
   whats_new: 'Novedades',
+  whats_new_497: '\u00A1El tremolo ahora es f\u00EDsicamente modelado (bombilla incandescente Peterson + CdS)! Los miembros HPS obtienen Pad Sensei MK1 Suitcase (modelado f\u00EDsico de cadena de amplificador Ge).',
   whats_new_32427: 'Voicing de guitarra \u2192 reflejar en pad (tecla V). Cambio de dise\u00F1o estilo guitarra / compacto',
   whats_new_33000: '\u00A1Sistema de tutoriales! Haz clic en el icono del libro en el encabezado para aprender el modo Scale, el modo Chord y m\u00E1s.',
 

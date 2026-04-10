@@ -437,6 +437,7 @@ I18N.addLang('zh', {
     sound_autofilter: '自动滤波器（Auto-Wah）',
     sound_autofilter_desc: '包络滤波器。可调整FREQ、RESO、SENS和DECAY。',
     version_history: '\u7248\u672C\u5386\u53F2',
+    vh_497: '<b>V4.9.7</b> \u2014 颤音现在采用物理建模（Peterson 白炽灯泡 + CdS 光电池，Vactrol 立体声颤音）。HPS 会员可使用 Pad Sensei MK1 Suitcase：完整的 Ge 物理建模放大器链（前级 \u2192 级间变压器 \u2192 功率级 \u2192 音箱）',
     vh_3377: '<b>V3.37.7</b> \u2014 用户评审：关系小调修正、标题大小写标签、无衬线打击垫字体、色觉友好切换（绿\u2192蓝）、Sound面板默认展开、布局偏移修正、教程聚光灯叠加层、Launchpad八度支持 + 所有MIDI控制器自动八度跟踪',
     vh_340: '<b>V3.40</b> \u2014 TASTY/Stock紧凑布局：和弦音自动最优排列在64键盘上。移除"映射到键盘"按钮。TASTY/Stock模式下隐藏和弦框',
     vh_336: '<b>V3.36</b> \u2014 吉他和弦引擎v2：风格预设（Jazz/Bossa/Funk）、参考指法库（120种\u00D712调）、自动指法分配（横按检测）',
@@ -504,6 +505,7 @@ I18N.addLang('zh', {
   ],
   tips_off: '不再显示提示',
   whats_new: '新功能',
+  whats_new_497: '颤音现在采用物理建模（Peterson 白炽灯泡 + CdS）！HPS 会员可使用 Pad Sensei MK1 Suitcase（Ge 放大器链物理建模）。',
   whats_new_32427: '吉他声位\u2192打击垫映射（V键）。吉他式 / 紧凑式布局切换',
   whats_new_33000: '教程系统！点击标题栏的书本图标，学习Scale模式、Chord模式等功能。',
 

@@ -350,6 +350,7 @@ I18N.addLang('ja', {
     sound_autofilter: 'オートフィルター（Auto-Wah）',
     sound_autofilter_desc: 'エンベロープフィルター。FREQ・RESO・SENS・DECAYを調整できます。',
     version_history: 'Version History',
+    vh_497: '<b>V4.9.7</b> \u2014 トレモロを物理モデリング化（Peterson白熱電球+CdSフォトセル、Vactrolステレオトレモロ）。HPS会員限定でPad Sensei MK1 Suitcase（Ge物理モデリングアンプチェーン：プリアンプ→段間トランス→パワーアンプ→キャビネット）を追加',
     vh_3377: '<b>V3.37.7</b> \u2014 三井田レビュー反映：平行調バグ修正、UIタイトルケース化、フォント改善（sans-serif）、色覚バリアフリー（緑→ブルー）、Soundパネル初期展開、Layout Shift修正、チュートリアルスポットライト機能、Launchpadオクターブ対応＋MIDI自動オクターブ追従',
     vh_340: '<b>V3.40</b> \u2014 3ペイン並び替え、TASTY/STOCKトランスポーズ（\u2190\u2192キー）、Z/Xボイシング送り、Cmd+Option表示トグル（Ableton式）、セクション折りたたみ、モバイルUX改善、Info Bar（ホバー情報表示）、ショートカット一覧更新',
     vh_336: '<b>V3.36</b> \u2014 ギターボイシングエンジンv2：ジャンルプリセット（Jazz/Bossa/Funk）、リファレンステーブル（120種×12キー）、フィンガリング自動割り当て（バレー検出対応）',
@@ -417,6 +418,7 @@ I18N.addLang('ja', {
   ],
   tips_off: 'ヒントを非表示',
   whats_new: '新機能',
+  whats_new_497: 'トレモロが物理モデリング化（Peterson白熱電球+CdSフォトセル）！HPS会員は「Pad Sensei MK1 Suitcase」（Geアンプチェーン物理モデリング）が使えます。',
   whats_new_32427: 'ギターボイシング→パッド反映（Vキー）。ギターライク / コンパクト配置の切替',
   whats_new_33000: 'チュートリアル機能！ヘッダーの本アイコンからScaleモード・Chordモードの使い方を学べます。',
 

@@ -432,6 +432,7 @@ I18N.addLang('fr', {
     sound_autofilter: 'Auto-Filtre (Auto-Wah)',
     sound_autofilter_desc: 'Filtre à enveloppe. Ajustez FREQ, RESO, SENS et DECAY.',
     version_history: 'Historique des versions',
+    vh_497: '<b>V4.9.7</b> \u2014 Le tr\u00E9molo est maintenant mod\u00E9lis\u00E9 physiquement (ampoule incandescente Peterson + photocellule CdS, tr\u00E9molo st\u00E9r\u00E9o Vactrol). Les membres HPS obtiennent Pad Sensei MK1 Suitcase : cha\u00EEne d\'amplification Ge enti\u00E8rement mod\u00E9lis\u00E9e (pr\u00E9ampli \u2192 transformateur inter-\u00E9tage \u2192 \u00E9tage de puissance \u2192 cabinet)',
     vh_3377: '<b>V3.37.7</b> \u2014 Revue utilisateur : correction de la tonalité relative mineure, badges en title case, police sans-serif pour les pads, bascules adaptées aux daltoniens (vert\u2192bleu), panneau Sound ouvert par défaut, correction du décalage de mise en page, superposition spotlight tutoriel, support d\'octave Launchpad + suivi automatique d\'octave pour tous les contrôleurs MIDI',
     vh_340: '<b>V3.40</b> \u2014 Positionnement compact TASTY/Stock : disposition optimale automatique sur la grille 64 pads. Bouton \u00AB To Pad \u00BB supprimé. Boîtes de voicing masquées en mode TASTY/Stock',
     vh_336: '<b>V3.36</b> \u2014 Moteur de voicing guitare v2 : préréglages de genre (Jazz/Bossa/Funk), table de référence (120 types \u00D7 12 tons), assignation automatique des doigts avec détection de barré',
@@ -499,6 +500,7 @@ I18N.addLang('fr', {
   ],
   tips_off: 'Ne plus afficher',
   whats_new: 'Nouveautés',
+  whats_new_497: 'Le tr\u00E9molo est maintenant mod\u00E9lis\u00E9 physiquement (ampoule incandescente Peterson + CdS) ! Les membres HPS obtiennent Pad Sensei MK1 Suitcase (mod\u00E9lisation physique de la cha\u00EEne d\'ampli Ge).',
   whats_new_32427: 'Voicing guitare \u2192 reflet sur pad (touche V). Basculement disposition style guitare / compact',
   whats_new_33000: 'Système de tutoriels ! Cliquez sur l\'icône livre dans l\'en-tête pour apprendre le mode Scale, le mode Chord et plus encore.',
 

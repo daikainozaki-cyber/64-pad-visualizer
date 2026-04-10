@@ -349,6 +349,7 @@ I18N.addLang('en', {
     sound_autofilter: 'Auto-Filter (Auto-Wah)',
     sound_autofilter_desc: 'Envelope filter. Adjust FREQ, RESO, SENS, and DECAY.',
     version_history: 'Version History',
+    vh_497: '<b>V4.9.7</b> \u2014 Tremolo is now physically modeled (Peterson incandescent bulb + CdS photocell, Vactrol stereo tremolo). HPS members get Pad Sensei MK1 Suitcase: full Ge physical modeling amp chain (preamp \u2192 interstage transformer \u2192 power amp \u2192 cabinet)',
     vh_3377: '<b>V3.37.7</b> \u2014 User review: relative minor key fix, title case badges, sans-serif pad font, color-blind friendly toggles (green\u2192blue), Sound panel open by default, layout shift fix, tutorial spotlight overlay, Launchpad octave support + auto-octave tracking for all MIDI controllers',
     vh_340: '<b>V3.40</b> \u2014 3-pane layout switching, TASTY/STOCK transpose (\u2190\u2192), Z/X voicing navigation, Cmd+Option display toggles (Ableton-style), section collapse, mobile UX improvements, Info Bar (hover descriptions), full shortcut reference update',
     vh_336: '<b>V3.36</b> \u2014 Guitar voicing engine v2: genre presets (Jazz/Bossa/Funk), reference table (120 types \u00D7 12 keys), auto finger assignment with barre detection',
@@ -416,6 +417,7 @@ I18N.addLang('en', {
   ],
   tips_off: "Don't show tips",
   whats_new: "What's New",
+  whats_new_497: 'Tremolo is now physically modeled (Peterson incandescent bulb + CdS)! HPS members get Pad Sensei MK1 Suitcase (Ge amp chain physical modeling).',
   whats_new_32427: 'Guitar voicing \u2192 Pad reflect (V key). Guitar-like / Compact layout switch.',
   whats_new_33000: 'Tutorial system! Click the book icon in the header to learn Scale mode, Chord mode, and more.',
 

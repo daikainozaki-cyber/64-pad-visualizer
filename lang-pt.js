@@ -435,6 +435,7 @@ I18N.addLang('pt', {
     sound_autofilter: 'Auto-Filtro (Auto-Wah)',
     sound_autofilter_desc: 'Filtro envelope. Ajuste FREQ, RESO, SENS e DECAY.',
     version_history: 'Hist\u00F3rico de vers\u00F5es',
+    vh_497: '<b>V4.9.7</b> \u2014 O tremolo agora \u00E9 fisicamente modelado (l\u00E2mpada incandescente Peterson + fotoc\u00E9lula CdS, tremolo est\u00E9reo Vactrol). Membros HPS obt\u00EAm Pad Sensei MK1 Suitcase: cadeia completa de amplifica\u00E7\u00E3o Ge com modelagem f\u00EDsica (pr\u00E9-amp \u2192 transformador de est\u00E1gio \u2192 est\u00E1gio de pot\u00EAncia \u2192 caixa)',
     vh_3377: '<b>V3.37.7</b> \u2014 Revis\u00E3o de utilizador: corre\u00E7\u00E3o de tonalidade relativa menor, badges em mai\u00FAsculas, fonte sans-serif nos pads, alternadores acess\u00EDveis para dalt\u00F3nicos (verde\u2192azul), painel Sound aberto por padr\u00E3o, corre\u00E7\u00E3o de deslocamento de layout, overlay spotlight de tutorial, suporte de oitava Launchpad + rastreamento autom\u00E1tico de oitava para todos os controladores MIDI',
     vh_340: '<b>V3.40</b> \u2014 Posicionamento compacto TASTY/Stock: layout \u00F3timo autom\u00E1tico na grade de 64 pads. Bot\u00E3o "To Pad" removido. Caixas de voicing ocultas durante modo TASTY/Stock',
     vh_336: '<b>V3.36</b> \u2014 Motor de voicing guitarra v2: presets de g\u00EAnero (Jazz/Bossa/Funk), tabela de refer\u00EAncia (120 tipos \u00D7 12 tons), atribui\u00E7\u00E3o autom\u00E1tica de dedos com detec\u00E7\u00E3o de pestana',
@@ -502,6 +503,7 @@ I18N.addLang('pt', {
   ],
   tips_off: 'Não mostrar dicas',
   whats_new: 'Novidades',
+  whats_new_497: 'O tremolo agora \u00E9 fisicamente modelado (l\u00E2mpada incandescente Peterson + CdS)! Membros HPS obt\u00EAm Pad Sensei MK1 Suitcase (modelagem f\u00EDsica da cadeia de amplifica\u00E7\u00E3o Ge).',
   whats_new_32427: 'Voicing de guitarra \u2192 refletir no pad (tecla V). Alternância layout estilo guitarra / compacto',
   whats_new_33000: 'Sistema de tutoriais! Clique no \u00EDcone do livro no cabe\u00E7alho para aprender o modo Scale, modo Chord e mais.',
 

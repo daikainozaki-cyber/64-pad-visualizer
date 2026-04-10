@@ -434,6 +434,7 @@ I18N.addLang('de', {
     sound_autofilter: 'Auto-Filter (Auto-Wah)',
     sound_autofilter_desc: 'Hüllkurvenfilter. Stelle FREQ, RESO, SENS und DECAY ein.',
     version_history: 'Versionshistorie',
+    vh_497: '<b>V4.9.7</b> \u2014 Tremolo ist jetzt physikalisch modelliert (Peterson Glühlampe + CdS-Fotozelle, Vactrol-Stereo-Tremolo). HPS-Mitglieder erhalten Pad Sensei MK1 Suitcase: vollständige Ge-Physikmodellierung der Amp-Kette (Preamp \u2192 Zwischenstufentrafo \u2192 Endstufe \u2192 Cabinet)',
     vh_3377: '<b>V3.37.7</b> \u2014 Benutzer-Review: Relative Moll-Tonart-Fix, Title Case Badges, serifenlose Pad-Schrift, farbenblindfreundliche Umschalter (grün\u2192blau), Sound-Panel standardmäßig geöffnet, Layout-Shift-Fix, Tutorial-Spotlight-Overlay, Launchpad Oktav-Unterstützung + Auto-Oktav-Tracking für alle MIDI-Controller',
     vh_340: '<b>V3.40</b> \u2014 3-Bereiche-Layout-Umschaltung, TASTY/STOCK Transposition (\u2190\u2192), Z/X Voicing-Navigation, Cmd+Option Anzeige-Umschalter (Ableton-Stil), Abschnitts-Einklappen, Mobile UX-Verbesserungen, Info-Leiste (Hover-Beschreibungen), vollständige Tastenkürzel-Referenz aktualisiert',
     vh_336: '<b>V3.36</b> \u2014 Gitarren-Voicing-Engine v2: Genre-Presets (Jazz/Bossa/Funk), Referenztabelle (120 Typen \u00D7 12 Tonarten), automatische Fingerzuordnung mit Barr\u00E9-Erkennung',
@@ -501,6 +502,7 @@ I18N.addLang('de', {
   ],
   tips_off: 'Tipps ausblenden',
   whats_new: 'Neuheiten',
+  whats_new_497: 'Tremolo ist jetzt physikalisch modelliert (Peterson Gl\u00FChlampe + CdS)! HPS-Mitglieder erhalten Pad Sensei MK1 Suitcase (Ge-Amp-Kette Physikmodellierung).',
   whats_new_32427: 'Gitarren-Voicing \u2192 Pad-Spiegelung (V-Taste). Umschalten Gitarren-Stil / Kompakt-Layout',
   whats_new_33000: 'Tutorial-System! Klicke auf das Buch-Symbol in der Kopfzeile, um Scale-Modus, Chord-Modus und mehr zu lernen.',
 

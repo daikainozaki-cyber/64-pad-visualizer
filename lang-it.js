@@ -435,6 +435,7 @@ I18N.addLang('it', {
     sound_autofilter: 'Auto-Filtro (Auto-Wah)',
     sound_autofilter_desc: 'Filtro a inviluppo. Regola FREQ, RESO, SENS e DECAY.',
     version_history: 'Cronologia delle versioni',
+    vh_497: '<b>V4.9.7</b> \u2014 Il tremolo ora \u00E8 modellato fisicamente (lampadina incandescente Peterson + fotocellula CdS, tremolo stereo Vactrol). I membri HPS ottengono Pad Sensei MK1 Suitcase: catena amplificatore Ge con modellazione fisica completa (preamp \u2192 trasformatore di stadio \u2192 stadio di potenza \u2192 cabinet)',
     vh_3377: '<b>V3.37.7</b> \u2014 Revisione utente: correzione tonalità minore relativa, badge in Title Case, font sans-serif sui pad, toggle accessibili per daltonici (verde\u2192blu), pannello Sound aperto di default, correzione layout shift, overlay spotlight tutorial, supporto ottava Launchpad + tracciamento automatico ottava per tutti i controller MIDI',
     vh_340: '<b>V3.40</b> \u2014 Posizionamento compatto TASTY/Stock: layout ottimale automatico sulla griglia 64 pad. Pulsante "To Pad" rimosso. Box voicing nascosti durante modalit\u00E0 TASTY/Stock',
     vh_336: '<b>V3.36</b> \u2014 Motore voicing chitarra v2: preset di genere (Jazz/Bossa/Funk), tabella di riferimento (120 tipi \u00D7 12 tonalit\u00E0), assegnazione automatica delle dita con rilevamento del barr\u00E9',
@@ -502,6 +503,7 @@ I18N.addLang('it', {
   ],
   tips_off: 'Non mostrare suggerimenti',
   whats_new: 'Novità',
+  whats_new_497: 'Il tremolo ora \u00E8 modellato fisicamente (lampadina incandescente Peterson + CdS)! I membri HPS ottengono Pad Sensei MK1 Suitcase (modellazione fisica catena amplificatore Ge).',
   whats_new_32427: 'Voicing chitarra \u2192 riflesso su pad (tasto V). Cambio layout stile chitarra / compatto',
   whats_new_33000: 'Sistema tutorial! Clicca l\'icona del libro nell\'intestazione per imparare Scale mode, Chord mode e altro.',
 

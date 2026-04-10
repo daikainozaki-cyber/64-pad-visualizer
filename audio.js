@@ -583,9 +583,15 @@ function selectSound(combinedValue) {
   AudioState.instrument = AudioState.engine.presets[presetKey];
   saveSoundSettings();
   _updateEpMixerVisibility();
-  // Sync TREM implementation to new preset (Suitcase → worklet Vactrol, DI → legacy sine)
+  // Sync TREM implementation (always Vactrol now, kept for consistency)
   var trmSlider = document.getElementById('snd-tremolo');
   if (trmSlider) trmSlider.dispatchEvent(new Event('input'));
+  // Show/hide AMP CHAIN dev sliders based on preset's useCabinet
+  var ampSec = document.getElementById('ep-amp-section');
+  if (ampSec) {
+    var preset = EP_AMP_PRESETS[AudioState.instrument.epiano];
+    ampSec.style.display = (preset && preset.useCabinet) ? '' : 'none';
+  }
 }
 
 function setPreset(name) {
@@ -796,16 +802,30 @@ function loadSoundSettings() {
 function renderSoundControls() {
   const sel = document.getElementById('organ-preset');
   if (!sel) return;
+  // HPS gate: Suitcase amp presets are members-only
+  var hpsUnlocked = new URLSearchParams(window.location.search).has('hps');
   sel.innerHTML = '';
   Object.entries(ENGINES).forEach(function(entry) {
     var engineKey = entry[0], engine = entry[1];
     Object.entries(engine.presets).forEach(function(pe) {
+      var presetKey = pe[0], presetData = pe[1];
+      // Skip amp presets (useCabinet=true) for non-HPS users
+      var epPreset = EP_AMP_PRESETS[presetData.epiano];
+      if (epPreset && epPreset.useCabinet && !hpsUnlocked) return;
       var opt = document.createElement('option');
-      opt.value = engineKey + ':' + pe[0];
-      opt.textContent = pe[1].label;
+      opt.value = engineKey + ':' + presetKey;
+      opt.textContent = presetData.label;
       sel.appendChild(opt);
     });
   });
+  // Fall back to a free preset if current selection was HPS-gated
+  var currentValue = AudioState.engineKey + ':' + AudioState.presetKey;
+  var hasCurrent = Array.from(sel.options).some(function(o) { return o.value === currentValue; });
+  if (!hasCurrent && sel.options.length > 0) {
+    var firstKey = sel.options[0].value.split(':').slice(1).join(':');
+    AudioState.presetKey = firstKey;
+    AudioState.instrument = AudioState.engine.presets[firstKey];
+  }
   sel.value = AudioState.engineKey + ':' + AudioState.presetKey;
   // Hide dropdown when only one preset exists
   sel.style.display = sel.options.length <= 1 ? 'none' : '';
@@ -1328,8 +1348,13 @@ onReady(() => {
   // Always show tap-to-start overlay (browser requires user gesture for AudioContext)
   _showAudioOverlay();
 
-  // --- AMP CHAIN dev sliders (shown with ?amp=twin, AFTER mixer visibility) ---
-  if (_ampPresetParam) {
+  // --- AMP CHAIN dev sliders (shown for amp presets: Suitcase/Twin/etc.) ---
+  // Show when URL has ?amp=... OR when current preset uses the amp chain
+  var isAmpPreset = !!_ampPresetParam ||
+    (AudioState.instrument && AudioState.instrument.epiano &&
+     EP_AMP_PRESETS[AudioState.instrument.epiano] &&
+     EP_AMP_PRESETS[AudioState.instrument.epiano].useCabinet);
+  if (isAmpPreset) {
     var ampSec = document.getElementById('ep-amp-section');
     if (ampSec) ampSec.style.display = '';
 

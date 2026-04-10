@@ -926,6 +926,15 @@ function noteOffAll() {
   if (wafPlayer) wafPlayer.cancelQueue(audioCtx);
 }
 
+// Sustain pedal (MIDI CC64). Forwards to worklet for physical model mode.
+var _sustainOn = false;
+function setSustain(on) {
+  _sustainOn = !!on;
+  if (_useEpianoWorklet && typeof epianoWorkletSetSustain === 'function') {
+    epianoWorkletSetSustain(_sustainOn);
+  }
+}
+
 // --- Velocity curve (Push 3-style 4-parameter) ---
 function applyVelocityCurve(velocity127) {
   const { velThreshold, velDrive, velCompand, velRange } = AppState;

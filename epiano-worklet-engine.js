@@ -123,6 +123,8 @@ function _epwSendParams() {
     use2ndPreamp: preset.preampType === '12AX7' && EpState.use2ndPreamp,
     useTonestack: !!preset.useTonestack,
     useCabinet: !!preset.useCabinet,
+    ampType: preset.powerampType === 'GeTr' ? 'suitcase'
+           : preset.useCabinet ? 'twin' : 'di',
     useSpringReverb: !!preset.useSpringReverb,
     preampType: preset.preampType || null,
     pickupType: preset.pickupType || 'rhodes',

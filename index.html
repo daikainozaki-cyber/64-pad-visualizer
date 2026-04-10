@@ -75,7 +75,7 @@ document.addEventListener('click', function(e) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+1+Code:wght@300;400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=4.9.91">
+<link rel="stylesheet" href="style.css?v=4.9.94">
 <!-- WebAudioFont player (lazy: only needed if sampler loads) -->
 <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js" async></script>
 <!-- jRhodes3c sampler: loaded in background AFTER page is interactive.
@@ -87,7 +87,7 @@ document.addEventListener('click', function(e) {
 <div class="header-block">
 <div class="header-bar">
   <h1>64 Pad Explorer</h1>
-  <span class="version-tag">V4.9.91</span>
+  <span class="version-tag">V4.9.94</span>
   <select id="lang-select" onchange="I18N.setLang(this.value)" style="font-size:0.6rem;padding:1px 2px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:3px;cursor:pointer;margin-left:4px;" data-info="info.lang">
     <option value="en">EN</option>
     <option value="ja">JA</option>
@@ -121,7 +121,7 @@ document.addEventListener('click', function(e) {
 <!-- Update Notice Banner (shown on version update, hidden by default) -->
 <div id="update-notice" style="display:none;">
   <div class="update-notice-content">
-    <span id="update-notice-text">新記事更新しました〜「<a href="https://note.com/urinami/n/n7724994204c1" target="_blank" style="color:var(--text-muted);text-decoration:underline;">ハードコア・パッドスタイル 2026年3月改善内容</a>」<br>HPSサブスク1周年になりました。ハードコア派の皆さんのおかげです。ありがとうございます。 — うりなみ</span>
+    <span id="update-notice-text">📝 ブログ更新「<a href="https://murinaikurashi.com/chicken-saute-and-carlinhos-brown/" target="_blank" style="color:var(--accent);text-decoration:underline;">チキンソテーとカルリーニョス・ブラウン</a>」&nbsp;&nbsp;🎹 HPS更新「<a href="https://note.com/urinami/n/n7724994204c1" target="_blank" style="color:var(--accent);text-decoration:underline;">2026年3月改善内容</a>」&nbsp;&nbsp;📰 Pad Sensei「<a href="https://urinami.substack.com/p/416" target="_blank" style="color:var(--accent);text-decoration:underline;">パッド先生の仕事</a>」</span>
     <button id="update-notice-close" aria-label="閉じる">&times;</button>
   </div>
 </div>
@@ -298,7 +298,7 @@ document.addEventListener('click', function(e) {
 
     <h2 data-i18n="help.version_history">Version History</h2>
     <ul style="font-size:0.75rem;color:var(--text-muted);">
-      <li><b>V4.9.91</b> — 開いた瞬間からパッドを叩いて演奏可能に（サンプルダウンロード不要）。ショートカットキー案内の表示/非表示設定（？→設定 / ⌘⌥I）。メジャーキーで平行調のNM/HM/MMダイアトニックを表示。E.PIANO MIXERにPU LEVEL・MECHANICAL追加。コード判定の表示改善</li>
+      <li><b>V4.9.94</b> — 開いた瞬間からパッドを叩いて演奏可能に（サンプルダウンロード不要）。ショートカットキー案内の表示/非表示設定（？→設定 / ⌘⌥I）。メジャーキーで平行調のNM/HM/MMダイアトニックを表示。E.PIANO MIXERにPU LEVEL・MECHANICAL追加。コード判定の表示改善</li>
       <li data-i18n="help.vh_490"><b>V4.9</b> — Pad Sensei MK1 物理モデリング音源搭載。サンプルダウンロード不要で即演奏。エフェクト（DRIVE/TREM/PHASE/REV/Auto Filter）対応</li>
       <li data-i18n="help.vh_400"><b>V4.0</b> — チュートリアル搭載、9言語対応、♯/♭自動判定</li>
       <li data-i18n="help.vh_340"><b>V3.40</b> — レイアウト自由配置、ショートカット全面刷新、モバイル改善</li>
@@ -800,53 +800,46 @@ if (new URLSearchParams(window.location.search).has('hps')) {
 }
 </script>
 
-<!-- Sound Credits -->
-<div style="text-align:center;font-size:0.5rem;color:var(--text-muted);padding:8px 12px;opacity:0.6;line-height:1.6;">
-  Sound: <a href="https://github.com/surikov/webaudiofont" target="_blank" style="color:var(--text-muted);">WebAudioFont</a> by Srgy Surkv (GPL-3.0)
-  | <a href="https://github.com/Jeff-Learman/jRhodes3c" target="_blank" style="color:var(--text-muted);">jRhodes3c</a> by Jeff Learman (CC-BY-4.0)
-  | FluidR3 GM by Frank Wen (MIT)
-  | GeneralUser GS by S. Christian Collins
-  | Chaos Bank (CC0)
-</div>
+<!-- Sound Credits: hidden until new presets are added -->
 
 <!-- i18n (engine → language files) -->
-<script src="i18n.js?v=4.9.91"></script>
-<script src="lang-en.js?v=4.9.91"></script>
-<script src="lang-ja.js?v=4.9.91"></script>
-<script src="lang-zh.js?v=4.9.91"></script>
-<script src="lang-es.js?v=4.9.91"></script>
-<script src="lang-fr.js?v=4.9.91"></script>
-<script src="lang-pt.js?v=4.9.91"></script>
-<script src="lang-de.js?v=4.9.91"></script>
-<script src="lang-ko.js?v=4.9.91"></script>
-<script src="lang-it.js?v=4.9.91"></script>
+<script src="i18n.js?v=4.9.94"></script>
+<script src="lang-en.js?v=4.9.94"></script>
+<script src="lang-ja.js?v=4.9.94"></script>
+<script src="lang-zh.js?v=4.9.94"></script>
+<script src="lang-es.js?v=4.9.94"></script>
+<script src="lang-fr.js?v=4.9.94"></script>
+<script src="lang-pt.js?v=4.9.94"></script>
+<script src="lang-de.js?v=4.9.94"></script>
+<script src="lang-ko.js?v=4.9.94"></script>
+<script src="lang-it.js?v=4.9.94"></script>
 <!-- pad-core (SSOT: theory calculations, data constants, render) -->
-<script src="pad-core/data.js?v=4.9.91"></script>
-<script src="pad-core/theory.js?v=4.9.91"></script>
-<script src="pad-core/render.js?v=4.9.91"></script>
-<script src="pad-core/circle.js?v=4.9.91"></script>
-<script src="pad-core/builder-ui.js?v=4.9.91"></script>
-<script src="pad-core/incremental.js?v=4.9.91"></script>
+<script src="pad-core/data.js?v=4.9.94"></script>
+<script src="pad-core/theory.js?v=4.9.94"></script>
+<script src="pad-core/render.js?v=4.9.94"></script>
+<script src="pad-core/circle.js?v=4.9.94"></script>
+<script src="pad-core/builder-ui.js?v=4.9.94"></script>
+<script src="pad-core/incremental.js?v=4.9.94"></script>
 <!-- App JS -->
-<script src="data.js?v=4.9.91"></script>
-<script src="epiano-engine.js?v=4.9.91"></script>
-<script src="epiano-worklet-engine.js?v=4.9.91"></script>
-<script src="audio.js?v=4.9.91"></script>
-<script src="theory.js?v=4.9.91"></script>
-<script src="tasty-stock.js?v=4.9.91"></script>
-<script src="staff.js?v=4.9.91"></script>
-<script src="instruments.js?v=4.9.91"></script>
-<script src="circle-ui.js?v=4.9.91"></script>
-<script src="parent-scales-ui.js?v=4.9.91"></script>
-<script src="play-controls.js?v=4.9.91"></script>
-<script src="render.js?v=4.9.91"></script>
-<script src="plain.js?v=4.9.91"></script>
-<script src="perform.js?v=4.9.91"></script>
-<script src="builder.js?v=4.9.91"></script>
-<script src="midi.js?v=4.9.91"></script>
-<script src="main.js?v=4.9.91"></script>
-<script src="tutorial-data.js?v=4.9.91"></script>
-<script src="tutorial.js?v=4.9.91"></script>
+<script src="data.js?v=4.9.94"></script>
+<script src="epiano-engine.js?v=4.9.94"></script>
+<script src="epiano-worklet-engine.js?v=4.9.94"></script>
+<script src="audio.js?v=4.9.94"></script>
+<script src="theory.js?v=4.9.94"></script>
+<script src="tasty-stock.js?v=4.9.94"></script>
+<script src="staff.js?v=4.9.94"></script>
+<script src="instruments.js?v=4.9.94"></script>
+<script src="circle-ui.js?v=4.9.94"></script>
+<script src="parent-scales-ui.js?v=4.9.94"></script>
+<script src="play-controls.js?v=4.9.94"></script>
+<script src="render.js?v=4.9.94"></script>
+<script src="plain.js?v=4.9.94"></script>
+<script src="perform.js?v=4.9.94"></script>
+<script src="builder.js?v=4.9.94"></script>
+<script src="midi.js?v=4.9.94"></script>
+<script src="main.js?v=4.9.94"></script>
+<script src="tutorial-data.js?v=4.9.94"></script>
+<script src="tutorial.js?v=4.9.94"></script>
 <script>
 if ('serviceWorker' in navigator) {
   // Clean up old ?v= registrations (they create zombie SWs)

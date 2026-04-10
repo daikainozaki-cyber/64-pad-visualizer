@@ -700,13 +700,18 @@ function dismissAudioOverlay() {
     var epDest = epianoDirectOut || masterComp;
     epianoWorkletInit(audioCtx, epDest);
   }
-  // Auto-select Organ if no engine set yet (first-time user)
+  // Auto-select engine if muted (legacy path)
   if (_soundMuted) {
     setEngine('epiano');
-    // Expand Sound panel so first-time users see presets/volume
     if (typeof soundExpanded !== 'undefined' && !soundExpanded && typeof toggleSoundExpand === 'function') {
       toggleSoundExpand();
     }
+  }
+  // Persist settings (ensures first-time users get localStorage entry)
+  saveSoundSettings();
+  // Pad hint only for first-time users (returning users already know)
+  if (!localStorage.getItem('64pad-overlay-seen')) {
+    localStorage.setItem('64pad-overlay-seen', '1');
     _showPadHint();
   }
 }
@@ -735,7 +740,7 @@ function _hidePadHint() {
 function loadSoundSettings() {
   try {
     const raw = localStorage.getItem('64pad-sound');
-    if (!raw) { _showFirstTimeHint(); return; }
+    if (!raw) { return; }
     const s = JSON.parse(raw);
     if (s.engine && ENGINES[s.engine]) {
       var wasMuted = _soundMuted;
@@ -799,6 +804,8 @@ function renderSoundControls() {
     });
   });
   sel.value = AudioState.engineKey + ':' + AudioState.presetKey;
+  // Hide dropdown when only one preset exists
+  sel.style.display = sel.options.length <= 1 ? 'none' : '';
 }
 
 // --- Voice management ---
@@ -1302,6 +1309,8 @@ onReady(() => {
   loadSoundSettings();
   _loadEpMixer();
   _updateEpMixerVisibility();
+  // Always show tap-to-start overlay (browser requires user gesture for AudioContext)
+  _showAudioOverlay();
 
   // --- AMP CHAIN dev sliders (shown with ?amp=twin, AFTER mixer visibility) ---
   if (_ampPresetParam) {
@@ -1347,5 +1356,10 @@ onReady(() => {
     _tsSlider('ep-ts-bass', 'ep-ts-bass-val', 'bass');
     _tsSlider('ep-ts-mid', 'ep-ts-mid-val', 'mid');
     _tsSlider('ep-ts-treble', 'ep-ts-treble-val', 'treble');
+    // Suitcase: hide MID (Peterson Baxandall is 2-band Bass/Treble only)
+    if (_ampPresetParam === 'suit') {
+      var midLabel = document.getElementById('ep-ts-mid');
+      if (midLabel && midLabel.parentElement) midLabel.parentElement.style.display = 'none';
+    }
   }
 });

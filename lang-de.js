@@ -302,6 +302,7 @@ I18N.addLang('de', {
   },
   diatonic: {
     parallel: 'Paralleltonart',
+    relative: 'Relative Tonart',
     secdom: 'Sekundärdominante',
     harmonic_fn: 'T/SD/D',
   },

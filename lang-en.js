@@ -215,6 +215,7 @@ I18N.addLang('en', {
   },
   diatonic: {
     parallel: 'Parallel Key',
+    relative: 'Relative',
     secdom: 'Secondary Dominant',
     harmonic_fn: 'T/SD/D',
   },

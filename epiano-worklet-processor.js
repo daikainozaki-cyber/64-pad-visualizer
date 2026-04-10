@@ -690,19 +690,25 @@ function computeTineAmplitude(midi, velocity) {
     var hrAlpha = getHammerParams(69, 0.5);
     TINE_A4_ALPHA = hrAlpha.alphaMax;
   }
-  // Normalize: bass alphaMax / A4 alphaMax. Bass (soft hammer, low K_H) > 1.0.
-  var alphaNorm = alphaScale / Math.max(TINE_A4_ALPHA, 1e-6);
+  // 2026-04-10: alphaNorm REMOVED (was physically backwards).
+  //   Previous (2026-04-06) coupled alpha_max (Hertz contact deformation) as a
+  //   multiplier on tine amplitude. This was wrong:
+  //     - alpha_max is hammer-tine compression distance during contact
+  //     - Tine release amplitude depends on MOMENTUM transferred = m*v*(1+COR)
+  //     - For elastic collision (m_hammer >> m_tine): v_tine' ≈ v_hammer*(1+COR)
+  //     - Wood hammer COR=0.92 → MORE tine velocity than A4 COR=0.65
+  //   But alpha_max gave OPPOSITE: wood K_H=1.12e9 → alpha_max=3% of A4 → wood
+  //   treble became inaudible. urinami-san reported C5+ barely audible.
+  //   A_raw already contains per-key sqrt(m/k) cantilever physics. Per-zone
+  //   COR/COR_A4 would be a more physical coupling (~1.16 for wood), but the
+  //   existing A_raw + PU nonlinearity already balances well without alphaNorm.
 
   // Map to PU physical coordinates (25mm normalization):
   // A4 forte tip displacement ≈ 1.5mm (Falaize 2017 Fig 10a) → 1.5/25 = 0.06.
   // 2026-03-25: increased to 0.12 to match Gabrielli H2/H3 spectrum with corrected
   // PU Lhor (1.5mm physical). The higher tineAmp drives deeper into PU nonlinearity
   // → H3 rises from -40dB to -12dB. PU_EMF_SCALE halved to maintain output level.
-  // 2026-04-06: multiply by alphaNorm (hammer compliance coupling).
-  //   Bass (Shore 30, low K_H): alphaNorm > 1.0 → more displacement → more PU drive.
-  //   A4 (Shore 70): alphaNorm = 1.0 (reference, unchanged).
-  //   Treble (wood): alphaNorm < 1.0 → less displacement.
-  var result = (A_raw / TINE_A4_RAW) * alphaNorm * 0.12;
+  var result = (A_raw / TINE_A4_RAW) * 0.12;
 
   // --- Bass amplitude rolloff DISABLED (2026-03-30) ---
   // Was: 40-100% taper below E3 for DI mode (bass too boomy).
@@ -1575,7 +1581,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.couplingAlpha = 0.001;       // ~3.3ms smoothing at 48kHz
     this.couplingDepth = 0.25;        // M→drive modulation depth (0.35→0.25: 透明感)
     this.gePaDrive = 1.6;             // Base power amp drive (1.8→1.6: urinami-san "ほんのちょっと歪まなくていい")
-    this.gePaGain = 0.65;             // Post-LUT output gain (0.5→0.65: レンジ補正)
+    this.gePaGain = 1.2;              // Post-LUT output gain (level-matched to Pad Sensei MK1 DI)
     this.gePaCompLPFCoeff = biquadLowpass(300, 0.707, fs);  // Band-split for freq-dep compression
     this.gePaCompLPFState = new Float32Array(2);
     // Vactrol stereo tremolo (Peterson incandescent bulb + CdS photocell)
@@ -3003,7 +3009,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         mainOut = ampSig * this.cabinetGain;
       } else {
         // === DI PATH: no cable LCR, transparent output ===
-        mainOut = (diSum / HARP_PARALLEL_DIV) * this.rhodesLevel;
+        // DI boost 1.5x: level-match to Pad Sensei MK1 Suitcase (2026-04-10 urinami-san)
+        mainOut = (diSum / HARP_PARALLEL_DIV) * this.rhodesLevel * 1.5;
       }
 
       // Tine radiation: delayed by mic distance (2ms) for natural phase relationship
@@ -3062,7 +3069,9 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       if (mainOut > 0.95) mainOut = 0.95;
       if (mainOut < -0.95) mainOut = -0.95;
       // --- Stereo output: Peterson Vactrol Stereo Tremolo (incandescent + CdS) ---
-      if (this.tremoloDepth > 0 && this.ampType === 'suitcase') {
+      // Shared across DI and Suitcase: the Vactrol physics model is superior
+      // to the legacy Web Audio sine tremolo. One engine, two modes.
+      if (this.tremoloDepth > 0) {
         // Physical chain (Peterson FR7054, 1969+ stereo):
         //   Square-wave LFO → Filament I²R heating (τ≈25ms)
         //     → Light output L ∝ T² (Stefan-Boltzmann approx)

@@ -502,8 +502,8 @@ const ENGINES = {
   epiano: {
     name: 'E.PIANO',
     presets: {
-      'Rhodes DI':        { epiano: 'Rhodes DI', label: 'Pad Sensei MK1' },
-      // Amp hidden: tube/tonestack/cabinet are WIP (gain staging needs recalibration)
+      'Rhodes DI':       { epiano: 'Rhodes DI',       label: 'Pad Sensei MK1' },
+      'Rhodes Suitcase': { epiano: 'Rhodes Suitcase', label: 'Pad Sensei MK1 Suitcase' },
     },
     defaultPreset: 'Rhodes DI',  // internal key unchanged (EP_AMP_PRESETS reference)
   },
@@ -583,6 +583,9 @@ function selectSound(combinedValue) {
   AudioState.instrument = AudioState.engine.presets[presetKey];
   saveSoundSettings();
   _updateEpMixerVisibility();
+  // Sync TREM implementation to new preset (Suitcase → worklet Vactrol, DI → legacy sine)
+  var trmSlider = document.getElementById('snd-tremolo');
+  if (trmSlider) trmSlider.dispatchEvent(new Event('input'));
 }
 
 function setPreset(name) {
@@ -1038,11 +1041,8 @@ onReady(() => {
   const trmSlider = document.getElementById('snd-tremolo');
   if (trmSlider) trmSlider.addEventListener('input', () => {
     var val = parseFloat(trmSlider.value);  // 0-1 (real Rhodes Intensity knob range)
-    // Suitcase: worklet Vactrol only (bypass legacy tremoloNode)
-    if (_ampPresetParam !== 'suit') {
-      // Legacy DI tremolo: scale down to avoid excessive modulation (old range was 0-0.4)
-      tremoloGain.gain.setValueAtTime(val * 0.4, audioCtx.currentTime);
-    }
+    // Unified tremolo: worklet Vactrol physics for BOTH modes. Kill legacy sine LFO.
+    tremoloGain.gain.setValueAtTime(0, audioCtx.currentTime);
     if (AudioState.instrument && AudioState.instrument.epiano && _useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
       // Worklet depth uses slider value directly (0-1 matches real Peterson Intensity)
       EpState.tremoloDepth = val;

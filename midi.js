@@ -450,6 +450,12 @@ function initWebMIDI() {
             shiftOctave((rawNote === 91 || rawNote === 104) ? 1 : -1);
             return;
           }
+          // Sustain pedal (CC#64, standard MIDI Hold Pedal)
+          // Threshold: >= 64 = ON, < 64 = OFF (standard convention)
+          if (cmd === 0xb0 && rawNote === 64) {
+            if (typeof setSustain === 'function') setSustain(velocity >= 64);
+            return;
+          }
           // Push perform mode: serial 4x4 → slots directly (bypass fourths conversion)
           if (isPush && memoryViewMode === 'perform' && cmd === 0x90 && velocity > 0) {
             var si = rawNote - PUSH_SERIAL_BASE;

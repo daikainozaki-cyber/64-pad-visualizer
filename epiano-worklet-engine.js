@@ -211,3 +211,9 @@ function epianoWorkletAllNotesOff() {
     _epw_node.port.postMessage({ type: 'allNotesOff' });
   }
 }
+
+function epianoWorkletSetSustain(on) {
+  if (_epw_node) {
+    _epw_node.port.postMessage({ type: 'sustain', on: !!on });
+  }
+}

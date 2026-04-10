@@ -1702,6 +1702,10 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Voice allocation round-robin
     this.nextVoice = 0;
 
+    // --- Sustain pedal state ---
+    this.sustainOn = false;
+    this.sustainPending = new Uint8Array(128);  // per-MIDI pending release flags
+
     // --- MessagePort handler ---
     this.port.onmessage = this._onMessage.bind(this);
   }
@@ -1714,6 +1718,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       this._noteOn(msg.midi, msg.velocity);
     } else if (msg.type === 'noteOff') {
       this._noteOff(msg.midi);
+    } else if (msg.type === 'sustain') {
+      this._setSustain(!!msg.on);
     } else if (msg.type === 'params') {
       this._updateParams(msg);
     } else if (msg.type === 'allNotesOff') {
@@ -2214,7 +2220,27 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.vAge[vi] = 0;
   }
 
+  _setSustain(on) {
+    if (on) {
+      this.sustainOn = true;
+    } else {
+      // Pedal released: clear sustainOn FIRST, then release all pending notes
+      this.sustainOn = false;
+      for (var m = 0; m < 128; m++) {
+        if (this.sustainPending[m]) {
+          this.sustainPending[m] = 0;
+          this._noteOff(m);  // safe: sustainOn is false, normal release fires
+        }
+      }
+    }
+  }
+
   _noteOff(midi) {
+    // Sustain pedal gate: if pedal is down, queue the release for later
+    if (this.sustainOn) {
+      this.sustainPending[midi & 0x7f] = 1;
+      return;
+    }
     // Release all voices with this MIDI note
     for (var i = 0; i < MAX_VOICES; i++) {
       if (this.vActive[i] > 0 && this.vMidi[i] === midi && this.vActive[i] !== 3) {

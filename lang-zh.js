@@ -303,6 +303,7 @@ I18N.addLang('zh', {
   },
   diatonic: {
     parallel: '同主音调',
+    relative: '关系调',
     secdom: '副属和弦',
     harmonic_fn: 'T/SD/D',
   },

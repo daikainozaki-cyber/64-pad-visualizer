@@ -935,7 +935,7 @@ function renderDiatonicBar() {
   var minorBtn = document.getElementById('ext-minor-btn');
   if (minorBtn) {
     minorBtn.style.display = (isMinorVariant || isMajorDiatonic) ? '' : 'none';
-    minorBtn.textContent = isMajorDiatonic ? '平行調' : 'Harm/Mel';
+    minorBtn.textContent = isMajorDiatonic ? t('diatonic.relative') : 'Harm/Mel';
   }
 
   // Update toggle button states

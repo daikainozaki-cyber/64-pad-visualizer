@@ -303,6 +303,7 @@ I18N.addLang('ko', {
   },
   diatonic: {
     parallel: '동주조',
+    relative: '관계조',
     secdom: '세컨더리 도미넌트',
     harmonic_fn: 'T/SD/D',
   },

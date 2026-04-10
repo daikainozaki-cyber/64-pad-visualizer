@@ -303,6 +303,7 @@ I18N.addLang('it', {
   },
   diatonic: {
     parallel: 'Tonalità parallela',
+    relative: 'Relativa',
     secdom: 'Dominante secondaria',
     harmonic_fn: 'T/SD/D',
   },

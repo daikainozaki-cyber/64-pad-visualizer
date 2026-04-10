@@ -215,6 +215,7 @@ I18N.addLang('ja', {
   },
   diatonic: {
     parallel: '同主調',
+    relative: '平行調',
     secdom: 'セカンダリー・ドミナント',
     harm_mel: 'Harm/Mel',
     harmonic_fn: 'T/SD/D',

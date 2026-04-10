@@ -690,19 +690,25 @@ function computeTineAmplitude(midi, velocity) {
     var hrAlpha = getHammerParams(69, 0.5);
     TINE_A4_ALPHA = hrAlpha.alphaMax;
   }
-  // Normalize: bass alphaMax / A4 alphaMax. Bass (soft hammer, low K_H) > 1.0.
-  var alphaNorm = alphaScale / Math.max(TINE_A4_ALPHA, 1e-6);
+  // 2026-04-10: alphaNorm REMOVED (was physically backwards).
+  //   Previous (2026-04-06) coupled alpha_max (Hertz contact deformation) as a
+  //   multiplier on tine amplitude. This was wrong:
+  //     - alpha_max is hammer-tine compression distance during contact
+  //     - Tine release amplitude depends on MOMENTUM transferred = m*v*(1+COR)
+  //     - For elastic collision (m_hammer >> m_tine): v_tine' ≈ v_hammer*(1+COR)
+  //     - Wood hammer COR=0.92 → MORE tine velocity than A4 COR=0.65
+  //   But alpha_max gave OPPOSITE: wood K_H=1.12e9 → alpha_max=3% of A4 → wood
+  //   treble became inaudible. urinami-san reported C5+ barely audible.
+  //   A_raw already contains per-key sqrt(m/k) cantilever physics. Per-zone
+  //   COR/COR_A4 would be a more physical coupling (~1.16 for wood), but the
+  //   existing A_raw + PU nonlinearity already balances well without alphaNorm.
 
   // Map to PU physical coordinates (25mm normalization):
   // A4 forte tip displacement ≈ 1.5mm (Falaize 2017 Fig 10a) → 1.5/25 = 0.06.
   // 2026-03-25: increased to 0.12 to match Gabrielli H2/H3 spectrum with corrected
   // PU Lhor (1.5mm physical). The higher tineAmp drives deeper into PU nonlinearity
   // → H3 rises from -40dB to -12dB. PU_EMF_SCALE halved to maintain output level.
-  // 2026-04-06: multiply by alphaNorm (hammer compliance coupling).
-  //   Bass (Shore 30, low K_H): alphaNorm > 1.0 → more displacement → more PU drive.
-  //   A4 (Shore 70): alphaNorm = 1.0 (reference, unchanged).
-  //   Treble (wood): alphaNorm < 1.0 → less displacement.
-  var result = (A_raw / TINE_A4_RAW) * alphaNorm * 0.12;
+  var result = (A_raw / TINE_A4_RAW) * 0.12;
 
   // --- Bass amplitude rolloff DISABLED (2026-03-30) ---
   // Was: 40-100% taper below E3 for DI mode (bass too boomy).
@@ -1094,6 +1100,33 @@ function computePreampLUT_BJT() {
   return lut;
 }
 
+function computePreampLUT_Ge() {
+  // Germanium transistor preamp: Shockley-derived soft knee with bias asymmetry
+  // Physics: I = Is × (exp(V/nVt) - 1), Ge n≈1.2, Vf≈0.3V
+  // Characteristics: earlier compression than Si/tubes, soft/round clipping,
+  // asymmetric (negative clips first → 2nd harmonic → warmth)
+  // Implementation: bias-shifted tanh. Asymmetry emerges from DC offset,
+  // not separate k values (Codex recommendation, matches BJT LUT pattern L1086).
+  var lut = new Float32Array(LUT_SIZE);
+  var bias = 0.08;  // DC bias: negative half compresses earlier → even harmonics
+  var k = 1.6;      // Softer knee than BJT (k=2.0) or 12AX7. Ge = round/warm
+  for (var i = 0; i < LUT_SIZE; i++) {
+    var x = (i / (LUT_SIZE - 1)) * 2 - 1;
+    lut[i] = Math.tanh((x + bias) * k);
+  }
+  // Remove DC offset from bias, then unity-gain normalize
+  var centerVal = lut[LUT_SIZE >> 1];
+  for (var i = 0; i < LUT_SIZE; i++) lut[i] -= centerVal;
+  var maxVal = 0;
+  for (var i = 0; i < LUT_SIZE; i++) {
+    if (Math.abs(lut[i]) > maxVal) maxVal = Math.abs(lut[i]);
+  }
+  if (maxVal > 0) {
+    for (var i = 0; i < LUT_SIZE; i++) lut[i] /= maxVal;
+  }
+  return lut;
+}
+
 function computePowerampLUT() {
   // Exact copy of epiano-engine.js computePowerampLUT_6L6()
   // Push-pull Class AB: even harmonics cancel, crossover region
@@ -1105,6 +1138,25 @@ function computePowerampLUT() {
     lut[i] = (tubeA - tubeB) * 0.5;
   }
   return lut;
+}
+
+function computePowerampLUT_Ge() {
+  // Germanium push-pull Class AB (Peterson FR7054, 2×40W)
+  // Shockley soft knee: n≈1.2, Vf≈0.3V (rounder than Si or vacuum tube)
+  // Push-pull cancels even harmonics; crossover notch generates low-level odd harmonics
+  var lut = new Float32Array(LUT_SIZE);
+  var k = 1.3;            // Ge soft knee (softer than 6L6's 1.5)
+  var bias = 0.03;        // Slight asymmetry from Ge matching tolerance
+  var notchD = 0.08;      // Class AB crossover notch depth
+  var notchW = 0.04;      // Crossover notch width
+  for (var i = 0; i < LUT_SIZE; i++) {
+    var x = (i / LUT_MASK) * 2 - 1;
+    var a = Math.tanh((x + bias) * k);
+    var b = Math.tanh((-x + bias) * k);
+    var notch = 1.0 - notchD * Math.exp(-x * x / (notchW * notchW));
+    lut[i] = (a - b) * 0.5 * notch;
+  }
+  return normalizeLUTUnityGain(lut);
 }
 
 function computeV3DriverLUT() {
@@ -1490,6 +1542,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.preampLUT_12AX7 = computePreampLUT();
     this.preampLUT_NE5534 = computePreampLUT_NE5534();
     this.preampLUT_BJT = computePreampLUT_BJT();
+    this.preampLUT_Ge  = computePreampLUT_Ge();
     this.v3LUT       = computeV3DriverLUT();
     // Active LUT (switched by preset)
     this.preampLUT   = this.preampLUT_12AX7;
@@ -1497,6 +1550,60 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.v4bLUT = normalizeLUTUnityGain(computePreampLUT());
     // Poweramp (6L6 push-pull, unity-gain normalized) — worklet-internal
     this.powerampLUT = normalizeLUTUnityGain(computePowerampLUT());
+    // Ge preamp LUT (unity-gain normalized, shared chain)
+    this.gePreampLUT = normalizeLUTUnityGain(computePreampLUT_Ge());
+    this.gePreampDrive = 2.5;  // Suitcase: clean with subtle warmth
+    this.gePreampGain = 1.5;   // Post-LUT real gain (calibrate by ear)
+    this.gePreampPrevSample = 0; // 2x oversampling state
+    // Interstage transformer: simplified J-A hysteresis model
+    // Physics: B = µ₀(H + M), M tracks magnetization with memory (hysteresis)
+    // Anhysteretic: Man = Ms × L(He/a) where L = Langevin function
+    // State: M (magnetization), H_prev (previous field for delta detection)
+    // Peterson interstage: small transformer, saturates earlier than output transformer
+    this.jaMs = 1.0;       // Normalized saturation magnetization
+    this.jaA = 1.5;        // Langevin shape (higher = wider/softer knee)
+    this.jaK = 0.5;        // Coercivity (hysteresis width)
+    this.jaC = 0.4;        // Reversibility (higher = more reversible = less hysteresis)
+    this.jaAlpha = 0.001;  // Domain coupling
+    this.jaM = 0;          // Magnetization state (HAS MEMORY — this is the hysteresis)
+    this.jaHprev = 0;      // Previous H for delta detection
+    this.jaHscale = 0.5;   // Input→H scaling (very subtle — Suitcase transformer is small)
+    // Pre/de-emphasis: boost lows before J-A, cut after → frequency-dependent saturation
+    // Low shelf +6dB at 200Hz before J-A, -6dB after. Stable alternative to integrate/differentiate.
+    this.jaPreEmphCoeff = biquadLowShelf(200, 6, fs);
+    this.jaPreEmphState = new Float32Array(2);
+    this.jaDeEmphCoeff = biquadLowShelf(200, -6, fs);
+    this.jaDeEmphState = new Float32Array(2);
+    // Germanium power amp (Peterson 2×40W push-pull, coupled to transformer)
+    this.gePowerampLUT = computePowerampLUT_Ge();
+    this.gePaPrevSample = 0;          // 2x oversampling state
+    this.couplingSmooth = 0;          // Smoothed |M|/Ms for drive modulation
+    this.couplingAlpha = 0.001;       // ~3.3ms smoothing at 48kHz
+    this.couplingDepth = 0.25;        // M→drive modulation depth (0.35→0.25: 透明感)
+    this.gePaDrive = 1.6;             // Base power amp drive (1.8→1.6: urinami-san "ほんのちょっと歪まなくていい")
+    this.gePaGain = 1.2;              // Post-LUT output gain (level-matched to Pad Sensei MK1 DI)
+    this.gePaCompLPFCoeff = biquadLowpass(300, 0.707, fs);  // Band-split for freq-dep compression
+    this.gePaCompLPFState = new Float32Array(2);
+    // Vactrol stereo tremolo (Peterson incandescent bulb + CdS photocell)
+    // Three-stage: LFO → filament thermal LPF → CdS asymmetric response
+    this.tremoloOn = false;
+    this.tremoloPhase = 0;
+    this.tremoloFreq = 4.5;         // Hz (Speed knob, 1-8Hz)
+    this.tremoloDepth = 0;          // 0-1 (Intensity knob)
+    this.tremoloShape = 5.0;        // tanh shaping (1=sine, 10=square-ish)
+    this.filamentTempL = 0;         // Filament temperature state (L)
+    this.filamentTempR = 0;         // Filament temperature state (R)
+    this.filamentTau = 0.0008;      // 1-pole alpha: τ≈25ms (incandescent pilot lamp thermal)
+    this.cdsStateL = 0;             // CdS photocell state (L)
+    this.cdsStateR = 0;             // CdS photocell state (R)
+    this.cdsAttack = 0.9965;        // ~6ms (light → low resistance, fast CdS attack)
+    this.cdsRelease = 0.9985;       // ~13ms (dark → high resistance, asymmetric trailing)
+    // Suitcase Baxandall EQ (Peterson FR7054 preamp, NE5534, ±15V)
+    // Bass shelf ~200Hz, Treble shelf ~2kHz. Flat at center (tsBass/tsTreble=0.5)
+    // Range: ±12dB. Uses same tsBass/tsTreble params as Twin tonestack.
+    this.suitcaseBaxBassCoeff   = biquadLowShelf(200, 0, fs);   // 0dB at center
+    this.suitcaseBaxTrebleCoeff = biquadHighShelf(2000, 0, fs); // 0dB at center
+    this.vBaxState = new Float32Array(MAX_VOICES * 4);          // 2 biquads × 2 states per voice
     // Poweramp 2x oversampling state (shared, post-voice-sum)
     this.paPrevSample = 0;
 
@@ -1518,6 +1625,19 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // LPF 6kHz: rolloff begins at 5kHz, steep above 10kHz. -3dB ≈ 6kHz.
     this.cabLPFCoeff  = biquadLowpass(6000, 0.707, fs);
     this.cabLPFState  = new Float32Array(2);
+
+    // Suitcase cabinet: Eminence Legend 1258 12"×4 (2 front + 2 rear), near-sealed
+    // Source: Eminence T-S params (Fs=94Hz, QTS=0.99, QES=1.18, QMS=6.15)
+    // Character: "tight lows, warm smooth mids, upper mid emphasis", 80Hz-4kHz range
+    this.suitcaseCabHPFCoeff  = biquadHighpass(90, 0.707, fs);
+    this.suitcaseCabResCoeff  = biquadPeaking(94, 1.0, 2.0, fs);    // Fs=94Hz, tight (+2dB, "tight lows")
+    this.suitcaseCabPeakCoeff = biquadPeaking(1800, 1.5, 6.0, fs);  // Upper mid emphasis, warm
+    this.suitcaseCabLPFCoeff  = biquadLowpass(4000, 0.707, fs);      // 4kHz rolloff (warm/dark vs Jensen 6kHz)
+    // Separate biquad states for Suitcase (no cross-contamination on amp type switch)
+    this.suitcaseCabHPFState  = new Float32Array(2);
+    this.suitcaseCabResState  = new Float32Array(2);
+    this.suitcaseCabPeakState = new Float32Array(2);
+    this.suitcaseCabLPFState  = new Float32Array(2);
 
     this.pickupType  = 'rhodes'; // 'rhodes' or 'wurlitzer'
     this.puModel     = 'cylinder'; // 'cylinder' (default) or 'dipole' (A/B comparison)
@@ -1553,6 +1673,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.useTonestack   = true;
     this.useCabinet     = true;
     this.useSpringReverb = false; // OFF until Nyquist aliasing fixed
+    this.ampType        = 'twin'; // 'twin' | 'suitcase' | 'di'
 
     // Mechanical noise parameters (0-1 knobs, scale internal constants)
     // Separate signal path: bypasses PU → amp chain (acoustic, not electromagnetic)
@@ -1616,6 +1737,10 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     if (msg.useTonestack !== undefined) this.useTonestack = msg.useTonestack;
     if (msg.useCabinet !== undefined) this.useCabinet = msg.useCabinet;
     if (msg.useSpringReverb !== undefined) this.useSpringReverb = msg.useSpringReverb;
+    if (msg.ampType !== undefined) this.ampType = msg.ampType;
+    if (msg.tremoloOn !== undefined) this.tremoloOn = msg.tremoloOn;
+    if (msg.tremoloFreq !== undefined) this.tremoloFreq = msg.tremoloFreq;
+    if (msg.tremoloDepth !== undefined) this.tremoloDepth = msg.tremoloDepth;
     if (msg.coupledTonebar !== undefined) this.coupledTonebar = msg.coupledTonebar;
     if (msg.beamDecayR !== undefined) this.beamDecayR = msg.beamDecayR;
     if (msg.attackNoise !== undefined) this.attackNoise = msg.attackNoise;
@@ -1641,6 +1766,12 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       if (msg.tsMid !== undefined) this.tsMid = msg.tsMid;
       if (msg.tsTreble !== undefined) this.tsTreble = msg.tsTreble;
       this.tsCoeffs = computeTonestackBiquads(this.tsBass, this.tsMid, this.tsTreble, this.brightSwitch, this.fs);
+      // Suitcase Baxandall EQ also uses tsBass/tsTreble (shared knobs)
+      // Bass: 0=−12dB, 0.5=flat, 1=+12dB. Treble: same range.
+      var baxBassDB = (this.tsBass - 0.5) * 24;     // ±12dB
+      var baxTrebleDB = (this.tsTreble - 0.5) * 24;  // ±12dB
+      this.suitcaseBaxBassCoeff = biquadLowShelf(200, baxBassDB, this.fs);
+      this.suitcaseBaxTrebleCoeff = biquadHighShelf(2000, baxTrebleDB, this.fs);
     }
 
     // Preset-specific LUT switching
@@ -2424,78 +2555,114 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         var sig = couplingOut;
 
         if (this.useCabinet) {
-          // === AMP PATH (Rhodes Stage + Twin, Suitcase, Wurlitzer) ===
 
-          // --- 3b. Harp LCR (5700Hz, Q=1.7) — amp path only ---
-          // 73 PU series L=1.2H + cable C=650pF + Vol R=25kΩ → f₀=5700Hz
-          // DI has no cable → internal C≈50-100pF → f₀>14kHz → transparent.
-          // LCR only applies when signal goes through cable to amp.
-          {
-            var hOff = v * 2;
-            var hc = this.harpLPFCoeff;
-            var hz1 = this.vHarpLCRState[hOff], hz2 = this.vHarpLCRState[hOff + 1];
-            sig = hc[0] * couplingOut + hz1;
-            this.vHarpLCRState[hOff] = hc[1] * couplingOut - hc[3] * sig + hz2;
-            this.vHarpLCRState[hOff + 1] = hc[2] * couplingOut - hc[4] * sig;
-          }
+          if (this.ampType === 'suitcase') {
+            // === SUITCASE PATH (Peterson FR7054) ===
+            // Self-contained amp: no external cable → no harp LCR (internal C≈50-100pF → transparent)
+            // Signal path: DI → Baxandall EQ → Volume → [shared: Ge Preamp → Tremolo → Transformer → Power → Cabinet]
+            // Phase D: Interstage phase inverter transformer (J-A hysteresis)
 
-          // --- 4. Input jack attenuator (-6dB, AB763 Hi input) ---
-          sig *= this.inputAtten;
-
-          // --- 5. Preamp V1A (12AX7 LUT, 2x oversampled) ---
-          // Input ~0.025-0.075 (Rhodes 74mV after -6dB). LUT unity-gain, then ×43 real gain.
-          // Output ~1-3V equivalent. Exceeds ±1 — OK, tonestack handles it linearly.
-          sig *= this.preampGain;
-          sig = lutLookup2x(this.preampLUT, sig, v, _OS2X_PREAMP);
-          sig *= this.v1aGain;
-
-          // --- 5b. Cathode follower V2A ---
-          if (this.use2ndPreamp) {
-            sig *= this.cfGain;
-          }
-
-          // --- 6. Tonestack (3 × biquad IIR, DC HPF removed) ---
-          if (this.useTonestack) {
-            var tsBase = v * 6;
-            for (var f = 0; f < 3; f++) {
-              var coeff = this.tsCoeffs[f];
-              var sOff = tsBase + f * 2;
-              var cb0 = coeff[0], cb1 = coeff[1], cb2 = coeff[2], ca1 = coeff[3], ca2 = coeff[4];
-              var tz1 = this.vTsState[sOff], tz2 = this.vTsState[sOff + 1];
-              var tsOut = cb0 * sig + tz1;
-              this.vTsState[sOff] = cb1 * sig - ca1 * tsOut + tz2;
-              this.vTsState[sOff + 1] = cb2 * sig - ca2 * tsOut;
-              sig = tsOut;
+            // --- Baxandall Bass/Treble EQ (NE5534 preamp, ±15V) ---
+            // Peterson FR7054: 2-band Baxandall with Bass/Treble knobs
+            // Bass shelf ~200Hz, Treble shelf ~2kHz
+            // Flat at center (0dB), ±12dB range. Using tsBass/tsTreble knobs (0..1)
+            {
+              var baxBase = v * 4;  // 2 biquads × 2 states each = 4 per voice
+              // Bass shelf
+              var bc = this.suitcaseBaxBassCoeff;
+              var bz1 = this.vBaxState[baxBase], bz2 = this.vBaxState[baxBase + 1];
+              var bOut = bc[0] * sig + bz1;
+              this.vBaxState[baxBase]     = bc[1] * sig - bc[3] * bOut + bz2;
+              this.vBaxState[baxBase + 1] = bc[2] * sig - bc[4] * bOut;
+              sig = bOut;
+              // Treble shelf
+              var tc = this.suitcaseBaxTrebleCoeff;
+              var tz1 = this.vBaxState[baxBase + 2], tz2 = this.vBaxState[baxBase + 3];
+              var tOut = tc[0] * sig + tz1;
+              this.vBaxState[baxBase + 2] = tc[1] * sig - tc[3] * tOut + tz2;
+              this.vBaxState[baxBase + 3] = tc[2] * sig - tc[4] * tOut;
+              sig = tOut;
             }
 
-            // Tonestack insertion loss (-14dB)
-            sig *= this.tsInsertionLoss;
-          }
-
-          // --- Reverb send tap (post-tonestack, pre-volume pot) ---
-          if (this.useSpringReverb) {
-            sendSum += sig;
-          }
-
-          // --- 7. Volume pot ---
-          if (this.useTonestack) {
+            // Volume control (Suitcase has its own volume pot)
             sig *= this.volumePot;
-          }
 
-          // --- 8. V2B recovery amp (gain only, LUT bypassed) ---
-          // LUT bypass: tsInsertionLoss=0.005 puts V2B input at ~0.00006 (0.03 LUT steps).
-          // At this level, LUT≈linear (no tube character) but creates release transient
-          // artifacts. Gain-only is sonically identical until tsInsertionLoss is corrected
-          // to physical value (~0.2). Re-enable LUT when gain chain is recalibrated.
-          if (this.use2ndPreamp) {
-            sig *= this.v2bGain;
-          }
+            drySum += sig;
 
-          // --- DEBUG: per-voice V2B output peak + V2B input ---
-          if (this._dbgPeakV2B !== undefined && Math.abs(sig) > this._dbgPeakV2B) this._dbgPeakV2B = Math.abs(sig);
-          if (this._dbgPeakV2Bin !== undefined && Math.abs(this._dbgLastV2Bin) > this._dbgPeakV2Bin) this._dbgPeakV2Bin = Math.abs(this._dbgLastV2Bin);
-          // Sum to dry bus
-          drySum += sig;
+          } else {
+            // === TWIN PATH (AB763 Fender Twin Reverb) ===
+
+            // --- 3b. Harp LCR (5700Hz, Q=1.7) — amp path only ---
+            // 73 PU series L=1.2H + cable C=650pF + Vol R=25kΩ → f₀=5700Hz
+            // DI has no cable → internal C≈50-100pF → f₀>14kHz → transparent.
+            // LCR only applies when signal goes through cable to amp.
+            {
+              var hOff = v * 2;
+              var hc = this.harpLPFCoeff;
+              var hz1 = this.vHarpLCRState[hOff], hz2 = this.vHarpLCRState[hOff + 1];
+              sig = hc[0] * couplingOut + hz1;
+              this.vHarpLCRState[hOff] = hc[1] * couplingOut - hc[3] * sig + hz2;
+              this.vHarpLCRState[hOff + 1] = hc[2] * couplingOut - hc[4] * sig;
+            }
+
+            // --- 4. Input jack attenuator (-6dB, AB763 Hi input) ---
+            sig *= this.inputAtten;
+
+            // --- 5. Preamp V1A (12AX7 LUT, 2x oversampled) ---
+            // Input ~0.025-0.075 (Rhodes 74mV after -6dB). LUT unity-gain, then ×43 real gain.
+            // Output ~1-3V equivalent. Exceeds ±1 — OK, tonestack handles it linearly.
+            sig *= this.preampGain;
+            sig = lutLookup2x(this.preampLUT, sig, v, _OS2X_PREAMP);
+            sig *= this.v1aGain;
+
+            // --- 5b. Cathode follower V2A ---
+            if (this.use2ndPreamp) {
+              sig *= this.cfGain;
+            }
+
+            // --- 6. Tonestack (3 × biquad IIR, DC HPF removed) ---
+            if (this.useTonestack) {
+              var tsBase = v * 6;
+              for (var f = 0; f < 3; f++) {
+                var coeff = this.tsCoeffs[f];
+                var sOff = tsBase + f * 2;
+                var cb0 = coeff[0], cb1 = coeff[1], cb2 = coeff[2], ca1 = coeff[3], ca2 = coeff[4];
+                var tz1 = this.vTsState[sOff], tz2 = this.vTsState[sOff + 1];
+                var tsOut = cb0 * sig + tz1;
+                this.vTsState[sOff] = cb1 * sig - ca1 * tsOut + tz2;
+                this.vTsState[sOff + 1] = cb2 * sig - ca2 * tsOut;
+                sig = tsOut;
+              }
+
+              // Tonestack insertion loss (-14dB)
+              sig *= this.tsInsertionLoss;
+            }
+
+            // --- Reverb send tap (post-tonestack, pre-volume pot) ---
+            if (this.useSpringReverb) {
+              sendSum += sig;
+            }
+
+            // --- 7. Volume pot ---
+            if (this.useTonestack) {
+              sig *= this.volumePot;
+            }
+
+            // --- 8. V2B recovery amp (gain only, LUT bypassed) ---
+            // LUT bypass: tsInsertionLoss=0.005 puts V2B input at ~0.00006 (0.03 LUT steps).
+            // At this level, LUT≈linear (no tube character) but creates release transient
+            // artifacts. Gain-only is sonically identical until tsInsertionLoss is corrected
+            // to physical value (~0.2). Re-enable LUT when gain chain is recalibrated.
+            if (this.use2ndPreamp) {
+              sig *= this.v2bGain;
+            }
+
+            // --- DEBUG: per-voice V2B output peak + V2B input ---
+            if (this._dbgPeakV2B !== undefined && Math.abs(sig) > this._dbgPeakV2B) this._dbgPeakV2B = Math.abs(sig);
+            if (this._dbgPeakV2Bin !== undefined && Math.abs(this._dbgLastV2Bin) > this._dbgPeakV2Bin) this._dbgPeakV2Bin = Math.abs(this._dbgLastV2Bin);
+            // Sum to dry bus
+            drySum += sig;
+          }
 
         } else {
           // === DI PATH (no amp chain) ===
@@ -2678,60 +2845,172 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       var mainOut;
 
       if (this.useCabinet) {
-        // === AMP PATH: worklet-internal V4B → poweramp → cabinet ===
-        // Sample-by-sample processing eliminates 128-sample block jitter
-        // that amplifies through nonlinear stages (framework §3).
-        drySum = (drySum / HARP_PARALLEL_DIV) * this.dryBusGain;
+        var ampSig;
 
-        // V4B bloom: dry+wet → 12AX7 nonlinear mixing (gain=2)
-        // Real circuit: 470kΩ/220kΩ resistive divider at V4B grid passes 32%.
-        // 15.4V(V2B) × 0.5(Vol) × 0.32(divider) = 2.46V → within ±3V grid swing.
-        // Forte chord: 0.82 normalized → subtle soft-clip = bloom (NOT hard distortion).
-        var ampSig = (drySum + wetSignal) * this.rhodesLevel * 0.32;
-        // --- DEBUG: gain staging via MessagePort (worklet console.log not visible) ---
-        if (this._dbgCount === undefined) { this._dbgCount = 0; this._dbgPeakV4B = 0; this._dbgPeakDry = 0; this._dbgPeakV2B = 0; this._dbgPeakV2Bin = 0; this._dbgLastV2Bin = 0; }
-        if (Math.abs(ampSig) > this._dbgPeakV4B) this._dbgPeakV4B = Math.abs(ampSig);
-        if (Math.abs(drySum) > this._dbgPeakDry) this._dbgPeakDry = Math.abs(drySum);
-        this._dbgCount++;
-        if (this._dbgCount % 24000 === 0 && (this._dbgPeakV4B > 0.001 || this._dbgPeakDry > 0.001)) {
-          this.port.postMessage({ type: 'debug', v4bIn: this._dbgPeakV4B, dry: this._dbgPeakDry, v2b: this._dbgPeakV2B, v2bIn: this._dbgPeakV2Bin });
-          this._dbgPeakV4B = 0; this._dbgPeakDry = 0; this._dbgPeakV2B = 0; this._dbgPeakV2Bin = 0;
-        }
-        ampSig = lutLookup(this.v4bLUT, ampSig);
-        ampSig *= this.v4bGain;
+        if (this.ampType === 'suitcase') {
+          // === SUITCASE SHARED: Peterson FR7054 germanium 80W ===
+          // Signal path: voice sum → [Phase E: stereo tremolo here] → Ge power amp → Eminence 2×12 cabinet
+          drySum = (drySum / HARP_PARALLEL_DIV) * this.dryBusGain;
+          ampSig = drySum * this.rhodesLevel;
 
-        // Power amp + OT: currently linear placeholder.
-        // TODO: BF breaks up (dynamic bias + coupling C sag). SF has more headroom.
-        // Suitcase (Peterson) = germanium push-pull, entirely different topology.
-        // "6L6 doesn't clip" was a false negative conclusion — see 忘れやすいこと.md.
-        // 6L6×4 gain ×25-30, OT step-down ÷22, net ≈ ×1.14 (SF approximation only)
-        ampSig *= this.powerGain;
+          // Phase E: Vactrol stereo tremolo (incandescent + CdS, post-preamp, pre-power)
+          // Phase D: Interstage transformer (J-A hysteresis)
 
-        // Cabinet: Jensen C12N 2x12" open-back (4-stage parametric EQ)
-        // Gate: skip cabinet when signal is inaudible. Prevents biquad state
-        // residual from being amplified by cab resonance/presence peaks.
-        if (Math.abs(ampSig) > 1e-7) {
-          // HPF 60Hz: physical lower limit
-          ampSig = biquadProcess(this.cabHPFCoeff, this.cabHPFState, ampSig);
-          // Speaker resonance +6dB @ 113Hz: Fs peak (the "ボフボフ")
-          ampSig = biquadProcess(this.cabResCoeff, this.cabResState, ampSig);
-          // Presence +8dB @ 2kHz: cone breakup → bell emphasis
-          ampSig = biquadProcess(this.cabPeakCoeff, this.cabPeakState, ampSig);
-          // LPF 6kHz: cone mass → harshness removal
-          ampSig = biquadProcess(this.cabLPFCoeff, this.cabLPFState, ampSig);
+          // --- Germanium preamp (Shockley soft knee, shared chain) ---
+          // Drive scales input to hit LUT's nonlinear region.
+          // pp: ~0.005×5=0.025 (nearly linear, subtle warmth)
+          // ff: ~0.15×5=0.75 (soft knee, warm compression)
+          // fff chord: >1.0 (soft clip, 2nd harmonic rich)
+          ampSig *= this.gePreampDrive;
+          // 2x oversampled LUT (anti-aliasing for nonlinear waveshaper)
+          var geHalf = (ampSig + this.gePreampPrevSample) * 0.5;
+          geHalf = lutLookup(this.gePreampLUT, geHalf);
+          this.gePreampPrevSample = ampSig;
+          ampSig = lutLookup(this.gePreampLUT, ampSig);
+          ampSig = (ampSig + geHalf) * 0.5;
+          // Post-LUT real gain (unity-gain LUT × stage gain)
+          ampSig *= this.gePreampGain;
+
+          // --- Interstage transformer (J-A hysteresis, frequency-dependent) ---
+          // Low frequencies saturate first (B ∝ 1/f). Implementation: pre-emphasis/de-emphasis.
+          // Boost lows +6dB → J-A saturates lows more → cut lows -6dB → net: only lows compressed.
+          // Numerically stable (no integrate/differentiate).
+          {
+            // 1. Pre-emphasis: boost lows before J-A
+            ampSig = biquadProcess(this.jaPreEmphCoeff, this.jaPreEmphState, ampSig);
+            var H = ampSig * this.jaHscale;
+            var He = H + this.jaAlpha * this.jaM;
+            // Langevin function: L(x) = coth(x) - 1/x ≈ x/3 for small x
+            var hea = He / this.jaA;
+            var Man;
+            if (Math.abs(hea) < 0.001) {
+              Man = this.jaMs * hea / 3;
+            } else {
+              Man = this.jaMs * (1 / Math.tanh(hea) - 1 / hea);
+            }
+            var dH = H - this.jaHprev;
+            var delta = dH >= 0 ? 1 : -1;
+            var denom = this.jaK * delta - this.jaAlpha * (Man - this.jaM);
+            if (Math.abs(denom) < 1e-10) denom = 1e-10 * delta;
+            var dMirr = (Man - this.jaM) / denom;
+            // dMan/dH for reversible component
+            var dManDH;
+            if (Math.abs(hea) < 0.001) {
+              dManDH = this.jaMs / (3 * this.jaA);
+            } else {
+              var sh = 1 / Math.tanh(hea);
+              dManDH = this.jaMs * (-sh * sh + 1 / (hea * hea)) / this.jaA;
+            }
+            var dMdH = (1 - this.jaC) * dMirr + this.jaC * dManDH;
+            // Clamp dM to prevent instability
+            var dM = dMdH * dH;
+            if (dM > 0.1) dM = 0.1;
+            if (dM < -0.1) dM = -0.1;
+            this.jaM += dM;
+            // Clamp M to ±Ms
+            if (this.jaM > this.jaMs) this.jaM = this.jaMs;
+            if (this.jaM < -this.jaMs) this.jaM = -this.jaMs;
+            this.jaHprev = H;
+            // Coupling: extract transformer saturation for power amp drive modulation
+            var mNorm = Math.abs(this.jaM) / this.jaMs;  // 0..1 saturation ratio
+            this.couplingSmooth += this.couplingAlpha * (mNorm - this.couplingSmooth);
+            // Output: B ∝ H + M, normalized
+            ampSig = (H + this.jaM) / (1 + this.jaMs) / this.jaHscale;
+            // 2. De-emphasis: cut lows back to restore balance
+            ampSig = biquadProcess(this.jaDeEmphCoeff, this.jaDeEmphState, ampSig);
+          }
+
+          // --- Germanium Power Amp (Peterson 2×40W push-pull, coupled to transformer) ---
+          // Coupling: transformer saturation (couplingSmooth) → power amp drive modulation
+          // Physics: core saturation → L(M) drops → source impedance changes
+          //   → power amp sees different signal → operating point shifts
+          // As transformer saturates (mNorm→1): drive increases, lows compress more
+          var cDrive = this.gePaDrive * (1.0 + this.couplingDepth * this.couplingSmooth);
+          // Frequency-dependent compression: lows saturate transformer first (B ∝ 1/f)
+          var lfC = biquadProcess(this.gePaCompLPFCoeff, this.gePaCompLPFState, ampSig);
+          var hfC = ampSig - lfC;
+          lfC *= cDrive * (1.0 + 0.15 * this.couplingSmooth);  // Extra drive for lows (0.3→0.15: 透明感)
+          hfC *= cDrive;
+          var paIn = lfC + hfC;
+          // 2x oversampled Ge push-pull LUT (anti-aliasing)
+          var paH = (paIn + this.gePaPrevSample) * 0.5;
+          paH = lutLookup(this.gePowerampLUT, paH);
+          this.gePaPrevSample = paIn;
+          paIn = lutLookup(this.gePowerampLUT, paIn);
+          ampSig = (paIn + paH) * 0.5;
+          ampSig *= this.gePaGain;
+
+          // Cabinet: Eminence Legend 1258 12"×4, near-sealed Suitcase enclosure
+          // Eminence T-S: Fs=94Hz, QTS=0.99, 80Hz-4kHz, "tight lows, warm smooth mids"
+          if (Math.abs(ampSig) > 1e-7) {
+            ampSig = biquadProcess(this.suitcaseCabHPFCoeff, this.suitcaseCabHPFState, ampSig);
+            ampSig = biquadProcess(this.suitcaseCabResCoeff, this.suitcaseCabResState, ampSig);
+            ampSig = biquadProcess(this.suitcaseCabPeakCoeff, this.suitcaseCabPeakState, ampSig);
+            ampSig = biquadProcess(this.suitcaseCabLPFCoeff, this.suitcaseCabLPFState, ampSig);
+          } else {
+            this.suitcaseCabHPFState[0] = 0; this.suitcaseCabHPFState[1] = 0;
+            this.suitcaseCabResState[0] = 0; this.suitcaseCabResState[1] = 0;
+            this.suitcaseCabPeakState[0] = 0; this.suitcaseCabPeakState[1] = 0;
+            this.suitcaseCabLPFState[0] = 0; this.suitcaseCabLPFState[1] = 0;
+            ampSig = 0;
+          }
+
         } else {
-          // Clear cabinet biquad states when silent
-          this.cabHPFState[0] = 0; this.cabHPFState[1] = 0;
-          this.cabResState[0] = 0; this.cabResState[1] = 0;
-          this.cabPeakState[0] = 0; this.cabPeakState[1] = 0;
-          this.cabLPFState[0] = 0; this.cabLPFState[1] = 0;
-          ampSig = 0;
+          // === TWIN SHARED: AB763 Fender Twin Reverb ===
+          // Sample-by-sample processing eliminates 128-sample block jitter
+          // that amplifies through nonlinear stages (framework §3).
+          drySum = (drySum / HARP_PARALLEL_DIV) * this.dryBusGain;
+
+          // V4B bloom: dry+wet → 12AX7 nonlinear mixing (gain=2)
+          // Real circuit: 470kΩ/220kΩ resistive divider at V4B grid passes 32%.
+          // 15.4V(V2B) × 0.5(Vol) × 0.32(divider) = 2.46V → within ±3V grid swing.
+          // Forte chord: 0.82 normalized → subtle soft-clip = bloom (NOT hard distortion).
+          ampSig = (drySum + wetSignal) * this.rhodesLevel * 0.32;
+          // --- DEBUG: gain staging via MessagePort (worklet console.log not visible) ---
+          if (this._dbgCount === undefined) { this._dbgCount = 0; this._dbgPeakV4B = 0; this._dbgPeakDry = 0; this._dbgPeakV2B = 0; this._dbgPeakV2Bin = 0; this._dbgLastV2Bin = 0; }
+          if (Math.abs(ampSig) > this._dbgPeakV4B) this._dbgPeakV4B = Math.abs(ampSig);
+          if (Math.abs(drySum) > this._dbgPeakDry) this._dbgPeakDry = Math.abs(drySum);
+          this._dbgCount++;
+          if (this._dbgCount % 24000 === 0 && (this._dbgPeakV4B > 0.001 || this._dbgPeakDry > 0.001)) {
+            this.port.postMessage({ type: 'debug', v4bIn: this._dbgPeakV4B, dry: this._dbgPeakDry, v2b: this._dbgPeakV2B, v2bIn: this._dbgPeakV2Bin });
+            this._dbgPeakV4B = 0; this._dbgPeakDry = 0; this._dbgPeakV2B = 0; this._dbgPeakV2Bin = 0;
+          }
+          ampSig = lutLookup(this.v4bLUT, ampSig);
+          ampSig *= this.v4bGain;
+
+          // Power amp + OT: currently linear placeholder.
+          // TODO: BF breaks up (dynamic bias + coupling C sag). SF has more headroom.
+          // "6L6 doesn't clip" was a false negative conclusion — see 忘れやすいこと.md.
+          // 6L6×4 gain ×25-30, OT step-down ÷22, net ≈ ×1.14 (SF approximation only)
+          ampSig *= this.powerGain;
+
+          // Cabinet: Jensen C12N 2x12" open-back (4-stage parametric EQ)
+          // Gate: skip cabinet when signal is inaudible. Prevents biquad state
+          // residual from being amplified by cab resonance/presence peaks.
+          if (Math.abs(ampSig) > 1e-7) {
+            // HPF 60Hz: physical lower limit
+            ampSig = biquadProcess(this.cabHPFCoeff, this.cabHPFState, ampSig);
+            // Speaker resonance +6dB @ 113Hz: Fs peak (the "ボフボフ")
+            ampSig = biquadProcess(this.cabResCoeff, this.cabResState, ampSig);
+            // Presence +8dB @ 2kHz: cone breakup → bell emphasis
+            ampSig = biquadProcess(this.cabPeakCoeff, this.cabPeakState, ampSig);
+            // LPF 6kHz: cone mass → harshness removal
+            ampSig = biquadProcess(this.cabLPFCoeff, this.cabLPFState, ampSig);
+          } else {
+            // Clear cabinet biquad states when silent
+            this.cabHPFState[0] = 0; this.cabHPFState[1] = 0;
+            this.cabResState[0] = 0; this.cabResState[1] = 0;
+            this.cabPeakState[0] = 0; this.cabPeakState[1] = 0;
+            this.cabLPFState[0] = 0; this.cabLPFState[1] = 0;
+            ampSig = 0;
+          }
         }
 
         mainOut = ampSig * this.cabinetGain;
       } else {
         // === DI PATH: no cable LCR, transparent output ===
-        mainOut = (diSum / HARP_PARALLEL_DIV) * this.rhodesLevel;
+        // DI boost 1.5x: level-match to Pad Sensei MK1 Suitcase (2026-04-10 urinami-san)
+        mainOut = (diSum / HARP_PARALLEL_DIV) * this.rhodesLevel * 1.5;
       }
 
       // Tine radiation: delayed by mic distance (2ms) for natural phase relationship
@@ -2789,9 +3068,46 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       }
       if (mainOut > 0.95) mainOut = 0.95;
       if (mainOut < -0.95) mainOut = -0.95;
-      outL[i] = mainOut;
-      if (outR !== outL) {
-        outR[i] = 0; // ch1 unused (spring reverb is inline now)
+      // --- Stereo output: Peterson Vactrol Stereo Tremolo (incandescent + CdS) ---
+      // Shared across DI and Suitcase: the Vactrol physics model is superior
+      // to the legacy Web Audio sine tremolo. One engine, two modes.
+      if (this.tremoloDepth > 0) {
+        // Physical chain (Peterson FR7054, 1969+ stereo):
+        //   Square-wave LFO → Filament I²R heating (τ≈25ms)
+        //     → Light output L ∝ T² (Stefan-Boltzmann approx)
+        //       → CdS photocell asymmetric response (att 6ms, rel 13ms)
+        //         → Resistance → gain attenuation
+        // This chain creates the "cat's eye" waveform shape.
+        this.tremoloPhase += 6.283185 * this.tremoloFreq / this.fs;
+        if (this.tremoloPhase >= 6.283185) this.tremoloPhase -= 6.283185;
+        // 1. Square wave LFO drives filament current (0 or 1)
+        var squareSign = this.tremoloPhase < 3.14159 ? 1.0 : 0.0;
+        var currentL = squareSign;
+        var currentR = 1.0 - squareSign;
+        // 2. Filament thermal inertia (1-pole LPF, τ≈25ms)
+        this.filamentTempL += this.filamentTau * (currentL - this.filamentTempL);
+        this.filamentTempR += this.filamentTau * (currentR - this.filamentTempR);
+        // 3. Stefan-Boltzmann: light output L ∝ T² (approximation)
+        var lightL = this.filamentTempL * this.filamentTempL;
+        var lightR = this.filamentTempR * this.filamentTempR;
+        // 4. CdS asymmetric response (attack fast, release slow)
+        var alphaL = lightL > this.cdsStateL ? this.cdsAttack : this.cdsRelease;
+        var alphaR = lightR > this.cdsStateR ? this.cdsAttack : this.cdsRelease;
+        this.cdsStateL += (1 - alphaL) * (lightL - this.cdsStateL);
+        this.cdsStateR += (1 - alphaR) * (lightR - this.cdsStateR);
+        // 5. Depth curve: cubic ease-out makes mid-slider already dramatic
+        //    slider=0.4 → effective=0.78 (≈10dB swing)
+        //    slider=1.0 → effective=1.0 (full swing, one channel silent)
+        var oneMinusD = 1.0 - this.tremoloDepth;
+        var effectiveD = 1.0 - oneMinusD * oneMinusD * oneMinusD;
+        var oneMinusE = 1.0 - effectiveD;
+        var gainL = oneMinusE + effectiveD * this.cdsStateL;
+        var gainR = oneMinusE + effectiveD * this.cdsStateR;
+        outL[i] = mainOut * gainL;
+        if (outR !== outL) outR[i] = mainOut * gainR;
+      } else {
+        outL[i] = mainOut;
+        if (outR !== outL) outR[i] = mainOut;  // mono on both channels
       }
     }
 

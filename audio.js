@@ -502,8 +502,8 @@ const ENGINES = {
   epiano: {
     name: 'E.PIANO',
     presets: {
-      'Rhodes DI':        { epiano: 'Rhodes DI', label: 'Pad Sensei MK1' },
-      // Amp hidden: tube/tonestack/cabinet are WIP (gain staging needs recalibration)
+      'Rhodes DI':       { epiano: 'Rhodes DI',       label: 'Pad Sensei MK1' },
+      'Rhodes Suitcase': { epiano: 'Rhodes Suitcase', label: 'Pad Sensei MK1 Suitcase' },
     },
     defaultPreset: 'Rhodes DI',  // internal key unchanged (EP_AMP_PRESETS reference)
   },
@@ -583,6 +583,15 @@ function selectSound(combinedValue) {
   AudioState.instrument = AudioState.engine.presets[presetKey];
   saveSoundSettings();
   _updateEpMixerVisibility();
+  // Sync TREM implementation (always Vactrol now, kept for consistency)
+  var trmSlider = document.getElementById('snd-tremolo');
+  if (trmSlider) trmSlider.dispatchEvent(new Event('input'));
+  // Show/hide AMP CHAIN dev sliders based on preset's useCabinet
+  var ampSec = document.getElementById('ep-amp-section');
+  if (ampSec) {
+    var preset = EP_AMP_PRESETS[AudioState.instrument.epiano];
+    ampSec.style.display = (preset && preset.useCabinet) ? '' : 'none';
+  }
 }
 
 function setPreset(name) {
@@ -700,13 +709,18 @@ function dismissAudioOverlay() {
     var epDest = epianoDirectOut || masterComp;
     epianoWorkletInit(audioCtx, epDest);
   }
-  // Auto-select Organ if no engine set yet (first-time user)
+  // Auto-select engine if muted (legacy path)
   if (_soundMuted) {
     setEngine('epiano');
-    // Expand Sound panel so first-time users see presets/volume
     if (typeof soundExpanded !== 'undefined' && !soundExpanded && typeof toggleSoundExpand === 'function') {
       toggleSoundExpand();
     }
+  }
+  // Persist settings (ensures first-time users get localStorage entry)
+  saveSoundSettings();
+  // Pad hint only for first-time users (returning users already know)
+  if (!localStorage.getItem('64pad-overlay-seen')) {
+    localStorage.setItem('64pad-overlay-seen', '1');
     _showPadHint();
   }
 }
@@ -735,7 +749,7 @@ function _hidePadHint() {
 function loadSoundSettings() {
   try {
     const raw = localStorage.getItem('64pad-sound');
-    if (!raw) { _showFirstTimeHint(); return; }
+    if (!raw) { return; }
     const s = JSON.parse(raw);
     if (s.engine && ENGINES[s.engine]) {
       var wasMuted = _soundMuted;
@@ -788,17 +802,33 @@ function loadSoundSettings() {
 function renderSoundControls() {
   const sel = document.getElementById('organ-preset');
   if (!sel) return;
+  // HPS gate: Suitcase amp presets are members-only
+  var hpsUnlocked = new URLSearchParams(window.location.search).has('hps');
   sel.innerHTML = '';
   Object.entries(ENGINES).forEach(function(entry) {
     var engineKey = entry[0], engine = entry[1];
     Object.entries(engine.presets).forEach(function(pe) {
+      var presetKey = pe[0], presetData = pe[1];
+      // Skip amp presets (useCabinet=true) for non-HPS users
+      var epPreset = EP_AMP_PRESETS[presetData.epiano];
+      if (epPreset && epPreset.useCabinet && !hpsUnlocked) return;
       var opt = document.createElement('option');
-      opt.value = engineKey + ':' + pe[0];
-      opt.textContent = pe[1].label;
+      opt.value = engineKey + ':' + presetKey;
+      opt.textContent = presetData.label;
       sel.appendChild(opt);
     });
   });
+  // Fall back to a free preset if current selection was HPS-gated
+  var currentValue = AudioState.engineKey + ':' + AudioState.presetKey;
+  var hasCurrent = Array.from(sel.options).some(function(o) { return o.value === currentValue; });
+  if (!hasCurrent && sel.options.length > 0) {
+    var firstKey = sel.options[0].value.split(':').slice(1).join(':');
+    AudioState.presetKey = firstKey;
+    AudioState.instrument = AudioState.engine.presets[firstKey];
+  }
   sel.value = AudioState.engineKey + ':' + AudioState.presetKey;
+  // Hide dropdown when only one preset exists
+  sel.style.display = sel.options.length <= 1 ? 'none' : '';
 }
 
 // --- Voice management ---
@@ -1027,16 +1057,29 @@ onReady(() => {
     masterReverbGain.gain.setValueAtTime(parseFloat(revSlider.value), audioCtx.currentTime);
   });
 
-  // Real-time TREM → tremoloGain depth
+  // Real-time TREM → tremoloGain depth (+ worklet Vactrol for Suitcase)
   const trmSlider = document.getElementById('snd-tremolo');
   if (trmSlider) trmSlider.addEventListener('input', () => {
-    tremoloGain.gain.setValueAtTime(parseFloat(trmSlider.value), audioCtx.currentTime);
+    var val = parseFloat(trmSlider.value);  // 0-1 (real Rhodes Intensity knob range)
+    // Unified tremolo: worklet Vactrol physics for BOTH modes. Kill legacy sine LFO.
+    tremoloGain.gain.setValueAtTime(0, audioCtx.currentTime);
+    if (AudioState.instrument && AudioState.instrument.epiano && _useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      // Worklet depth uses slider value directly (0-1 matches real Peterson Intensity)
+      EpState.tremoloDepth = val;
+      EpState.tremoloOn = val > 0;
+      epianoWorkletUpdateParams({ tremoloDepth: val, tremoloOn: val > 0 });
+    }
   });
 
-  // Real-time SPEED → tremoloLFO frequency
+  // Real-time SPEED → tremoloLFO frequency (+ worklet for Suitcase)
   const trmSpd = document.getElementById('snd-tremolo-spd');
   if (trmSpd) trmSpd.addEventListener('input', () => {
-    tremoloLFO.frequency.setValueAtTime(parseFloat(trmSpd.value), audioCtx.currentTime);
+    var val = parseFloat(trmSpd.value);
+    tremoloLFO.frequency.setValueAtTime(val, audioCtx.currentTime);
+    if (AudioState.instrument && AudioState.instrument.epiano && _useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      EpState.tremoloFreq = val;
+      epianoWorkletUpdateParams({ tremoloFreq: val });
+    }
   });
 
   // Real-time PHASE → phaser depth + wet mix
@@ -1302,9 +1345,16 @@ onReady(() => {
   loadSoundSettings();
   _loadEpMixer();
   _updateEpMixerVisibility();
+  // Always show tap-to-start overlay (browser requires user gesture for AudioContext)
+  _showAudioOverlay();
 
-  // --- AMP CHAIN dev sliders (shown with ?amp=twin, AFTER mixer visibility) ---
-  if (_ampPresetParam) {
+  // --- AMP CHAIN dev sliders (shown for amp presets: Suitcase/Twin/etc.) ---
+  // Show when URL has ?amp=... OR when current preset uses the amp chain
+  var isAmpPreset = !!_ampPresetParam ||
+    (AudioState.instrument && AudioState.instrument.epiano &&
+     EP_AMP_PRESETS[AudioState.instrument.epiano] &&
+     EP_AMP_PRESETS[AudioState.instrument.epiano].useCabinet);
+  if (isAmpPreset) {
     var ampSec = document.getElementById('ep-amp-section');
     if (ampSec) ampSec.style.display = '';
 
@@ -1347,5 +1397,10 @@ onReady(() => {
     _tsSlider('ep-ts-bass', 'ep-ts-bass-val', 'bass');
     _tsSlider('ep-ts-mid', 'ep-ts-mid-val', 'mid');
     _tsSlider('ep-ts-treble', 'ep-ts-treble-val', 'treble');
+    // Suitcase: hide MID (Peterson Baxandall is 2-band Bass/Treble only)
+    if (_ampPresetParam === 'suit') {
+      var midLabel = document.getElementById('ep-ts-mid');
+      if (midLabel && midLabel.parentElement) midLabel.parentElement.style.display = 'none';
+    }
   }
 });

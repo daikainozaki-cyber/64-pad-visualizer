@@ -1578,6 +1578,20 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.gePaGain = 0.65;             // Post-LUT output gain (0.5→0.65: レンジ補正)
     this.gePaCompLPFCoeff = biquadLowpass(300, 0.707, fs);  // Band-split for freq-dep compression
     this.gePaCompLPFState = new Float32Array(2);
+    // Vactrol stereo tremolo (Peterson incandescent bulb + CdS photocell)
+    // Three-stage: LFO → filament thermal LPF → CdS asymmetric response
+    this.tremoloOn = false;
+    this.tremoloPhase = 0;
+    this.tremoloFreq = 4.5;         // Hz (Speed knob, 1-8Hz)
+    this.tremoloDepth = 0;          // 0-1 (Intensity knob)
+    this.tremoloShape = 5.0;        // tanh shaping (1=sine, 10=square-ish)
+    this.filamentTempL = 0;         // Filament temperature state (L)
+    this.filamentTempR = 0;         // Filament temperature state (R)
+    this.filamentTau = 0.0008;      // 1-pole alpha: τ≈25ms (incandescent pilot lamp thermal)
+    this.cdsStateL = 0;             // CdS photocell state (L)
+    this.cdsStateR = 0;             // CdS photocell state (R)
+    this.cdsAttack = 0.9965;        // ~6ms (light → low resistance, fast CdS attack)
+    this.cdsRelease = 0.9985;       // ~13ms (dark → high resistance, asymmetric trailing)
     // Suitcase Baxandall EQ (Peterson FR7054 preamp, NE5534, ±15V)
     // Bass shelf ~200Hz, Treble shelf ~2kHz. Flat at center (tsBass/tsTreble=0.5)
     // Range: ±12dB. Uses same tsBass/tsTreble params as Twin tonestack.
@@ -1718,6 +1732,9 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     if (msg.useCabinet !== undefined) this.useCabinet = msg.useCabinet;
     if (msg.useSpringReverb !== undefined) this.useSpringReverb = msg.useSpringReverb;
     if (msg.ampType !== undefined) this.ampType = msg.ampType;
+    if (msg.tremoloOn !== undefined) this.tremoloOn = msg.tremoloOn;
+    if (msg.tremoloFreq !== undefined) this.tremoloFreq = msg.tremoloFreq;
+    if (msg.tremoloDepth !== undefined) this.tremoloDepth = msg.tremoloDepth;
     if (msg.coupledTonebar !== undefined) this.coupledTonebar = msg.coupledTonebar;
     if (msg.beamDecayR !== undefined) this.beamDecayR = msg.beamDecayR;
     if (msg.attackNoise !== undefined) this.attackNoise = msg.attackNoise;
@@ -3044,9 +3061,44 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       }
       if (mainOut > 0.95) mainOut = 0.95;
       if (mainOut < -0.95) mainOut = -0.95;
-      outL[i] = mainOut;
-      if (outR !== outL) {
-        outR[i] = 0; // ch1 unused (spring reverb is inline now)
+      // --- Stereo output: Peterson Vactrol Stereo Tremolo (incandescent + CdS) ---
+      if (this.tremoloDepth > 0 && this.ampType === 'suitcase') {
+        // Physical chain (Peterson FR7054, 1969+ stereo):
+        //   Square-wave LFO → Filament I²R heating (τ≈25ms)
+        //     → Light output L ∝ T² (Stefan-Boltzmann approx)
+        //       → CdS photocell asymmetric response (att 6ms, rel 13ms)
+        //         → Resistance → gain attenuation
+        // This chain creates the "cat's eye" waveform shape.
+        this.tremoloPhase += 6.283185 * this.tremoloFreq / this.fs;
+        if (this.tremoloPhase >= 6.283185) this.tremoloPhase -= 6.283185;
+        // 1. Square wave LFO drives filament current (0 or 1)
+        var squareSign = this.tremoloPhase < 3.14159 ? 1.0 : 0.0;
+        var currentL = squareSign;
+        var currentR = 1.0 - squareSign;
+        // 2. Filament thermal inertia (1-pole LPF, τ≈25ms)
+        this.filamentTempL += this.filamentTau * (currentL - this.filamentTempL);
+        this.filamentTempR += this.filamentTau * (currentR - this.filamentTempR);
+        // 3. Stefan-Boltzmann: light output L ∝ T² (approximation)
+        var lightL = this.filamentTempL * this.filamentTempL;
+        var lightR = this.filamentTempR * this.filamentTempR;
+        // 4. CdS asymmetric response (attack fast, release slow)
+        var alphaL = lightL > this.cdsStateL ? this.cdsAttack : this.cdsRelease;
+        var alphaR = lightR > this.cdsStateR ? this.cdsAttack : this.cdsRelease;
+        this.cdsStateL += (1 - alphaL) * (lightL - this.cdsStateL);
+        this.cdsStateR += (1 - alphaR) * (lightR - this.cdsStateR);
+        // 5. Depth curve: cubic ease-out makes mid-slider already dramatic
+        //    slider=0.4 → effective=0.78 (≈10dB swing)
+        //    slider=1.0 → effective=1.0 (full swing, one channel silent)
+        var oneMinusD = 1.0 - this.tremoloDepth;
+        var effectiveD = 1.0 - oneMinusD * oneMinusD * oneMinusD;
+        var oneMinusE = 1.0 - effectiveD;
+        var gainL = oneMinusE + effectiveD * this.cdsStateL;
+        var gainR = oneMinusE + effectiveD * this.cdsStateR;
+        outL[i] = mainOut * gainL;
+        if (outR !== outL) outR[i] = mainOut * gainR;
+      } else {
+        outL[i] = mainOut;
+        if (outR !== outL) outR[i] = mainOut;  // mono on both channels
       }
     }
 

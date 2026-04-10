@@ -1034,16 +1034,32 @@ onReady(() => {
     masterReverbGain.gain.setValueAtTime(parseFloat(revSlider.value), audioCtx.currentTime);
   });
 
-  // Real-time TREM → tremoloGain depth
+  // Real-time TREM → tremoloGain depth (+ worklet Vactrol for Suitcase)
   const trmSlider = document.getElementById('snd-tremolo');
   if (trmSlider) trmSlider.addEventListener('input', () => {
-    tremoloGain.gain.setValueAtTime(parseFloat(trmSlider.value), audioCtx.currentTime);
+    var val = parseFloat(trmSlider.value);  // 0-1 (real Rhodes Intensity knob range)
+    // Suitcase: worklet Vactrol only (bypass legacy tremoloNode)
+    if (_ampPresetParam !== 'suit') {
+      // Legacy DI tremolo: scale down to avoid excessive modulation (old range was 0-0.4)
+      tremoloGain.gain.setValueAtTime(val * 0.4, audioCtx.currentTime);
+    }
+    if (AudioState.instrument && AudioState.instrument.epiano && _useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      // Worklet depth uses slider value directly (0-1 matches real Peterson Intensity)
+      EpState.tremoloDepth = val;
+      EpState.tremoloOn = val > 0;
+      epianoWorkletUpdateParams({ tremoloDepth: val, tremoloOn: val > 0 });
+    }
   });
 
-  // Real-time SPEED → tremoloLFO frequency
+  // Real-time SPEED → tremoloLFO frequency (+ worklet for Suitcase)
   const trmSpd = document.getElementById('snd-tremolo-spd');
   if (trmSpd) trmSpd.addEventListener('input', () => {
-    tremoloLFO.frequency.setValueAtTime(parseFloat(trmSpd.value), audioCtx.currentTime);
+    var val = parseFloat(trmSpd.value);
+    tremoloLFO.frequency.setValueAtTime(val, audioCtx.currentTime);
+    if (AudioState.instrument && AudioState.instrument.epiano && _useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      EpState.tremoloFreq = val;
+      epianoWorkletUpdateParams({ tremoloFreq: val });
+    }
   });
 
   // Real-time PHASE → phaser depth + wet mix

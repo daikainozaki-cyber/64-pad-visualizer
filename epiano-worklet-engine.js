@@ -13,6 +13,7 @@
 // --- State ---
 var _epw_node = null;          // AudioWorkletNode
 var _epw_initialized = false;
+var _epw_initPromise = null;  // Promise cache to prevent concurrent init race
 // V4B, poweramp, cabinet all run inside worklet now (sample-by-sample)
 
 // Current parameters (mirrored for UI reads)
@@ -40,16 +41,17 @@ var EpwState = {
 
 function epianoWorkletInit(ctx, masterDest) {
   if (_epw_initialized) return Promise.resolve();
+  if (_epw_initPromise) return _epw_initPromise;  // in-flight init — return existing promise
 
   var processorUrl = 'epiano-worklet-processor.js?v=' + (window.APP_VERSION || Date.now());
-  return ctx.audioWorklet.addModule(processorUrl).then(function() {
+  _epw_initPromise = ctx.audioWorklet.addModule(processorUrl).then(function() {
     // Create worklet node (mono output: all DSP inside worklet)
     // V4B, poweramp, cabinet now run sample-by-sample in the worklet.
     // Eliminates 128-sample block jitter at nonlinear stages (framework §3).
     _epw_node = new AudioWorkletNode(ctx, 'epiano-worklet-processor', {
       numberOfInputs: 0,
       numberOfOutputs: 1,
-      outputChannelCount: [1],
+      outputChannelCount: [2],  // Stereo: Suitcase tremolo uses L/R
     });
 
     // ch0 → masterDest (worklet output is already fully processed)
@@ -64,13 +66,14 @@ function epianoWorkletInit(ctx, masterDest) {
 
     _epw_initialized = true;
 
-    // Send initial parameters
+    // Send initial parameters (also handles routing)
     _epwSendParams();
 
     // --- Load FDTD attack tables (Phase 5: progressive enhancement) ---
     // Non-blocking: if fetch fails, pure modal synthesis continues.
     _epwLoadFDTDTables();
   });
+  return _epw_initPromise;
 }
 
 function _epwLoadFDTDTables() {
@@ -144,6 +147,9 @@ function _epwSendParams() {
     cabHPFFreq: EpState.cabHPFFreq,
     cabPeakFreq: EpState.cabPeakFreq,
     cabLPFFreq: EpState.cabLPFFreq,
+    tremoloOn: EpState.tremoloOn || false,
+    tremoloFreq: EpState.tremoloFreq || 4.5,
+    tremoloDepth: EpState.tremoloDepth || 0,
   });
   // V4B/poweramp/cabinet now in worklet — no main-thread routing needed
 }

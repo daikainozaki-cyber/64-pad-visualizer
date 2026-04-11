@@ -17,128 +17,11 @@ masterComp.gain.setValueAtTime(1.0, 0);
 masterComp.connect(audioCtx.destination);
 
 const _sr = audioCtx.sampleRate;
-// Spring reverb IR synthesis (Twin Reverb 6G15 Accutronics tank character)
-// Key physics: helical spring group velocity ∝ √f → higher frequencies arrive first
-// → characteristic downward chirp on each reflection. Multiple springs (2-3) with
-// different lengths create the dense, metallic quality.
-const _rvLen = Math.floor(_sr * 2.5); // springs ring longer than room reverb
-const _rvBuf = audioCtx.createBuffer(2, _rvLen, _sr);
-for (let _ch = 0; _ch < 2; _ch++) {
-  const d = _rvBuf.getChannelData(_ch);
-  // Spring reverb v4: Allpass cascade dispersion model
-  // Based on: Abel/Smith (DAFx-06), Välimäki/Parker/Abel (JAES 2010), Parker (EURASIP 2011)
-  // Key insight: spring chirp = impulse through cascaded allpass filters.
-  // NOT sine sweeps. The allpass cascade naturally generates the dense, dispersive chirp
-  // with physically correct frequency-dependent delay.
-  //
-  // Accutronics 4AB3C1B (Twin Reverb tank): 2 springs, ~33ms/~41ms delay, 2.75-4.0s decay
+// Spring reverb runs inside the epiano AudioWorklet (Suitcase preset).
+// Web-Audio side no longer hosts a master reverb — the tank + Ge preamp
+// merging happens entirely within epiano-worklet-processor.js so wet and
+// dry share the same power amp and cabinet. See warm-stirring-cake plan.
 
-  // --- Step 1: Generate chirp via allpass cascade ---
-  // Feed impulse through N cascaded 1st-order allpass filters:
-  //   y[n] = a * x[n] + x[n-1] - a * y[n-1]
-  // This disperses the impulse into a dense chirp (high freq first, low freq last).
-  // N controls chirp duration, a controls chirp character.
-  const apCoeff = 0.6;  // allpass coefficient (Abel: 0.5-0.7)
-  const numAllpass = 300; // cascade depth (Välimäki: 200-500 for full chirp)
-
-  // Generate one chirp per spring
-  const springConfigs = [
-    { delay: Math.floor(0.033 * _sr), ap: numAllpass, coeff: apCoeff },       // Spring 1
-    { delay: Math.floor(0.041 * _sr), ap: numAllpass + 40, coeff: apCoeff + 0.02 }, // Spring 2 (slightly different)
-  ];
-
-  // Temp buffer for building each spring's contribution
-  const chirpLen = Math.floor(0.40 * _sr); // chirp spreads over ~400ms (longer tail)
-  for (let s = 0; s < springConfigs.length; s++) {
-    const sp = springConfigs[s];
-    // Start with unit impulse
-    const chirp = new Float32Array(chirpLen);
-    chirp[0] = 1.0;
-
-    // Cascade allpass filters
-    for (let n = 0; n < sp.ap; n++) {
-      // Each allpass: y[i] = a*x[i] + x[i-1] - a*y[i-1]
-      let prev_x = 0, prev_y = 0;
-      for (let i = 0; i < chirpLen; i++) {
-        const x = chirp[i];
-        const y = sp.coeff * x + prev_x - sp.coeff * prev_y;
-        chirp[i] = y;
-        prev_x = x;
-        prev_y = y;
-      }
-    }
-
-    // --- Step 2: Add reflections (spring end echoes with feedback) ---
-    // Each round-trip adds another dispersed chirp copy, with loss + LPF
-    const roundTrip = sp.delay * 2;
-    const numReflections = 30;
-    const reflGain = 0.88; // more energy retained → longer, deeper tail
-
-    // Stereo: offset between channels
-    const stereoOffset = _ch * Math.floor(0.0025 * _sr); // 2.5ms L/R offset
-
-    for (let r = 0; r < numReflections; r++) {
-      const reflStart = r * roundTrip + stereoOffset;
-      const gain = Math.pow(reflGain, r) * (r === 0 ? 1.0 : 0.9);
-      // Alternate polarity on reflections (phase inversion at fixed end)
-      const polarity = (r % 2 === 0) ? 1.0 : -1.0;
-      for (let i = 0; i < chirpLen; i++) {
-        const idx = reflStart + i;
-        if (idx >= 0 && idx < _rvLen) {
-          d[idx] += chirp[i] * gain * polarity * 15.0 / springConfigs.length;
-        }
-      }
-    }
-  }
-
-  // --- Step 3: Frequency-dependent decay (LPF in feedback path) ---
-  // High frequencies decay faster than low (spring wire resistance).
-  // Apply progressive LPF: stronger at later times.
-  const lpfBase = Math.exp(-2 * Math.PI * 5000 / _sr); // 5kHz cutoff
-  let lpState = 0;
-  for (let pass = 0; pass < 3; pass++) { // 3 passes = steeper rolloff
-    lpState = 0;
-    for (let i = 0; i < _rvLen; i++) {
-      lpState = lpfBase * lpState + (1 - lpfBase) * d[i];
-      // Blend: early = original, late = filtered (progressive darkening)
-      const t = i / _sr;
-      const blend = Math.min(1, t / 2.5); // full LPF after 2.5s (slower darkening)
-      d[i] = d[i] * (1 - blend * 0.3) + lpState * blend * 0.3;
-    }
-  }
-
-  // --- Step 4: Bandpass (spring tank bandwidth ~100Hz-6kHz) ---
-  const hpAlpha = 1 - Math.exp(-2 * Math.PI * 100 / _sr);
-  const lpAlpha = Math.exp(-2 * Math.PI * 6000 / _sr);
-  let hpPrev = 0, lpPrev = 0;
-  for (let i = 0; i < _rvLen; i++) {
-    const hpOut = d[i] - hpPrev;
-    hpPrev += hpAlpha * hpOut;
-    lpPrev = lpAlpha * lpPrev + (1 - lpAlpha) * hpOut;
-    d[i] = lpPrev;
-  }
-  // RMS normalize (preserves attack-to-tail ratio better than peak normalize)
-  // Peak normalize crushes tail because early chirp dominates.
-  let rmsSum = 0;
-  for (let i = 0; i < _rvLen; i++) rmsSum += d[i] * d[i];
-  const rms = Math.sqrt(rmsSum / _rvLen);
-  const targetRms = 0.15; // target RMS level
-  if (rms > 0) {
-    const scale = targetRms / rms;
-    for (let i = 0; i < _rvLen; i++) d[i] *= scale;
-    // Soft clip if peaks exceed ±1 (preserve shape, just limit)
-    for (let i = 0; i < _rvLen; i++) {
-      if (d[i] > 1.0) d[i] = 1.0;
-      else if (d[i] < -1.0) d[i] = -1.0;
-    }
-  }
-}
-const masterReverb = audioCtx.createConvolver();
-masterReverb.buffer = _rvBuf;
-const masterReverbGain = audioCtx.createGain();
-masterReverbGain.gain.setValueAtTime(0.25, 0); // urinami-san default: warm spring character
-masterReverb.connect(masterReverbGain);
-masterReverbGain.connect(masterComp);
 const masterGain = audioCtx.createGain();
 masterGain.gain.setValueAtTime(0.6, 0);
 
@@ -258,7 +141,7 @@ hiCutFilter.frequency.value = 10000;
 hiCutFilter.Q.value = 0.707;
 let hiCutEnabled = false;
 
-// Chain: flangerMix → loCut → hiCut → masterComp / masterReverb
+// Chain: flangerMix → loCut → hiCut → masterComp
 // When filters are disabled, bypass by connecting directly
 function rebuildFilterChain() {
   flangerMix.disconnect();
@@ -278,18 +161,17 @@ function rebuildFilterChain() {
   }
 
   chain.connect(masterComp);
-  chain.connect(masterReverb);
 }
 
 flangerMix.connect(masterComp);
-flangerMix.connect(masterReverb);
 
-// E-piano output: spring reverb = timbre (part of amp voice), room reverb = space (separate layer).
-// "スプリングリバーブって音色なのよ。空間表現と言うより。" — urinami-san (2026-03-23)
-// Both coexist: amp's spring reverb colors the tone, master reverb adds room acoustics.
+// E-piano output buses. Suitcase spring reverb is handled inside
+// epiano-worklet-processor.js now (tank wet merges with dry before the Ge
+// preamp so wet/dry share the amp + cabinet). No Web-Audio reverb send here.
 const epianoDirectOut = audioCtx.createGain();
 epianoDirectOut.gain.setValueAtTime(0.49, 0); // urinami-san default VOL
-// Amp output: worklet (with internal amp chain) bypasses DI effects chain → masterComp direct
+// Amp output: worklet (with internal amp chain + spring reverb) bypasses
+// DI effects chain → masterComp direct.
 const epianoAmpOut = audioCtx.createGain();
 epianoAmpOut.gain.setValueAtTime(0.49, 0);
 epianoAmpOut.connect(masterComp);
@@ -502,8 +384,9 @@ const ENGINES = {
   epiano: {
     name: 'E.PIANO',
     presets: {
-      'Rhodes DI':       { epiano: 'Rhodes DI',       label: 'Pad Sensei MK1' },
-      'Rhodes Suitcase': { epiano: 'Rhodes Suitcase', label: 'Pad Sensei MK1 Suitcase' },
+      'Rhodes DI':             { epiano: 'Rhodes DI',             label: 'Pad Sensei MK1' },
+      'Rhodes DI Spring EXP':  { epiano: 'Rhodes DI Spring EXP',  label: 'Pad Sensei MK1 Spring EXP', epMixerDefaults: { springReverbMix: 0.045, springDwell: 0.95, attackNoise: 0.0 } },
+      'Rhodes Suitcase':       { epiano: 'Rhodes Suitcase',       label: 'Pad Sensei MK1 Suitcase' },
     },
     defaultPreset: 'Rhodes DI',  // internal key unchanged (EP_AMP_PRESETS reference)
   },
@@ -581,6 +464,7 @@ function selectSound(combinedValue) {
   }
   AudioState.presetKey = presetKey;
   AudioState.instrument = AudioState.engine.presets[presetKey];
+  _applyPresetEpMixerDefaults();
   saveSoundSettings();
   _updateEpMixerVisibility();
   // Sync TREM implementation (always Vactrol now, kept for consistency)
@@ -608,6 +492,24 @@ function _updateEpMixerVisibility() {
   var sec = document.getElementById('ep-mixer-section');
   if (!sec) return;
   sec.style.display = (AudioState.instrument && AudioState.instrument.epiano) ? '' : 'none';
+}
+
+function _applyPresetEpMixerDefaults() {
+  var inst = AudioState.instrument;
+  if (!inst || !inst.epMixerDefaults) return;
+  if (inst.epMixerDefaults.springReverbMix !== undefined) EpState.springReverbMix = inst.epMixerDefaults.springReverbMix;
+  if (inst.epMixerDefaults.springDwell !== undefined) EpState.springDwell = inst.epMixerDefaults.springDwell;
+  var rev = document.getElementById('ep-rev');
+  var revVal = document.getElementById('ep-rev-val');
+  if (rev) rev.value = EpState.springReverbMix;
+  if (revVal) revVal.textContent = EpState.springReverbMix.toFixed(2);
+  var dwell = document.getElementById('ep-dwell');
+  var dwellVal = document.getElementById('ep-dwell-val');
+  if (dwell) dwell.value = EpState.springDwell;
+  if (dwellVal) dwellVal.textContent = EpState.springDwell.toFixed(1);
+  if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+    epianoWorkletUpdateParams({ springReverbMix: EpState.springReverbMix, springDwell: EpState.springDwell });
+  }
 }
 
 function _saveEpMixer() {
@@ -1060,10 +962,15 @@ onReady(() => {
     epianoDirectOut.gain.setValueAtTime(parseFloat(volSlider.value), 0);
   }
 
-  // Real-time REV → masterReverbGain (master reverb only; spring reverb is separate)
+  // Real-time REV → worklet spring reverb mix. Exact routing depends on
+  // preset.springPlacement: legacy Twin send-return or pre-tremolo main-path spring.
   const revSlider = document.getElementById('snd-reverb');
   if (revSlider) revSlider.addEventListener('input', () => {
-    masterReverbGain.gain.setValueAtTime(parseFloat(revSlider.value), audioCtx.currentTime);
+    const val = parseFloat(revSlider.value);
+    EpState.springReverbMix = val;
+    if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      epianoWorkletUpdateParams({ springReverbMix: val });
+    }
   });
 
   // Real-time TREM → tremoloGain depth (+ worklet Vactrol for Suitcase)

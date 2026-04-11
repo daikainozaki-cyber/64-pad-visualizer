@@ -3242,15 +3242,16 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         mechanicalNoiseSum = mlOut;
       }
       if (this.useSpringReverb && this.springPlacement === 'pre_tremolo_main') {
-        // 2026-04-12 Spring wet is stereo (L=tank0, R=tank1) and is written to
-        // _springWetL / _springWetR. It is added AFTER tremolo in the output
-        // stage below (parallel to tremolo in real hardware). Return value
-        // (mono sum) is kept for legacy_twin_send branch only.
-        this._processInlineSpringSample(this._extractSpringExcitation(springInputBus));
-      } else {
-        this._springWetL = 0;
-        this._springWetR = 0;
+        // 2026-04-12 Twin AB763 chain (real hardware, serial):
+        //   PU → preamp → reverb → tonestack → tremolo → power → speaker
+        // Reverb is BEFORE tremolo. Mix the (mono) spring wet into mainOut
+        // here so the tremolo below modulates dry + wet together. The
+        // post-tremolo `outSampleL/R += _springWetL/R` add is now a no-op
+        // (kept for future routing experiments).
+        mainOut += this._processInlineSpringSample(this._extractSpringExcitation(springInputBus));
       }
+      this._springWetL = 0;
+      this._springWetR = 0;
 
       // Current mechanical-noise path is an acoustic mic layer, not the DI/pickup path.
       // Keep it out of the spring input bus until a true pre-FX shared-noise model exists.

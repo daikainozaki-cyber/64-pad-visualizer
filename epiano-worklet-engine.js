@@ -144,7 +144,8 @@ function _epwSendParams() {
     springResonatorMix: preset.springResonatorMix !== undefined ? preset.springResonatorMix : 1.0,
     springModDepth: preset.springModDepth !== undefined ? preset.springModDepth : 8.0,
     springHfMix: preset.springHfMix !== undefined ? preset.springHfMix : 0.0010,
-    springFeedbackScale: preset.springFeedbackScale !== undefined ? preset.springFeedbackScale : 1.0,
+    springFeedbackScale: EpState.springFeedbackScale !== undefined ? EpState.springFeedbackScale : (preset.springFeedbackScale !== undefined ? preset.springFeedbackScale : 1.0),
+    springStereoEnabled: EpState.springStereoEnabled !== false, // default true
     preampType: preset.preampType || null,
     pickupType: preset.pickupType || 'rhodes',
     puModel: EpwState.puModel || 'cylinder',

@@ -1582,6 +1582,9 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // AFTER tremolo (spring is parallel to tremolo in real hardware).
     this._springWetL = 0.0;
     this._springWetR = 0.0;
+    // STEREO toggle (UI). true: tank0→L / tank1→R decorrelation,
+    // false: mono mix sent to both channels.
+    this.springStereoEnabled = true;
     this.ampType        = 'twin'; // 'twin' | 'suitcase' | 'di'
 
     // Mechanical noise parameters (0-1 knobs, scale internal constants)
@@ -1947,6 +1950,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     if (msg.springModDepth !== undefined) this.springModDepth = msg.springModDepth;
     if (msg.springHfMix !== undefined) this.springHfMix = msg.springHfMix;
     if (msg.springFeedbackScale !== undefined) this.springFeedbackScale = msg.springFeedbackScale;
+    if (msg.springStereoEnabled !== undefined) this.springStereoEnabled = !!msg.springStereoEnabled;
     var springVoicingChanged = false;
     if (msg.springSendHPFHz !== undefined) { this.springSendHPFHz = msg.springSendHPFHz; springVoicingChanged = true; }
     if (msg.springTiltDb !== undefined) { this.springTiltDb = msg.springTiltDb; springVoicingChanged = true; }
@@ -2544,12 +2548,14 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     var gainFinal = this.v4aGain * this.reverbPot * this.springReturnGain;
     // 2026-04-12 Stereo tap: Accutronics 4AB3C1B dual spring natural L/R
     // decorrelation. Consumed by stereo output stage after tremolo.
-    if (springCount >= 2) {
+    // STEREO toggle: when disabled, both channels receive the mono sum.
+    if (springCount >= 2 && this.springStereoEnabled) {
       this._springWetL = wetTap0 * gainFinal;
       this._springWetR = wetTap1 * gainFinal;
     } else {
-      this._springWetL = wetSum * gainFinal;
-      this._springWetR = wetSum * gainFinal;
+      var monoWet = wetSum * gainFinal;
+      this._springWetL = monoWet;
+      this._springWetR = monoWet;
     }
     return wetSum * gainFinal;
   }

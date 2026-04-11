@@ -385,7 +385,7 @@ const ENGINES = {
     name: 'E.PIANO',
     presets: {
       'Rhodes DI':             { epiano: 'Rhodes DI',             label: 'Pad Sensei MK1' },
-      'Rhodes DI Spring EXP':  { epiano: 'Rhodes DI Spring EXP',  label: 'Pad Sensei MK1 Spring EXP', epMixerDefaults: { springReverbMix: 0.8, springDwell: 0.95, attackNoise: 0.0 } },
+      'Rhodes DI Spring EXP':  { epiano: 'Rhodes DI Spring EXP',  label: 'Pad Sensei MK1 Spring EXP', epMixerDefaults: { springReverbMix: 0.8, springDwell: 0.95, springFeedbackScale: 0.9, springStereoEnabled: true, attackNoise: 0.0 } },
       'Rhodes Suitcase':       { epiano: 'Rhodes Suitcase',       label: 'Pad Sensei MK1 Suitcase' },
     },
     defaultPreset: 'Rhodes DI',  // internal key unchanged (EP_AMP_PRESETS reference)
@@ -499,6 +499,8 @@ function _applyPresetEpMixerDefaults() {
   if (!inst || !inst.epMixerDefaults) return;
   if (inst.epMixerDefaults.springReverbMix !== undefined) EpState.springReverbMix = inst.epMixerDefaults.springReverbMix;
   if (inst.epMixerDefaults.springDwell !== undefined) EpState.springDwell = inst.epMixerDefaults.springDwell;
+  if (inst.epMixerDefaults.springFeedbackScale !== undefined) EpState.springFeedbackScale = inst.epMixerDefaults.springFeedbackScale;
+  if (inst.epMixerDefaults.springStereoEnabled !== undefined) EpState.springStereoEnabled = inst.epMixerDefaults.springStereoEnabled;
   var rev = document.getElementById('ep-rev');
   var revVal = document.getElementById('ep-rev-val');
   if (rev) rev.value = EpState.springReverbMix;
@@ -507,8 +509,21 @@ function _applyPresetEpMixerDefaults() {
   var dwellVal = document.getElementById('ep-dwell-val');
   if (dwell) dwell.value = EpState.springDwell;
   if (dwellVal) dwellVal.textContent = EpState.springDwell.toFixed(1);
+  var decay = document.getElementById('ep-decay');
+  var decayVal = document.getElementById('ep-decay-val');
+  if (decay) decay.value = EpState.springFeedbackScale;
+  if (decayVal) decayVal.textContent = EpState.springFeedbackScale.toFixed(2);
+  var stereo = document.getElementById('ep-stereo');
+  var stereoVal = document.getElementById('ep-stereo-val');
+  if (stereo) stereo.checked = !!EpState.springStereoEnabled;
+  if (stereoVal) stereoVal.textContent = EpState.springStereoEnabled ? 'ON' : 'OFF';
   if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
-    epianoWorkletUpdateParams({ springReverbMix: EpState.springReverbMix, springDwell: EpState.springDwell });
+    epianoWorkletUpdateParams({
+      springReverbMix: EpState.springReverbMix,
+      springDwell: EpState.springDwell,
+      springFeedbackScale: EpState.springFeedbackScale,
+      springStereoEnabled: EpState.springStereoEnabled,
+    });
   }
 }
 
@@ -518,6 +533,8 @@ function _saveEpMixer() {
       pickupSymmetry: EpState.pickupSymmetry,
       springReverbMix: EpState.springReverbMix,
       springDwell: EpState.springDwell,
+      springFeedbackScale: EpState.springFeedbackScale,
+      springStereoEnabled: EpState.springStereoEnabled,
       attackNoise: EpState.attackNoise,
     }));
   } catch(_) {}
@@ -536,7 +553,7 @@ function _loadEpMixer() {
     var s = JSON.parse(raw);
     // pickupSymmetry: always use HTML default (physics-calibrated).
     // Old localStorage may have stale values from before PU model changes.
-    ['springReverbMix','springDwell','attackNoise'].forEach(function(key) {
+    ['springReverbMix','springDwell','springFeedbackScale','springStereoEnabled','attackNoise'].forEach(function(key) {
       if (s[key] !== undefined) EpState[key] = s[key];
     });
     // MECHANICAL knob controls all 3 noise params equally
@@ -566,7 +583,7 @@ function saveSoundSettings() {
     const s = {};
     s.engine = AudioState.engineKey;
     s.preset = AudioState.presetKey;
-    ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut','snd-af-depth','snd-af-speed','snd-af-q','snd-drive'].forEach(id => {
+    ['snd-volume','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut','snd-af-depth','snd-af-speed','snd-af-q','snd-drive'].forEach(id => {
       const el = document.getElementById(id);
       if (el) s[id] = el.value;
     });
@@ -664,7 +681,7 @@ function loadSoundSettings() {
       _soundMuted = s.soundMuted !== undefined ? s.soundMuted : false;
       _updateMuteBtn();
     }
-    ['snd-volume','snd-reverb','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut','snd-af-depth','snd-af-speed','snd-af-q','snd-drive'].forEach(id => {
+    ['snd-volume','snd-tremolo','snd-tremolo-spd','snd-phaser','snd-flanger','snd-locut','snd-hicut','snd-af-depth','snd-af-speed','snd-af-q','snd-drive'].forEach(id => {
       if (s[id] === undefined) return;
       const el = document.getElementById(id);
       if (!el) return;
@@ -941,7 +958,7 @@ onReady(() => {
   if (!IS_DEV) {
     ['btn-chs-export-plain', 'btn-chs-export-mem', 'btn-chs-import'].forEach(function(id) { var b = document.getElementById(id); if (b) b.style.display = 'none'; });
   }
-  [['snd-reverb','snd-rev-val'],['snd-volume','snd-vol-val'],['snd-tremolo','snd-trm-val'],['snd-tremolo-spd','snd-trm-spd-val'],['snd-phaser','snd-phs-val'],['snd-flanger','snd-flg-val']].forEach(([sid, vid]) => {
+  [['snd-volume','snd-vol-val'],['snd-tremolo','snd-trm-val'],['snd-tremolo-spd','snd-trm-spd-val'],['snd-phaser','snd-phs-val'],['snd-flanger','snd-flg-val']].forEach(([sid, vid]) => {
     const s = document.getElementById(sid);
     const v = document.getElementById(vid);
     if (s && v) s.addEventListener('input', () => {
@@ -962,16 +979,8 @@ onReady(() => {
     epianoDirectOut.gain.setValueAtTime(parseFloat(volSlider.value), 0);
   }
 
-  // Real-time REV → worklet spring reverb mix. Exact routing depends on
-  // preset.springPlacement: legacy Twin send-return or pre-tremolo main-path spring.
-  const revSlider = document.getElementById('snd-reverb');
-  if (revSlider) revSlider.addEventListener('input', () => {
-    const val = parseFloat(revSlider.value);
-    EpState.springReverbMix = val;
-    if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
-      epianoWorkletUpdateParams({ springReverbMix: val });
-    }
-  });
+  // 2026-04-12 Top-bar REV listener removed (HTML element deleted).
+  // E.PIANO MIXER → AMOUNT (id=ep-rev) is the single source of truth.
 
   // Real-time TREM → tremoloGain depth (+ worklet Vactrol for Suitcase)
   const trmSlider = document.getElementById('snd-tremolo');
@@ -1214,6 +1223,32 @@ onReady(() => {
     }
     if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
       epianoWorkletUpdateParams({ springDwell: val });
+    }
+    _saveEpMixer();
+  });
+
+  // Spring reverb DECAY knob — feedback loop gain (T60 length)
+  var epDecaySlider = document.getElementById('ep-decay');
+  var epDecayVal = document.getElementById('ep-decay-val');
+  if (epDecaySlider && epDecayVal) epDecaySlider.addEventListener('input', () => {
+    var val = parseFloat(epDecaySlider.value);
+    EpState.springFeedbackScale = val;
+    epDecayVal.textContent = val.toFixed(2);
+    if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      epianoWorkletUpdateParams({ springFeedbackScale: val });
+    }
+    _saveEpMixer();
+  });
+
+  // Spring reverb STEREO toggle — mono/stereo (tank0→L, tank1→R) decorrelation
+  var epStereoToggle = document.getElementById('ep-stereo');
+  var epStereoVal = document.getElementById('ep-stereo-val');
+  if (epStereoToggle && epStereoVal) epStereoToggle.addEventListener('change', () => {
+    var on = !!epStereoToggle.checked;
+    EpState.springStereoEnabled = on;
+    epStereoVal.textContent = on ? 'ON' : 'OFF';
+    if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      epianoWorkletUpdateParams({ springStereoEnabled: on });
     }
     _saveEpMixer();
   });

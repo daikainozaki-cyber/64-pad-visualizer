@@ -385,7 +385,7 @@ const ENGINES = {
     name: 'E.PIANO',
     presets: {
       'Rhodes DI':             { epiano: 'Rhodes DI',             label: 'Pad Sensei MK1' },
-      'Rhodes DI Spring EXP':  { epiano: 'Rhodes DI Spring EXP',  label: 'Pad Sensei MK1 Spring EXP', epMixerDefaults: { springReverbMix: 0.045, springDwell: 0.95, attackNoise: 0.0 } },
+      'Rhodes DI Spring EXP':  { epiano: 'Rhodes DI Spring EXP',  label: 'Pad Sensei MK1 Spring EXP', epMixerDefaults: { springReverbMix: 0.8, springDwell: 0.95, attackNoise: 0.0 } },
       'Rhodes Suitcase':       { epiano: 'Rhodes Suitcase',       label: 'Pad Sensei MK1 Suitcase' },
     },
     defaultPreset: 'Rhodes DI',  // internal key unchanged (EP_AMP_PRESETS reference)

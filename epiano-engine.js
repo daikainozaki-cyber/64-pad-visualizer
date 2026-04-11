@@ -146,10 +146,10 @@ var EP_AMP_PRESETS = {
     useSpringReverb: true,
     springPlacement: 'pre_tremolo_main',
     springInputTrim: 0.06,
-    springReturnGain: 0.22,
+    springReturnGain: 1.0,
     springDriveMix: 0.0,
     springExciterMix: 0.0,
-    springCoreMode: 'dispersion_resonator',
+    springCoreMode: 'full',
     springDiagMuteNoteOff: false,
     springSendHPFHz: 120,
     springTiltDb: -1.5,
@@ -158,7 +158,7 @@ var EP_AMP_PRESETS = {
     springResonatorMix: 0.06,
     springModDepth: 0.0,
     springHfMix: 0.0,
-    springFeedbackScale: 0.34,
+    springFeedbackScale: 0.9,
   },
 };
 

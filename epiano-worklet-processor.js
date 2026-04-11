@@ -1576,6 +1576,12 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.springExciterEnvCoeff = Math.exp(-1 / (0.002 * fs));
     this.springAttackEnv = 0.0;
     this.springAttackDecay = Math.exp(-1 / (0.006 * fs));
+    // 2026-04-12 Stereo spring wet accumulators (うりなみさん: 空間的な広がりがない).
+    // spring tank [0] → L, spring tank [1] → R (Accutronics 4AB3C1B dual spring).
+    // Written by _processInlineSpringSample, consumed by the stereo output stage
+    // AFTER tremolo (spring is parallel to tremolo in real hardware).
+    this._springWetL = 0.0;
+    this._springWetR = 0.0;
     this.ampType        = 'twin'; // 'twin' | 'suitcase' | 'di'
 
     // Mechanical noise parameters (0-1 knobs, scale internal constants)
@@ -1793,14 +1799,11 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
     var lossOut = sp.lossFiltB * rawFb - sp.lossFiltA * sp.lossFiltPrevY;
     sp.lossFiltPrevY = lossOut;
-    var feedbackScale = this.springFeedbackScale;
-    if (this.springCoreMode === 'dispersion_resonator') {
-      // Keep attack bloom, but let the late tail relax faster so the residual
-      // noise floor does not hang around after key release.
-      var lateTailScale = 0.40 + 0.60 * Math.min(1.0, this.springAttackEnv * 32.0);
-      feedbackScale *= lateTailScale;
-    }
-    sp.lfFeedback = lossOut * feedbackScale;
+    // 2026-04-11 removed dispersion_resonator lateTailScale attack-gate.
+    // The gate attenuated feedback during sustain/release, contradicting
+    // Abel waveguide's T60 self-decay design and killing the late tail.
+    // Let the loop decay by T60 alone (うりなみさん判断: ディケイ優先)。
+    sp.lfFeedback = lossOut * this.springFeedbackScale;
     sp.dlLfWr = (dlWr + 1) & dlMask;
 
     if (this.springCoreMode === 'linear') {
@@ -1844,16 +1847,14 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       var resOutK = sp.resOut[(rWr - sp.Keq + rMask + 1) & rMask];
       var resOut2K = sp.resOut[(rWr - 2 * sp.Keq + rMask + 1) & rMask];
       var resResult = sp.resA0half * (apIn - resIn2K) - sp.resA1 * resOutK - sp.resA2 * resOut2K;
-      var attackResGate = 1.0;
-      if (this.springCoreMode === 'dispersion_resonator') attackResGate = Math.min(1.0, this.springAttackEnv * 36.0);
-      var stateScale = attackResGate;
-      if (this.springCoreMode === 'dispersion_resonator') stateScale = 0.02 + 0.98 * attackResGate;
-      sp.resOut[rWr] = resResult * stateScale;
+      // 2026-04-11 removed dispersion_resonator attack-gate on resonator state
+      // and mix. The gate collapsed the resonator during sustain/release,
+      // eliminating the drip/bloom that gives spring its late-tail character.
+      // Let the resonator run freely and decay by its own pole radius R.
+      sp.resOut[rWr] = resResult;
       sp.resWr = (rWr + 1) & rMask;
       var resonMix = this.springResonatorMix;
-      if (this.springCoreMode === 'dispersion_resonator') resonMix *= 0.18;
-      if (this.springCoreMode === 'dispersion_resonator') resonMix *= attackResGate;
-      resMixed = apIn * (1 - resonMix) + (resResult * stateScale) * resonMix;
+      resMixed = apIn * (1 - resonMix) + resResult * resonMix;
     }
 
     var hfInput = 0;
@@ -2482,6 +2483,10 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
   _processInlineSpringSample(inputSample) {
     var sendSum = inputSample * this.springInputTrim;
+    // 2026-04-11 INPUT attack-gate kept (preserves うりなみさん認定のアタック感).
+    // Only transients excite the spring — sustain/release doesn't re-drive it.
+    // The late tail is produced by the feedback loop's own T60 decay, which is
+    // why we removed the attack-gate on feedback/resonator inside _processInlineSpringTank.
     if (this.springCoreMode === 'dispersion_resonator') {
       sendSum *= Math.min(1.0, this.springAttackEnv * 36.0);
     }
@@ -2527,12 +2532,26 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     }
 
     var wetSum = 0;
+    var wetTap0 = 0, wetTap1 = 0;
     var springCount = this.sr_springs ? this.sr_springs.length : 0;
     for (var si = 0; si < springCount; si++) {
-      wetSum += this._processInlineSpringTank(sendSum, this.sr_springs[si], si);
+      var wTank = this._processInlineSpringTank(sendSum, this.sr_springs[si], si);
+      wetSum += wTank;
+      if (si === 0) wetTap0 = wTank;
+      else if (si === 1) wetTap1 = wTank;
     }
     if (springCount > 1) wetSum /= springCount;
-    return wetSum * this.v4aGain * this.reverbPot * this.springReturnGain;
+    var gainFinal = this.v4aGain * this.reverbPot * this.springReturnGain;
+    // 2026-04-12 Stereo tap: Accutronics 4AB3C1B dual spring natural L/R
+    // decorrelation. Consumed by stereo output stage after tremolo.
+    if (springCount >= 2) {
+      this._springWetL = wetTap0 * gainFinal;
+      this._springWetR = wetTap1 * gainFinal;
+    } else {
+      this._springWetL = wetSum * gainFinal;
+      this._springWetR = wetSum * gainFinal;
+    }
+    return wetSum * gainFinal;
   }
 
   process(inputs, outputs, parameters) {
@@ -2549,8 +2568,28 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       if (this.vActive[v] > 0) { anyActive = 1; break; }
     }
     if (!anyActive) {
-      for (var i = 0; i < blockSize; i++) { outL[i] = 0; outR[i] = 0; }
-      return true;
+      // 2026-04-12 うりなみさん判定: リリースが超不自然（ブチッと切れる）
+      // Root cause: early return cut the spring reverb feedback loop before
+      // the tail could self-decay. Now we keep processing while the spring
+      // state is still above a tiny threshold, then early-return when silent.
+      var tailAlive = false;
+      if (this.useSpringReverb && this.sr_springs) {
+        for (var ti = 0; ti < this.sr_springs.length; ti++) {
+          var spTail = this.sr_springs[ti];
+          if (Math.abs(spTail.lfFeedback) > 1e-6 ||
+              Math.abs(spTail.lossFiltPrevY) > 1e-6) {
+            tailAlive = true;
+            break;
+          }
+        }
+      }
+      if (!tailAlive) {
+        for (var i = 0; i < blockSize; i++) { outL[i] = 0; outR[i] = 0; }
+        return true;
+      }
+      // Fall through: voice loop skips all inactive voices (no work), but
+      // the spring feedback loop continues self-decaying via
+      // _processInlineSpringSample inside the sample loop below.
     }
 
     var fs = this.fs;
@@ -3197,7 +3236,14 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         mechanicalNoiseSum = mlOut;
       }
       if (this.useSpringReverb && this.springPlacement === 'pre_tremolo_main') {
-        mainOut += this._processInlineSpringSample(this._extractSpringExcitation(springInputBus));
+        // 2026-04-12 Spring wet is stereo (L=tank0, R=tank1) and is written to
+        // _springWetL / _springWetR. It is added AFTER tremolo in the output
+        // stage below (parallel to tremolo in real hardware). Return value
+        // (mono sum) is kept for legacy_twin_send branch only.
+        this._processInlineSpringSample(this._extractSpringExcitation(springInputBus));
+      } else {
+        this._springWetL = 0;
+        this._springWetR = 0;
       }
 
       // Current mechanical-noise path is an acoustic mic layer, not the DI/pickup path.
@@ -3247,6 +3293,12 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         outSampleL = mainOut;
         outSampleR = mainOut;
       }
+
+      // 2026-04-12 Spring reverb wet — stereo, parallel to tremolo/amp chain.
+      // Accutronics 4AB3C1B dual-spring: tank[0] → L, tank[1] → R natural
+      // decorrelation. うりなみさん: 「もっとふわっと広がる感じ」実装の第一歩。
+      outSampleL += this._springWetL;
+      outSampleR += this._springWetR;
 
       outSampleL *= finalOutputGain;
       outSampleR *= finalOutputGain;

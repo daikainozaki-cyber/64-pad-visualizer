@@ -558,16 +558,18 @@ function _applyPresetEpMixerDefaults() {
   if (inst.epMixerDefaults.springStereoEnabled !== undefined) EpState.springStereoEnabled = inst.epMixerDefaults.springStereoEnabled;
   var rev = document.getElementById('ep-rev');
   var revVal = document.getElementById('ep-rev-val');
-  if (rev) rev.value = EpState.springReverbMix;
-  if (revVal) revVal.textContent = EpState.springReverbMix.toFixed(2);
+  var revKnob = EpState.springReverbMix / 1.4 * 9 + 1; // internal → 1-10
+  if (rev) rev.value = revKnob;
+  if (revVal) revVal.textContent = revKnob.toFixed(1);
   var dwell = document.getElementById('ep-dwell');
   var dwellVal = document.getElementById('ep-dwell-val');
   if (dwell) dwell.value = EpState.springDwell;
   if (dwellVal) dwellVal.textContent = EpState.springDwell.toFixed(1);
   var decay = document.getElementById('ep-decay');
   var decayVal = document.getElementById('ep-decay-val');
-  if (decay) decay.value = EpState.springFeedbackScale;
-  if (decayVal) decayVal.textContent = EpState.springFeedbackScale.toFixed(2);
+  var decayKnob = (EpState.springFeedbackScale - 0.3) / 0.69 * 9 + 1; // internal → 1-10
+  if (decay) decay.value = decayKnob;
+  if (decayVal) decayVal.textContent = decayKnob.toFixed(1);
   var stereo = document.getElementById('ep-stereo');
   var stereoVal = document.getElementById('ep-stereo-val');
   if (stereo) stereo.checked = !!EpState.springStereoEnabled;
@@ -1254,9 +1256,10 @@ onReady(() => {
   var epRevSlider = document.getElementById('ep-rev');
   var epRevVal = document.getElementById('ep-rev-val');
   if (epRevSlider && epRevVal) epRevSlider.addEventListener('input', () => {
-    var val = parseFloat(epRevSlider.value);
+    var knob = parseFloat(epRevSlider.value); // 1-10
+    var val = (knob - 1) / 9 * 1.4; // → internal 0-1.4
     EpState.springReverbMix = val;
-    epRevVal.textContent = val.toFixed(2);
+    epRevVal.textContent = knob.toFixed(1);
     if (typeof _epReverbPot !== 'undefined' && _epReverbPot) {
       _epReverbPot.gain.setValueAtTime(val, audioCtx.currentTime);
     }
@@ -1302,9 +1305,10 @@ onReady(() => {
   var epDecaySlider = document.getElementById('ep-decay');
   var epDecayVal = document.getElementById('ep-decay-val');
   if (epDecaySlider && epDecayVal) epDecaySlider.addEventListener('input', () => {
-    var val = parseFloat(epDecaySlider.value);
+    var knob = parseFloat(epDecaySlider.value); // 1-10
+    var val = 0.3 + (knob - 1) / 9 * 0.69; // → internal 0.3-0.99
     EpState.springFeedbackScale = val;
-    epDecayVal.textContent = val.toFixed(2);
+    epDecayVal.textContent = knob.toFixed(1);
     if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
       epianoWorkletUpdateParams({ springFeedbackScale: val });
     }

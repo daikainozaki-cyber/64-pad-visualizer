@@ -56,8 +56,11 @@ var EpState = {
   // Individual key variation → per-key hash table (_epKeyVariation)
   use2ndPreamp: true,      // AB763 V2A+V2B (cathode follower + 2nd gain stage)
   brightSwitch: false,     // AB763 bright cap bypass (increases C1 → more treble)
-  springReverbMix: 0.12,   // Spring reverb wet level (Fender "2-3" ≈ 0.08-0.15)
+  reverbType: 'spring',    // 'spring' | 'plate'
+  springReverbMix: 0.12,   // Spring reverb wet level (Fender "2-3" ≈ 0.08-0.15) — AMOUNT knob
   springDwell: 6.0,        // Spring reverb send drive (V3 driver gain, higher = more saturation)
+  springFeedbackScale: 0.9, // Spring feedback loop gain → T60 (0.3-0.95) — DECAY knob
+  springStereoEnabled: true, // Spring tank L/R decorrelation toggle (tank0→L, tank1→R)
   attackNoise: 0,           // Mechanical noise (single knob: attack + release). Default 0.
 };
 
@@ -72,6 +75,17 @@ var EP_AMP_PRESETS = {
     useTonestack: true,
     useCabinet: true,
     useSpringReverb: false,  // OFF: Nyquist aliasing in spring reverb (chirp artifacts). Fix before re-enabling.
+    springPlacement: 'post_tremolo',
+    springInputTrim: 1.0,
+    springReturnGain: 1.0,
+    springSendHPFHz: 318,
+    springTiltDb: -6,
+    springSendLPFHz: 5000,
+    springOutHPFHz: 530,
+    springResonatorMix: 1.0,
+    springModDepth: 8.0,
+    springHfMix: 0.0010,
+    springFeedbackScale: 1.0,
   },
   'Rhodes Suitcase': {
     pickupType: 'rhodes',
@@ -79,7 +93,18 @@ var EP_AMP_PRESETS = {
     powerampType: 'GeTr',
     useTonestack: true,
     useCabinet: true,
-    useSpringReverb: false,  // Suitcase has vibrato, not spring reverb
+    useSpringReverb: true,   // External reverb via Acc1/2 loop
+    springPlacement: 'pre_tremolo',
+    springInputTrim: 0.34,
+    springReturnGain: 0.85,
+    springSendHPFHz: 180,
+    springTiltDb: -3,
+    springSendLPFHz: 5800,
+    springOutHPFHz: 260,
+    springResonatorMix: 0.45,
+    springModDepth: 4.0,
+    springHfMix: 0.0005,
+    springFeedbackScale: 0.88,
   },
   'Wurlitzer 200A': {
     pickupType: 'wurlitzer',
@@ -88,6 +113,17 @@ var EP_AMP_PRESETS = {
     useTonestack: true,
     useCabinet: true,
     useSpringReverb: false,  // Built-in speaker, no spring reverb
+    springPlacement: 'pre_tremolo',
+    springInputTrim: 0.18,
+    springReturnGain: 0.18,
+    springSendHPFHz: 200,
+    springTiltDb: -4,
+    springSendLPFHz: 5600,
+    springOutHPFHz: 300,
+    springResonatorMix: 0.40,
+    springModDepth: 3.5,
+    springHfMix: 0.0004,
+    springFeedbackScale: 0.72,
   },
   'Rhodes DI': {
     pickupType: 'rhodes',
@@ -95,7 +131,21 @@ var EP_AMP_PRESETS = {
     powerampType: null,
     useTonestack: false,
     useCabinet: false,
-    useSpringReverb: false,
+    useSpringReverb: true,
+    springPlacement: 'pre_tremolo',
+    springInputTrim: 0.06,
+    springReturnGain: 1.0,
+    springDriveMix: 0.0,
+    springExciterMix: 0.0,
+    springCoreMode: 'full',
+    springSendHPFHz: 120,
+    springTiltDb: -1.5,
+    springSendLPFHz: 6800,
+    springOutHPFHz: 150,
+    springResonatorMix: 0.06,
+    springModDepth: 0.0,
+    springHfMix: 0.0,
+    springFeedbackScale: 0.9,
   },
 };
 

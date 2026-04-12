@@ -202,10 +202,15 @@ const ePlateSend = audioCtx.createGain();
 ePlateSend.gain.setValueAtTime(0, 0);
 const ePlateReturn = audioCtx.createGain();
 ePlateReturn.gain.setValueAtTime(0, 0);
+const ePlateHPF = audioCtx.createBiquadFilter();
+ePlateHPF.type = 'highpass';
+ePlateHPF.frequency.setValueAtTime(120, 0);
+ePlateHPF.Q.setValueAtTime(0.707, 0);
 epianoAmpOut.connect(ePlateSend);
 epianoDirectOut.connect(ePlateSend);
 ePlateSend.connect(epianoPlateConvolver);
-epianoPlateConvolver.connect(ePlateReturn);
+epianoPlateConvolver.connect(ePlateHPF);
+ePlateHPF.connect(ePlateReturn);
 ePlateReturn.connect(masterComp);
 
 function _updatePlateRouting() {

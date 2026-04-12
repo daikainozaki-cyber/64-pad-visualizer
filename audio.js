@@ -175,6 +175,45 @@ epianoDirectOut.gain.setValueAtTime(0.49, 0); // urinami-san default VOL
 const epianoAmpOut = audioCtx.createGain();
 epianoAmpOut.gain.setValueAtTime(0.49, 0);
 epianoAmpOut.connect(masterComp);
+// Plate reverb (post-tremolo, external studio effect)
+function _buildPlateImpulseResponse(seconds, decay, hpfHz) {
+  const sr = audioCtx.sampleRate;
+  const length = Math.max(1, Math.floor(sr * seconds));
+  const ir = audioCtx.createBuffer(2, length, sr);
+  const rc = 1 / (2 * Math.PI * hpfHz);
+  const dt = 1 / sr;
+  const alpha = rc / (rc + dt);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = ir.getChannelData(ch);
+    let hpX = 0, hpY = 0;
+    for (let i = 0; i < length; i++) {
+      const env = Math.pow(1 - i / length, decay);
+      const white = (Math.random() * 2 - 1) * env;
+      const hp = alpha * (hpY + white - hpX);
+      hpX = white; hpY = hp;
+      data[i] = hp * (ch === 0 ? 1.0 : 0.92);
+    }
+  }
+  return ir;
+}
+const epianoPlateConvolver = audioCtx.createConvolver();
+epianoPlateConvolver.buffer = _buildPlateImpulseResponse(1.8, 2.4, 220);
+const ePlateSend = audioCtx.createGain();
+ePlateSend.gain.setValueAtTime(0, 0);
+const ePlateReturn = audioCtx.createGain();
+ePlateReturn.gain.setValueAtTime(0, 0);
+epianoAmpOut.connect(ePlateSend);
+epianoDirectOut.connect(ePlateSend);
+ePlateSend.connect(epianoPlateConvolver);
+epianoPlateConvolver.connect(ePlateReturn);
+ePlateReturn.connect(masterComp);
+
+function _updatePlateRouting() {
+  var plateOn = EpState.reverbType === 'plate';
+  var amount = EpState.springReverbMix || 0;
+  ePlateSend.gain.setValueAtTime(plateOn ? 1.0 : 0, audioCtx.currentTime);
+  ePlateReturn.gain.setValueAtTime(plateOn ? amount * 1.5 : 0, audioCtx.currentTime);
+}
 // Master drive WaveShaper for e-piano (post-PU, pre-effects).
 // Per-voice saturation doesn't work for worklet (single output node).
 // This WaveShaper adds nonlinearity → shifts spectral centroid → bell character.
@@ -1219,6 +1258,20 @@ onReady(() => {
     if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
       epianoWorkletUpdateParams({ springReverbMix: val });
     }
+    _updatePlateRouting();
+    _saveEpMixer();
+  });
+
+  // Reverb TYPE selector (Spring / Plate)
+  var epReverbType = document.getElementById('ep-reverb-type');
+  if (epReverbType) epReverbType.addEventListener('change', () => {
+    EpState.reverbType = epReverbType.value;
+    var isSpring = EpState.reverbType === 'spring';
+    // Spring: worklet internal. Plate: audio.js convolver
+    if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+      epianoWorkletUpdateParams({ useSpringReverb: isSpring });
+    }
+    _updatePlateRouting();
     _saveEpMixer();
   });
 

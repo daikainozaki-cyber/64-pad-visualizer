@@ -56,6 +56,7 @@ var EpState = {
   // Individual key variation → per-key hash table (_epKeyVariation)
   use2ndPreamp: true,      // AB763 V2A+V2B (cathode follower + 2nd gain stage)
   brightSwitch: false,     // AB763 bright cap bypass (increases C1 → more treble)
+  reverbType: 'spring',    // 'spring' | 'plate'
   springReverbMix: 0.12,   // Spring reverb wet level (Fender "2-3" ≈ 0.08-0.15) — AMOUNT knob
   springDwell: 6.0,        // Spring reverb send drive (V3 driver gain, higher = more saturation)
   springFeedbackScale: 0.9, // Spring feedback loop gain → T60 (0.3-0.95) — DECAY knob

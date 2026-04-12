@@ -491,7 +491,19 @@ function setPreset(name) {
 function _updateEpMixerVisibility() {
   var sec = document.getElementById('ep-mixer-section');
   if (!sec) return;
-  sec.style.display = (AudioState.instrument && AudioState.instrument.epiano) ? '' : 'none';
+  var isEpiano = !!(AudioState.instrument && AudioState.instrument.epiano);
+  sec.style.display = isEpiano ? '' : 'none';
+  var epPreset = isEpiano ? EP_AMP_PRESETS[AudioState.instrument.epiano] : null;
+  var hasSpring = !!(epPreset && epPreset.useSpringReverb);
+  var isSuitcase = !!(epPreset && epPreset.powerampType === 'GeTr');
+  // REVERB section: show when preset has spring reverb
+  var revSec = document.getElementById('ep-reverb-section');
+  if (revSec) revSec.style.display = hasSpring ? '' : 'none';
+  // BASS/TREBLE: show for Suitcase (Baxandall EQ)
+  var bassLabel = document.getElementById('ep-eq-bass-label');
+  var trebleLabel = document.getElementById('ep-eq-treble-label');
+  if (bassLabel) bassLabel.style.display = isSuitcase ? '' : 'none';
+  if (trebleLabel) trebleLabel.style.display = isSuitcase ? '' : 'none';
 }
 
 function _applyPresetEpMixerDefaults() {
@@ -1348,6 +1360,9 @@ onReady(() => {
     _tsSlider('ep-ts-bass', 'ep-ts-bass-val', 'bass');
     _tsSlider('ep-ts-mid', 'ep-ts-mid-val', 'mid');
     _tsSlider('ep-ts-treble', 'ep-ts-treble-val', 'treble');
+    // Suitcase Baxandall EQ (same worklet param as tonestack bass/treble)
+    _tsSlider('ep-eq-bass', 'ep-eq-bass-val', 'bass');
+    _tsSlider('ep-eq-treble', 'ep-eq-treble-val', 'treble');
     // Suitcase: hide MID (Peterson Baxandall is 2-band Bass/Treble only)
     if (_ampPresetParam === 'suit') {
       var midLabel = document.getElementById('ep-ts-mid');

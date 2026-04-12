@@ -92,10 +92,10 @@ var EP_AMP_PRESETS = {
     powerampType: 'GeTr',
     useTonestack: true,
     useCabinet: true,
-    useSpringReverb: false,  // Suitcase has vibrato, not spring reverb
+    useSpringReverb: true,   // External reverb via Acc1/2 loop
     springPlacement: 'pre_tremolo',
-    springInputTrim: 0.22,
-    springReturnGain: 0.2,
+    springInputTrim: 0.34,
+    springReturnGain: 0.85,
     springSendHPFHz: 180,
     springTiltDb: -3,
     springSendLPFHz: 5800,
@@ -103,7 +103,7 @@ var EP_AMP_PRESETS = {
     springResonatorMix: 0.45,
     springModDepth: 4.0,
     springHfMix: 0.0005,
-    springFeedbackScale: 0.75,
+    springFeedbackScale: 0.88,
   },
   'Wurlitzer 200A': {
     pickupType: 'wurlitzer',

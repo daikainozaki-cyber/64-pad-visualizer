@@ -470,11 +470,11 @@ function selectSound(combinedValue) {
   // Sync TREM implementation (always Vactrol now, kept for consistency)
   var trmSlider = document.getElementById('snd-tremolo');
   if (trmSlider) trmSlider.dispatchEvent(new Event('input'));
-  // Show/hide AMP CHAIN dev sliders based on preset's useCabinet
+  // AMP CHAIN sliders: Twin tonestack only (not shown for Suitcase/DI)
   var ampSec = document.getElementById('ep-amp-section');
   if (ampSec) {
     var preset = EP_AMP_PRESETS[AudioState.instrument.epiano];
-    ampSec.style.display = (preset && preset.useCabinet) ? '' : 'none';
+    ampSec.style.display = (preset && preset.powerampType === '6L6') ? '' : 'none';
   }
 }
 

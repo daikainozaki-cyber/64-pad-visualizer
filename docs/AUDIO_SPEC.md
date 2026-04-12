@@ -5,6 +5,55 @@
 
 ---
 
+## 0. Pad Sensei Spring Routing Snapshot (2026-04-12)
+
+This is the current SSOT for the routing comparison that keeps getting lost
+during `MK1 Spring EXP` / `Suitcase` work. Do not change spring routing until
+the input tap, merge point, and post-spring chain are compared against this
+table.
+
+### Public / Internal Preset Mapping
+
+| UI / Debug Label | Engine Preset | Real-world intent |
+|---|---|---|
+| `Pad Sensei MK1` | `Rhodes DI` | Stage / DI base tone |
+| `Pad Sensei MK1 Suitcase` | `Rhodes Suitcase` | Suitcase amp + tremolo + cab |
+| `Pad Sensei MK1 Spring EXP` | `Rhodes DI Spring EXP` | Internal spring reference path |
+
+### Spring Routing Comparison
+
+| Axis | `Rhodes DI Spring EXP` (`MK1 Spring EXP`) | `Rhodes Suitcase` |
+|---|---|---|
+| Spring input tap | `mainOut` after DI voice sum | `suitcasePreFxSum` after Baxandall + Volume |
+| Exciter shaping | `_extractSpringExcitation(mainOut)` | `_getSuitcaseSpringInput(scSpringInput)` |
+| Merge point | `mainOut += springWet` before tremolo | `drySum += scSpringWet` before Ge preamp |
+| Post-spring chain | Tremolo only | `Ge preamp -> tremolo -> power -> cab` |
+| Stereo tail bus | Not used for `pre_tremolo` | Must not rely on generic `_springWetL/_springWetR` add-back |
+
+### Code Loci
+
+- `epiano-engine.js`
+  - `Rhodes Suitcase`
+  - `Rhodes DI Spring EXP`
+- `epiano-worklet-processor.js`
+  - `_extractSpringExcitation(...)`
+  - `_getSuitcaseSpringInput(...)`
+  - Suitcase shared branch near `suitcasePreFxSum` / `drySum += scSpringWet`
+  - Generic DI/Twin branch near `mainOut += _processInlineSpringSample(...)`
+
+### Current Diagnostic Reading
+
+- `MK1 Spring EXP` is the working comparison baseline.
+- `Suitcase` is not allowed to silently fall back to the generic DI/Twin
+  `pre_tremolo` path.
+- If `Suitcase` sounds like a detached fuzz layer, check this order first:
+  1. spring input tap
+  2. merge point
+  3. post-spring nonlinear chain
+  4. only then spring-core voicing
+
+---
+
 ## 1. Signal Chain Topology
 
 ### Main Chain (series)

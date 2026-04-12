@@ -2560,6 +2560,13 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     return wetSum * gainFinal;
   }
 
+  _getSuitcaseSpringInput(inputSample) {
+    // Suitcase external reverb should follow the sustained musical line.
+    // The attack-emphasized exciter used for Twin diagnostics makes single
+    // notes feel almost dry while chords over-trigger the spring.
+    return inputSample;
+  }
+
   process(inputs, outputs, parameters) {
     var output = outputs[0];
     if (!output || !output[0]) return true;
@@ -3036,23 +3043,28 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           // Real Suitcase external reverb chain:
           //   PU → Baxandall EQ → Volume → [Acc1 send → reverb → Acc2 return] → Ge preamp → tremolo → power → cab
           // Spring input must tap from pre-Ge-preamp domain (suitcasePreFxSum).
+          // Routing baseline to compare against MK1 Spring EXP:
+          //   MK1 Spring EXP:
+          //     mainOut -> _extractSpringExcitation(...) -> spring -> mainOut += wet -> tremolo
+          //   Suitcase:
+          //     suitcasePreFxSum -> _getSuitcaseSpringInput(...) -> spring -> drySum += wet
+          //       -> Ge preamp -> tremolo -> power -> cab
+          // Keep this distinction explicit. Do not fold Suitcase back into the
+          // generic DI/Twin pre_tremolo helper.
           drySum = (drySum / HARP_PARALLEL_DIV) * this.dryBusGain;
           // --- Spring reverb: Acc1/2 external effect loop (pre-Ge-preamp) ---
+          // Real routing: Acc2 return → Ge preamp. Dry+wet go through amp together.
           if (this.useSpringReverb && this.springPlacement === 'pre_tremolo') {
             var scSpringInput = (suitcasePreFxSum / HARP_PARALLEL_DIV) * this.dryBusGain;
-            var scSpringWet = this._processInlineSpringSample(this._extractSpringExcitation(scSpringInput));
-            drySum += scSpringWet; // wet merges before Ge preamp → amp colors both dry+wet
+            var scSpringWet = this._processInlineSpringSample(this._getSuitcaseSpringInput(scSpringInput));
+            // Suitcase keeps its own legacy Acc1/2-style serial merge path.
+            // Do not route this through the generic pre_tremolo helper; that path
+            // was the source of multiple routing regressions.
+            drySum += scSpringWet;
           }
-          ampSig = drySum * this.rhodesLevel;
-
-          // Phase E: Vactrol stereo tremolo (incandescent + CdS, post-preamp, pre-power)
-          // Phase D: Interstage transformer (J-A hysteresis)
+          ampSig = drySum * this.rhodesLevel * 0.42; // Suitcase: attenuate before Ge to stay in linear region
 
           // --- Germanium preamp (Shockley soft knee, shared chain) ---
-          // Drive scales input to hit LUT's nonlinear region.
-          // pp: ~0.005×5=0.025 (nearly linear, subtle warmth)
-          // ff: ~0.15×5=0.75 (soft knee, warm compression)
-          // fff chord: >1.0 (soft clip, 2nd harmonic rich)
           ampSig *= this.gePreampDrive;
           // 2x oversampled LUT (anti-aliasing for nonlinear waveshaper)
           var geHalf = (ampSig + this.gePreampPrevSample) * 0.5;
@@ -3063,11 +3075,11 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           // Post-LUT real gain (unity-gain LUT × stage gain)
           ampSig *= this.gePreampGain;
 
-          // --- Interstage transformer (J-A hysteresis, frequency-dependent) ---
-          // Low frequencies saturate first (B ∝ 1/f). Implementation: pre-emphasis/de-emphasis.
-          // Boost lows +6dB → J-A saturates lows more → cut lows -6dB → net: only lows compressed.
-          // Numerically stable (no integrate/differentiate).
-          {
+          // --- BYPASS: J-A interstage transformer ---
+          // Causes split distortion (clean+distorted heard separately).
+          // TODO: fix J-A pre-emphasis/de-emphasis implementation
+          // J-A bypass: no additional attenuation (0.32 pre-Ge handles level)
+          if (false) {
             // 1. Pre-emphasis: boost lows before J-A
             ampSig = biquadProcess(this.jaPreEmphCoeff, this.jaPreEmphState, ampSig);
             var H = ampSig * this.jaHscale;
@@ -3207,8 +3219,6 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         finalOutputGain = 1.8; // level-match to Pad Sensei MK1 Suitcase
       }
 
-      var springInputBus = mainOut;
-
       // Tine radiation: delayed by mic distance (2ms) for natural phase relationship
       // Without delay: same-phase cancellation = thin. With delay: spatial thickness.
       {
@@ -3254,7 +3264,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       if (this.useSpringReverb && this.springPlacement === 'pre_tremolo' && this.ampType !== 'suitcase') {
         // DI / Twin pre_tremolo path (Suitcase is handled above in its own shared chain).
         // Mix the (mono) spring wet into mainOut before tremolo so tremolo modulates dry+wet.
-        mainOut += this._processInlineSpringSample(this._extractSpringExcitation(springInputBus));
+        mainOut += this._processInlineSpringSample(this._extractSpringExcitation(mainOut));
       }
       this._springWetL = 0;
       this._springWetR = 0;

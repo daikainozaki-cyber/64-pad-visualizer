@@ -436,6 +436,8 @@ I18N.addLang('de', {
     sound_autofilter: 'Auto-Filter (Auto-Wah)',
     sound_autofilter_desc: 'Hüllkurvenfilter. Stelle FREQ, RESO, SENS und DECAY ein.',
     version_history: 'Versionshistorie',
+    vh_500: '<b>V5.0</b> \u2014 Eigenst\u00E4ndige Sound-Engine + Effekte. Spring Reverb (physikalische Modellierung) + Plate Reverb. Suitcase-Verst\u00E4rkermodell verbessert. Reverb-Typ-Auswahl (Spring/Plate). Baxandall Bass/Treble EQ',
+    vh_49x: '<b>V4.9</b> \u2014 Sofort spielbereit beim \u00D6ffnen (kein Sample-Download). Tastenkombinations-Hinweise umschalten. NM/HM/MM diatonische Akkorde f\u00FCr parallele Moll-Tonarten. PU LEVEL und MECHANICAL zum E.PIANO MIXER hinzugef\u00FCgt. Verbesserungen der Akkorderkennung-Anzeige',
     vh_497: '<b>V4.9.7</b> \u2014 Tremolo ist jetzt physikalisch modelliert. HPS-Mitglieder erhalten Pad Sensei MK1 Suitcase (physikalisch modellierte Amp-Kette)',
     vh_3377: '<b>V3.37.7</b> \u2014 Benutzer-Review: Relative Moll-Tonart-Fix, Title Case Badges, serifenlose Pad-Schrift, farbenblindfreundliche Umschalter (grün\u2192blau), Sound-Panel standardmäßig geöffnet, Layout-Shift-Fix, Tutorial-Spotlight-Overlay, Launchpad Oktav-Unterstützung + Auto-Oktav-Tracking für alle MIDI-Controller',
     vh_340: '<b>V3.40</b> \u2014 3-Bereiche-Layout-Umschaltung, TASTY/STOCK Transposition (\u2190\u2192), Z/X Voicing-Navigation, Cmd+Option Anzeige-Umschalter (Ableton-Stil), Abschnitts-Einklappen, Mobile UX-Verbesserungen, Info-Leiste (Hover-Beschreibungen), vollständige Tastenkürzel-Referenz aktualisiert',

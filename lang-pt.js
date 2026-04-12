@@ -437,6 +437,8 @@ I18N.addLang('pt', {
     sound_autofilter: 'Auto-Filtro (Auto-Wah)',
     sound_autofilter_desc: 'Filtro envelope. Ajuste FREQ, RESO, SENS e DECAY.',
     version_history: 'Hist\u00F3rico de vers\u00F5es',
+    vh_500: '<b>V5.0</b> \u2014 Motor de som e efeitos aut\u00F3nomos. Spring Reverb (modelagem f\u00EDsica) + Plate Reverb. Modelo de amplificador Suitcase melhorado. Seletor de tipo de Reverb (Spring/Plate). Baxandall Bass/Treble EQ',
+    vh_49x: '<b>V4.9</b> \u2014 Toque instantaneamente ao abrir (sem download de samples). Alternar dicas de atalhos. Acordes diat\u00F4nicos NM/HM/MM para tonalidades menores paralelas. PU LEVEL e MECHANICAL adicionados ao E.PIANO MIXER. Melhorias na exibi\u00E7\u00E3o de detec\u00E7\u00E3o de acordes',
     vh_497: '<b>V4.9.7</b> \u2014 O tremolo agora \u00E9 fisicamente modelado. Membros HPS obt\u00EAm Pad Sensei MK1 Suitcase (cadeia de amplifica\u00E7\u00E3o fisicamente modelada)',
     vh_3377: '<b>V3.37.7</b> \u2014 Revis\u00E3o de utilizador: corre\u00E7\u00E3o de tonalidade relativa menor, badges em mai\u00FAsculas, fonte sans-serif nos pads, alternadores acess\u00EDveis para dalt\u00F3nicos (verde\u2192azul), painel Sound aberto por padr\u00E3o, corre\u00E7\u00E3o de deslocamento de layout, overlay spotlight de tutorial, suporte de oitava Launchpad + rastreamento autom\u00E1tico de oitava para todos os controladores MIDI',
     vh_340: '<b>V3.40</b> \u2014 Posicionamento compacto TASTY/Stock: layout \u00F3timo autom\u00E1tico na grade de 64 pads. Bot\u00E3o "To Pad" removido. Caixas de voicing ocultas durante modo TASTY/Stock',

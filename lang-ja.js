@@ -352,6 +352,8 @@ I18N.addLang('ja', {
     sound_autofilter: 'オートフィルター（Auto-Wah）',
     sound_autofilter_desc: 'エンベロープフィルター。FREQ・RESO・SENS・DECAYを調整できます。',
     version_history: 'Version History',
+    vh_500: '<b>V5.0</b> \u2014 自前音源・自前エフェクター構成。Spring Reverb（物理モデリング）+ Plate Reverb搭載。Suitcaseアンプモデル改善。Reverb Type切替（Spring/Plate）。Baxandall Bass/Treble EQ',
+    vh_49x: '<b>V4.9</b> \u2014 開いた瞬間から即演奏可能（サンプルダウンロード不要）。ショートカットキーヒント表示切替。平行調（NM/HM/MM）ダイアトニックコード対応。E.PIANO MIXERにPU LEVEL・MECHANICAL追加。コード検出表示改善',
     vh_497: '<b>V4.9.7</b> \u2014 トレモロを物理モデリング化。HPS会員限定でPad Sensei MK1 Suitcase（アンプチェーン物理モデリング）を追加',
     vh_3377: '<b>V3.37.7</b> \u2014 三井田レビュー反映：平行調バグ修正、UIタイトルケース化、フォント改善（sans-serif）、色覚バリアフリー（緑→ブルー）、Soundパネル初期展開、Layout Shift修正、チュートリアルスポットライト機能、Launchpadオクターブ対応＋MIDI自動オクターブ追従',
     vh_340: '<b>V3.40</b> \u2014 3ペイン並び替え、TASTY/STOCKトランスポーズ（\u2190\u2192キー）、Z/Xボイシング送り、Cmd+Option表示トグル（Ableton式）、セクション折りたたみ、モバイルUX改善、Info Bar（ホバー情報表示）、ショートカット一覧更新',

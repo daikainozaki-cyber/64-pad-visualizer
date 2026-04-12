@@ -351,6 +351,8 @@ I18N.addLang('en', {
     sound_autofilter: 'Auto-Filter (Auto-Wah)',
     sound_autofilter_desc: 'Envelope filter. Adjust FREQ, RESO, SENS, and DECAY.',
     version_history: 'Version History',
+    vh_500: '<b>V5.0</b> \u2014 Self-contained sound engine + effects. Spring Reverb (physical modeling) + Plate Reverb. Suitcase amp model improved. Reverb Type selector (Spring/Plate). Baxandall Bass/Treble EQ',
+    vh_49x: '<b>V4.9</b> \u2014 Play instantly from the moment you open (no sample download). Shortcut key hint toggle. NM/HM/MM diatonic chords for parallel minor keys. PU LEVEL and MECHANICAL added to E.PIANO MIXER. Chord detection display improvements',
     vh_497: '<b>V4.9.7</b> \u2014 Tremolo is now physically modeled. HPS members get Pad Sensei MK1 Suitcase (physically modeled amp chain)',
     vh_3377: '<b>V3.37.7</b> \u2014 User review: relative minor key fix, title case badges, sans-serif pad font, color-blind friendly toggles (green\u2192blue), Sound panel open by default, layout shift fix, tutorial spotlight overlay, Launchpad octave support + auto-octave tracking for all MIDI controllers',
     vh_340: '<b>V3.40</b> \u2014 3-pane layout switching, TASTY/STOCK transpose (\u2190\u2192), Z/X voicing navigation, Cmd+Option display toggles (Ableton-style), section collapse, mobile UX improvements, Info Bar (hover descriptions), full shortcut reference update',

@@ -385,7 +385,6 @@ const ENGINES = {
     name: 'E.PIANO',
     presets: {
       'Rhodes DI':             { epiano: 'Rhodes DI',             label: 'Pad Sensei MK1' },
-      'Rhodes DI Spring EXP':  { epiano: 'Rhodes DI Spring EXP',  label: 'Pad Sensei MK1 Spring EXP', epMixerDefaults: { springReverbMix: 0.8, springDwell: 0.95, springFeedbackScale: 0.9, springStereoEnabled: true, attackNoise: 0.0 } },
       'Rhodes Suitcase':       { epiano: 'Rhodes Suitcase',       label: 'Pad Sensei MK1 Suitcase' },
     },
     defaultPreset: 'Rhodes DI',  // internal key unchanged (EP_AMP_PRESETS reference)
@@ -682,6 +681,8 @@ function loadSoundSettings() {
     const raw = localStorage.getItem('64pad-sound');
     if (!raw) { return; }
     const s = JSON.parse(raw);
+    // Migrate removed Spring EXP preset → Rhodes DI
+    if (s.preset === 'Rhodes DI Spring EXP') s.preset = 'Rhodes DI';
     if (s.engine && ENGINES[s.engine]) {
       var wasMuted = _soundMuted;
       setEngine(s.engine);

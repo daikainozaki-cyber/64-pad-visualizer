@@ -1360,13 +1360,27 @@ onReady(() => {
     _tsSlider('ep-ts-bass', 'ep-ts-bass-val', 'bass');
     _tsSlider('ep-ts-mid', 'ep-ts-mid-val', 'mid');
     _tsSlider('ep-ts-treble', 'ep-ts-treble-val', 'treble');
-    // Suitcase Baxandall EQ (same worklet param as tonestack bass/treble)
-    _tsSlider('ep-eq-bass', 'ep-eq-bass-val', 'bass');
-    _tsSlider('ep-eq-treble', 'ep-eq-treble-val', 'treble');
     // Suitcase: hide MID (Peterson Baxandall is 2-band Bass/Treble only)
     if (_ampPresetParam === 'suit') {
       var midLabel = document.getElementById('ep-ts-mid');
       if (midLabel && midLabel.parentElement) midLabel.parentElement.style.display = 'none';
     }
   }
+
+  // Suitcase Baxandall EQ — always wire up (outside isAmpPreset guard)
+  function _eqSlider(id, valId, param) {
+    var sl = document.getElementById(id);
+    var vl = document.getElementById(valId);
+    if (!sl || !vl) return;
+    sl.addEventListener('input', function() {
+      var v = parseFloat(sl.value);
+      vl.textContent = v.toFixed(2);
+      EpState['tonestack' + param.charAt(0).toUpperCase() + param.slice(1)] = v;
+      if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
+        epianoWorkletUpdateParams({});
+      }
+    });
+  }
+  _eqSlider('ep-eq-bass', 'ep-eq-bass-val', 'bass');
+  _eqSlider('ep-eq-treble', 'ep-eq-treble-val', 'treble');
 });

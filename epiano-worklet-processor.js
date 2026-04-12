@@ -1559,7 +1559,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.useTonestack   = true;
     this.useCabinet     = true;
     this.useSpringReverb = false; // OFF until Nyquist aliasing fixed
-    this.springPlacement = 'legacy_twin_send'; // 'legacy_twin_send' | 'pre_tremolo_main'
+    this.springPlacement = 'post_tremolo'; // 'post_tremolo' | 'pre_tremolo'
     this.springInputTrim = 1.0;
     this.springReturnGain = 1.0;
     this.springDriveMix = 1.0;
@@ -1938,7 +1938,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     if (msg.useTonestack !== undefined) this.useTonestack = msg.useTonestack;
     if (msg.useCabinet !== undefined) this.useCabinet = msg.useCabinet;
     if (msg.useSpringReverb !== undefined) this.useSpringReverb = msg.useSpringReverb;
-    if (msg.springPlacement !== undefined) this.springPlacement = msg.springPlacement || 'legacy_twin_send';
+    if (msg.springPlacement !== undefined) this.springPlacement = msg.springPlacement || 'post_tremolo';
     if (msg.springInputTrim !== undefined) this.springInputTrim = msg.springInputTrim;
     if (msg.springReturnGain !== undefined) this.springReturnGain = msg.springReturnGain;
     if (msg.springDriveMix !== undefined) this.springDriveMix = msg.springDriveMix;
@@ -2458,7 +2458,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Release all voices with this MIDI note
     for (var i = 0; i < MAX_VOICES; i++) {
       if (this.vActive[i] > 0 && this.vMidi[i] === midi && this.vActive[i] !== 3) {
-        if (this.springDiagMuteNoteOff && this.useSpringReverb && this.springPlacement === 'pre_tremolo_main') {
+        if (this.springDiagMuteNoteOff && this.useSpringReverb && this.springPlacement === 'pre_tremolo') {
           this.vActive[i] = 0;
           this.vReleaseNoiseAge[i] = 0xFFFFFFFF;
           continue;
@@ -3018,7 +3018,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
       // --- Reverb send chain: HPF → V3 → tilt → LPF × 2 ---
       var wetSignal = 0;
-      if (this.useSpringReverb && this.springPlacement === 'legacy_twin_send' && Math.abs(sendSum) > 0.00001) {
+      if (this.useSpringReverb && this.springPlacement === 'post_tremolo' && Math.abs(sendSum) > 0.00001) {
         wetSignal = this._processInlineSpringSample(sendSum);
       }
 
@@ -3241,7 +3241,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         mls[1] = mlc[2] * mbOut - mlc[4] * mlOut;
         mechanicalNoiseSum = mlOut;
       }
-      if (this.useSpringReverb && this.springPlacement === 'pre_tremolo_main') {
+      if (this.useSpringReverb && this.springPlacement === 'pre_tremolo') {
         // 2026-04-12 Twin AB763 chain (real hardware, serial):
         //   PU → preamp → reverb → tonestack → tremolo → power → speaker
         // Reverb is BEFORE tremolo. Mix the (mono) spring wet into mainOut

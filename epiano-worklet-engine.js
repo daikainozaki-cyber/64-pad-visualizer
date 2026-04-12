@@ -129,7 +129,7 @@ function _epwSendParams() {
     ampType: preset.powerampType === 'GeTr' ? 'suitcase'
            : preset.useCabinet ? 'twin' : 'di',
     useSpringReverb: !!preset.useSpringReverb,
-    springPlacement: preset.springPlacement || (preset.powerampType === '6L6' ? 'legacy_twin_send' : 'pre_tremolo_main'),
+    springPlacement: preset.springPlacement || (preset.powerampType === '6L6' ? 'post_tremolo' : 'pre_tremolo'),
     springInputTrim: preset.springInputTrim !== undefined ? preset.springInputTrim : 1.0,
     springReturnGain: preset.springReturnGain !== undefined ? preset.springReturnGain : 1.0,
     springDriveMix: preset.springDriveMix !== undefined ? preset.springDriveMix : 1.0,

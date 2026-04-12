@@ -2610,6 +2610,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
       var drySum = 0;
       var diSum = 0;  // DI path: per-voice harp LPF then direct output
       var sendSum = 0; // reverb send (post-tonestack, pre-V2B)
+      var suitcasePreFxSum = 0; // Suitcase: post-Baxandall/Volume, pre-Ge-preamp (reverb send domain)
       var mechanicalNoiseSum = 0; // acoustic noise: bypasses PU → amp chain entirely
       var tineRadSum = 0; // tine radiation accumulator (delayed separately)
 
@@ -2928,6 +2929,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
             // Volume control (Suitcase has its own volume pot)
             sig *= this.volumePot;
 
+            suitcasePreFxSum += sig; // Acc1/2 external reverb taps here (pre-Ge-preamp)
             drySum += sig;
 
           } else {
@@ -3031,8 +3033,16 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
         if (this.ampType === 'suitcase') {
           // === SUITCASE SHARED: Peterson FR7054 germanium 80W ===
-          // Signal path: voice sum → [Phase E: stereo tremolo here] → Ge power amp → Eminence 2×12 cabinet
+          // Real Suitcase external reverb chain:
+          //   PU → Baxandall EQ → Volume → [Acc1 send → reverb → Acc2 return] → Ge preamp → tremolo → power → cab
+          // Spring input must tap from pre-Ge-preamp domain (suitcasePreFxSum).
           drySum = (drySum / HARP_PARALLEL_DIV) * this.dryBusGain;
+          // --- Spring reverb: Acc1/2 external effect loop (pre-Ge-preamp) ---
+          if (this.useSpringReverb && this.springPlacement === 'pre_tremolo') {
+            var scSpringInput = (suitcasePreFxSum / HARP_PARALLEL_DIV) * this.dryBusGain;
+            var scSpringWet = this._processInlineSpringSample(this._extractSpringExcitation(scSpringInput));
+            drySum += scSpringWet; // wet merges before Ge preamp → amp colors both dry+wet
+          }
           ampSig = drySum * this.rhodesLevel;
 
           // Phase E: Vactrol stereo tremolo (incandescent + CdS, post-preamp, pre-power)
@@ -3241,13 +3251,9 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
         mls[1] = mlc[2] * mbOut - mlc[4] * mlOut;
         mechanicalNoiseSum = mlOut;
       }
-      if (this.useSpringReverb && this.springPlacement === 'pre_tremolo') {
-        // 2026-04-12 Twin AB763 chain (real hardware, serial):
-        //   PU → preamp → reverb → tonestack → tremolo → power → speaker
-        // Reverb is BEFORE tremolo. Mix the (mono) spring wet into mainOut
-        // here so the tremolo below modulates dry + wet together. The
-        // post-tremolo `outSampleL/R += _springWetL/R` add is now a no-op
-        // (kept for future routing experiments).
+      if (this.useSpringReverb && this.springPlacement === 'pre_tremolo' && this.ampType !== 'suitcase') {
+        // DI / Twin pre_tremolo path (Suitcase is handled above in its own shared chain).
+        // Mix the (mono) spring wet into mainOut before tremolo so tremolo modulates dry+wet.
         mainOut += this._processInlineSpringSample(this._extractSpringExcitation(springInputBus));
       }
       this._springWetL = 0;

@@ -22,6 +22,15 @@ NC='\033[0m'
 
 echo -e "${BLUE}=== 64 Pad Explorer デプロイ ===${NC}"
 
+# ブランチチェック: main 以外からのデプロイを防止
+CURRENT_BRANCH="$(git -C "${SCRIPT_DIR}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')"
+if [[ "${CURRENT_BRANCH}" != "main" ]]; then
+    echo -e "${RED}❌ エラー: main ブランチ以外からのデプロイは禁止です${NC}"
+    echo -e "${RED}   現在のブランチ: ${CURRENT_BRANCH}${NC}"
+    echo -e "${RED}   git checkout main してからやり直してください${NC}"
+    exit 1
+fi
+
 # テスト実行
 if command -v npm &> /dev/null && [[ -f "${SCRIPT_DIR}/package.json" ]]; then
     echo -e "${BLUE}🧪 テスト実行中...${NC}"

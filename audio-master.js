@@ -9,8 +9,9 @@
 let _soundMuted = false; // Sound ON by default — first pad tap plays immediately
 // AudioWorklet e-piano is default. ?node=1 falls back to Web Audio node version.
 const _useEpianoWorklet = new URLSearchParams(window.location.search).get('node') !== '1';
-// ?amp=twin forces amp preset (dev: V4B/poweramp/cabinet testing)
-const _ampPresetParam = new URLSearchParams(window.location.search).get('amp');
+// Twin amp preset / AMP CHAIN dev sliders removed 2026-04-13 (Phase 0.3a):
+// Twin was frozen and caused repeated routing bugs. Preset definition and
+// worklet DSP remain for now but are unreachable from the UI.
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // --- Master audio graph ---

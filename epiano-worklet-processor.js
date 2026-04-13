@@ -1388,17 +1388,9 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // [z1, z2] per voice
     this.vCouplingState = new Float32Array(MAX_VOICES * 2);
 
-    // Per-voice tonestack biquad states: 4 filters × 2 states = 8 per voice
-    this.vTsState      = new Float32Array(MAX_VOICES * 6); // 3 filters × 2 states (DC HPF removed)
-
-    // Per-voice harp LCR filter states (both DI and amp paths)
-    // Physical: 73 PU series L=1.2H + cable C=650pF + Vol R=25kΩ → f₀=5700Hz, Q=1.7
-    this.vHarpLCRState = new Float32Array(MAX_VOICES * 2);
-
+    // Twin per-voice tonestack/harp-LCR states removed 2026-04-14 (Phase 0
+    // 残クリーン) — they only fed the deleted Twin PU chain.
     // --- Shared chain state ---
-    // Harp LCR coefficients (shared — same physical circuit for all voices)
-    this.harpLPFCoeff  = biquadLowpass(5700, 1.7, fs);
-    this.harpLPFState  = new Float32Array(2); // legacy: per-voice state used instead
 
     // Reverb send HPF (318Hz, shared)
     this.springSendHPFHz = 318;
@@ -1425,17 +1417,10 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     ];
 
     // --- Shared LUTs (all presets pre-computed) ---
-    this.preampLUT_12AX7 = computePreampLUT();
-    this.preampLUT_NE5534 = computePreampLUT_NE5534();
-    this.preampLUT_BJT = computePreampLUT_BJT();
-    this.preampLUT_Ge  = computePreampLUT_Ge();
+    // Twin/Wurlitzer preamp LUTs (12AX7 / NE5534 / BJT / v4bLUT / powerampLUT)
+    // removed 2026-04-14 (Phase 0 残クリーン) — they only fed the deleted Twin
+    // amp chain. Suitcase keeps its own gePreampLUT + gePowerampLUT below.
     this.v3LUT       = computeV3DriverLUT();
-    // Active LUT (switched by preset)
-    this.preampLUT   = this.preampLUT_12AX7;
-    // V4B bloom (12AX7, unity-gain normalized) — worklet-internal
-    this.v4bLUT = normalizeLUTUnityGain(computePreampLUT());
-    // Poweramp (6L6 push-pull, unity-gain normalized) — worklet-internal
-    this.powerampLUT = normalizeLUTUnityGain(computePowerampLUT());
     // Ge preamp LUT (unity-gain normalized, shared chain)
     this.gePreampLUT = normalizeLUTUnityGain(computePreampLUT_Ge());
     this.gePreampDrive = 2.5;  // Suitcase: clean with subtle warmth
@@ -1516,8 +1501,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Per-voice coupling HPF coefficients (3.4Hz, subsonic)
     this.couplingCoeff = biquadHighpass(3.4, 0.707, fs);
 
-    // Tonestack coefficients (shared, updated on param change)
-    this.tsCoeffs = computeTonestackBiquads(0.5, 0.5, 0.5, false, fs);
+    // Twin tonestack coefficients (tsCoeffs) removed 2026-04-14 — Suitcase
+    // uses its own Baxandall (suitcaseBaxBassCoeff / suitcaseBaxTrebleCoeff).
 
     // --- Parameters (updated via MessagePort) ---
     // Voicing screw offset. 0=on-axis, 1=max offset.
@@ -1531,10 +1516,11 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.pickupSymmetry = 0.50; // urinami-san default: bell sweet spot
     this.pickupDistance  = 0.5;
     this.preampGain     = 1.0;
+    // tsBass / tsTreble are reused by Suitcase Baxandall EQ (see
+    // suitcaseBaxBassCoeff recompute in param handler). tsMid / brightSwitch
+    // were Twin-only and were removed 2026-04-14.
     this.tsBass         = 0.5;
-    this.tsMid          = 0.5;
     this.tsTreble       = 0.5;
-    this.brightSwitch   = false;
     this.volumePot      = 0.5;
     this.springReverbMix = 0.12;
     this.springDwell    = 6.0;
@@ -1912,7 +1898,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     }
     if (msg.springDwell !== undefined) this.springDwell = Math.max(msg.springDwell, 0.5);
     if (msg.use2ndPreamp !== undefined) this.use2ndPreamp = msg.use2ndPreamp;
-    if (msg.brightSwitch !== undefined) this.brightSwitch = msg.brightSwitch;
+    // msg.brightSwitch removed 2026-04-14 — Twin-only param.
     if (msg.useTonestack !== undefined) this.useTonestack = msg.useTonestack;
     if (msg.useCabinet !== undefined) this.useCabinet = msg.useCabinet;
     if (msg.useSpringReverb !== undefined) this.useSpringReverb = msg.useSpringReverb;
@@ -1955,26 +1941,20 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // cabLPFFreq) removed 2026-04-13 (Phase 0.3c) — the cab*Coeff/State
     // arrays they recomputed are gone too.
 
-    // Recompute tonestack
-    if (msg.tsBass !== undefined || msg.tsMid !== undefined || msg.tsTreble !== undefined || msg.brightSwitch !== undefined) {
+    // Recompute Suitcase Baxandall EQ (tsBass / tsTreble were formerly shared
+    // with Twin tonestack knobs — Twin DSP removed 2026-04-13, the knobs now
+    // drive only the Baxandall low-shelf / high-shelf pair).
+    if (msg.tsBass !== undefined || msg.tsTreble !== undefined) {
       if (msg.tsBass !== undefined) this.tsBass = msg.tsBass;
-      if (msg.tsMid !== undefined) this.tsMid = msg.tsMid;
       if (msg.tsTreble !== undefined) this.tsTreble = msg.tsTreble;
-      this.tsCoeffs = computeTonestackBiquads(this.tsBass, this.tsMid, this.tsTreble, this.brightSwitch, this.fs);
-      // Suitcase Baxandall EQ also uses tsBass/tsTreble (shared knobs)
-      // Bass: 0=−12dB, 0.5=flat, 1=+12dB. Treble: same range.
       var baxBassDB = (this.tsBass - 0.5) * 24;     // ±12dB
       var baxTrebleDB = (this.tsTreble - 0.5) * 24;  // ±12dB
       this.suitcaseBaxBassCoeff = biquadLowShelf(200, baxBassDB, this.fs);
       this.suitcaseBaxTrebleCoeff = biquadHighShelf(2000, baxTrebleDB, this.fs);
     }
 
-    // Preset-specific LUT switching
-    if (msg.preampType !== undefined) {
-      if (msg.preampType === 'NE5534') this.preampLUT = this.preampLUT_NE5534;
-      else if (msg.preampType === 'BJT') this.preampLUT = this.preampLUT_BJT;
-      else this.preampLUT = this.preampLUT_12AX7;
-    }
+    // msg.preampType removed 2026-04-14 — Twin/Wurlitzer preamp LUT selector,
+    // no longer applied since the Twin chain is gone. Suitcase uses gePreampLUT.
     if (msg.pickupType !== undefined) {
       this.pickupType = msg.pickupType || 'rhodes';
     }
@@ -2354,9 +2334,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Reset filter states
     this.vCouplingState[vi * 2] = 0;
     this.vCouplingState[vi * 2 + 1] = 0;
-    for (var j = 0; j < 6; j++) this.vTsState[vi * 6 + j] = 0;
-    this.vHarpLCRState[vi * 2] = 0;
-    this.vHarpLCRState[vi * 2 + 1] = 0;
+    // vTsState / vHarpLCRState resets removed 2026-04-14 — Twin per-voice
+    // tonestack + harp LCR states are gone with the Twin PU chain.
     _os2x_prev[vi * 2 + _OS2X_PREAMP] = 0;
     _os2x_prev[vi * 2 + _OS2X_POWER] = 0;
 

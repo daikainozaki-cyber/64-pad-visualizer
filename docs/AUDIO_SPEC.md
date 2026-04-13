@@ -100,7 +100,7 @@ flangerMix
   +---------+
   |
   v
-masterComp (DynamicsCompressor: threshold=-12, ratio=4, knee=12)
+masterBus (pass-through GainNode — final merge point before destination; former master compressor was bypassed 2026-04-06 and renamed 2026-04-13 to avoid confusion with the upcoming TAPE COMP plugin)
   |
   v
 audioCtx.destination
@@ -115,10 +115,10 @@ flangerMix ----> masterReverb (ConvolverNode, 1.5s IR, power-decay 2.8)
                  masterReverbGain (GainNode, default=0.08)
                     |
                     v
-                 masterComp  (shared with dry path)
+                 masterBus  (shared with dry path)
 ```
 
-**Note**: The reverb send taps from `flangerMix`, not from the end of the loCut/hiCut chain. The `rebuildFilterChain()` function reconnects `flangerMix` to both `masterComp` and `masterReverb` (with optional loCut/hiCut in between), so when filters are enabled the reverb also receives the filtered signal.
+**Note**: The reverb send taps from `flangerMix`, not from the end of the loCut/hiCut chain. The `rebuildFilterChain()` function reconnects `flangerMix` to both `masterBus` and `masterReverb` (with optional loCut/hiCut in between), so when filters are enabled the reverb also receives the filtered signal.
 
 ### LFO Connections
 
@@ -201,7 +201,7 @@ When `masterGain.gain = 0`, no signal reaches `tremoloNode`. The tremolo LFO is 
                                                                           |              |
                                                                     [hiCut?]             |
                                                                           |              |
-                                                                          +-> masterComp <+
+                                                                          +-> masterBus <+
                                                                                   |
                                                                            destination
                                       [flangerLFO]
@@ -538,9 +538,9 @@ INVARIANT: noteOn(midi) while activeVoices.has(midi):
 
 | Node | Parameter | Default Value |
 |------|-----------|---------------|
-| masterComp | threshold | -12 dB |
-| masterComp | ratio | 4:1 |
-| masterComp | knee | 12 dB |
+| masterBus | threshold | -12 dB |
+| masterBus | ratio | 4:1 |
+| masterBus | knee | 12 dB |
 | masterReverbGain | gain | 0.08 |
 | masterGain | gain | 0.6 (overridden by slider) |
 | tremoloNode | gain | 1.0 (base for LFO) |

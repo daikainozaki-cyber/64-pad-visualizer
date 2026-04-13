@@ -27,7 +27,9 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 // (threshold=-12dB, ratio=4:1). It was squashing e-piano attack transients
 // and creating a "slow attack" illusion (attack compressed → sustain louder),
 // so it was replaced with a pass-through gain on 2026-04-06. Renamed from
-// masterComp → masterBus on 2026-04-13 (name/behaviour parity).
+// the old identifier to masterBus on 2026-04-13 (name/behaviour parity).
+// The "comp" name is being reserved for the upcoming TAPE COMP plugin so
+// there is no ambiguity between this pass-through hub and a real compressor.
 const masterBus = audioCtx.createGain();
 masterBus.gain.setValueAtTime(1.0, 0);
 // masterBus → destination is the default; rebuildFilterChain() in

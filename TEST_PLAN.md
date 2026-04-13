@@ -262,12 +262,12 @@ describe('Audio signal chain: complete routing', () => {
     expect(audioJs).toContain('autoFilter.connect(autoFilter2)');
     expect(audioJs).toContain('autoFilter2.connect(phaserFilters[0])');
     expect(audioJs).toContain('phaserFilters[3].connect(phaserWet)');
-    expect(audioJs).toContain('flangerMix.connect(masterComp)');
+    expect(audioJs).toContain('flangerMix.connect(masterBus)');
     expect(audioJs).toContain('flangerMix.connect(masterReverb)');
   });
 
-  it('masterComp connects to audioCtx.destination (final output)', () => {
-    expect(audioJs).toContain('masterComp.connect(audioCtx.destination)');
+  it('masterBus connects to audioCtx.destination (final output)', () => {
+    expect(audioJs).toContain('masterBus.connect(audioCtx.destination)');
   });
 });
 ```
@@ -583,7 +583,7 @@ test.describe('64 Pad Explorer E2E', () => {
     const rms = await page.evaluate(async () => {
       const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 2048;
-      masterComp.connect(analyser);
+      masterBus.connect(analyser);
 
       // Trigger a note
       noteOn(60, 0.8);

@@ -58,7 +58,8 @@ const ENGINES = {
 
 // 2026-04-07: jRhodes3c sampler REMOVED.
 // Physical model (Pad Sensei MK1) surpassed sampler — urinami-san confirmed.
-// Saves 35MB lazy-load. Sampler engine code kept in audio.js for future instruments.
+// Saves 35MB lazy-load. Sampler engine code moved to audio-sampler.js
+// (Phase 0.1.d, 2026-04-13) for MRC / PAD DAW reuse.
 
 // --- Velocity-driven saturation (soft clipping) ---
 let saturationDrive = 0; // 0=off, 0.1-1.0=mild-heavy

@@ -1,8 +1,34 @@
 # 64 Pad Explorer - CLAUDE.md
 
-**最終更新**: 2026-03-20
+**最終更新**: 2026-04-14
 **担当人格**: 蔵人（実装）、継次（設計・レビュー）、フロ男（テンション・ボイシング設計）、マケ子（UI/UX外部視点）
-**バージョン**: V4.3.0（2026-03-21）
+**バージョン**: V5.0（2026-04-13 / Phase 1 audio-core 独立後）
+
+---
+
+## ⚠️ clone 時の submodule 必須手順（2026-04-14 Phase 1 移行）
+
+**このリポジトリは 2 つの submodule に依存している。`git clone` だけでは audio-core / pad-core が空になり、起動不能になる。**
+
+```bash
+# 新規 clone
+git clone --recursive https://github.com/daikainozaki-cyber/64-pad-visualizer.git
+
+# 既存 clone で submodule を追加取得
+git submodule update --init --recursive
+```
+
+- `audio-core/` → `pad-audio-core` (オーディオ層 SSOT: ePiano + エフェクト + worklet)
+- `pad-core/` → `pad-core` (理論計算 SSOT: スケール/コード/ボイシング)
+
+audio-core を更新した後に 64PE 側の submodule pointer を bump する時:
+
+```bash
+cd audio-core && git pull origin main && cd ..
+git add audio-core && git commit -m "chore: bump audio-core"
+```
+
+GitHub Actions (`deploy.yml`) は `submodules: recursive` 設定済み。Desktop 版 (`sync-webui.sh`) も audio-core 初期化を冒頭でチェックする。
 
 ---
 

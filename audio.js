@@ -513,12 +513,9 @@ function selectSound(combinedValue) {
   // Sync TREM implementation (always Vactrol now, kept for consistency)
   var trmSlider = document.getElementById('snd-tremolo');
   if (trmSlider) trmSlider.dispatchEvent(new Event('input'));
-  // AMP CHAIN sliders: Twin tonestack only (not shown for Suitcase/DI)
+  // AMP CHAIN (dev): shown only when ?amp=... URL param is set. Twin preset is frozen.
   var ampSec = document.getElementById('ep-amp-section');
-  if (ampSec) {
-    var preset = EP_AMP_PRESETS[AudioState.instrument.epiano];
-    ampSec.style.display = (preset && preset.powerampType === '6L6') ? '' : 'none';
-  }
+  if (ampSec) ampSec.style.display = _ampPresetParam ? '' : 'none';
 }
 
 function setPreset(name) {
@@ -1374,12 +1371,9 @@ onReady(() => {
   // Always show tap-to-start overlay (browser requires user gesture for AudioContext)
   _showAudioOverlay();
 
-  // --- AMP CHAIN dev sliders (shown for amp presets: Suitcase/Twin/etc.) ---
-  // Show when URL has ?amp=... OR when current preset uses the amp chain
-  var isAmpPreset = !!_ampPresetParam ||
-    (AudioState.instrument && AudioState.instrument.epiano &&
-     EP_AMP_PRESETS[AudioState.instrument.epiano] &&
-     EP_AMP_PRESETS[AudioState.instrument.epiano].useCabinet);
+  // --- AMP CHAIN dev sliders ---
+  // Twin is frozen; show only when ?amp=... URL param is explicitly set (dev mode).
+  var isAmpPreset = !!_ampPresetParam;
   if (isAmpPreset) {
     var ampSec = document.getElementById('ep-amp-section');
     if (ampSec) ampSec.style.display = '';

@@ -636,16 +636,21 @@ function toggleSection(name) {
     var currentVer = ver ? ver.textContent.trim() : '';  // "V4.9.99"
     var currentVerPlain = currentVer.replace(/^V/, '');
 
-    // Prepend version release notes if user's lastSeen version differs from current
+    // Prepend version release notes if user's lastSeen version differs from current.
+    // i18n key is derived from version: 'whats_new_' + digits (e.g. V5.0 → whats_new_50, V4.9.7 → whats_new_497).
+    // Add a whats_new_<digits> entry in lang-*.js when releasing a version worth announcing.
     var lastSeen = localStorage.getItem('64pad-lastVersion');
     localStorage.setItem('64pad-lastVersion', currentVerPlain);
     if (lastSeen && lastSeen !== currentVerPlain) {
-      var whatsNew = (typeof t === 'function' ? t('whats_new') : '') || "What's New";
-      var relMsg = (typeof t === 'function' ? t('whats_new_497') : '') ||
-        'Tremolo is now physically modeled (Peterson incandescent bulb + CdS)! HPS members get Pad Sensei MK1 Suitcase (Ge amp chain physical modeling).';
-      var releaseHtml = '\u2728 <b>' + whatsNew + ' (' + currentVer + ')</b> ' + relMsg + '&nbsp;&nbsp;';
-      bannerText.innerHTML = releaseHtml + bannerText.innerHTML;
-      _versionNoticeShown = true;
+      var relKey = 'whats_new_' + currentVerPlain.replace(/\./g, '');
+      var relMsg = (typeof t === 'function' ? t(relKey) : '');
+      if (relMsg === relKey) relMsg = ''; // no entry for this version → skip notice
+      if (relMsg) {
+        var whatsNew = (typeof t === 'function' ? t('whats_new') : '') || "What's New";
+        var releaseHtml = '\u2728 <b>' + whatsNew + ' (' + currentVer + ')</b> ' + relMsg + '&nbsp;&nbsp;';
+        bannerText.innerHTML = releaseHtml + bannerText.innerHTML;
+        _versionNoticeShown = true;
+      }
     }
 
     var msg = bannerText.textContent.trim();

@@ -1493,24 +1493,8 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // Poweramp 2x oversampling state (shared, post-voice-sum)
     this.paPrevSample = 0;
 
-    // Cabinet: Jensen C12N 2x12" open-back (parametric EQ from measured data)
-    // Framework §7: "帯域窓が音色を定義する"
-    // Source: Jensen C12N T-S params (Fs=113Hz, QTS=1.02, QES=1.18, QMS=7.52)
-    //
-    // HPF 60Hz: physical lower limit (cone excursion + OT saturation below this)
-    this.cabHPFCoeff  = biquadHighpass(60, 0.707, fs);
-    this.cabHPFState  = new Float32Array(2);
-    // Speaker resonance +6dB @ 113Hz Q=1.0: Jensen C12N Fs with QTS=1.02
-    // High QTS = underdamped resonance = bass boost. This is the "ボフボフ" physics.
-    this.cabResCoeff  = biquadPeaking(113, 1.0, 6.0, fs);
-    this.cabResState  = new Float32Array(2);
-    // Presence +8dB @ 2kHz Q=2: Jensen C12N measured peak (109dB vs ~101dB baseline)
-    // This is the "Twin Reverb chime" — bell emphasis from cone breakup
-    this.cabPeakCoeff = biquadPeaking(2000, 2.0, 8.0, fs);
-    this.cabPeakState = new Float32Array(2);
-    // LPF 6kHz: rolloff begins at 5kHz, steep above 10kHz. -3dB ≈ 6kHz.
-    this.cabLPFCoeff  = biquadLowpass(6000, 0.707, fs);
-    this.cabLPFState  = new Float32Array(2);
+    // Twin Jensen C12N cabinet biquad state removed 2026-04-13 (Phase 0.3c)
+    // — was only fed by the deleted ampType==='twin' shared chain.
 
     // Suitcase cabinet: Eminence Legend 1258 12"×4 (2 front + 2 rear), near-sealed
     // Source: Eminence T-S params (Fs=94Hz, QTS=0.99, QES=1.18, QMS=6.15)
@@ -1551,7 +1535,6 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.tsMid          = 0.5;
     this.tsTreble       = 0.5;
     this.brightSwitch   = false;
-    this.powerampDrive  = 1.0;
     this.volumePot      = 0.5;
     this.springReverbMix = 0.12;
     this.springDwell    = 6.0;
@@ -1595,21 +1578,16 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     this.tineRadiation = 0.0;  // Acoustic tine radiation (-40 to -50dB, glockenspiel-like)
     this.rhodesLevel   = 1.0;  // PU signal level (0=mute PU, hear only mechanical)
 
-    // === Gain staging from AB763 permanent note (Rob Robinette measured) ===
-    // Each tube LUT is unity-gain normalized. Real voltage gain applied AFTER LUT.
-    // Signal CAN exceed ±1 between stages (real amp has 460V+ supply).
-    // LUT inputs must stay ≤ ±1 (= ±grid swing of that tube).
-    this.inputAtten     = 0.5;    // AB763 Hi input -6dB (68kΩ/68kΩ divider)
-    this.v1aGain        = 43;     // 12AX7, Rp=100kΩ, Rk=1.5kΩ bypassed
-    this.cfGain         = 0.95;   // V2A cathode follower (Vibrato ch only)
-    this.tsInsertionLoss = 0.005; // Measured V4.9.70: V2Bout=3.5-6.4 at 0.02. Target V2Bout≈1.0-1.5
-    this.v2bGain        = 57;     // 12AX7, Rk=820Ω shared cathode with V4A
-    this.dryBusGain     = 0.7;
-    this.v4bGain        = 2;      // 12AX7, V4B bloom (unity-norm + ×2 real gain)
-    this.powerGain      = 1.14;   // 6L6×4 ×25-30 / OT ÷22 ≈ 1.14 (LINEAR for Rhodes)
-    this.cabinetGain    = 3.0;    // Final output scaling (tsInsertionLoss=0.005 needs more output gain)
-    this.v4aGain        = 5.0;    // reverb recovery
-    this.reverbPot      = 0.12;
+    // === Gain staging ===
+    // Twin AB763 stage gains (inputAtten / v1aGain / cfGain / tsInsertionLoss /
+    // v2bGain / v4bGain / powerGain) removed 2026-04-13 (Phase 0.3c) — those
+    // were only used by the deleted Twin DSP. Suitcase has its own Ge chain
+    // gains (gePreampDrive / gePreampGain / gePaDrive / gePaGain) declared
+    // earlier in this constructor.
+    this.dryBusGain     = 0.7;    // Shared dry bus normalization (DI + Suitcase)
+    this.cabinetGain    = 3.0;    // Final output scaling (used by Suitcase amp path)
+    this.v4aGain        = 5.0;    // reverb recovery (shared spring reverb send chain)
+    this.reverbPot      = 0.12;   // shared spring reverb wet level
 
     // Voice allocation round-robin
     this.nextVoice = 0;
@@ -1926,7 +1904,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     if (msg.pickupSymmetry !== undefined) this.pickupSymmetry = msg.pickupSymmetry;
     if (msg.pickupDistance !== undefined) this.pickupDistance = msg.pickupDistance;
     if (msg.preampGain !== undefined) this.preampGain = msg.preampGain;
-    if (msg.powerampDrive !== undefined) this.powerampDrive = msg.powerampDrive;
+    // msg.powerampDrive removed 2026-04-13 — Twin-only param.
     if (msg.volumePot !== undefined) this.volumePot = msg.volumePot;
     if (msg.springReverbMix !== undefined) {
       this.springReverbMix = msg.springReverbMix;
@@ -1970,15 +1948,12 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     if (msg.rhodesLevel !== undefined) this.rhodesLevel = msg.rhodesLevel;
 
     // Amp chain params (dev sliders)
-    if (msg.v1aGain !== undefined) this.v1aGain = msg.v1aGain;
-    if (msg.v2bGain !== undefined) this.v2bGain = msg.v2bGain;
-    if (msg.v4bGain !== undefined) this.v4bGain = msg.v4bGain;
-    if (msg.powerGain !== undefined) this.powerGain = msg.powerGain;
+    // msg.v1aGain / v2bGain / v4bGain / powerGain removed 2026-04-13 —
+    // Twin AB763 stage gains, no longer applied anywhere.
     if (msg.cabinetGain !== undefined) this.cabinetGain = msg.cabinetGain;
-    // Cabinet filter recomputation
-    if (msg.cabHPFFreq !== undefined) this.cabHPFCoeff = biquadHighpass(msg.cabHPFFreq, 0.707, this.fs);
-    if (msg.cabPeakFreq !== undefined) this.cabPeakCoeff = biquadPeaking(msg.cabPeakFreq, 2.0, 4.0, this.fs);
-    if (msg.cabLPFFreq !== undefined) this.cabLPFCoeff = biquadLowpass(msg.cabLPFFreq, 0.707, this.fs);
+    // Twin Jensen cabinet filter inputs (msg.cabHPFFreq / cabPeakFreq /
+    // cabLPFFreq) removed 2026-04-13 (Phase 0.3c) — the cab*Coeff/State
+    // arrays they recomputed are gone too.
 
     // Recompute tonestack
     if (msg.tsBass !== undefined || msg.tsMid !== undefined || msg.tsTreble !== undefined || msg.brightSwitch !== undefined) {

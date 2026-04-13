@@ -24,7 +24,6 @@ var EpwState = {
   tonestackBass: 0.5,
   tonestackMid: 0.5,
   tonestackTreble: 0.5,
-  powerampDrive: 1.0,
   preset: 'Rhodes DI',
   use2ndPreamp: true,
   brightSwitch: false,
@@ -119,7 +118,7 @@ function _epwSendParams() {
     tsMid: EpState.tonestackMid,
     tsTreble: EpState.tonestackTreble,
     brightSwitch: EpState.brightSwitch,
-    powerampDrive: EpState.powerampDrive,
+    // powerampDrive removed 2026-04-13 (Phase 0.3c) — Twin-only param.
     volumePot: 0.5,
     springReverbMix: EpState.springReverbMix,
     springDwell: EpState.springDwell,
@@ -155,14 +154,10 @@ function _epwSendParams() {
     releaseRing: EpState.releaseRing !== undefined ? EpState.releaseRing : (EpState.attackNoise !== undefined ? EpState.attackNoise : 0.5),
     tineRadiation: EpState.tineRadiation !== undefined ? EpState.tineRadiation : 0,
     rhodesLevel: EpState.rhodesLevel !== undefined ? EpState.rhodesLevel : 1.0,
-    v1aGain: EpState.v1aGain,
-    v2bGain: EpState.v2bGain,
-    v4bGain: EpState.v4bGain,
-    powerGain: EpState.powerGain,
+    // Twin AB763 stage gains (v1aGain/v2bGain/v4bGain/powerGain) and
+    // Jensen cabinet filter freqs (cabHPFFreq/cabPeakFreq/cabLPFFreq) removed
+    // 2026-04-13 (Phase 0.3c) — no longer applied anywhere in the worklet.
     cabinetGain: EpState.cabinetGain,
-    cabHPFFreq: EpState.cabHPFFreq,
-    cabPeakFreq: EpState.cabPeakFreq,
-    cabLPFFreq: EpState.cabLPFFreq,
     tremoloOn: EpState.tremoloOn || false,
     tremoloFreq: EpState.tremoloFreq || 4.5,
     tremoloDepth: EpState.tremoloDepth || 0,
@@ -171,13 +166,11 @@ function _epwSendParams() {
 }
 
 function epianoWorkletUpdateParams(params) {
-  // Merge amp chain params into EpState (SSOT) before sending
-  if (params) {
-    var ampKeys = ['v1aGain','v2bGain','v4bGain','powerGain','powerampDrive','cabinetGain','cabHPFFreq','cabPeakFreq','cabLPFFreq'];
-    for (var k = 0; k < ampKeys.length; k++) {
-      if (params[ampKeys[k]] !== undefined) EpState[ampKeys[k]] = params[ampKeys[k]];
-    }
-  }
+  // Merge amp chain params into EpState (SSOT) before sending.
+  // The Twin amp chain dev sliders (v1aGain/v2bGain/v4bGain/powerGain/
+  // powerampDrive/cabHPFFreq/cabPeakFreq/cabLPFFreq) were removed in
+  // Phase 0.3c, leaving only cabinetGain on the Suitcase amp path.
+  if (params && params.cabinetGain !== undefined) EpState.cabinetGain = params.cabinetGain;
   _epwSendParams();
 }
 

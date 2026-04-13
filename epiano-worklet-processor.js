@@ -1585,7 +1585,7 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
     // STEREO toggle (UI). true: tank0→L / tank1→R decorrelation,
     // false: mono mix sent to both channels.
     this.springStereoEnabled = true;
-    this.ampType        = 'twin'; // 'twin' | 'suitcase' | 'di'
+    this.ampType        = 'di'; // 'suitcase' | 'di' (Twin removed 2026-04-13, Phase 0.3c)
 
     // Mechanical noise parameters (0-1 knobs, scale internal constants)
     // Separate signal path: bypasses PU → amp chain (acoustic, not electromagnetic)
@@ -2938,81 +2938,9 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
 
             suitcasePreFxSum += sig; // Acc1/2 external reverb taps here (pre-Ge-preamp)
             drySum += sig;
-
-          } else {
-            // === TWIN PATH (AB763 Fender Twin Reverb) ===
-
-            // --- 3b. Harp LCR (5700Hz, Q=1.7) — amp path only ---
-            // 73 PU series L=1.2H + cable C=650pF + Vol R=25kΩ → f₀=5700Hz
-            // DI has no cable → internal C≈50-100pF → f₀>14kHz → transparent.
-            // LCR only applies when signal goes through cable to amp.
-            {
-              var hOff = v * 2;
-              var hc = this.harpLPFCoeff;
-              var hz1 = this.vHarpLCRState[hOff], hz2 = this.vHarpLCRState[hOff + 1];
-              sig = hc[0] * couplingOut + hz1;
-              this.vHarpLCRState[hOff] = hc[1] * couplingOut - hc[3] * sig + hz2;
-              this.vHarpLCRState[hOff + 1] = hc[2] * couplingOut - hc[4] * sig;
-            }
-
-            // --- 4. Input jack attenuator (-6dB, AB763 Hi input) ---
-            sig *= this.inputAtten;
-
-            // --- 5. Preamp V1A (12AX7 LUT, 2x oversampled) ---
-            // Input ~0.025-0.075 (Rhodes 74mV after -6dB). LUT unity-gain, then ×43 real gain.
-            // Output ~1-3V equivalent. Exceeds ±1 — OK, tonestack handles it linearly.
-            sig *= this.preampGain;
-            sig = lutLookup2x(this.preampLUT, sig, v, _OS2X_PREAMP);
-            sig *= this.v1aGain;
-
-            // --- 5b. Cathode follower V2A ---
-            if (this.use2ndPreamp) {
-              sig *= this.cfGain;
-            }
-
-            // --- 6. Tonestack (3 × biquad IIR, DC HPF removed) ---
-            if (this.useTonestack) {
-              var tsBase = v * 6;
-              for (var f = 0; f < 3; f++) {
-                var coeff = this.tsCoeffs[f];
-                var sOff = tsBase + f * 2;
-                var cb0 = coeff[0], cb1 = coeff[1], cb2 = coeff[2], ca1 = coeff[3], ca2 = coeff[4];
-                var tz1 = this.vTsState[sOff], tz2 = this.vTsState[sOff + 1];
-                var tsOut = cb0 * sig + tz1;
-                this.vTsState[sOff] = cb1 * sig - ca1 * tsOut + tz2;
-                this.vTsState[sOff + 1] = cb2 * sig - ca2 * tsOut;
-                sig = tsOut;
-              }
-
-              // Tonestack insertion loss (-14dB)
-              sig *= this.tsInsertionLoss;
-            }
-
-            // --- Reverb send tap (post-tonestack, pre-volume pot) ---
-            if (this.useSpringReverb) {
-              sendSum += sig;
-            }
-
-            // --- 7. Volume pot ---
-            if (this.useTonestack) {
-              sig *= this.volumePot;
-            }
-
-            // --- 8. V2B recovery amp (gain only, LUT bypassed) ---
-            // LUT bypass: tsInsertionLoss=0.005 puts V2B input at ~0.00006 (0.03 LUT steps).
-            // At this level, LUT≈linear (no tube character) but creates release transient
-            // artifacts. Gain-only is sonically identical until tsInsertionLoss is corrected
-            // to physical value (~0.2). Re-enable LUT when gain chain is recalibrated.
-            if (this.use2ndPreamp) {
-              sig *= this.v2bGain;
-            }
-
-            // --- DEBUG: per-voice V2B output peak + V2B input ---
-            if (this._dbgPeakV2B !== undefined && Math.abs(sig) > this._dbgPeakV2B) this._dbgPeakV2B = Math.abs(sig);
-            if (this._dbgPeakV2Bin !== undefined && Math.abs(this._dbgLastV2Bin) > this._dbgPeakV2Bin) this._dbgPeakV2Bin = Math.abs(this._dbgLastV2Bin);
-            // Sum to dry bus
-            drySum += sig;
           }
+          // Twin PU chain (per-voice V1A/V2A/Tonestack/V2B) removed 2026-04-13
+          // (Phase 0.3c). Suitcase is the only remaining amp preset.
 
         } else {
           // === DI PATH (no amp chain) ===
@@ -3160,54 +3088,11 @@ class EpianoWorkletProcessor extends AudioWorkletProcessor {
           }
 
         } else {
-          // === TWIN SHARED: AB763 Fender Twin Reverb ===
-          // Sample-by-sample processing eliminates 128-sample block jitter
-          // that amplifies through nonlinear stages (framework §3).
-          drySum = (drySum / HARP_PARALLEL_DIV) * this.dryBusGain;
-
-          // V4B bloom: dry+wet → 12AX7 nonlinear mixing (gain=2)
-          // Real circuit: 470kΩ/220kΩ resistive divider at V4B grid passes 32%.
-          // 15.4V(V2B) × 0.5(Vol) × 0.32(divider) = 2.46V → within ±3V grid swing.
-          // Forte chord: 0.82 normalized → subtle soft-clip = bloom (NOT hard distortion).
-          ampSig = (drySum + wetSignal) * this.rhodesLevel * 0.32;
-          // --- DEBUG: gain staging via MessagePort (worklet console.log not visible) ---
-          if (this._dbgCount === undefined) { this._dbgCount = 0; this._dbgPeakV4B = 0; this._dbgPeakDry = 0; this._dbgPeakV2B = 0; this._dbgPeakV2Bin = 0; this._dbgLastV2Bin = 0; }
-          if (Math.abs(ampSig) > this._dbgPeakV4B) this._dbgPeakV4B = Math.abs(ampSig);
-          if (Math.abs(drySum) > this._dbgPeakDry) this._dbgPeakDry = Math.abs(drySum);
-          this._dbgCount++;
-          if (this._dbgCount % 24000 === 0 && (this._dbgPeakV4B > 0.001 || this._dbgPeakDry > 0.001)) {
-            this.port.postMessage({ type: 'debug', v4bIn: this._dbgPeakV4B, dry: this._dbgPeakDry, v2b: this._dbgPeakV2B, v2bIn: this._dbgPeakV2Bin });
-            this._dbgPeakV4B = 0; this._dbgPeakDry = 0; this._dbgPeakV2B = 0; this._dbgPeakV2Bin = 0;
-          }
-          ampSig = lutLookup(this.v4bLUT, ampSig);
-          ampSig *= this.v4bGain;
-
-          // Power amp + OT: currently linear placeholder.
-          // TODO: BF breaks up (dynamic bias + coupling C sag). SF has more headroom.
-          // "6L6 doesn't clip" was a false negative conclusion — see 忘れやすいこと.md.
-          // 6L6×4 gain ×25-30, OT step-down ÷22, net ≈ ×1.14 (SF approximation only)
-          ampSig *= this.powerGain;
-
-          // Cabinet: Jensen C12N 2x12" open-back (4-stage parametric EQ)
-          // Gate: skip cabinet when signal is inaudible. Prevents biquad state
-          // residual from being amplified by cab resonance/presence peaks.
-          if (Math.abs(ampSig) > 1e-7) {
-            // HPF 60Hz: physical lower limit
-            ampSig = biquadProcess(this.cabHPFCoeff, this.cabHPFState, ampSig);
-            // Speaker resonance +6dB @ 113Hz: Fs peak (the "ボフボフ")
-            ampSig = biquadProcess(this.cabResCoeff, this.cabResState, ampSig);
-            // Presence +8dB @ 2kHz: cone breakup → bell emphasis
-            ampSig = biquadProcess(this.cabPeakCoeff, this.cabPeakState, ampSig);
-            // LPF 6kHz: cone mass → harshness removal
-            ampSig = biquadProcess(this.cabLPFCoeff, this.cabLPFState, ampSig);
-          } else {
-            // Clear cabinet biquad states when silent
-            this.cabHPFState[0] = 0; this.cabHPFState[1] = 0;
-            this.cabResState[0] = 0; this.cabResState[1] = 0;
-            this.cabPeakState[0] = 0; this.cabPeakState[1] = 0;
-            this.cabLPFState[0] = 0; this.cabLPFState[1] = 0;
-            ampSig = 0;
-          }
+          // No amp path remaining once the Twin shared chain was removed
+          // 2026-04-13 (Phase 0.3c). Suitcase is handled above; any other
+          // ampType reaching useCabinet=true is treated as silent to avoid
+          // uninitialised ampSig downstream.
+          ampSig = 0;
         }
 
         mainOut = ampSig * this.cabinetGain;

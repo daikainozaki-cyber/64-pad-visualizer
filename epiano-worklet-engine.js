@@ -126,8 +126,7 @@ function _epwSendParams() {
     use2ndPreamp: preset.preampType === '12AX7' && EpState.use2ndPreamp,
     useTonestack: !!preset.useTonestack,
     useCabinet: !!preset.useCabinet,
-    ampType: preset.powerampType === 'GeTr' ? 'suitcase'
-           : preset.useCabinet ? 'twin' : 'di',
+    ampType: preset.powerampType === 'GeTr' ? 'suitcase' : 'di',
     useSpringReverb: !!preset.useSpringReverb,
     springPlacement: preset.springPlacement || (preset.powerampType === '6L6' ? 'post_tremolo' : 'pre_tremolo'),
     springInputTrim: preset.springInputTrim !== undefined ? preset.springInputTrim : 1.0,

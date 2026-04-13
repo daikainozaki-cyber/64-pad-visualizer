@@ -93,25 +93,10 @@ var EP_AMP_PRESETS = {
     springHfMix: 0.0005,
     springFeedbackScale: 0.88,
   },
-  'Wurlitzer 200A': {
-    pickupType: 'wurlitzer',
-    preampType: 'BJT',
-    powerampType: 'SS',
-    useTonestack: true,
-    useCabinet: true,
-    useSpringReverb: false,  // Built-in speaker, no spring reverb
-    springPlacement: 'pre_tremolo',
-    springInputTrim: 0.18,
-    springReturnGain: 0.18,
-    springSendHPFHz: 200,
-    springTiltDb: -4,
-    springSendLPFHz: 5600,
-    springOutHPFHz: 300,
-    springResonatorMix: 0.40,
-    springModDepth: 3.5,
-    springHfMix: 0.0004,
-    springFeedbackScale: 0.72,
-  },
+  // 'Wurlitzer 200A' preset was removed on 2026-04-13 (Phase 0.3c) —
+  // never exposed in the user-facing ENGINES registry, and its only
+  // worklet path used the now-deleted Twin DSP. Definition preserved
+  // in experimental/wurlitzer-preset.md.
   'Rhodes DI': {
     pickupType: 'rhodes',
     preampType: null,

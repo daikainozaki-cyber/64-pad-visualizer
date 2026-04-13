@@ -25,7 +25,7 @@ var EpwState = {
   tonestackMid: 0.5,
   tonestackTreble: 0.5,
   powerampDrive: 1.0,
-  preset: 'Rhodes Stage + Twin',
+  preset: 'Rhodes DI',
   use2ndPreamp: true,
   brightSwitch: false,
   springReverbMix: 0.12,
@@ -109,7 +109,7 @@ function _epwLoadFDTDTables() {
 function _epwSendParams() {
   if (!_epw_node) return;
   // EpState is SSOT (set by audio.js UI + saved preferences). Read directly — no EpwState copy.
-  var preset = EP_AMP_PRESETS[EpState.preset] || EP_AMP_PRESETS['Rhodes Stage + Twin'];
+  var preset = EP_AMP_PRESETS[EpState.preset] || EP_AMP_PRESETS['Rhodes DI'];
   _epw_node.port.postMessage({
     type: 'params',
     pickupSymmetry: EpState.pickupSymmetry,

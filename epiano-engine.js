@@ -67,26 +67,13 @@ var EpState = {
 // ========================================
 // AMP MODEL PRESETS
 // ========================================
+// 'Rhodes Stage + Twin' preset was removed on 2026-04-13 (Phase 0.3b).
+// It was a repeating source of routing bugs and is no longer reachable
+// from the UI. The preset definition is preserved in
+// experimental/twin-amp-preset.md for future reference; the DSP branch
+// inside epiano-worklet-processor.js is dead code that will be deleted
+// in Phase 0.3c.
 var EP_AMP_PRESETS = {
-  'Rhodes Stage + Twin': {
-    pickupType: 'rhodes',
-    preampType: '12AX7',
-    powerampType: '6L6',
-    useTonestack: true,
-    useCabinet: true,
-    useSpringReverb: false,  // OFF: Nyquist aliasing in spring reverb (chirp artifacts). Fix before re-enabling.
-    springPlacement: 'post_tremolo',
-    springInputTrim: 1.0,
-    springReturnGain: 1.0,
-    springSendHPFHz: 318,
-    springTiltDb: -6,
-    springSendLPFHz: 5000,
-    springOutHPFHz: 530,
-    springResonatorMix: 1.0,
-    springModDepth: 8.0,
-    springHfMix: 0.0010,
-    springFeedbackScale: 1.0,
-  },
   'Rhodes Suitcase': {
     pickupType: 'rhodes',
     preampType: 'NE5534',
@@ -1177,7 +1164,7 @@ function epianoInit(ctx, masterDest) {
 }
 
 function epianoUpdateLUTs() {
-  var preset = EP_AMP_PRESETS[EpState.preset] || EP_AMP_PRESETS['Rhodes Stage + Twin'];
+  var preset = EP_AMP_PRESETS[EpState.preset] || EP_AMP_PRESETS['Rhodes DI'];
 
   // Pickup LUT
   if (preset.pickupType === 'wurlitzer') {
@@ -1229,7 +1216,7 @@ function epianoUpdateLUTs() {
 function epianoNoteOn(ctx, midi, velocity, masterDest) {
   if (!_epInitialized) epianoInit(ctx, masterDest);
 
-  var preset = EP_AMP_PRESETS[EpState.preset] || EP_AMP_PRESETS['Rhodes Stage + Twin'];
+  var preset = EP_AMP_PRESETS[EpState.preset] || EP_AMP_PRESETS['Rhodes DI'];
   var now = ctx.currentTime;
   var modes = computeModeFrequencies(midi, velocity);
   var nodes = []; // track all nodes for cleanup

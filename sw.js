@@ -48,7 +48,7 @@ var ASSETS = [
   'epiano-engine.js?v=5.0.19',
   'epiano-worklet-engine.js?v=5.0.19',
   'epiano-worklet-processor.js?v=5.0.19',
-  'spring-reverb-processor.js?v=5.0.19',
+  'audio-core/spring-reverb-processor.js?v=5.0.19',
   'data/tasty-recipes.json?v=5.0.19',
   'favicon.svg',
   'img/icon-192.png',

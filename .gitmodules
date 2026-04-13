@@ -1,3 +1,6 @@
 [submodule "pad-core"]
 	path = pad-core
 	url = https://github.com/daikainozaki-cyber/pad-core.git
+[submodule "audio-core"]
+	path = audio-core
+	url = https://github.com/daikainozaki-cyber/pad-audio-core.git

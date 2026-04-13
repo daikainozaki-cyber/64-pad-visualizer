@@ -767,7 +767,7 @@ function _loadSpringReverbWorklet(ctx) {
   if (!ctx.audioWorklet) return; // Safari <14.1 fallback to ConvolverNode
   if (_epSpringReverbWorklet) return;
 
-  ctx.audioWorklet.addModule('spring-reverb-processor.js')
+  ctx.audioWorklet.addModule('audio-core/spring-reverb-processor.js')
     .then(function() {
       var workletNode = new AudioWorkletNode(ctx, 'spring-reverb-processor', {
         numberOfInputs: 1,

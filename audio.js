@@ -1,7 +1,7 @@
 // ========================================
 // AUDIO ENGINE
 // ========================================
-// Master graph (audioCtx / masterComp / masterGain / tremoloNode) lives in
+// Master graph (audioCtx / masterBus / masterGain / tremoloNode) lives in
 // audio-master.js. Effect chain (Auto Filter / Phaser / Flanger / Lo-Cut /
 // Hi-Cut) lives in audio-effects.js. E-piano routing (direct/amp out,
 // plate reverb, drive waveshaper, tremolo LFO) lives in audio-reverb.js.
@@ -26,7 +26,7 @@ function ensureAudioResumed() {
     });
     // Pre-initialize e-piano worklet so first noteOn plays immediately
     if (_useEpianoWorklet && typeof epianoWorkletInit === 'function') {
-      epianoWorkletInit(audioCtx, epianoDirectOut || masterComp);
+      epianoWorkletInit(audioCtx, epianoDirectOut || masterBus);
     }
   }
 }
@@ -298,7 +298,7 @@ function dismissAudioOverlay() {
   ensureAudioResumed();
   // Pre-initialize e-piano worklet so first noteOn isn't silent
   if (_useEpianoWorklet && typeof epianoWorkletInit === 'function') {
-    var epDest = epianoDirectOut || masterComp;
+    var epDest = epianoDirectOut || masterBus;
     epianoWorkletInit(audioCtx, epDest);
   }
   // Auto-select engine if muted (legacy path)
@@ -474,7 +474,7 @@ function noteOn(midi, velocity, poly, _retries) {
     // Spring reverb is separate (inside amp chain, controlled by E.Piano Mixer).
     var epPreset = EP_AMP_PRESETS[EpState.preset];
     epianoReverbSend.gain.setValueAtTime(1.0, audioCtx.currentTime);
-    // DI mode → effects chain (epianoDirectOut). Amp mode → masterComp direct (epianoAmpOut).
+    // DI mode → effects chain (epianoDirectOut). Amp mode → masterBus direct (epianoAmpOut).
     var epDest = (epPreset && epPreset.useCabinet) ? epianoAmpOut : epianoDirectOut;
     envelope = _useEpianoWorklet
       ? epianoWorkletNoteOn(audioCtx, midi, velocity, epDest)

@@ -6,8 +6,8 @@
 //   masterGain → tremoloNode → autoFilter → autoFilter2
 //              → phaserFilters[0..3] → phaserWet → phaserMix
 //              → flangerDelay → flangerWet → flangerMix
-//              → (optional loCut) → (optional hiCut) → masterComp
-// Depends on audio-master.js (audioCtx / masterGain / tremoloNode / masterComp).
+//              → (optional loCut) → (optional hiCut) → masterBus
+// Depends on audio-master.js (audioCtx / masterGain / tremoloNode / masterBus).
 // ========================================
 
 // --- Auto Filter (Envelope Filter / Auto-Wah) ---
@@ -120,14 +120,18 @@ hiCutFilter.frequency.value = 10000;
 hiCutFilter.Q.value = 0.707;
 let hiCutEnabled = false;
 
-// Chain: flangerMix → loCut → hiCut → masterComp
-// When filters are disabled, bypass by connecting directly
+// Lo-Cut / Hi-Cut sit AFTER the master bus so every path
+// (DI chain, Suitcase amp out, Plate reverb return) passes through them,
+// matching how a real console's final EQ is placed before the output.
+// Chain: masterBus → (loCut) → (hiCut) → destination
+// When both filters are disabled the default masterBus→destination
+// connection from audio-master.js is used as-is.
 function rebuildFilterChain() {
-  flangerMix.disconnect();
+  masterBus.disconnect();
   loCutFilter.disconnect();
   hiCutFilter.disconnect();
 
-  let chain = flangerMix;
+  let chain = masterBus;
 
   if (loCutEnabled) {
     chain.connect(loCutFilter);
@@ -139,7 +143,9 @@ function rebuildFilterChain() {
     chain = hiCutFilter;
   }
 
-  chain.connect(masterComp);
+  chain.connect(audioCtx.destination);
 }
 
-flangerMix.connect(masterComp);
+// DI chain terminates at masterBus (Suitcase amp out and Plate reverb
+// return also land on masterBus — see audio-reverb.js).
+flangerMix.connect(masterBus);

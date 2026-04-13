@@ -3,7 +3,7 @@
 // ========================================
 // Split from audio.js (Phase 0.1 / 2026-04-13): the master bus and the
 // top-level AudioContext wiring. Everything here must be loaded before
-// audio.js so that audioCtx / masterGain / tremoloNode / masterComp are
+// audio.js so that audioCtx / masterGain / tremoloNode / masterBus are
 // available for the effect nodes declared there.
 // ========================================
 let _soundMuted = false; // Sound ON by default — first pad tap plays immediately
@@ -14,13 +14,25 @@ const _useEpianoWorklet = new URLSearchParams(window.location.search).get('node'
 // worklet DSP remain for now but are unreachable from the UI.
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-// --- Master audio graph ---
-// Master compressor bypassed: was squashing e-piano attack transients.
-// threshold=-12dB + ratio=4:1 → attack peak compressed → sustain louder → "slow attack" illusion.
-// TODO: re-evaluate if needed for other instruments (sampler, organ).
-const masterComp = audioCtx.createGain();
-masterComp.gain.setValueAtTime(1.0, 0);
-masterComp.connect(audioCtx.destination);
+// --- Master bus (final merge point) ---
+// masterBus is a pass-through GainNode (gain=1.0) that acts as the single
+// merge point where every audio source lands before hitting the final
+// Lo-Cut / Hi-Cut filters and the destination:
+//   [DI chain]          → masterBus ─┐
+//   [Suitcase amp out]  → masterBus  ├→ (loCut) → (hiCut) → destination
+//   [Plate reverb ret]  → masterBus  ┘
+// This models a real console's master section: no matter which voice or
+// effect chain produced the sound, it hits the final EQ before the output.
+// History: this node used to be a DynamicsCompressor
+// (threshold=-12dB, ratio=4:1). It was squashing e-piano attack transients
+// and creating a "slow attack" illusion (attack compressed → sustain louder),
+// so it was replaced with a pass-through gain on 2026-04-06. Renamed from
+// masterComp → masterBus on 2026-04-13 (name/behaviour parity).
+const masterBus = audioCtx.createGain();
+masterBus.gain.setValueAtTime(1.0, 0);
+// masterBus → destination is the default; rebuildFilterChain() in
+// audio-effects.js inserts loCut/hiCut between them when those toggles are on.
+masterBus.connect(audioCtx.destination);
 
 const _sr = audioCtx.sampleRate;
 // Spring reverb runs inside the epiano AudioWorklet (Suitcase preset).

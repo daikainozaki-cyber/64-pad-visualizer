@@ -10,10 +10,10 @@
 // Signal flow:
 //   epiano worklet → epianoDirectOut → epianoDriveWS → epianoDriveMakeup
 //                                    → tremoloNode (audio-effects.js)
-//   epiano worklet amp out → epianoAmpOut → masterComp (bypass FX chain)
-//   [epianoDirectOut + epianoAmpOut] → ePlateSend → convolver → HPF → ePlateReturn → masterComp
+//   epiano worklet amp out → epianoAmpOut → masterBus (bypass FX chain)
+//   [epianoDirectOut + epianoAmpOut] → ePlateSend → convolver → HPF → ePlateReturn → masterBus
 //
-// Depends on audio-master.js (audioCtx / masterComp / tremoloNode) and
+// Depends on audio-master.js (audioCtx / masterBus / tremoloNode) and
 // audio-effects.js (tremoloNode is modulated through the effect chain).
 // ========================================
 
@@ -23,10 +23,10 @@
 const epianoDirectOut = audioCtx.createGain();
 epianoDirectOut.gain.setValueAtTime(0.49, 0); // urinami-san default VOL
 // Amp output: worklet (with internal amp chain + spring reverb) bypasses
-// DI effects chain → masterComp direct.
+// DI effects chain → masterBus direct.
 const epianoAmpOut = audioCtx.createGain();
 epianoAmpOut.gain.setValueAtTime(0.49, 0);
-epianoAmpOut.connect(masterComp);
+epianoAmpOut.connect(masterBus);
 // Plate reverb (post-tremolo, external studio effect)
 function _buildPlateImpulseResponse(seconds, decay, hpfHz) {
   const sr = audioCtx.sampleRate;
@@ -63,7 +63,7 @@ epianoDirectOut.connect(ePlateSend);
 ePlateSend.connect(epianoPlateConvolver);
 epianoPlateConvolver.connect(ePlateHPF);
 ePlateHPF.connect(ePlateReturn);
-ePlateReturn.connect(masterComp);
+ePlateReturn.connect(masterBus);
 
 function _updatePlateRouting() {
   var plateOn = EpState.reverbType === 'plate';

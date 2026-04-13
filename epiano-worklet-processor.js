@@ -1022,36 +1022,7 @@ function computePickupLUT_horizontal(symmetry, distance, gapMm, qRange, lverOffs
   return lut;
 }
 
-function computePreampLUT() {
-  // 12AX7 Koren model (Twin Reverb AB763 V1A)
-  var lut = new Float32Array(LUT_SIZE);
-  var mu = 100, ex = 1.4, kG1 = 1060, kP = 600, kVB = 300;
-  var Vb = 330, Ra = 100000, Vgk_bias = -1.5, gridSwing = 3.0;
-  var rawOut = new Float32Array(LUT_SIZE);
-  for (var i = 0; i < LUT_SIZE; i++) {
-    var x = (i / (LUT_SIZE - 1)) * 2 - 1;
-    var Vgk = Vgk_bias + x * gridSwing;
-    if (Vgk > 0.3) Vgk = 0.3 + (Vgk - 0.3) * 0.05;
-    var Vp = 190;
-    for (var iter = 0; iter < 3; iter++) {
-      var E1 = Math.log(1 + Math.exp(kP * (1 / mu + Vgk / Math.sqrt(kVB + Vp * Vp)))) / kP;
-      var Ip = Math.pow(Math.max(E1, 0), ex) / kG1;
-      Vp = Vb - Ip * Ra;
-      if (Vp < 0) Vp = 0;
-    }
-    rawOut[i] = Vp;
-  }
-  var Vp_rest = rawOut[LUT_SIZE >> 1];
-  var maxSwing = 0;
-  for (var i = 0; i < LUT_SIZE; i++) {
-    lut[i] = rawOut[i] - Vp_rest;
-    if (Math.abs(lut[i]) > maxSwing) maxSwing = Math.abs(lut[i]);
-  }
-  if (maxSwing > 0) {
-    for (var i = 0; i < LUT_SIZE; i++) lut[i] = -lut[i] / maxSwing;
-  }
-  return lut;
-}
+// computePreampLUT (12AX7 Koren, Twin V1A) removed 2026-04-14 — Twin DSP deleted.
 
 // Exact copy of epiano-engine.js computePickupLUT_Wurlitzer()
 function computePickupLUT_Wurlitzer(distance) {
@@ -1072,33 +1043,8 @@ function computePickupLUT_Wurlitzer(distance) {
   return lut;
 }
 
-// Exact copy of epiano-engine.js computePreampLUT_NE5534()
-function computePreampLUT_NE5534() {
-  var lut = new Float32Array(LUT_SIZE);
-  var rail = 0.85;
-  for (var i = 0; i < LUT_SIZE; i++) {
-    var x = (i / (LUT_SIZE - 1)) * 2 - 1;
-    if (Math.abs(x) < rail) {
-      lut[i] = x;
-    } else {
-      var excess = (Math.abs(x) - rail) / (1 - rail);
-      lut[i] = (x > 0 ? 1 : -1) * (rail + (1 - rail) * Math.tanh(excess * 3));
-    }
-  }
-  return lut;
-}
-
-// Exact copy of epiano-engine.js computePreampLUT_BJT()
-function computePreampLUT_BJT() {
-  var lut = new Float32Array(LUT_SIZE);
-  for (var i = 0; i < LUT_SIZE; i++) {
-    var x = (i / (LUT_SIZE - 1)) * 2 - 1;
-    lut[i] = x >= 0
-      ? Math.tanh(x * 2.0) * 0.9
-      : Math.tanh(x * 1.5) * 1.05;
-  }
-  return lut;
-}
+// computePreampLUT_NE5534 / computePreampLUT_BJT removed 2026-04-14 — only
+// Suitcase is left, and it uses the Ge LUT below.
 
 function computePreampLUT_Ge() {
   // Germanium transistor preamp: Shockley-derived soft knee with bias asymmetry
@@ -1127,18 +1073,7 @@ function computePreampLUT_Ge() {
   return lut;
 }
 
-function computePowerampLUT() {
-  // Exact copy of epiano-engine.js computePowerampLUT_6L6()
-  // Push-pull Class AB: even harmonics cancel, crossover region
-  var lut = new Float32Array(LUT_SIZE);
-  for (var i = 0; i < LUT_SIZE; i++) {
-    var x = (i / (LUT_SIZE - 1)) * 2 - 1;
-    var tubeA = Math.tanh(x * 1.5 + 0.05);  // slight bias offset
-    var tubeB = Math.tanh(-x * 1.5 + 0.05);
-    lut[i] = (tubeA - tubeB) * 0.5;
-  }
-  return lut;
-}
+// computePowerampLUT (6L6 push-pull) removed 2026-04-14 — Twin-only.
 
 function computePowerampLUT_Ge() {
   // Germanium push-pull Class AB (Peterson FR7054, 2×40W)
@@ -1201,25 +1136,8 @@ function normalizeLUTUnityGain(lut) {
   return lut;
 }
 
-// ========================================
-// TONESTACK PARAMETER COMPUTATION
-// ========================================
-function computeTonestackBiquads(bass, mid, treble, bright, fs) {
-  // Exact copy of epiano-engine.js computeTonestackParams() — verified against AB763 Yeh & Smith.
-  // DO NOT change these values without physics verification.
-  var b = bass < 0 ? 0 : (bass > 1 ? 1 : bass);
-  var m = mid < 0 ? 0 : (mid > 1 ? 1 : mid);
-  var t = treble < 0 ? 0 : (treble > 1 ? 1 : treble);
-  // DC blocking removed: coupling HPF (3.4Hz) already handles DC.
-  // Real Fender tonestack has no separate DC block — coupling cap is upstream.
-  // The 30Hz HPF created subsonic transients at release → V2B LUT converted
-  // them to audible harmonics → sounded like mechanical release noise.
-  return [
-    biquadLowShelf(100, -16 + b * 16, fs),                    // Bass: -16 to 0 dB at 100Hz
-    biquadPeaking(600, 0.8, -17 + m * 14, fs),                // Mid scoop: -17 to -3 dB, Q=0.8 (Fender TMB)
-    biquadHighShelf(bright ? 1500 : 3000, -14 + t * 14, fs)   // Treble: -14 to 0 dB
-  ];
-}
+// computeTonestackBiquads (Twin tonestack) removed 2026-04-14 — Suitcase
+// uses its own Baxandall EQ (biquadLowShelf / biquadHighShelf directly).
 
 // ========================================
 // PROCESSOR CLASS

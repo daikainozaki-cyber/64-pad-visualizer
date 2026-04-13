@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """
-note.com RSS から最新記事を取得し、index.html のお知らせバナーを更新する。
+3つのRSSから最新記事を取得し、index.html のお知らせバナー3ブロックを更新します。
 
-- べき等: 何回実行しても同じ結果
-- フォールバック: RSS取得失敗時は既存テキストを保持
-- 手動メッセージ（<br>以降）は一切触らない
+- ブログ:     murinaikurashi.com/feed/     → 📝 ブログ更新「...」
+- HPS:        note.com/urinami/rss         → 🎹 HPS更新「...」
+- Pad Sensei: urinami.substack.com/feed    → 📰 Pad Sensei「...」
+
+Notes:
+- note.com は 2026-04 以降 HPS のみ更新される前提でフィードの最新記事をそのまま採用します。
+- べき等: 何回実行しても同じ結果になります。
+- フォールバック: 任意のRSS取得が失敗しても、他のブロックだけ更新して続行します。
 """
 
 import re
@@ -13,105 +18,118 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-RSS_URL = "https://note.com/urinami/rss"
+FEEDS = [
+    {
+        "key": "blog",
+        "url": "https://murinaikurashi.com/feed/",
+        "icon": "\U0001F4DD",   # 📝
+        "label": "ブログ更新",
+    },
+    {
+        "key": "hps",
+        "url": "https://note.com/urinami/rss",
+        "icon": "\U0001F3B9",   # 🎹
+        "label": "HPS更新",
+    },
+    {
+        "key": "padsensei",
+        "url": "https://urinami.substack.com/feed",
+        "icon": "\U0001F4F0",   # 📰
+        "label": "Pad Sensei",
+    },
+]
+
 TIMEOUT_SEC = 10
+USER_AGENT = "64PadExplorer-Deploy/2.0"
 
 
-def fetch_latest_article(rss_url: str) -> tuple[str, str] | None:
-    """RSSから最新記事のタイトルとURLを取得。失敗時はNone。"""
+def fetch_latest(rss_url: str) -> tuple[str, str] | None:
+    """RSSから最新記事のタイトルとリンクを取得します。失敗時はNoneを返します。"""
     try:
-        req = urllib.request.Request(rss_url, headers={"User-Agent": "64PadExplorer-Deploy/1.0"})
+        req = urllib.request.Request(rss_url, headers={"User-Agent": USER_AGENT})
         with urllib.request.urlopen(req, timeout=TIMEOUT_SEC) as resp:
             xml_bytes = resp.read()
     except Exception as e:
-        print(f"[note-banner] RSS取得失敗（スキップ）: {e}", file=sys.stderr)
+        print(f"[note-banner] RSS取得失敗 {rss_url}: {e}", file=sys.stderr)
         return None
 
     try:
         root = ET.fromstring(xml_bytes)
-        # RSS 2.0: channel > item
         item = root.find(".//channel/item")
         if item is None:
-            print("[note-banner] RSS に item が見つからない（スキップ）", file=sys.stderr)
+            print(f"[note-banner] item なし {rss_url}", file=sys.stderr)
             return None
-        title = item.findtext("title", "").strip()
-        link = item.findtext("link", "").strip()
+        title = (item.findtext("title") or "").strip()
+        link = (item.findtext("link") or "").strip()
         if not title or not link:
-            print("[note-banner] title または link が空（スキップ）", file=sys.stderr)
+            print(f"[note-banner] title/link 空 {rss_url}", file=sys.stderr)
             return None
         return title, link
     except ET.ParseError as e:
-        print(f"[note-banner] XMLパースエラー（スキップ）: {e}", file=sys.stderr)
+        print(f"[note-banner] XMLパースエラー {rss_url}: {e}", file=sys.stderr)
         return None
 
 
-def update_banner(html_path: Path, title: str, url: str) -> bool:
+def update_block(content: str, feed: dict, title: str, url: str) -> tuple[str, int]:
     """
-    index.html のバナー1行目（記事リンク部分）を更新する。
-    <br>以降の手動メッセージは保持。
-    Returns True if file was modified.
+    icon + label「<a ...>旧タイトル</a>」→ 同構造で最新記事に置換します。
+    Returns (new_content, count).
     """
-    content = html_path.read_text(encoding="utf-8")
-
-    # パターン: span#update-notice-text の中身、<br> の前まで
-    # 「新記事更新しました〜「<a href="..." ...>タイトル</a>」」の部分を置換
+    icon = feed["icon"]
+    label = re.escape(feed["label"])
     pattern = (
-        r'(<span id="update-notice-text">)'    # グループ1: 開始タグ
-        r'新記事更新しました〜「'                  # 固定テキスト
-        r'<a href="[^"]*"'                       # 旧URL
-        r' target="_blank"'
-        r' style="color:var\(--text-muted\);text-decoration:underline;">'
-        r'[^<]*'                                 # 旧タイトル
-        r'</a>」'
+        re.escape(icon)
+        + r"\s*"
+        + label
+        + r'「<a href="[^"]*" target="_blank" style="color:var\(--accent\);text-decoration:underline;">[^<]*</a>」'
     )
-
-    # 全角スペースを半角に正規化したタイトル（note.comのRSSは全角スペース使用だが表示用に半角にする）
     display_title = title.replace("\u3000", " ")
-
     replacement = (
-        r'\1'
-        f'新記事更新しました〜「'
-        f'<a href="{url}"'
-        f' target="_blank"'
-        f' style="color:var(--text-muted);text-decoration:underline;">'
-        f'{display_title}'
-        f'</a>」'
+        f'{icon} {feed["label"]}「'
+        f'<a href="{url}" target="_blank" '
+        f'style="color:var(--accent);text-decoration:underline;">'
+        f'{display_title}</a>」'
     )
-
     new_content, count = re.subn(pattern, replacement, content, count=1)
-
-    if count == 0:
-        print("[note-banner] バナーパターンが見つからない（スキップ）", file=sys.stderr)
-        return False
-
-    if new_content == content:
-        print(f"[note-banner] 既に最新: {display_title}")
-        return False
-
-    html_path.write_text(new_content, encoding="utf-8")
-    print(f"[note-banner] 更新完了: {display_title}")
-    print(f"[note-banner] URL: {url}")
-    return True
+    return new_content, count
 
 
-def main():
-    # index.html のパスを決定
+def main() -> int:
     script_dir = Path(__file__).resolve().parent
     project_root = script_dir.parent
     html_path = project_root / "index.html"
 
     if not html_path.exists():
         print(f"[note-banner] {html_path} が見つからない", file=sys.stderr)
-        sys.exit(1)
+        return 1
 
-    result = fetch_latest_article(RSS_URL)
-    if result is None:
-        # フォールバック: 何もしない
-        sys.exit(0)
+    content = html_path.read_text(encoding="utf-8")
+    original = content
 
-    title, url = result
-    update_banner(html_path, title, url)
+    for feed in FEEDS:
+        result = fetch_latest(feed["url"])
+        if result is None:
+            print(f"[note-banner] {feed['key']} 取得失敗→既存保持")
+            continue
+        title, url = result
+        new_content, count = update_block(content, feed, title, url)
+        if count == 0:
+            print(f"[note-banner] {feed['key']} パターン不一致（index.html の構造が変わった可能性）", file=sys.stderr)
+            continue
+        if new_content != content:
+            print(f"[note-banner] {feed['key']} 更新: {title.replace(chr(0x3000), ' ')}")
+            print(f"[note-banner]   URL: {url}")
+            content = new_content
+        else:
+            print(f"[note-banner] {feed['key']} 既に最新: {title.replace(chr(0x3000), ' ')}")
+
+    if content != original:
+        html_path.write_text(content, encoding="utf-8")
+        print("[note-banner] index.html を更新しました")
+    else:
+        print("[note-banner] 変更なし")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

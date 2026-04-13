@@ -636,21 +636,21 @@ function toggleSection(name) {
     var currentVer = ver ? ver.textContent.trim() : '';  // "V4.9.99"
     var currentVerPlain = currentVer.replace(/^V/, '');
 
-    // Prepend version release notes if user's lastSeen version differs from current.
-    // i18n key is derived from version: 'whats_new_' + digits (e.g. V5.0 → whats_new_50, V4.9.7 → whats_new_497).
-    // Add a whats_new_<digits> entry in lang-*.js when releasing a version worth announcing.
-    var lastSeen = localStorage.getItem('64pad-lastVersion');
-    localStorage.setItem('64pad-lastVersion', currentVerPlain);
-    if (lastSeen && lastSeen !== currentVerPlain) {
-      var relKey = 'whats_new_' + currentVerPlain.replace(/\./g, '');
-      var relMsg = (typeof t === 'function' ? t(relKey) : '');
-      if (relMsg === relKey) relMsg = ''; // no entry for this version → skip notice
-      if (relMsg) {
-        var whatsNew = (typeof t === 'function' ? t('whats_new') : '') || "What's New";
-        var releaseHtml = '\u2728 <b>' + whatsNew + ' (' + currentVer + ')</b> ' + relMsg + '&nbsp;&nbsp;';
-        bannerText.innerHTML = releaseHtml + bannerText.innerHTML;
-        _versionNoticeShown = true;
-      }
+    // Prepend version release notes. Shown once per version: if the user hasn't
+    // dismissed the notice for this specific version, show it — including users who
+    // visited before a whats_new_<digits> entry was added for that version.
+    // i18n key: 'whats_new_' + digits (V5.0 → whats_new_50, V4.9.7 → whats_new_497).
+    // Add a whats_new_<digits> entry in lang-*.js whenever a release is worth announcing.
+    var verDigits = currentVerPlain.replace(/\./g, '');
+    var relKey = 'whats_new_' + verDigits;
+    var relMsg = (typeof t === 'function' ? t(relKey) : '');
+    if (relMsg === relKey) relMsg = ''; // no entry for this version → skip notice
+    var noticeSeenKey = '64pad-notice-seen-' + verDigits;
+    if (relMsg && !localStorage.getItem(noticeSeenKey)) {
+      var whatsNew = (typeof t === 'function' ? t('whats_new') : '') || "What's New";
+      var releaseHtml = '\u2728 <b>' + whatsNew + ' (' + currentVer + ')</b> ' + relMsg + '&nbsp;&nbsp;';
+      bannerText.innerHTML = releaseHtml + bannerText.innerHTML;
+      _versionNoticeShown = true;
     }
 
     var msg = bannerText.textContent.trim();
@@ -663,6 +663,8 @@ function toggleSection(name) {
       closeBtn.addEventListener('click', function() {
         banner.style.display = 'none';
         if (currentVer) localStorage.setItem('64pad-notice-dismissed', currentVer);
+        // Record that this version's release notice has been seen
+        if (_versionNoticeShown) localStorage.setItem(noticeSeenKey, '1');
       });
     }
   } catch(_) {}

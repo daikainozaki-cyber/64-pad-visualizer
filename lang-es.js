@@ -114,7 +114,7 @@ I18N.addLang('es', {
     sc_cmd_key: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>K</kbd> \u2014 Key Display',
     sc_cmd_header: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>H</kbd> \u2014 Header / Info Bar',
     tips_toggle: 'Mostrar consejos al inicio',
-    c_fixed_toggle: 'Fijar en Do mayor (Pad OS)',
+    c_fixed_toggle: 'Fijar en Do mayor',
     c_fixed_tip: 'El pad muestra siempre la escala de Do mayor, independientemente de Key/Scale/Chord.',
     layout: 'Diseño',
     footer: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',

@@ -118,7 +118,7 @@ I18N.addLang('it', {
     sc_cmd_key: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>K</kbd> \u2014 Tonalità',
     sc_cmd_header: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>H</kbd> \u2014 Intestazione / Barra info',
     tips_toggle: 'Mostra suggerimenti all\'avvio',
-    c_fixed_toggle: 'Blocca in Do maggiore (Pad OS)',
+    c_fixed_toggle: 'Blocca in Do maggiore',
     c_fixed_tip: 'Il pad mostra sempre la scala di Do maggiore, indipendentemente da Key/Scale/Chord.',
     layout: 'Disposizione',
     footer: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',

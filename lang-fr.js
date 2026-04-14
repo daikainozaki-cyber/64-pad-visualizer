@@ -114,7 +114,7 @@ I18N.addLang('fr', {
     sc_cmd_key: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>K</kbd> \u2014 Affichage des tonalités',
     sc_cmd_header: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>H</kbd> \u2014 En-tête / Barre d\'info',
     tips_toggle: 'Afficher les astuces au démarrage',
-    c_fixed_toggle: 'Verrouiller en Do majeur (Pad OS)',
+    c_fixed_toggle: 'Verrouiller en Do majeur',
     c_fixed_tip: 'Le pad affiche toujours la gamme Do majeur, indépendamment de Key/Scale/Chord.',
     layout: 'Disposition',
     footer: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',

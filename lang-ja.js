@@ -118,7 +118,7 @@ I18N.addLang('ja', {
     sc_cmd_key: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>K</kbd> \u2014 キー表示',
     sc_cmd_header: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>H</kbd> \u2014 ヘッダー / Info Bar',
     tips_toggle: '起動時にヒントを表示',
-    c_fixed_toggle: 'Cメジャースケール固定（Pad OS）',
+    c_fixed_toggle: 'Cメジャースケール固定',
     c_fixed_tip: 'パッドは常にCメジャースケールで表示されます。Key/Scale/Chordを変えてもパッドの配置は変わりません。楽器としての本来の振る舞いです。',
     layout: 'レイアウト',
     footer: '64 Pad Explorer \u2014 HPS（Hardcore Pad Style）',

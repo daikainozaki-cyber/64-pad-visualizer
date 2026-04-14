@@ -118,7 +118,7 @@ I18N.addLang('de', {
     sc_cmd_key: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>K</kbd> \u2014 Tonartanzeige',
     sc_cmd_header: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>H</kbd> \u2014 Header / Info-Leiste',
     tips_toggle: 'Tipps beim Start anzeigen',
-    c_fixed_toggle: 'Auf C-Dur sperren (Pad OS)',
+    c_fixed_toggle: 'Auf C-Dur sperren',
     c_fixed_tip: 'Das Pad zeigt immer die C-Dur-Tonleiter an, unabhängig von Key/Scale/Chord.',
     layout: 'Layout',
     footer: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',

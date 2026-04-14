@@ -716,12 +716,9 @@ function _exitLaunchpadProgrammerMode() {
 function updateLaunchpadLEDs(state) {
   _lastLEDState = state;
   if (!midiOutput || !_lpOutputActive || !_lpProgrammerMode) return;
-  // Chord mode: PUSH/Launchpad LED 表示しない（urinami 決定 2026-04-14、goryugo 要望対応）
-  // 楽器としての振る舞い = Chord はパッドに投影しない（builder は UI のみ）
-  if (typeof AppState !== 'undefined' && AppState.mode === 'chord') {
-    clearLaunchpadLEDs();
-    return;
-  }
+  // urinami 2026-04-14: PUSH は楽器としての scale 表示に徹する。render.js で
+  // padApplyScaleOnlyOverride を通した state が渡ってくるので、ここでは
+  // mode 分岐は行わない（常に scale 面が光る）。
   for (var row = 0; row < ROWS; row++) {
     for (var col = 0; col < COLS; col++) {
       var idx = row * COLS + col;

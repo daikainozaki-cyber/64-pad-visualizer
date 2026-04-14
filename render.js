@@ -680,8 +680,14 @@ function render() {
   }
   _syncOverlayHighlight();
 
-  // Launchpad LED update (mirrors pad colors to connected controller)
-  // padState は C-fixed override 適用済。通常モードでは state と同じ参照。
-  if (typeof updateLaunchpadLEDs === 'function') updateLaunchpadLEDs(padState);
+  // Launchpad/PUSH LED update: always show current scale only
+  // (urinami 2026-04-14: PUSH は楽器なので scale のみ、chord/tasty/builder は出さない).
+  // C-fixed mode はさらに C Major に固定する。
+  if (typeof updateLaunchpadLEDs === 'function') {
+    var ledState = (typeof padApplyScaleOnlyOverride === 'function')
+      ? padApplyScaleOnlyOverride(state, AppState.key, AppState.scaleIdx, AppState.padCFixed === true)
+      : state;
+    updateLaunchpadLEDs(ledState);
+  }
 }
 

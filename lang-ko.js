@@ -118,6 +118,8 @@ I18N.addLang('ko', {
     sc_cmd_key: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>K</kbd> \u2014 Key Display',
     sc_cmd_header: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>H</kbd> \u2014 Header / Info Bar',
     tips_toggle: '시작 시 팁 표시',
+    c_fixed_toggle: 'C 메이저 고정 (Pad OS)',
+    c_fixed_tip: '패드는 Key/Scale/Chord 선택과 관계없이 항상 C 메이저 스케일을 표시합니다.',
     layout: '레이아웃',
     footer: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
   },

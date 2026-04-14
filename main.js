@@ -188,6 +188,15 @@ function toggleStartupTips(on) {
   AppState.showTips = on;
   saveAppSettings();
 }
+
+// C-fixed mode: lock pad to C Major scale (urinami Pad OS philosophy, 2026-04-14)
+function toggleCFixed(on) {
+  AppState.padCFixed = on === true;
+  saveAppSettings();
+  if (typeof render === 'function') render();
+  if (typeof refreshLaunchpadLEDs === 'function') refreshLaunchpadLEDs();
+}
+
 showStartupTip();
 
 // ========================================

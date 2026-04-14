@@ -118,6 +118,8 @@ I18N.addLang('pt', {
     sc_cmd_key: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>K</kbd> \u2014 Key Display',
     sc_cmd_header: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>H</kbd> \u2014 Header / Info Bar',
     tips_toggle: 'Mostrar dicas na inicialização',
+    c_fixed_toggle: 'Fixar em Dó maior (Pad OS)',
+    c_fixed_tip: 'O pad sempre mostra a escala de Dó maior, independentemente de Key/Scale/Chord.',
     layout: 'Layout',
     footer: '64 Pad Explorer \u2014 HPS (Hardcore Pad Style)',
   },

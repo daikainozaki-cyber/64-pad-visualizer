@@ -97,6 +97,7 @@ function computeRenderState() {
     ? [...padExtNotes].sort(function(a, b) { return a - b; }) : [];
 
   return padComputeRenderState({
+    cFixed: AppState.padCFixed === true,
     mode: AppState.mode,
     key: AppState.key,
     scaleIdx: AppState.scaleIdx,

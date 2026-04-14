@@ -48,6 +48,7 @@ const AppState = {
   velRange: 127,     // 1-127: max output velocity
   showTips: true,    // startup tips for returning users
   showBadges: true,  // voicing box badge (A, B, C…) visibility
+  padCFixed: false,  // Pad OS: lock pad display to C Major scale (urinami 2026-04-14)
 };
 
 const BuilderState = {
@@ -190,6 +191,7 @@ function saveAppSettings() {
       activeBankId: BankState.activeBankId,
       showTips: AppState.showTips,
       showBadges: AppState.showBadges,
+      padCFixed: AppState.padCFixed,
     };
     localStorage.setItem('64pad-settings', JSON.stringify(s));
   } catch(_) {}
@@ -225,6 +227,7 @@ function loadAppSettings() {
     if (s.showHarmonicFn !== undefined) AppState.showHarmonicFn = s.showHarmonicFn;
     if (s.showTips === false) AppState.showTips = false;
     if (s.showBadges !== undefined) AppState.showBadges = s.showBadges;
+    if (s.padCFixed === true) AppState.padCFixed = true;
     // Migration: banks
     if (Array.isArray(s.banks) && s.banks.length > 0) {
       BankState.banks = s.banks;

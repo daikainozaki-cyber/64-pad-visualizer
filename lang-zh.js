@@ -118,6 +118,8 @@ I18N.addLang('zh', {
     sc_cmd_key: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>K</kbd> \u2014 调显示',
     sc_cmd_header: '<kbd>\u2318</kbd><kbd>\u2325</kbd>+<kbd>H</kbd> \u2014 标题栏 / 信息栏',
     tips_toggle: '启动时显示提示',
+    c_fixed_toggle: '固定为C大调 (Pad OS)',
+    c_fixed_tip: '无论 Key/Scale/Chord 如何选择，Pad 始终显示C大调音阶。',
     layout: '布局',
     footer: '64 Pad Explorer \u2014 HPS（Hardcore Pad Style）',
   },

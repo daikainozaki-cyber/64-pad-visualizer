@@ -531,7 +531,7 @@ I18N.addLang('fr', {
   tips_off: 'Ne plus afficher',
   whats_new: 'Nouveautés',
   whats_new_497: 'Le tr\u00E9molo est maintenant mod\u00E9lis\u00E9 physiquement ! Les membres HPS obtiennent Pad Sensei MK1 Suitcase.',
-  whats_new_513: 'Mode verrouillé sur Do majeur ajouté ! Active-le depuis Aide (?). Push/Launchpad affiche toujours Do majeur.',
+  whats_new_51: 'Mode verrouillé sur Do majeur ajouté ! Active-le depuis Aide (?). Push/Launchpad affiche toujours Do majeur.',
   whats_new_50: 'R\u00E9verb\u00E9rations \u00E0 ressort et \u00E0 plaque ajout\u00E9es ! \u00C9galiseur Baxandall Bass/Treble, ampli Suitcase am\u00E9lior\u00E9.',
   whats_new_32427: 'Voicing guitare \u2192 reflet sur pad (touche V). Basculement disposition style guitare / compact',
   whats_new_33000: 'Système de tutoriels ! Cliquez sur l\'icône livre dans l\'en-tête pour apprendre le mode Scale, le mode Chord et plus encore.',

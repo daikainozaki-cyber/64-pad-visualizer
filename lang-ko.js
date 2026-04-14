@@ -534,6 +534,7 @@ I18N.addLang('ko', {
   tips_off: '팁 숨기기',
   whats_new: '새 기능',
   whats_new_497: '\uD2B8\uB808\uBAA8\uB85C\uAC00 \uBB3C\uB9AC \uBAA8\uB378\uB9C1\uB418\uC5C8\uC2B5\uB2C8\uB2E4! HPS \uD68C\uC6D0\uC740 Pad Sensei MK1 Suitcase \uC0AC\uC6A9 \uAC00\uB2A5.',
+  whats_new_513: 'C 메이저 고정 모드가 추가되었습니다! 도움말(?)에서 켤 수 있어요. Push/Launchpad는 항상 C 메이저로 표시됩니다.',
   whats_new_50: '\uC2A4\uD504\uB9C1 \uB9AC\uBC84\uBE0C + \uD50C\uB808\uC774\uD2B8 \uB9AC\uBC84\uBE0C \uD0D1\uC7AC! Baxandall Bass/Treble EQ, Suitcase \uC564\uD504 \uBAA8\uB378 \uAC1C\uC120.',
   whats_new_32427: '기타 보이싱 \u2192 패드 반영 (V키). 기타형 / 컴팩트 레이아웃 전환',
   whats_new_33000: '튜토리얼 시스템! 헤더의 책 아이콘을 클릭하여 Scale 모드, Chord 모드 등을 배워보세요.',

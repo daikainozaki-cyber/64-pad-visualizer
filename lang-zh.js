@@ -536,6 +536,7 @@ I18N.addLang('zh', {
   tips_off: '不再显示提示',
   whats_new: '新功能',
   whats_new_497: '颤音现在采用物理建模！HPS 会员可使用 Pad Sensei MK1 Suitcase。',
+  whats_new_513: '新增C大调固定模式！在帮助(?)菜单切换。Push/Launchpad将始终显示C大调。',
   whats_new_50: '弹簧混响 + 板式混响登场！Baxandall Bass/Treble EQ，Suitcase 音箱模型改进。',
   whats_new_32427: '吉他声位\u2192打击垫映射（V键）。吉他式 / 紧凑式布局切换',
   whats_new_33000: '教程系统！点击标题栏的书本图标，学习Scale模式、Chord模式等功能。',

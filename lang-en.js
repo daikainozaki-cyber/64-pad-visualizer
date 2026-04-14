@@ -424,6 +424,7 @@ I18N.addLang('en', {
   tips_off: "Don't show tips",
   whats_new: "What's New",
   whats_new_497: 'Tremolo is now physically modeled! HPS members get Pad Sensei MK1 Suitcase.',
+  whats_new_513: 'Lock to C Major mode added! Toggle from Help (?). When on, Push/Launchpad always display C Major — instrument-correct behavior. Chord/TASTY/Stock overlays now stay in the browser UI, not the pad.',
   whats_new_50: 'Spring & Plate reverb added! Baxandall Bass/Treble EQ, Suitcase amp improved.',
   whats_new_32427: 'Guitar voicing \u2192 Pad reflect (V key). Guitar-like / Compact layout switch.',
   whats_new_33000: 'Tutorial system! Click the book icon in the header to learn Scale mode, Chord mode, and more.',

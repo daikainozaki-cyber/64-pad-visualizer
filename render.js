@@ -622,7 +622,11 @@ function render() {
   }
 
   const state = computeRenderState();
-  renderPads(svg, state);
+  // C-fixed mode (Pad OS): pad/LED だけ C Major に固定する別 state を作る。
+  // 他 UI（staff/guitar/bass/piano/circle/legend/info）は通常の state を使う。
+  // Codex P1 fix 2026-04-14.
+  const padState = (typeof padApplyPadOverride === 'function') ? padApplyPadOverride(state) : state;
+  renderPads(svg, padState);
   if (AppState.mode !== 'input' && !TastyState.enabled && !StockState.enabled && !(_voicingReflectMode && _guitarSyncSource === 'position') && !_stockReflectMode) {
     renderVoicingBoxes(svg, state);
   }
@@ -677,6 +681,7 @@ function render() {
   _syncOverlayHighlight();
 
   // Launchpad LED update (mirrors pad colors to connected controller)
-  if (typeof updateLaunchpadLEDs === 'function') updateLaunchpadLEDs(state);
+  // padState は C-fixed override 適用済。通常モードでは state と同じ参照。
+  if (typeof updateLaunchpadLEDs === 'function') updateLaunchpadLEDs(padState);
 }
 

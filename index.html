@@ -821,19 +821,60 @@ if (new URLSearchParams(window.location.search).has('hps')) {
 <script src="pad-core/incremental.js?v=5.1.16"></script>
 <!-- App JS -->
 <script src="data.js?v=5.1.16"></script>
-<script src="host-adapter.js?v=5.1.16"></script>
-<script src="audio-core/epiano-engine.js?v=5.1.16"></script>
-<script src="audio-core/epiano-worklet-engine.js?v=5.1.16"></script>
-<script src="audio-core/audio-master.js?v=5.1.16"></script>
-<script src="audio-core/audio-effects.js?v=5.1.16"></script>
-<script src="audio-core/audio-reverb.js?v=5.1.16"></script>
-<script src="audio-core/audio-sampler.js?v=5.1.16"></script>
-<script src="audio-core/audio-engines.js?v=5.1.16"></script>
-<script src="audio-core/audio-persistence.js?v=5.1.16"></script>
-<script src="audio-core/audio-overlay.js?v=5.1.16"></script>
-<script src="audio-core/audio-voice.js?v=5.1.16"></script>
-<script src="audio-core/audio.js?v=5.1.16"></script>
-<script src="audio-ui-binding.js?v=5.1.16"></script>
+<!-- Phase 3.1-A.c: audio-core + host-adapter + audio-ui-binding are loaded
+     ONLY when AUDIO_ENABLED. In silent mode these are skipped entirely —
+     pad-core / theory / MIDI / render still run, only sound is absent.
+     document.write is used during parsing to preserve synchronous load order. -->
+<script>
+if (window.AUDIO_ENABLED) {
+  var _audioScripts = [
+    'host-adapter.js',
+    'audio-core/epiano-engine.js',
+    'audio-core/epiano-worklet-engine.js',
+    'audio-core/audio-master.js',
+    'audio-core/audio-effects.js',
+    'audio-core/audio-reverb.js',
+    'audio-core/audio-sampler.js',
+    'audio-core/audio-engines.js',
+    'audio-core/audio-persistence.js',
+    'audio-core/audio-overlay.js',
+    'audio-core/audio-voice.js',
+    'audio-core/audio.js',
+    'audio-ui-binding.js'
+  ];
+  _audioScripts.forEach(function(src) {
+    document.write('<script src="' + src + '?v=5.1.16"><\/script>');
+  });
+} else {
+  // Silent mode: stub audio APIs that non-audio code calls, so pads/UI don't crash.
+  window.noteOn = function() {};
+  window.noteOff = function() {};
+  window.noteOffAll = function() {};
+  window.playMidiNotes = function() {};
+  window.ensureAudioResumed = function() {};
+  window.setEngine = function() {};
+  window.setPreset = function() {};
+  window.selectSound = function() {};
+  window.toggleSoundMute = function() {};
+  window._updateMuteBtn = function() {};
+  window.saveSoundSettings = function() {};
+  window.loadSoundSettings = function() {};
+  window.renderSoundControls = function() {};
+  window._loadEpMixer = function() {};
+  window._saveEpMixer = function() {};
+  window._updateEpMixerVisibility = function() {};
+  window.dismissAudioOverlay = function() {};
+  window._showAudioOverlay = function() {};
+  window._showFirstTimeHint = function() {};
+  window._hidePadHint = function() {};
+  window.drawVelocityCurve = function() {};
+  window.triggerAutoFilter = function() {};
+  window.rebuildFilterChain = function() {};
+  window.saveAppSettings = function() {};
+  window._updateEpianoDriveCurve = function() {};
+  window._updatePlateRouting = function() {};
+}
+</script>
 <script src="theory.js?v=5.1.16"></script>
 <script src="tasty-stock.js?v=5.1.16"></script>
 <script src="staff.js?v=5.1.16"></script>

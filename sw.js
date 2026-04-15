@@ -10,6 +10,7 @@ var ASSETS = [
   'pad-core/builder-ui.js?v=5.1.5',
   'pad-core/incremental.js?v=5.1.5',
   'data.js?v=5.1.5',
+  'host-adapter.js?v=5.1.5',
   'audio-core/audio-master.js?v=5.1.5',
   'audio-core/audio-effects.js?v=5.1.5',
   'audio-core/audio-reverb.js?v=5.1.5',

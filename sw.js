@@ -54,8 +54,9 @@ var ASSETS = [
   'favicon.svg',
   'img/icon-192.png',
   'img/icon-512.png',
-  'data/fdtd/attack_tables.bin',
-  'data/fdtd/manifest.json',
+  'audio-core/assets/fdtd/attack_tables.bin',
+  'audio-core/assets/fdtd/manifest.json',
+  'audio-core/assets/twin-cab-ir.wav',
 ];
 
 self.addEventListener('install', function(e) {

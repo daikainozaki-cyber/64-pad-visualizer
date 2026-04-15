@@ -203,19 +203,69 @@ if (typeof window.audioCoreConfig === 'undefined') {
     }
   });
 
-  // 1.7 overlay (audio-overlay.js 全体)
-  // 3.0.e で実装予定、現在は no-op default
+  // 1.7 overlay (audio-overlay.js 全体) — 3.0.e 結線済
+  // DOM 操作 + i18n + first-run localStorage を host に移送。audio-core 側
+  // dismissAudioOverlay は audio worklet init + onMutedAutoSelect 等の audio
+  // 関連処理だけ残す。
   cfg.overlay = mergeDefaults(cfg.overlay, {
     enabled: true,
     t: function(key) {
       return (typeof t === 'function') ? t(key) : key;
     },
-    showFirstTimeHint: function() {},
-    showAudioOverlay: function() {},
-    dismissOverlay: function() {},
-    showPadHint: function() {},
-    hidePadHint: function() {},
     firstRunKey: '64pad-overlay-seen',
-    onMutedAutoSelect: function() {}
+    showFirstTimeHint: function() {
+      var header = document.getElementById('sound-header');
+      if (!header) return;
+      var hint = document.createElement('div');
+      hint.id = 'sound-first-hint';
+      hint.textContent = (typeof t === 'function') ? t('ui.sound_hint') : 'Select a preset to enable sound';
+      hint.style.cssText = 'font-size:0.65rem;color:#a0a0a0;text-align:center;padding:2px 0;animation:hint-pulse 2s ease-in-out infinite';
+      header.parentNode.insertBefore(hint, header);
+    },
+    hideFirstTimeHint: function() {
+      var hint = document.getElementById('sound-first-hint');
+      if (hint) hint.remove();
+    },
+    showAudioOverlay: function() {
+      var overlay = document.getElementById('audio-start-overlay');
+      if (overlay) overlay.classList.add('active');
+    },
+    // Hide overlay DOM + manage first-run localStorage. Returns
+    // { firstTime: bool } so caller can chain pad hint for first-time users.
+    dismissOverlay: function() {
+      var overlay = document.getElementById('audio-start-overlay');
+      if (overlay) overlay.classList.remove('active');
+      var firstTime = !localStorage.getItem('64pad-overlay-seen');
+      if (firstTime) {
+        try { localStorage.setItem('64pad-overlay-seen', '1'); } catch (_) {}
+      }
+      return { firstTime: firstTime };
+    },
+    showPadHint: function() {
+      var grid = document.getElementById('pad-grid');
+      if (!grid) return;
+      grid.classList.add('pad-hint-pulse');
+      var hint = document.createElement('div');
+      hint.id = 'pad-play-hint';
+      hint.textContent = (typeof t === 'function') ? t('ui.tap_pads') : 'Tap any pad to play!';
+      grid.parentNode.insertBefore(hint, grid);
+      // Auto-dismiss after 6 seconds (host-owned timer)
+      setTimeout(function() {
+        var b = window.audioCoreConfig && window.audioCoreConfig.overlay;
+        if (b && b.hidePadHint) b.hidePadHint();
+      }, 6000);
+    },
+    hidePadHint: function() {
+      var hint = document.getElementById('pad-play-hint');
+      if (hint) hint.remove();
+      var grid = document.getElementById('pad-grid');
+      if (grid) grid.classList.remove('pad-hint-pulse');
+    },
+    // legacy path: when muted, auto-select engine then expand sound section
+    onMutedAutoSelect: function() {
+      if (typeof soundExpanded !== 'undefined' && !soundExpanded && typeof toggleSoundExpand === 'function') {
+        toggleSoundExpand();
+      }
+    }
   });
 })();

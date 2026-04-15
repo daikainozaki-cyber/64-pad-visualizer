@@ -26,6 +26,13 @@ if (typeof window.audioCoreConfig === 'undefined') {
 (function() {
   var cfg = window.audioCoreConfig;
 
+  // schemaVersion (Plan A 2026-04-15, Codex BLOCKER 3): primitive value,
+  // per-key merge と同思想で host が pre-define してなければ 1 を設定。
+  // audio-core/audio-master.js の validateAudioCoreConfig() が起動時に検証。
+  if (typeof cfg.schemaVersion === 'undefined') {
+    cfg.schemaVersion = 1;
+  }
+
   // Per-key shallow merge: target が key を持たない時のみ default を充填。
   // host が部分的に sub-interface を pre-define している（例: muteUI に
   // updateMuteBtn だけ持つ）場合、欠落 key を補う。

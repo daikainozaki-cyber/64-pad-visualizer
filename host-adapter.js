@@ -102,15 +102,47 @@ if (typeof window.audioCoreConfig === 'undefined') {
     }
   });
 
-  // 1.4 persistence (audio-persistence.js 全体 + URL override)
-  // 3.0.d で実装予定、現在は no-op default
+  // 1.4 persistence (audio-persistence.js 67-153 + URL override) — 3.0.d 結線済
+  // localStorage I/O を host が owner に。audio-core は state object を
+  // 受け渡しするだけで、key prefix や JSON serialize 詳細を知らない。
+  // DOM↔EpState binding は audio-core に残す（3.0.c1/c2 で既に必要部分は
+  // bridge 経由）。
   cfg.persistence = mergeDefaults(cfg.persistence, {
-    loadSound: function() { return null; },
-    saveSound: function(state) {},
-    loadEpMixer: function() { return null; },
-    saveEpMixer: function(state) {},
     storageKeyPrefix: '64pad-',
-    parseUrlOverrides: function() {}
+    loadSound: function() {
+      try {
+        var raw = localStorage.getItem('64pad-sound');
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) { return null; }
+    },
+    saveSound: function(state) {
+      try {
+        localStorage.setItem('64pad-sound', JSON.stringify(state));
+      } catch (_) {}
+    },
+    loadEpMixer: function() {
+      try {
+        var raw = localStorage.getItem('64pad-ep-mixer-v2');
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) { return null; }
+    },
+    saveEpMixer: function(state) {
+      try {
+        localStorage.setItem('64pad-ep-mixer-v2', JSON.stringify(state));
+      } catch (_) {}
+    },
+    // ?reset=ep → return true if host wants caller to skip load and reset state.
+    // Side effect: clear both keys on detection.
+    parseUrlOverrides: function() {
+      if (location.search.indexOf('reset=ep') >= 0) {
+        try {
+          localStorage.removeItem('64pad-ep-mixer-v2');
+          localStorage.removeItem('64pad-sound');
+        } catch (_) {}
+        return { resetEp: true };
+      }
+      return {};
+    }
   });
 
   // 1.5 mute UI (audio-voice.js:51-60) — 3.0.c1 結線済

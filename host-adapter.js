@@ -71,12 +71,35 @@ if (typeof window.audioCoreConfig === 'undefined') {
     }
   });
 
-  // 1.3 preset dropdown + HPS gate (audio-persistence.js:143, audio-engines.js:89)
-  // 3.0.c3 で実装予定、現在は no-op default
+  // 1.3 preset dropdown + HPS gate (audio-persistence.js:155, audio-engines.js:88) — 3.0.c3 結線済
+  // audio-core が ENGINES を enumerate して entries[] を構築し（useCabinet
+  // メタを含む）、host の filter() で HPS gate を判定、host の render() で
+  // organ-preset DOM を構築。
+  // entry shape: { value, label, engineKey, presetKey, useCabinet }
   cfg.presetDropdown = mergeDefaults(cfg.presetDropdown, {
-    render: function(engines) {},
-    sync: function(engineKey, presetKey) {},
-    filter: function(engineKey, presetKey) { return true; }
+    filter: function(entry) {
+      // 64PE host: HPS gate for amp/cabinet presets
+      var hpsUnlocked = new URLSearchParams(window.location.search).has('hps');
+      if (entry.useCabinet && !hpsUnlocked) return false;
+      return true;
+    },
+    render: function(entries) {
+      var sel = document.getElementById('organ-preset');
+      if (!sel) return;
+      sel.innerHTML = '';
+      entries.forEach(function(e) {
+        var opt = document.createElement('option');
+        opt.value = e.value;
+        opt.textContent = e.label;
+        sel.appendChild(opt);
+      });
+      // Hide dropdown when only one preset exists
+      sel.style.display = entries.length <= 1 ? 'none' : '';
+    },
+    sync: function(value) {
+      var sel = document.getElementById('organ-preset');
+      if (sel) sel.value = value;
+    }
   });
 
   // 1.4 persistence (audio-persistence.js 全体 + URL override)

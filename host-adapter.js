@@ -28,10 +28,23 @@ if (typeof window.audioCoreConfig === 'undefined') {
     },
 
     // 1.2 MIDI bridge (audio-voice.js:204-235)
+    // 64PE では instruments.js:14 の linkMode、midi.js:4 の midiActiveNotes、
+    // midi.js:137 の scheduleMidiUpdate に lazy binding する。
+    // host-adapter.js は data.js 直後（line 819）に load されるが、
+    // instruments.js / midi.js はもっと後に load されるため、
+    // function 内で typeof チェック + 動的参照する必要がある。
     midiBridge: {
-      isLinkMode: function() { return false; },
-      onNoteReleased: function(midi) {},
-      onAllReleased: function() {}
+      isLinkMode: function() {
+        return (typeof linkMode !== 'undefined') ? linkMode : false;
+      },
+      onNoteReleased: function(midi) {
+        if (typeof midiActiveNotes !== 'undefined') midiActiveNotes.delete(midi);
+        if (typeof scheduleMidiUpdate === 'function') scheduleMidiUpdate();
+      },
+      onAllReleased: function() {
+        if (typeof midiActiveNotes !== 'undefined') midiActiveNotes.clear();
+        if (typeof scheduleMidiUpdate === 'function') scheduleMidiUpdate();
+      }
     },
 
     // 1.3 preset dropdown + HPS gate (audio-persistence.js:143, audio-engines.js:89)

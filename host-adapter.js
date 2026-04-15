@@ -145,7 +145,7 @@ if (typeof window.audioCoreConfig === 'undefined') {
     }
   });
 
-  // 1.5 mute UI (audio-voice.js:51-60) — 3.0.c1 結線済
+  // 1.5 mute UI (audio-voice.js:51-60) — 3.0.c1 結線済 + 2026-04-15 applyMute 追加
   cfg.muteUI = mergeDefaults(cfg.muteUI, {
     updateMuteBtn: function(muted) {
       var btn = document.getElementById('sound-mute-btn');
@@ -157,6 +157,20 @@ if (typeof window.audioCoreConfig === 'undefined') {
     updatePresetOpacity: function(muted) {
       var sel = document.getElementById('organ-preset');
       if (sel) sel.style.opacity = muted ? '0.4' : '';
+    },
+    // Apply mute to actual audio output. mute → masterBus.gain=0,
+    // unmute → restore from snd-volume slider value.
+    // 2026-04-15 fix: existing voices keep playing on mute (noteOn _soundMuted
+    // ガードは新規発音だけ防ぐ設計）→ master volume を 0 にして全停止。
+    applyMute: function(muted) {
+      if (typeof masterBus === 'undefined' || typeof audioCtx === 'undefined') return;
+      if (muted) {
+        masterBus.gain.setValueAtTime(0, audioCtx.currentTime);
+      } else {
+        var sl = document.getElementById('snd-volume');
+        var val = sl ? parseFloat(sl.value) : 1;
+        masterBus.gain.setValueAtTime(val, audioCtx.currentTime);
+      }
     }
   });
 

@@ -26,17 +26,24 @@ onReady(() => {
       saveSoundSettings();
     });
   });
-  // Real-time VOL → masterGain (WebAudioFont) + epianoDirectOut (worklet)
+  // Real-time VOL → masterBus.gain (single master merge point).
+  // 2026-04-15 ROUTING FIX: 旧版は masterGain / epianoDirectOut / epianoAmpOut
+  // を個別制御していたが、ePlateReturn が制御外で漏れていた + 多経路制御で
+  // 直列 attenuator になり挙動が予測困難だった。
+  // urinami の設計判断「全てが一つのマスターに入らないとおかしい」適用。
+  // masterBus は audio-master.js で「全 source の merge point」と定義されており
+  // ([DI] / [Suitcase amp out] / [Plate reverb] → masterBus → destination)、
+  // ここの gain で master volume を制御するのが正規。個別 attenuator は
+  // それぞれの functional 役割（masterGain=WAF -4.4dB trim 等）で固定。
   const volSlider = document.getElementById('snd-volume');
   if (volSlider) volSlider.addEventListener('input', () => {
+    if (_soundMuted) return;  // mute 中は反映しない（unmute 時に slider 値で復帰）
     const val = parseFloat(volSlider.value);
-    masterGain.gain.setValueAtTime(val, audioCtx.currentTime);
-    epianoDirectOut.gain.setValueAtTime(val, audioCtx.currentTime);
+    masterBus.gain.setValueAtTime(val, audioCtx.currentTime);
   });
-  // Initialize masterGain + epianoDirectOut from slider
+  // Initialize masterBus from slider value
   if (volSlider) {
-    masterGain.gain.setValueAtTime(parseFloat(volSlider.value), 0);
-    epianoDirectOut.gain.setValueAtTime(parseFloat(volSlider.value), 0);
+    masterBus.gain.setValueAtTime(parseFloat(volSlider.value), 0);
   }
 
   // 2026-04-12 Top-bar REV listener removed (HTML element deleted).

@@ -106,12 +106,46 @@ if (typeof window.audioCoreConfig === 'undefined') {
   });
 
   // 1.6 mixer DOM (audio-persistence.js:51-63, audio-engines.js:79, 93-105, 118-135)
-  // 3.0.c2 で実装予定、現在は no-op default
+  // 3.0.c2 結線済。audio-core が values map / labels map を構築し、host が DOM 書込み。
+  // knob-scaling formulas (例: ep-rev value = springReverbMix / 1.4 * 9 + 1) は
+  // 暫定的に audio-core 側で計算（既存挙動温存）。将来的に formula も host 側へ
+  // 移送可能（generic bridge interface のため caller 差し替えで対応可）。
   cfg.mixer = mergeDefaults(cfg.mixer, {
-    syncSliders: function(epState) {},
-    syncValueLabels: function(epState) {},
-    updateVisibility: function(state) {},
-    redispatchTremolo: function() {}
+    // values = { 'ep-pu-sym': 0.5, 'ep-rev': 4.21, ..., 'ep-stereo': true }
+    // checkbox 系（ep-stereo）は .checked、その他は .value に書込
+    syncSliders: function(values) {
+      if (!values) return;
+      Object.keys(values).forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (el.type === 'checkbox') el.checked = !!values[id];
+        else el.value = values[id];
+      });
+    },
+    // labels = { 'ep-pu-sym-val': '0.50', 'ep-rev-val': '4.2', 'ep-stereo-val': 'ON' }
+    syncValueLabels: function(labels) {
+      if (!labels) return;
+      Object.keys(labels).forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = labels[id];
+      });
+    },
+    // state = { isEpiano: bool, hasSpring: bool, isSuitcase: bool }
+    updateVisibility: function(state) {
+      if (!state) return;
+      var sec = document.getElementById('ep-mixer-section');
+      if (sec) sec.style.display = state.isEpiano ? '' : 'none';
+      var revSec = document.getElementById('ep-reverb-section');
+      if (revSec) revSec.style.display = state.hasSpring ? '' : 'none';
+      var bass = document.getElementById('ep-eq-bass-label');
+      var treble = document.getElementById('ep-eq-treble-label');
+      if (bass) bass.style.display = state.isSuitcase ? '' : 'none';
+      if (treble) treble.style.display = state.isSuitcase ? '' : 'none';
+    },
+    redispatchTremolo: function() {
+      var trm = document.getElementById('snd-tremolo');
+      if (trm) trm.dispatchEvent(new Event('input'));
+    }
   });
 
   // 1.7 overlay (audio-overlay.js 全体)

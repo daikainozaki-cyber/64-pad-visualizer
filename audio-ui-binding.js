@@ -18,13 +18,23 @@ onReady(() => {
   if (!IS_DEV) {
     ['btn-chs-export-plain', 'btn-chs-export-mem', 'btn-chs-import'].forEach(function(id) { var b = document.getElementById(id); if (b) b.style.display = 'none'; });
   }
+  // 単位統一 (urinami 2026-04-22): 内部 0-1 値は表示層で 1-10 (× 10) に統一。
+  // T.SPD のみ物理単位 Hz を維持。認知リソースを音楽以外に使わせない。
   [['snd-volume','snd-vol-val'],['snd-tremolo','snd-trm-val'],['snd-tremolo-spd','snd-trm-spd-val'],['snd-phaser','snd-phs-val'],['snd-flanger','snd-flg-val']].forEach(([sid, vid]) => {
     const s = document.getElementById(sid);
     const v = document.getElementById(vid);
     if (s && v) s.addEventListener('input', () => {
-      v.textContent = sid === 'snd-tremolo-spd' ? parseFloat(s.value).toFixed(1) : parseFloat(s.value).toFixed(2);
+      v.textContent = sid === 'snd-tremolo-spd'
+        ? parseFloat(s.value).toFixed(1)
+        : (parseFloat(s.value) * 10).toFixed(1);
       saveSoundSettings();
     });
+  });
+  // 初期表示を 1-10 に揃える
+  [['snd-volume','snd-vol-val'],['snd-tremolo','snd-trm-val'],['snd-phaser','snd-phs-val'],['snd-flanger','snd-flg-val']].forEach(([sid, vid]) => {
+    const s = document.getElementById(sid);
+    const v = document.getElementById(vid);
+    if (s && v) v.textContent = (parseFloat(s.value) * 10).toFixed(1);
   });
   // Real-time VOL → masterBus.gain (single master merge point).
   // 2026-04-15 ROUTING FIX: 旧版は masterGain / epianoDirectOut / epianoAmpOut
@@ -226,16 +236,26 @@ onReady(() => {
     ['vel-compand', 'vel-cmp-val', 'velCompand'],
     ['vel-range', 'vel-rng-val', 'velRange'],
   ];
+  // 単位統一 (urinami 2026-04-22 案 A):
+  //   THRESH / RANGE: MIDI velocity 値 (0-127) をそのまま表示。物理的意味がある
+  //   DRIVE / COMP:   内部 -64..+64 を -10..+10 表示。中央 0 基準
+  function _velLabel(key, value) {
+    if (key === 'velDrive' || key === 'velCompand') {
+      const m = value / 64 * 10;
+      return (m >= 0 ? '+' : '') + m.toFixed(1);
+    }
+    return String(value);
+  }
   velSliders.forEach(([sid, vid, key]) => {
     const s = document.getElementById(sid);
     const v = document.getElementById(vid);
     if (s && v) {
-      // Initialize from AppState
       s.value = AppState[key];
-      v.textContent = AppState[key];
+      v.textContent = _velLabel(key, AppState[key]);
       s.addEventListener('input', () => {
-        AppState[key] = parseInt(s.value);
-        v.textContent = s.value;
+        const raw = parseInt(s.value);
+        AppState[key] = raw;
+        v.textContent = _velLabel(key, raw);
         drawVelocityCurve();
         saveAppSettings();
       });
@@ -249,7 +269,7 @@ onReady(() => {
   var puSymVal = document.getElementById('ep-pu-sym-val');
   if (puSymSlider && puSymVal) puSymSlider.addEventListener('input', () => {
     EpState.pickupSymmetry = parseFloat(puSymSlider.value);
-    puSymVal.textContent = parseFloat(puSymSlider.value).toFixed(2);
+    puSymVal.textContent = (parseFloat(puSymSlider.value) * 10).toFixed(1);
     if (typeof epianoUpdateLUTs === 'function') epianoUpdateLUTs();
     if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
       epianoWorkletUpdateParams({ pickupSymmetry: EpState.pickupSymmetry });
@@ -343,7 +363,7 @@ onReady(() => {
     var val = parseFloat(epMechSlider.value);
     EpState.attackNoise = val;
     EpState.releaseNoise = val;
-    epMechVal.textContent = val.toFixed(2);
+    epMechVal.textContent = (val * 10).toFixed(1);
     if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
       epianoWorkletUpdateParams({ attackNoise: val, releaseNoise: val, releaseRing: val });
     }
@@ -356,7 +376,7 @@ onReady(() => {
   if (epRhodesSlider && epRhodesVal) epRhodesSlider.addEventListener('input', () => {
     var val = parseFloat(epRhodesSlider.value);
     EpState.rhodesLevel = val;
-    epRhodesVal.textContent = val.toFixed(2);
+    epRhodesVal.textContent = (val * 10).toFixed(1);
     if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
       epianoWorkletUpdateParams({ rhodesLevel: val });
     }
@@ -368,7 +388,7 @@ onReady(() => {
   if (epTineSlider && epTineVal) epTineSlider.addEventListener('input', () => {
     var val = parseFloat(epTineSlider.value);
     EpState.tineRadiation = val;
-    epTineVal.textContent = val.toFixed(2);
+    epTineVal.textContent = (val * 10).toFixed(1);
     if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
       epianoWorkletUpdateParams({ tineRadiation: val });
     }
@@ -389,7 +409,7 @@ onReady(() => {
     if (!sl || !vl) return;
     sl.addEventListener('input', function() {
       var v = parseFloat(sl.value);
-      vl.textContent = v.toFixed(2);
+      vl.textContent = (v * 10).toFixed(1);
       EpState['tonestack' + param.charAt(0).toUpperCase() + param.slice(1)] = v;
       if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
         epianoWorkletUpdateParams({});

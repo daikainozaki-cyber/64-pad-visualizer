@@ -51,6 +51,30 @@ cutover 未完了中は、音源 UI の現行動作は 64PE 側が authoritative
 
 ---
 
+## 🔴 audio-core bump 前の consumer 検証必須 (2026-04-24 urinami 指示)
+
+**blind bump 禁止**。DSP 側で keys の耳判定を通った変更でも、64PE の統合面 (`snd-volume`/`tremoloGain`/`masterBus` 直結バス以外の経路/default preset/velocity 複数 path) で regression を生む。
+
+### 実例 (2026-04-23 revert 案件)
+audio-core `eeca490 → 7c37b0b` (D-1/C-1/C-2 + Tone Balance outputGain 分離 + noteOn signature 変更) を keys で耳判定 OK 後に 64PE へ bump → 本番 deploy で:
+- ボリュームスライダー 0 で音消えない
+- トレモロ効かない
+- default preset が Suitcase になっている (本来 Ultra Clean)
+- 歪み付与
+
+→ commit `ca1a481` で 64PE を `eeca490` に revert。keys は最新保持。
+
+### 手順
+1. audio-core に変更が入ったら **keys で耳判定 + Playwright** 完了後も、**64PE を bump する前に**:
+   - `npm run test:e2e` (Playwright 11 テスト)
+   - 耳判定 (ボリューム 0 で消音 / トレモロ / default preset / 歪み無 / Pad grid 応答)
+2. breaking change (signature / semantics) は audio-core CHANGELOG `### BREAKING` に必ず書く
+3. 「keys で OK なら 64PE も OK」は成立しない
+
+詳細: [[notes/permanent/2026/audio-core submoduleは複数consumerが固有の統合面を持つため共通DSP変更を各consumerで個別に検証せずbumpすると統合面側でregressionを生む]]
+
+---
+
 ## ⚠️ clone 時の submodule 必須手順（2026-04-14 Phase 1 移行）
 
 **このリポジトリは 2 つの submodule に依存している。`git clone` だけでは audio-core / pad-core が空になり、起動不能になる。**

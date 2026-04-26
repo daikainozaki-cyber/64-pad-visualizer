@@ -94,10 +94,23 @@ if (typeof window.audioCoreConfig === 'undefined') {
       var sel = document.getElementById('organ-preset');
       if (!sel) return;
       sel.innerHTML = '';
+      // 2026-04-27: display label の host-side rename map。内部 key (value) は
+      // audio-core 側 EP_AMP_PRESETS の rename 待ち。表示だけ整える。
+      // urinami 命名: Stage = DI Clean、Suitcase 系 = AMP Clean/Drive/Vintage。
+      var displayRename = {
+        'Pad Sensei MK1 Stage':            'Pad Sensei MK1 DI Clean',
+        'Rhodes Stage':                    'Pad Sensei MK1 DI Clean',
+        'Pad Sensei MK1 Suitcase Clean':   'Pad Sensei MK1 AMP Clean',
+        'Pad Sensei MK1 Suitcase Drive':   'Pad Sensei MK1 AMP Drive',
+        'Pad Sensei MK1 Suitcase Vintage': 'Pad Sensei MK1 AMP Vintage',
+        'Rhodes Suitcase Clean':           'Pad Sensei MK1 AMP Clean',
+        'Rhodes Suitcase Drive':           'Pad Sensei MK1 AMP Drive',
+        'Rhodes Suitcase Vintage':         'Pad Sensei MK1 AMP Vintage'
+      };
       entries.forEach(function(e) {
         var opt = document.createElement('option');
         opt.value = e.value;
-        opt.textContent = e.label;
+        opt.textContent = displayRename[e.label] || e.label;
         sel.appendChild(opt);
       });
       // Hide dropdown when only one preset exists
@@ -209,14 +222,23 @@ if (typeof window.audioCoreConfig === 'undefined') {
     // state = { isEpiano: bool, hasSpring: bool, isSuitcase: bool }
     updateVisibility: function(state) {
       if (!state) return;
+      // 2026-04-27 urinami: 通常ユーザーは preset 選択だけで音色いじれない
+      // 設計。E.PIANO MIXER section (個別 slider) は ?hps gate で dev のみ表示。
+      // 通常起動 (?hps 無し) では preset 切替で snapshot 自動適用が音色を決め、
+      // ユーザーは何も触らない。
+      var hpsUnlocked = false;
+      try { hpsUnlocked = new URLSearchParams(window.location.search).has('hps'); } catch (_) {}
       var sec = document.getElementById('ep-mixer-section');
-      if (sec) sec.style.display = state.isEpiano ? '' : 'none';
+      if (sec) sec.style.display = (state.isEpiano && hpsUnlocked) ? '' : 'none';
       var revSec = document.getElementById('ep-reverb-section');
-      if (revSec) revSec.style.display = state.hasSpring ? '' : 'none';
+      if (revSec) revSec.style.display = (state.hasSpring && hpsUnlocked) ? '' : 'none';
+      // Bass/Treble UI も dev panel 一部として ?hps 限定表示。Stage は最終段
+      // BiquadFilter (master-tail)、Suitcase は audio-core 内 amp Baxandall を
+      // 制御する経路 (audio-ui-binding _eqSlider 参照)。
       var bass = document.getElementById('ep-eq-bass-label');
       var treble = document.getElementById('ep-eq-treble-label');
-      if (bass) bass.style.display = state.isSuitcase ? '' : 'none';
-      if (treble) treble.style.display = state.isSuitcase ? '' : 'none';
+      if (bass) bass.style.display = (state.isEpiano && hpsUnlocked) ? '' : 'none';
+      if (treble) treble.style.display = (state.isEpiano && hpsUnlocked) ? '' : 'none';
       // 2026-04-27: master-tail に preset 切替を伝える (Stage→slider 値、
       // Suitcase→flat)。MasterTail 未 init 時は no-op、init 後の preset 切替
       // (Suitcase ↔ Stage) で最終段の Bass/Treble が正しく反映/リセットされる。
@@ -276,7 +298,15 @@ if (typeof window.audioCoreConfig === 'undefined') {
         if (typeof window.MasterTail !== 'undefined' && window.MasterTail.init) {
           window.MasterTail.init();
         }
-      }, 0);
+        // 2026-04-27: 新規 user (64pad-sound 未保存) に Pad Sensei MK1 DI Clean
+        // baseline を自動適用。既存 user は localStorage 値が優先 (saveSoundSettings
+        // 経由) で本処理は skip。
+        var hasSavedSound = false;
+        try { hasSavedSound = !!localStorage.getItem('64pad-sound'); } catch (_) {}
+        if (!hasSavedSound && typeof window.applyMK1DICleanSnapshot === 'function') {
+          window.applyMK1DICleanSnapshot();
+        }
+      }, 100);
       return { firstTime: firstTime };
     },
     showPadHint: function() {
@@ -305,5 +335,283 @@ if (typeof window.audioCoreConfig === 'undefined') {
         toggleSoundExpand();
       }
     }
+  });
+
+  // ========== 2026-04-27: Pad Sensei MK1 DI Clean snapshot (urinami baseline) ==========
+  //
+  // urinami が 64PE で確定した DI Clean baseline。Model dropdown で DI Clean
+  // 選択時 + 起動時 (新規 user) に host から強制適用。AppState (TB / Voicing /
+  // F-NEW / Bass Drive) + EpState (PU LEVEL / COLOR / MECHANICAL / EQ /
+  // TREMOLO / REVERB) を一括復元。keys と同じ pattern。
+  // 64PE は TB / Voicing / F-NEW / Bass Drive UI を持たないが、worklet には
+  // パラメータが流入するので AppState 経由で baseline 制御可能。
+
+  // urinami 提供画像 #7 (2026-04-27 64PE 実機) baseline。
+  // 画像値全反映 (snd-* effect rack + E.PIANO MIXER + AUTO FILTER 含む)。
+  window.PAD_SENSEI_MK1_DI_CLEAN_SNAPSHOT = {
+    appState: {
+      toneBalanceDb: [0, 0, 0, 0, 0, 0, 6],
+      gapVoicing: 'dyno',
+      fNewEnabled: true,
+      puPosBassDriveEnabled: false,
+      // 2026-04-27 urinami 画像 #12 baseline (VELOCITY SENSITIVITY)
+      velThreshold: 0,        // THRESH 0
+      velDrive: 30,           // DRIVE +4.7 (mapped /64*10)、raw 30
+      velCompand: -14,        // COMP -2.2、raw -14
+      velRange: 121           // RANGE 121
+    },
+    // 2026-04-27 urinami: snd-* effect rack (Volume / LoCut/HiCut / Drive /
+    // Phaser / Flanger / AutoFilter) は user effect rack で preset core ではない。
+    // urinami の手動 toggle を尊重するため snapshot からは除外。snapshot は
+    // E.PIANO MIXER (PU LEVEL / VOICING / MECH / EQ / TREMOLO / REVERB) のみ
+    // を復元対象とする。
+    epMixer: {
+      // 2026-04-27 urinami 画像 #12 baseline
+      rhodesLevel: 1.0,        // PU LEVEL 1.00
+      pickupSymmetry: 0.30,    // VOICING 0.30
+      attackNoise: 0.0,        // MECHANICAL 0.00
+      releaseNoise: 0.0,
+      releaseRing: 0.0,
+      tonestackBass: 0.37,     // BASS 3.7 (slider 表示 v*10)
+      tonestackTreble: 0.58,   // TREBLE 5.8
+      tremoloDepth: 0.75,      // TREM 7.5
+      tremoloFreq: 4.4,        // T.SPD 4.4 Hz
+      tremoloOn: true,
+      reverbType: 'plate',     // TYPE Plate
+      springReverbMix: 0.171,  // AMOUNT 2.1 knob → (2.1-1)/9*1.4
+      springFeedbackScale: 0.898, // DECAY 8.8
+      springStereoEnabled: true
+    },
+    // 2026-04-27 urinami: Dev panel UI 不要だが内部 state は保持。
+    // Voicing Lab (Suitcase amp chain 専用、DI Clean では default 維持) を
+    // 内部に持って worklet に流入させる。値は keys baseline 流用。
+    voicingLab: {
+      gePreampDrive: 2.5,
+      gePreampGain: 1.5,
+      suitcasePreFxTrim: 0.42,
+      jaWetMix: 0
+    }
+  };
+
+  window.applyMK1DICleanSnapshot = function() {
+    var snap = window.PAD_SENSEI_MK1_DI_CLEAN_SNAPSHOT;
+    if (!snap || !snap.epMixer) return false;
+    var em = snap.epMixer;
+    if (typeof EpState !== 'undefined') {
+      Object.keys(em).forEach(function(k) { EpState[k] = em[k]; });
+      if (snap.appState) {
+        EpState.gapVoicing = snap.appState.gapVoicing;
+        EpState.fNewEnabled = snap.appState.fNewEnabled;
+        EpState.puPosBassDriveEnabled = snap.appState.puPosBassDriveEnabled;
+      }
+    }
+    if (window.AppState && snap.appState) {
+      Object.keys(snap.appState).forEach(function(k) { window.AppState[k] = snap.appState[k]; });
+    } else if (snap.appState) {
+      window.AppState = Object.assign(window.AppState || {}, snap.appState);
+    }
+    // DOM slider 反映
+    var revKnob = 1 + (em.springReverbMix / 1.4) * 9;
+    var decayKnob = 1 + ((em.springFeedbackScale - 0.3) / 0.69) * 9;
+    var domMap = {
+      'ep-rhodes':       em.rhodesLevel,
+      'ep-pu-sym':       em.pickupSymmetry,
+      'ep-mechanical':   em.attackNoise,
+      'ep-eq-bass':      em.tonestackBass,
+      'ep-eq-treble':    em.tonestackTreble,
+      'snd-tremolo':     em.tremoloDepth,
+      'snd-tremolo-spd': em.tremoloFreq,
+      'ep-rev':          revKnob,
+      'ep-decay':        decayKnob
+    };
+    Object.keys(domMap).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.value = domMap[id];
+        // 2026-04-27: input event dispatch して各 slider の handler を発火
+        // (label 更新 + worklet 反映 + saveEpMixer 連鎖)。dispatch しないと
+        // 起動時 _loadEpMixer で計算された古い label (例: ep-rev-val "2.4")
+        // が残る bug。
+        try { el.dispatchEvent(new Event('input')); } catch (_) {}
+      }
+    });
+    var rev = document.getElementById('ep-reverb-type');
+    if (rev && rev.value !== em.reverbType) {
+      rev.value = em.reverbType;
+      rev.dispatchEvent(new Event('change'));
+    }
+    var stereo = document.getElementById('ep-stereo');
+    if (stereo) {
+      var newChecked = !!em.springStereoEnabled;
+      if (stereo.checked !== newChecked) {
+        stereo.checked = newChecked;
+        stereo.dispatchEvent(new Event('change'));
+      }
+    }
+    // worklet 反映 (Plate 時 spring mute は audio-ui-binding 側 epReverbType
+    // change handler に任せる、ここでは tremolo/reverb 量を送るだけ)
+    if (typeof _useEpianoWorklet !== 'undefined' && _useEpianoWorklet
+        && typeof epianoWorkletUpdateParams === 'function') {
+      var workletMix = (em.reverbType === 'plate') ? 0 : em.springReverbMix;
+      epianoWorkletUpdateParams({
+        pickupSymmetry: em.pickupSymmetry,
+        rhodesLevel: em.rhodesLevel,
+        attackNoise: em.attackNoise,
+        releaseNoise: em.releaseNoise,
+        releaseRing: em.releaseRing,
+        tremoloDepth: em.tremoloDepth,
+        tremoloFreq: em.tremoloFreq,
+        tremoloOn: em.tremoloOn,
+        springReverbMix: workletMix,
+        springFeedbackScale: em.springFeedbackScale,
+        springStereoEnabled: em.springStereoEnabled
+      });
+    }
+    // 2026-04-27 urinami: snd-* effect rack / autoFilter toggle は snapshot
+    // 対象外 (user の手動 toggle 値を尊重、preset 適用で勝手に ON にならない)。
+
+    // 2026-04-27 urinami: Voicing Lab (Suitcase amp chain 用 voicing) を内部に
+    // 保持。UI は無いが worklet に値を流す。Stage では effect なしだが state
+    // 保持で keys 同等の内部状態を維持。
+    if (snap.voicingLab) {
+      window.EpVoicingLab = window.EpVoicingLab || {};
+      Object.keys(snap.voicingLab).forEach(function(k) {
+        window.EpVoicingLab[k] = snap.voicingLab[k];
+      });
+      if (typeof window._epwSendVoicingLabParams === 'function') {
+        try { window._epwSendVoicingLabParams(window.EpVoicingLab); } catch (_) {}
+      }
+    }
+    // 2026-04-27 urinami: AppState flags (gapVoicing / fNewEnabled /
+    // puPosBassDriveEnabled / toneBalanceDb) を worklet に送信。Dev panel UI
+    // 無しでも内部 baseline が worklet に反映される。
+    if (typeof _epwSendParams === 'function') {
+      try { _epwSendParams(); } catch (_) {}
+    }
+    // MasterTail 同期 (Stage で Bass/Treble UI 値を最終段に反映)
+    if (typeof window.MasterTail !== 'undefined' && window.MasterTail.applyEq) {
+      window.MasterTail.applyEq(em.tonestackBass, em.tonestackTreble);
+    }
+    return true;
+  };
+
+  // 2026-04-27 urinami 画像 #13 baseline (Pad Sensei MK1 AMP Clean = Suitcase
+  // Clean 経路)。Model dropdown で AMP Clean 選択時に setPreset → snapshot 上書き。
+  window.PAD_SENSEI_AMP_CLEAN_SNAPSHOT = {
+    audioState_preset: 'Rhodes Suitcase Clean',
+    appState: {
+      toneBalanceDb: [0, 0, 0, 0, 0, 0, 6],
+      gapVoicing: 'dyno',
+      fNewEnabled: true,
+      puPosBassDriveEnabled: false,
+      velThreshold: 0,
+      velDrive: 30,            // DRIVE +4.7
+      velCompand: -14,         // COMP -2.2
+      velRange: 121
+    },
+    epMixer: {
+      rhodesLevel: 1.0,        // PU LEVEL 10.0
+      pickupSymmetry: 0.58,    // VOICING 5.8
+      attackNoise: 0.0,        // MECHANICAL 0.00
+      releaseNoise: 0.0,
+      releaseRing: 0.0,
+      tonestackBass: 0.37,     // BASS 3.7
+      tonestackTreble: 0.54,   // TREBLE 5.4
+      tremoloDepth: 0.75,      // TREM 7.5
+      tremoloFreq: 4.4,        // T.SPD 4.4 Hz
+      tremoloOn: true,
+      reverbType: 'spring',    // TYPE Spring
+      springReverbMix: 0.14,   // AMOUNT 1.9 knob → (1.9-1)/9*1.4
+      springFeedbackScale: 0.491, // DECAY 3.5 knob → 0.3+(3.5-1)/9*0.69
+      springStereoEnabled: true
+    }
+  };
+
+  window.applyAmpCleanSnapshot = function() {
+    var snap = window.PAD_SENSEI_AMP_CLEAN_SNAPSHOT;
+    if (!snap || !snap.epMixer) return false;
+    // Suitcase Clean に preset 切替 (audio-engines setPreset)
+    if (snap.audioState_preset && typeof setPreset === 'function'
+        && typeof AudioState !== 'undefined' && AudioState.engine
+        && AudioState.engine.presets && AudioState.engine.presets[snap.audioState_preset]) {
+      setPreset(snap.audioState_preset);
+    }
+    var em = snap.epMixer;
+    if (typeof EpState !== 'undefined') {
+      Object.keys(em).forEach(function(k) { EpState[k] = em[k]; });
+      if (snap.appState) {
+        EpState.gapVoicing = snap.appState.gapVoicing;
+        EpState.fNewEnabled = snap.appState.fNewEnabled;
+        EpState.puPosBassDriveEnabled = snap.appState.puPosBassDriveEnabled;
+      }
+    }
+    if (window.AppState && snap.appState) {
+      Object.keys(snap.appState).forEach(function(k) { window.AppState[k] = snap.appState[k]; });
+    }
+    var revKnob = 1 + (em.springReverbMix / 1.4) * 9;
+    var decayKnob = 1 + ((em.springFeedbackScale - 0.3) / 0.69) * 9;
+    var domMap = {
+      'ep-rhodes':       em.rhodesLevel,
+      'ep-pu-sym':       em.pickupSymmetry,
+      'ep-mechanical':   em.attackNoise,
+      'ep-eq-bass':      em.tonestackBass,
+      'ep-eq-treble':    em.tonestackTreble,
+      'snd-tremolo':     em.tremoloDepth,
+      'snd-tremolo-spd': em.tremoloFreq,
+      'ep-rev':          revKnob,
+      'ep-decay':        decayKnob
+    };
+    Object.keys(domMap).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.value = domMap[id];
+        try { el.dispatchEvent(new Event('input')); } catch (_) {}
+      }
+    });
+    var rev = document.getElementById('ep-reverb-type');
+    if (rev && rev.value !== em.reverbType) {
+      rev.value = em.reverbType;
+      try { rev.dispatchEvent(new Event('change')); } catch (_) {}
+    }
+    var stereo = document.getElementById('ep-stereo');
+    if (stereo) {
+      var newChecked = !!em.springStereoEnabled;
+      if (stereo.checked !== newChecked) {
+        stereo.checked = newChecked;
+        try { stereo.dispatchEvent(new Event('change')); } catch (_) {}
+      }
+    }
+    if (typeof saveSoundSettings === 'function') {
+      try { saveSoundSettings(); } catch (_) {}
+    }
+    return true;
+  };
+
+  // 起動時 (新規 user = 64pad-sound 未保存) と Model dropdown 切替で発動
+  window._pendingMK1DICleanSnapshot = true;
+
+  // 2026-04-27 urinami: Model dropdown で preset 選択時に snapshot 強制適用。
+  // 既存 user (localStorage に saved sound あり) でも、preset 再選択で snapshot
+  // 復元できる経路。preset key (内部) と snapshot apply 関数を map。
+  // organ-preset DOM の change listener を後付け (audio-engines.js setPreset
+  // が走った後に host snapshot apply で上書き)。
+  window.addEventListener('DOMContentLoaded', function() {
+    var sel = document.getElementById('organ-preset');
+    if (!sel) return;
+    sel.addEventListener('change', function() {
+      var presetKey = sel.value || '';  // 例: 'epiano:Rhodes DI'
+      // setPreset が走った直後に snapshot を上書き (audio-engines が EpState を
+      // preset default で書いた後、host snapshot で上書き)
+      setTimeout(function() {
+        if (/Rhodes DI$/.test(presetKey)) {
+          if (typeof window.applyMK1DICleanSnapshot === 'function') {
+            window.applyMK1DICleanSnapshot();
+          }
+        }
+        // AMP 系 (Clean/Drive/Vintage) は Pad Sensei EP (keys plugin 移植)
+        // で voicing 確定後、audio-core EP_AMP_PRESETS に焼き込み → 64PE bump
+        // で反映する経路。host snapshot apply / 個別 fix は保留。
+      }, 50);
+    });
   });
 })();

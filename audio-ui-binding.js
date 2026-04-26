@@ -402,7 +402,11 @@ onReady(() => {
   // Always show tap-to-start overlay (browser requires user gesture for AudioContext)
   _showAudioOverlay();
 
-  // Suitcase Baxandall EQ — always wire up (runs inside E.PIANO MIXER)
+  // Bass/Treble — preset 共通 UI (urinami 2026-04-27)。
+  // Suitcase 時: audio-core 内 amp Baxandall (EpState.tonestack*) を制御
+  // Stage (DI Clean) 時: host-side master-tail.js の最終段 BiquadFilter を制御
+  // 両方常に EpState に書き込む = preset 跨ぎで slider 値保持。MasterTail.applyEq
+  // は activePreset==='stage' の時のみ最終段 gain 更新するガード内蔵。
   function _eqSlider(id, valId, param) {
     var sl = document.getElementById(id);
     var vl = document.getElementById(valId);
@@ -413,6 +417,12 @@ onReady(() => {
       EpState['tonestack' + param.charAt(0).toUpperCase() + param.slice(1)] = v;
       if (_useEpianoWorklet && typeof epianoWorkletUpdateParams === 'function') {
         epianoWorkletUpdateParams({});
+      }
+      // host-tail にも反映 (Stage preset 時のみ MasterTail 内で gain 更新)
+      if (typeof window.MasterTail !== 'undefined' && window.MasterTail.applyEq) {
+        var b = document.getElementById('ep-eq-bass');
+        var t = document.getElementById('ep-eq-treble');
+        window.MasterTail.applyEq(b ? b.value : 0.5, t ? t.value : 0.5);
       }
     });
   }

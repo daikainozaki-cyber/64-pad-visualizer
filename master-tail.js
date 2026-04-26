@@ -54,7 +54,11 @@
       treble.gain.setValueAtTime(0, audioCtx.currentTime);
 
       var trim = audioCtx.createGain();
-      trim.gain.setValueAtTime(Math.pow(10, 3 / 20), audioCtx.currentTime);
+      // 64PE は既存出力 gain が keys より大きい (urinami 2026-04-27 観測:
+      // Drive / Vintage で +3dB 加算するとクリップ)。よって 64PE では
+      // masterTrim は 0dB 固定 = pass-through。keys 側の master-tail.js は
+      // +3dB を保持 (keys は host 側で別経路の output gain が低いため)。
+      trim.gain.setValueAtTime(1.0, audioCtx.currentTime);
 
       // tail 内部 chain を組む (host 責務)
       bass.connect(treble);
@@ -105,14 +109,23 @@
     applyForPreset: function(isSuitcase) {
       MasterTail.activePreset = isSuitcase ? 'suitcase' : 'stage';
       if (!MasterTail.initialized) return;
-      // 64PE は Stage 用 Bass/Treble UI を持たない方針 (戦略文書 §6: dev panel
-      // は keys 限定)。Suitcase は amp 内 Baxandall、Stage は最終段 flat 維持
-      // (MasterTail は +3dB master trim だけ機能する)。Codex 監査 2026-04-27 P2
-      // (Suitcase 用 ep-eq-bass/treble の値を Stage 切替で hidden 流入させる)
-      // への対応: どちらの preset でも MasterTail BiquadFilter は flat 固定。
-      // Stage 用 Bass/Treble が必要になったら、UI を 64PE に新規追加するか、
-      // host 側で Stage 用 BiquadFilter 値を別 storage で管理する必要がある。
-      MasterTail.reset();
+      var now = audioCtx.currentTime;
+      // 2026-04-27 urinami: 全 preset 共通 0dB (Pad Sensei EP keys 移植後に
+      // voicing 確定 → 再調整方針)。preset 別 trim は keys 確定後に再 evaluate。
+      MasterTail.masterTrim.gain.setValueAtTime(1.0, now);
+      // Bass/Treble: Suitcase 時は最終段 flat (amp 内 Baxandall を尊重)、
+      // Stage 時は slider 値で最終段 BiquadFilter 制御。
+      if (isSuitcase) {
+        MasterTail.bassFilter.gain.setValueAtTime(0, now);
+        MasterTail.trebleFilter.gain.setValueAtTime(0, now);
+      } else {
+        var b = document.getElementById('ep-eq-bass');
+        var t = document.getElementById('ep-eq-treble');
+        var bv = b ? b.value : 0.5;
+        var tv = t ? t.value : 0.5;
+        MasterTail.bassFilter.gain.setValueAtTime(sliderToDb(bv), now);
+        MasterTail.trebleFilter.gain.setValueAtTime(sliderToDb(tv), now);
+      }
     }
   };
 })();

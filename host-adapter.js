@@ -217,6 +217,12 @@ if (typeof window.audioCoreConfig === 'undefined') {
       var treble = document.getElementById('ep-eq-treble-label');
       if (bass) bass.style.display = state.isSuitcase ? '' : 'none';
       if (treble) treble.style.display = state.isSuitcase ? '' : 'none';
+      // 2026-04-27: master-tail に preset 切替を伝える (Stage→slider 値、
+      // Suitcase→flat)。MasterTail 未 init 時は no-op、init 後の preset 切替
+      // (Suitcase ↔ Stage) で最終段の Bass/Treble が正しく反映/リセットされる。
+      if (typeof window.MasterTail !== 'undefined' && window.MasterTail.applyForPreset) {
+        window.MasterTail.applyForPreset(!!state.isSuitcase);
+      }
     },
     redispatchTremolo: function() {
       var trm = document.getElementById('snd-tremolo');
@@ -260,6 +266,17 @@ if (typeof window.audioCoreConfig === 'undefined') {
       if (firstTime) {
         try { localStorage.setItem('64pad-overlay-seen', '1'); } catch (_) {}
       }
+      // 2026-04-27: host-side master tail (Bass/Treble + 固定 +3dB) を初期化。
+      // dismissAudioOverlay() (audio-overlay.js:35) が ensureAudioResumed() →
+      // epianoWorkletInit() を実行する直後の経路。audio-core が rebuildFilterChain
+      // 経由で chain 終端を MasterTail.input に接続する (master-tail.js init 内で
+      // 自動)。MasterTail.init は冪等 (initialized フラグで二重 init 防止)。
+      // setTimeout(0) で audio-core の epianoWorkletInit 完了後に実行。
+      setTimeout(function() {
+        if (typeof window.MasterTail !== 'undefined' && window.MasterTail.init) {
+          window.MasterTail.init();
+        }
+      }, 0);
       return { firstTime: firstTime };
     },
     showPadHint: function() {

@@ -494,6 +494,40 @@ if (typeof window.audioCoreConfig === 'undefined') {
     if (typeof window.MasterTail !== 'undefined' && window.MasterTail.applyEq) {
       window.MasterTail.applyEq(em.tonestackBass, em.tonestackTreble);
     }
+    // 2026-04-27 urinami: 他 preset 切替時に AUTO FILTER / LO CUT / HI CUT を OFF
+    // + AUTO FILTER 関連 slider を default に戻す。Envelope Filter preset で焼いた
+    // effect rack 残骸を消去し、preset 切替の意図を明確化。
+    // Envelope Filter preset 自身は applyAmpVintageEnvelopeFilterSnapshot で本処理
+    // の後に再 ON するので問題なし。
+    var afToggle = document.getElementById('snd-af-toggle');
+    if (afToggle && afToggle.checked) {
+      afToggle.checked = false;
+      afToggle.dispatchEvent(new Event('change'));
+    }
+    var lcToggle = document.getElementById('snd-locut-toggle');
+    if (lcToggle && lcToggle.checked) {
+      lcToggle.checked = false;
+      lcToggle.dispatchEvent(new Event('change'));
+    }
+    var hcToggle = document.getElementById('snd-hicut-toggle');
+    if (hcToggle && hcToggle.checked) {
+      hcToggle.checked = false;
+      hcToggle.dispatchEvent(new Event('change'));
+    }
+    var afDefaults = {
+      'snd-af-depth': 0.7,
+      'snd-af-speed': 0.15,
+      'snd-af-q':     2,
+      'snd-af-wet':   1.0,
+      'snd-af-vol':   1.0
+    };
+    Object.keys(afDefaults).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.value = afDefaults[id];
+        el.dispatchEvent(new Event('input'));
+      }
+    });
     return true;
   };
 

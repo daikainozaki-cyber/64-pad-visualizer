@@ -467,6 +467,7 @@ I18N.addLang('ko', {
     feat_push_oct: '<strong>Push 3 옥타브 동기화</strong> \u2014 Push 3 옥타브 \u25B2\u25BC 버튼이 앱의 옥타브 이동과 자동 동기화',
     version_history: '\uBC84\uC804 \uAE30\uB85D',
     vh_540: '<b>V5.4</b> \u2014 물리 모델링을 업데이트했습니다. 필터 파라미터(WET / VOL)와 HPS 회원 전용 프리셋(Pad Sensei MK1 AMP Vintage Envelope Filter)을 추가했습니다',
+    vh_520: '<b>V5.2</b> \u2014 프리앰프 모델링이 개선되었습니다',
     vh_500: '<b>V5.0</b> \u2014 \uC790\uCCB4 \uC74C\uC6D0 + \uC774\uD399\uD2B8 \uAD6C\uC131. Spring Reverb(\uBB3C\uB9AC \uBAA8\uB378\uB9C1) + Plate Reverb. Suitcase \uC564\uD504 \uBAA8\uB378 \uAC1C\uC120. Reverb Type \uC120\uD0DD(Spring/Plate). Baxandall Bass/Treble EQ',
     vh_49x: '<b>V4.9</b> \u2014 \uC5F4\uC790\uB9C8\uC790 \uBC14\uB85C \uC5F0\uC8FC \uAC00\uB2A5(\uC0D8\uD50C \uB2E4\uC6B4\uB85C\uB4DC \uBD88\uD544\uC694). \uB2E8\uCD95\uD0A4 \uD78C\uD2B8 \uD1A0\uAE00. NM/HM/MM \uD3C9\uD589\uC870 \uB2E4\uC774\uC5B4\uD1A0\uB2C9 \uCF54\uB4DC. E.PIANO MIXER\uC5D0 PU LEVEL \uBC0F MECHANICAL \uCD94\uAC00. \uCF54\uB4DC \uAC10\uC9C0 \uD45C\uC2DC \uAC1C\uC120',
     vh_497: '<b>V4.9.7</b> \u2014 \uD2B8\uB808\uBAA8\uB85C\uAC00 \uBB3C\uB9AC \uBAA8\uB378\uB9C1\uB418\uC5C8\uC2B5\uB2C8\uB2E4. HPS \uD68C\uC6D0\uC740 Pad Sensei MK1 Suitcase (\uBB3C\uB9AC \uBAA8\uB378\uB9C1 \uC564\uD504 \uCCB4\uC778) \uC0AC\uC6A9 \uAC00\uB2A5',

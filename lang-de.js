@@ -465,6 +465,7 @@ I18N.addLang('de', {
     sound_autofilter_desc: 'Hüllkurvenfilter. Stelle FREQ, RESO, SENS und DECAY ein.',
     version_history: 'Versionshistorie',
     vh_540: '<b>V5.4</b> \u2014 Physikalisches Modeling aktualisiert. Filter-Parameter (WET / VOL) und ein HPS-exklusives Preset (Pad Sensei MK1 AMP Vintage Envelope Filter) erg\u00E4nzt',
+    vh_520: '<b>V5.2</b> \u2014 Preamp-Modeling verbessert',
     vh_500: '<b>V5.0</b> \u2014 Eigenst\u00E4ndige Sound-Engine + Effekte. Spring Reverb (physikalische Modellierung) + Plate Reverb. Suitcase-Verst\u00E4rkermodell verbessert. Reverb-Typ-Auswahl (Spring/Plate). Baxandall Bass/Treble EQ',
     vh_49x: '<b>V4.9</b> \u2014 Sofort spielbereit beim \u00D6ffnen (kein Sample-Download). Tastenkombinations-Hinweise umschalten. NM/HM/MM diatonische Akkorde f\u00FCr parallele Moll-Tonarten. PU LEVEL und MECHANICAL zum E.PIANO MIXER hinzugef\u00FCgt. Verbesserungen der Akkorderkennung-Anzeige',
     vh_497: '<b>V4.9.7</b> \u2014 Tremolo ist jetzt physikalisch modelliert. HPS-Mitglieder erhalten Pad Sensei MK1 Suitcase (physikalisch modellierte Amp-Kette)',

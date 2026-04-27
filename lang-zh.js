@@ -468,6 +468,7 @@ I18N.addLang('zh', {
     sound_autofilter_desc: '包络滤波器。可调整FREQ、RESO、SENS和DECAY。',
     version_history: '\u7248\u672C\u5386\u53F2',
     vh_540: '<b>V5.4</b> \u2014 物理建模升级。新增滤波器参数（WET / VOL）与 HPS 会员专属预设（Pad Sensei MK1 AMP Vintage Envelope Filter）',
+    vh_520: '<b>V5.2</b> \u2014 前级建模改进',
     vh_500: '<b>V5.0</b> \u2014 \u81EA\u5305\u542B\u97F3\u6E90 + \u6548\u679C\u5668\u67B6\u6784\u3002Spring Reverb\uFF08\u7269\u7406\u5EFA\u6A21\uFF09+ Plate Reverb\u3002Suitcase\u653E\u5927\u5668\u6A21\u578B\u6539\u8FDB\u3002Reverb Type\u5207\u6362\uFF08Spring/Plate\uFF09\u3002Baxandall Bass/Treble EQ',
     vh_49x: '<b>V4.9</b> \u2014 \u6253\u5F00\u5373\u53EF\u6F14\u594F\uFF08\u65E0\u9700\u4E0B\u8F7D\u91C7\u6837\uFF09\u3002\u5FEB\u6377\u952E\u63D0\u793A\u5207\u6362\u3002NM/HM/MM\u5E73\u884C\u8C03\u81EA\u7136\u97F3\u9636\u548C\u5F26\u3002E.PIANO MIXER\u65B0\u589E PU LEVEL \u548C MECHANICAL\u3002\u548C\u5F26\u68C0\u6D4B\u663E\u793A\u6539\u8FDB',
     vh_497: '<b>V4.9.7</b> \u2014 颤音现在采用物理建模。HPS 会员可使用 Pad Sensei MK1 Suitcase（物理建模放大器链）',

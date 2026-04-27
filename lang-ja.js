@@ -355,6 +355,7 @@ I18N.addLang('ja', {
     sound_autofilter_desc: 'エンベロープフィルター。FREQ・RESO・SENS・DECAYを調整できます。',
     version_history: 'Version History',
     vh_540: '<b>V5.4</b> \u2014 物理モデリングをバージョンアップしました。フィルターのパラメーター（WET / VOL）と、HPS会員向けプリセット（Pad Sensei MK1 AMP Vintage Envelope Filter）を追加しました',
+    vh_520: '<b>V5.2</b> \u2014 プリアンプのモデリングを改良しました',
     vh_500: '<b>V5.0</b> \u2014 自前音源・自前エフェクター構成。Spring Reverb（物理モデリング）+ Plate Reverb搭載。Suitcaseアンプモデル改善。Reverb Type切替（Spring/Plate）。Baxandall Bass/Treble EQ',
     vh_49x: '<b>V4.9</b> \u2014 開いた瞬間から即演奏可能（サンプルダウンロード不要）。ショートカットキーヒント表示切替。平行調（NM/HM/MM）ダイアトニックコード対応。E.PIANO MIXERにPU LEVEL・MECHANICAL追加。コード検出表示改善',
     vh_497: '<b>V4.9.7</b> \u2014 トレモロを物理モデリング化。HPS会員限定でPad Sensei MK1 Suitcase（アンプチェーン物理モデリング）を追加',

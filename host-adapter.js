@@ -731,8 +731,32 @@ if (typeof window.audioCoreConfig === 'undefined') {
       jaWetMix: 0.00
     }
   };
+  // 2026-04-27 urinami: Envelope Filter preset は AUTO FILTER 自動 ON + 値設定が
+  // 必要 (snd-* は applyAmpSnapshot 対象外なので、ここで明示的に焼き込む)。
+  // 画像 #18 baseline: AF ON / DEPTH 0.51 / DECAY 0.00 / Q 0.5 / WET 10 / VOL 6
   window.applyAmpVintageEnvelopeFilterSnapshot = function() {
-    return window.applyAmpSnapshot(window.PAD_SENSEI_AMP_VINTAGE_ENVELOPE_FILTER_SNAPSHOT);
+    var ok = window.applyAmpSnapshot(window.PAD_SENSEI_AMP_VINTAGE_ENVELOPE_FILTER_SNAPSHOT);
+    // AUTO FILTER on + values
+    var afToggle = document.getElementById('snd-af-toggle');
+    if (afToggle && !afToggle.checked) {
+      afToggle.checked = true;
+      afToggle.dispatchEvent(new Event('change'));
+    }
+    var afValues = {
+      'snd-af-depth': 0.51,
+      'snd-af-speed': 0.03,   // DECAY 画像 #18 「0.00」表示は min 0.03 相当
+      'snd-af-q':     0.5,    // Q 画像 #18 「0」表示は min 0.5 相当
+      'snd-af-wet':   1.0,    // WET 10.0 = internal 1.0
+      'snd-af-vol':   0.6     // VOL 6.0 = internal 0.6
+    };
+    Object.keys(afValues).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.value = afValues[id];
+        el.dispatchEvent(new Event('input'));
+      }
+    });
+    return ok;
   };
 
   window.applyAmpCleanSnapshot = function() {

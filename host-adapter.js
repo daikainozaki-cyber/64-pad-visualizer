@@ -689,6 +689,52 @@ if (typeof window.audioCoreConfig === 'undefined') {
     return window.applyAmpSnapshot(window.PAD_SENSEI_AMP_VINTAGE_SNAPSHOT);
   };
 
+  // 2026-04-27 urinami 画像 #18 baseline。AMP Vintage Envelope Filter =
+  // Suitcase Vintage Envelope Filter 経路。Vintage と differ:
+  //   Reverb: Spring (vs Plate)、AMOUNT 2.2 / DECAY 6.6 / STEREO ON
+  //   TB Flat、TREM 8.88 / T.SPD 8.88 Hz、BASS 4.5 / TREBLE 6.5
+  //   Voicing knob 0.30 (pickupSymmetry)
+  // AUTO FILTER は applyAmpSnapshot 対象外 (snd-* user 手動)、preset 切替後は
+  // urinami が WET=10 / VOL=6 / DEPTH=0.51 等を手動で設定する想定。
+  window.PAD_SENSEI_AMP_VINTAGE_ENVELOPE_FILTER_SNAPSHOT = {
+    audioState_preset: 'Rhodes Suitcase Vintage Envelope Filter',
+    appState: {
+      toneBalanceDb: [0, 0, 0, 0, 0, 0, 0],   // TB Flat
+      gapVoicing: 'dyno',
+      fNewEnabled: true,
+      puPosBassDriveEnabled: false,
+      velThreshold: 0,
+      velDrive: 1,
+      velCompand: 0,
+      velRange: 121                            // RANGE 121 (urinami 手動値)
+    },
+    epMixer: {
+      rhodesLevel: 1.0,        // PU LEVEL 10.0
+      pickupSymmetry: 0.30,    // VOICING 0.30 (旧 COLOR、UI label 変更)
+      attackNoise: 0.0,        // MECHANICAL 0.0
+      releaseNoise: 0.0,
+      releaseRing: 0.0,
+      tonestackBass: 0.45,     // BASS 4.5
+      tonestackTreble: 0.65,   // TREBLE 6.5
+      tremoloDepth: 0.888,     // TREM 8.88
+      tremoloFreq: 8.88,       // T.SPD 8.88 Hz
+      tremoloOn: true,
+      reverbType: 'spring',    // TYPE Spring
+      springReverbMix: 0.1867, // AMOUNT 2.2 knob → (2.2-1)/9*1.4
+      springFeedbackScale: 0.7293, // DECAY 6.6 knob → 0.3+(6.6-1)/9*0.69
+      springStereoEnabled: true   // STEREO ON
+    },
+    voicingLab: {
+      gePreampDrive: 1.35,     // Vintage 流用
+      gePreampGain: 0.61,
+      suitcasePreFxTrim: 0.35,
+      jaWetMix: 0.00
+    }
+  };
+  window.applyAmpVintageEnvelopeFilterSnapshot = function() {
+    return window.applyAmpSnapshot(window.PAD_SENSEI_AMP_VINTAGE_ENVELOPE_FILTER_SNAPSHOT);
+  };
+
   window.applyAmpCleanSnapshot = function() {
     var snap = window.PAD_SENSEI_AMP_CLEAN_SNAPSHOT;
     if (!snap || !snap.epMixer) return false;
@@ -788,6 +834,12 @@ if (typeof window.audioCoreConfig === 'undefined') {
           // 2026-04-27 urinami 画像 #15: keys 確定 voicing。Bass Drive=On 特徴。
           if (typeof window.applyAmpDriveSnapshot === 'function') {
             window.applyAmpDriveSnapshot();
+          }
+        } else if (/Rhodes Suitcase Vintage Envelope Filter$/.test(presetKey)) {
+          // 2026-04-27 urinami 画像 #18: voicing 確定。Spring Reverb + AUTO FILTER 前提
+          // (AUTO FILTER の WET=10/VOL=6/DEPTH=0.51 等は user 手動で設定)。
+          if (typeof window.applyAmpVintageEnvelopeFilterSnapshot === 'function') {
+            window.applyAmpVintageEnvelopeFilterSnapshot();
           }
         } else if (/Rhodes Suitcase Vintage$/.test(presetKey)) {
           // 2026-04-27 urinami 画像 #16: keys 確定 voicing。TB Flat / STEREO OFF。

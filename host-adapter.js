@@ -730,6 +730,7 @@ if (typeof window.audioCoreConfig === 'undefined') {
   //   Voicing knob 0.30 (pickupSymmetry)
   // AUTO FILTER は applyAmpSnapshot 対象外 (snd-* user 手動)、preset 切替後は
   // urinami が WET=10 / VOL=6 / DEPTH=0.51 等を手動で設定する想定。
+  // 画像 #22 baseline (urinami 改訂): TREM 復活 / Reverb Plate / LO-HI CUT toggle OFF
   window.PAD_SENSEI_AMP_VINTAGE_ENVELOPE_FILTER_SNAPSHOT = {
     audioState_preset: 'Rhodes Suitcase Vintage Envelope Filter',
     appState: {
@@ -738,23 +739,23 @@ if (typeof window.audioCoreConfig === 'undefined') {
       fNewEnabled: true,
       puPosBassDriveEnabled: false,
       velThreshold: 0,
-      velDrive: 1,
-      velCompand: 0,
-      velRange: 121                            // RANGE 121 (urinami 手動値)
+      velDrive: 4.7,                           // DRIVE +4.7 (画像 #22)
+      velCompand: -2.2,                        // COMP -2.2
+      velRange: 121                            // RANGE 121
     },
     epMixer: {
       rhodesLevel: 1.0,        // PU LEVEL 10.0
-      pickupSymmetry: 0.30,    // VOICING 0.30 (旧 COLOR、UI label 変更)
+      pickupSymmetry: 0.52,    // VOICING 5.2 (×10 表示)
       attackNoise: 0.0,        // MECHANICAL 0.0
       releaseNoise: 0.0,
       releaseRing: 0.0,
       tonestackBass: 0.45,     // BASS 4.5
-      tonestackTreble: 0.65,   // TREBLE 6.5
-      tremoloDepth: 0.0,       // TREM 0 (画像 #21、urinami「速すぎた」訂正)
+      tonestackTreble: 0.78,   // TREBLE 7.8
+      tremoloDepth: 0.888,     // TREM 8.88 (画像 #22 で復活)
       tremoloFreq: 1.0,        // T.SPD 1.0 Hz
-      tremoloOn: false,
-      reverbType: 'spring',    // TYPE Spring
-      springReverbMix: 0.1867, // AMOUNT 2.2 knob → (2.2-1)/9*1.4
+      tremoloOn: true,
+      reverbType: 'plate',     // TYPE Plate (画像 #22 で Spring → Plate に変更)
+      springReverbMix: 0.1711, // AMOUNT 2.1 knob → (2.1-1)/9*1.4
       springFeedbackScale: 0.7293, // DECAY 6.6 knob → 0.3+(6.6-1)/9*0.69
       springStereoEnabled: true   // STEREO ON
     },
@@ -766,25 +767,25 @@ if (typeof window.audioCoreConfig === 'undefined') {
     }
   };
   // 2026-04-27 urinami: Envelope Filter preset は AUTO FILTER 自動 ON + effect rack
-  // 値設定が必要。画像 #21 baseline: AF ON / 4P / DEPTH 0.51 / DECAY 7.1 (×10 表示
-  // = 0.71 sec) / Q 0.7 / WET 10 / VOL 8.8、effect rack: LO CUT ON 88 / HI CUT ON
-  // 18888 / DRIVE 0 / TREM 0 / T.SPD 1 / PHASE 0.4 / FLANG 0
+  // 値設定が必要。画像 #22 baseline: AF ON / 4P / DEPTH 0.65 / DECAY 1.8 (×10 表示
+  // = 0.18 sec) / Q 4.7 / WET 10 / VOL 5.1、effect rack: LO CUT OFF (val 88) /
+  // HI CUT OFF (val 18988) / DRIVE 0 / TREM 8.88 / T.SPD 1.0 / PHASE 0 / FLANG 0
   window.applyAmpVintageEnvelopeFilterSnapshot = function() {
     var ok = window.applyAmpSnapshot(window.PAD_SENSEI_AMP_VINTAGE_ENVELOPE_FILTER_SNAPSHOT);
     // effect rack values (snd-*) — Envelope Filter preset では明示的に焼き込む
     var rackValues = {
       'snd-locut':       88,
-      'snd-hicut':       18888,
+      'snd-hicut':       18988,
       'snd-drive':       0,
-      'snd-tremolo':     0,
-      'snd-tremolo-spd': 1,
-      'snd-phaser':      0.4,
+      'snd-tremolo':     0.888,  // TREM 表示 8.88 (×10)
+      'snd-tremolo-spd': 1.0,    // T.SPD 1.0 Hz
+      'snd-phaser':      0,
       'snd-flanger':     0,
-      'snd-af-depth':    0.51,
-      'snd-af-speed':    0.71,   // DECAY 表示 7.1 (×10) = 0.71 sec
-      'snd-af-q':        0.7,
+      'snd-af-depth':    0.65,
+      'snd-af-speed':    0.18,   // DECAY 表示 1.8 (×10) = 0.18 sec
+      'snd-af-q':        4.7,
       'snd-af-wet':      1.0,    // WET 表示 10.0
-      'snd-af-vol':      0.88    // VOL 表示 8.8
+      'snd-af-vol':      0.51    // VOL 表示 5.1
     };
     Object.keys(rackValues).forEach(function(id) {
       var el = document.getElementById(id);
@@ -793,20 +794,21 @@ if (typeof window.audioCoreConfig === 'undefined') {
         el.dispatchEvent(new Event('input'));
       }
     });
-    // AUTO FILTER ON + LP/4P
+    // AUTO FILTER ON
     var afToggle = document.getElementById('snd-af-toggle');
     if (afToggle && !afToggle.checked) {
       afToggle.checked = true;
       afToggle.dispatchEvent(new Event('change'));
     }
+    // LO CUT / HI CUT は OFF (画像 #22、toggle 暗色 = OFF)
     var lcToggle = document.getElementById('snd-locut-toggle');
-    if (lcToggle && !lcToggle.checked) {
-      lcToggle.checked = true;
+    if (lcToggle && lcToggle.checked) {
+      lcToggle.checked = false;
       lcToggle.dispatchEvent(new Event('change'));
     }
     var hcToggle = document.getElementById('snd-hicut-toggle');
-    if (hcToggle && !hcToggle.checked) {
-      hcToggle.checked = true;
+    if (hcToggle && hcToggle.checked) {
+      hcToggle.checked = false;
       hcToggle.dispatchEvent(new Event('change'));
     }
     // POLES 4P

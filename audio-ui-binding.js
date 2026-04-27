@@ -203,12 +203,13 @@ onReady(() => {
       } else {
         autoFilterWet = v;
       }
-      afWetVal.textContent = v.toFixed(2);
+      afWetVal.textContent = (v * 10).toFixed(1);
       saveSoundSettings();
     });
   }
 
   // 2026-04-27 urinami: AUTO FILTER VOL slider (output trim、アンプ前段の歪み回避用)。
+  // internal 0-1、表示は他 knob と同様 ×10 (0.0-10.0)。
   const afVolSlider = document.getElementById('snd-af-vol');
   const afVolVal = document.getElementById('snd-af-vol-val');
   if (afVolSlider && afVolVal) {
@@ -219,7 +220,7 @@ onReady(() => {
       } else {
         autoFilterVol = v;
       }
-      afVolVal.textContent = v.toFixed(2);
+      afVolVal.textContent = (v * 10).toFixed(1);
       saveSoundSettings();
     });
   }

@@ -395,6 +395,41 @@ if (typeof window.audioCoreConfig === 'undefined') {
     }
   };
 
+  // 2026-04-27 urinami: preset 切替時の effect rack reset 共通 helper。
+  // Envelope Filter preset で焼いた snd-* / autoFilter / lo-hi cut の残骸を
+  // 消去し、他 preset (DI Clean / AMP 系) を「素」の状態で適用する。
+  window.resetEffectRack = function() {
+    var afToggle = document.getElementById('snd-af-toggle');
+    if (afToggle && afToggle.checked) {
+      afToggle.checked = false;
+      afToggle.dispatchEvent(new Event('change'));
+    }
+    var lcToggle = document.getElementById('snd-locut-toggle');
+    if (lcToggle && lcToggle.checked) {
+      lcToggle.checked = false;
+      lcToggle.dispatchEvent(new Event('change'));
+    }
+    var hcToggle = document.getElementById('snd-hicut-toggle');
+    if (hcToggle && hcToggle.checked) {
+      hcToggle.checked = false;
+      hcToggle.dispatchEvent(new Event('change'));
+    }
+    var afDefaults = {
+      'snd-af-depth': 0.7,
+      'snd-af-speed': 0.15,
+      'snd-af-q':     2,
+      'snd-af-wet':   1.0,
+      'snd-af-vol':   1.0
+    };
+    Object.keys(afDefaults).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.value = afDefaults[id];
+        el.dispatchEvent(new Event('input'));
+      }
+    });
+  };
+
   window.applyMK1DICleanSnapshot = function() {
     var snap = window.PAD_SENSEI_MK1_DI_CLEAN_SNAPSHOT;
     if (!snap || !snap.epMixer) return false;
@@ -490,44 +525,14 @@ if (typeof window.audioCoreConfig === 'undefined') {
     if (typeof _epwSendParams === 'function') {
       try { _epwSendParams(); } catch (_) {}
     }
+    // Envelope Filter preset 残骸 reset (DI Clean は「素のクリーン」が default)
+    if (typeof window.resetEffectRack === 'function') window.resetEffectRack();
     // MasterTail 同期 (Stage で Bass/Treble UI 値を最終段に反映)
     if (typeof window.MasterTail !== 'undefined' && window.MasterTail.applyEq) {
       window.MasterTail.applyEq(em.tonestackBass, em.tonestackTreble);
     }
-    // 2026-04-27 urinami: 他 preset 切替時に AUTO FILTER / LO CUT / HI CUT を OFF
-    // + AUTO FILTER 関連 slider を default に戻す。Envelope Filter preset で焼いた
-    // effect rack 残骸を消去し、preset 切替の意図を明確化。
-    // Envelope Filter preset 自身は applyAmpVintageEnvelopeFilterSnapshot で本処理
-    // の後に再 ON するので問題なし。
-    var afToggle = document.getElementById('snd-af-toggle');
-    if (afToggle && afToggle.checked) {
-      afToggle.checked = false;
-      afToggle.dispatchEvent(new Event('change'));
-    }
-    var lcToggle = document.getElementById('snd-locut-toggle');
-    if (lcToggle && lcToggle.checked) {
-      lcToggle.checked = false;
-      lcToggle.dispatchEvent(new Event('change'));
-    }
-    var hcToggle = document.getElementById('snd-hicut-toggle');
-    if (hcToggle && hcToggle.checked) {
-      hcToggle.checked = false;
-      hcToggle.dispatchEvent(new Event('change'));
-    }
-    var afDefaults = {
-      'snd-af-depth': 0.7,
-      'snd-af-speed': 0.15,
-      'snd-af-q':     2,
-      'snd-af-wet':   1.0,
-      'snd-af-vol':   1.0
-    };
-    Object.keys(afDefaults).forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) {
-        el.value = afDefaults[id];
-        el.dispatchEvent(new Event('input'));
-      }
-    });
+    // Envelope Filter preset 残骸 reset (本関数の後 EF snapshot は AF を再 ON)
+    if (typeof window.resetEffectRack === 'function') window.resetEffectRack();
     return true;
   };
 

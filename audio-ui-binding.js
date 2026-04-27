@@ -208,6 +208,22 @@ onReady(() => {
     });
   }
 
+  // 2026-04-27 urinami: AUTO FILTER VOL slider (output trim、アンプ前段の歪み回避用)。
+  const afVolSlider = document.getElementById('snd-af-vol');
+  const afVolVal = document.getElementById('snd-af-vol-val');
+  if (afVolSlider && afVolVal) {
+    afVolSlider.addEventListener('input', () => {
+      const v = parseFloat(afVolSlider.value);
+      if (typeof setAutoFilterVol === 'function') {
+        setAutoFilterVol(v);
+      } else {
+        autoFilterVol = v;
+      }
+      afVolVal.textContent = v.toFixed(2);
+      saveSoundSettings();
+    });
+  }
+
   // Filter type (LP/BP) and poles (2P/4P) switches
   const afTypeBtn = document.getElementById('snd-af-type');
   if (afTypeBtn) afTypeBtn.addEventListener('click', (e) => {

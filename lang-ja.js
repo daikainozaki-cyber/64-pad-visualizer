@@ -354,7 +354,7 @@ I18N.addLang('ja', {
     sound_autofilter: 'オートフィルター（Auto-Wah）',
     sound_autofilter_desc: 'エンベロープフィルター。FREQ・RESO・SENS・DECAYを調整できます。',
     version_history: 'Version History',
-    vh_540: '<b>V5.4</b> \u2014 物理モデリングをバージョンアップしました。フィルターのパラメーター（WET / VOL）と、HPS会員向けプリセット（Pad Sensei MK1 AMP Vintage Envelope Filter）を追加しました',
+    vh_600: '<b>V6.0</b> \u2014 物理モデリングエンジンを改善しました。プリアンプ回路なども変更。HPS会員向け新プリセット（AMP Vintage Envelope Filter）と新フィルターパラメーター（WET / VOL）も追加しました',
     vh_520: '<b>V5.2</b> \u2014 プリアンプのモデリングを改良しました',
     vh_510: '<b>V5.1</b> \u2014 Cメジャースケール固定モード追加',
     vh_500: '<b>V5.0</b> \u2014 自前音源・自前エフェクター構成。Spring Reverb（物理モデリング）+ Plate Reverbを搭載しました',

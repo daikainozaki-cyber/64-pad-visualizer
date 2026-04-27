@@ -716,9 +716,9 @@ if (typeof window.audioCoreConfig === 'undefined') {
       releaseRing: 0.0,
       tonestackBass: 0.45,     // BASS 4.5
       tonestackTreble: 0.65,   // TREBLE 6.5
-      tremoloDepth: 0.888,     // TREM 8.88
-      tremoloFreq: 8.88,       // T.SPD 8.88 Hz
-      tremoloOn: true,
+      tremoloDepth: 0.0,       // TREM 0 (画像 #21、urinami「速すぎた」訂正)
+      tremoloFreq: 1.0,        // T.SPD 1.0 Hz
+      tremoloOn: false,
       reverbType: 'spring',    // TYPE Spring
       springReverbMix: 0.1867, // AMOUNT 2.2 knob → (2.2-1)/9*1.4
       springFeedbackScale: 0.7293, // DECAY 6.6 knob → 0.3+(6.6-1)/9*0.69
@@ -731,31 +731,55 @@ if (typeof window.audioCoreConfig === 'undefined') {
       jaWetMix: 0.00
     }
   };
-  // 2026-04-27 urinami: Envelope Filter preset は AUTO FILTER 自動 ON + 値設定が
-  // 必要 (snd-* は applyAmpSnapshot 対象外なので、ここで明示的に焼き込む)。
-  // 画像 #18 baseline: AF ON / DEPTH 0.51 / DECAY 0.00 / Q 0.5 / WET 10 / VOL 6
+  // 2026-04-27 urinami: Envelope Filter preset は AUTO FILTER 自動 ON + effect rack
+  // 値設定が必要。画像 #21 baseline: AF ON / 4P / DEPTH 0.51 / DECAY 7.1 (×10 表示
+  // = 0.71 sec) / Q 0.7 / WET 10 / VOL 8.8、effect rack: LO CUT ON 88 / HI CUT ON
+  // 18888 / DRIVE 0 / TREM 0 / T.SPD 1 / PHASE 0.4 / FLANG 0
   window.applyAmpVintageEnvelopeFilterSnapshot = function() {
     var ok = window.applyAmpSnapshot(window.PAD_SENSEI_AMP_VINTAGE_ENVELOPE_FILTER_SNAPSHOT);
-    // AUTO FILTER on + values
+    // effect rack values (snd-*) — Envelope Filter preset では明示的に焼き込む
+    var rackValues = {
+      'snd-locut':       88,
+      'snd-hicut':       18888,
+      'snd-drive':       0,
+      'snd-tremolo':     0,
+      'snd-tremolo-spd': 1,
+      'snd-phaser':      0.4,
+      'snd-flanger':     0,
+      'snd-af-depth':    0.51,
+      'snd-af-speed':    0.71,   // DECAY 表示 7.1 (×10) = 0.71 sec
+      'snd-af-q':        0.7,
+      'snd-af-wet':      1.0,    // WET 表示 10.0
+      'snd-af-vol':      0.88    // VOL 表示 8.8
+    };
+    Object.keys(rackValues).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.value = rackValues[id];
+        el.dispatchEvent(new Event('input'));
+      }
+    });
+    // AUTO FILTER ON + LP/4P
     var afToggle = document.getElementById('snd-af-toggle');
     if (afToggle && !afToggle.checked) {
       afToggle.checked = true;
       afToggle.dispatchEvent(new Event('change'));
     }
-    var afValues = {
-      'snd-af-depth': 0.51,
-      'snd-af-speed': 0.03,   // DECAY 画像 #18 「0.00」表示は min 0.03 相当
-      'snd-af-q':     0.5,    // Q 画像 #18 「0」表示は min 0.5 相当
-      'snd-af-wet':   1.0,    // WET 10.0 = internal 1.0
-      'snd-af-vol':   0.6     // VOL 6.0 = internal 0.6
-    };
-    Object.keys(afValues).forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) {
-        el.value = afValues[id];
-        el.dispatchEvent(new Event('input'));
-      }
-    });
+    var lcToggle = document.getElementById('snd-locut-toggle');
+    if (lcToggle && !lcToggle.checked) {
+      lcToggle.checked = true;
+      lcToggle.dispatchEvent(new Event('change'));
+    }
+    var hcToggle = document.getElementById('snd-hicut-toggle');
+    if (hcToggle && !hcToggle.checked) {
+      hcToggle.checked = true;
+      hcToggle.dispatchEvent(new Event('change'));
+    }
+    // POLES 4P
+    var poleBtn = document.getElementById('snd-af-poles');
+    if (poleBtn && poleBtn.textContent !== '4P') {
+      poleBtn.click();
+    }
     return ok;
   };
 

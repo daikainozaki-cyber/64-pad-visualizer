@@ -175,7 +175,7 @@ onReady(() => {
   if (afSpeedSlider && afSpeedVal) {
     afSpeedSlider.addEventListener('input', () => {
       autoFilterSpeed = parseFloat(afSpeedSlider.value);
-      afSpeedVal.textContent = parseFloat(afSpeedSlider.value).toFixed(2);
+      afSpeedVal.textContent = (parseFloat(afSpeedSlider.value) * 10).toFixed(1);
       saveSoundSettings();
     });
   }

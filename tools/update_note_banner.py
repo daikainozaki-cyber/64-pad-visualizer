@@ -61,6 +61,12 @@ def fetch_latest(rss_url: str) -> tuple[str, str] | None:
             return None
         title = (item.findtext("title") or "").strip()
         link = (item.findtext("link") or "").strip()
+        # WordPress パスワード保護記事の prefix を除去 (urinami が公開状態に
+        # 戻した後も RSS キャッシュに「保護中: 」が残るため)
+        for prefix in ("保護中: ", "Protected: "):
+            if title.startswith(prefix):
+                title = title[len(prefix):]
+                break
         if not title or not link:
             print(f"[note-banner] title/link 空 {rss_url}", file=sys.stderr)
             return None

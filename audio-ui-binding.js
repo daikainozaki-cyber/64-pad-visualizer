@@ -191,6 +191,23 @@ onReady(() => {
     });
   }
 
+  // 2026-04-27 urinami: AUTO FILTER WET slider (true wet/dry mix)。
+  // setAutoFilterWet() が autoFilterWetGain / autoFilterDryGain 両方を更新する。
+  const afWetSlider = document.getElementById('snd-af-wet');
+  const afWetVal = document.getElementById('snd-af-wet-val');
+  if (afWetSlider && afWetVal) {
+    afWetSlider.addEventListener('input', () => {
+      const v = parseFloat(afWetSlider.value);
+      if (typeof setAutoFilterWet === 'function') {
+        setAutoFilterWet(v);
+      } else {
+        autoFilterWet = v;
+      }
+      afWetVal.textContent = v.toFixed(2);
+      saveSoundSettings();
+    });
+  }
+
   // Filter type (LP/BP) and poles (2P/4P) switches
   const afTypeBtn = document.getElementById('snd-af-type');
   if (afTypeBtn) afTypeBtn.addEventListener('click', (e) => {

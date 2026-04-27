@@ -75,6 +75,27 @@ audio-core `eeca490 → 7c37b0b` (D-1/C-1/C-2 + Tone Balance outputGain 分離 +
 
 ---
 
+## 🔴 AMP 系 preset は HPS gate 必須 (2026-04-27 urinami 絶対ルール)
+
+**核心**: `pad-audio-core/epiano-engine.js` の `EP_AMP_PRESETS` に **AMP (Suitcase / amp 通過) 系 preset** を追加する時、`useCabinet: true` を必ず設定する。`?hps` 無し起動の通常ユーザーには表示されない (`host-adapter.js presetDropdown.filter` で gate される)。
+
+**目的**: AMP 系 preset は HPS 会員向けの差別化機能。一般ユーザーは DI Clean (Stage、`useCabinet: false`) のみ。AMP 系 (Suitcase Clean / Drive / Vintage / Vintage Wah / 等) は `?hps` 限定。
+
+### 必ず守ること
+
+1. **`EP_AMP_PRESETS` 追加時**: `_SUITCASE_COMMON` 流用 (useCabinet:true 自動付与) または明示的に `useCabinet: true`
+2. **`ENGINES.epiano.presets` にも entry 追加**: label は `Pad Sensei MK1 Suitcase <Variant>` 命名
+3. **consumer `host-adapter.js` displayRename map 追加**: `'Rhodes Suitcase <Variant>' → 'Pad Sensei MK1 AMP <Variant>'`
+4. **`Rhodes DI` (Stage) のみ `useCabinet: false`** で gate を通過 (一般ユーザー向け default)
+
+### urinami が作っていない preset を勝手に追加しない
+
+新 voicing は urinami が実機で確定 → 値を渡してから audio-core に焼き込む。preset key + HPS gate のみ先行追加は OK。voicing baseline は既存 variant 流用で start。
+
+詳細: `~/.claude/rules/amp-preset-hps-gate.md` (vault 主 rules)
+
+---
+
 ## ⚠️ clone 時の submodule 必須手順（2026-04-14 Phase 1 移行）
 
 **このリポジトリは 2 つの submodule に依存している。`git clone` だけでは audio-core / pad-core が空になり、起動不能になる。**

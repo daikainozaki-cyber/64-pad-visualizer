@@ -98,14 +98,16 @@ if (typeof window.audioCoreConfig === 'undefined') {
       // audio-core 側 EP_AMP_PRESETS の rename 待ち。表示だけ整える。
       // urinami 命名: Stage = DI Clean、Suitcase 系 = AMP Clean/Drive/Vintage。
       var displayRename = {
-        'Pad Sensei MK1 Stage':            'Pad Sensei MK1 DI Clean',
-        'Rhodes Stage':                    'Pad Sensei MK1 DI Clean',
-        'Pad Sensei MK1 Suitcase Clean':   'Pad Sensei MK1 AMP Clean',
-        'Pad Sensei MK1 Suitcase Drive':   'Pad Sensei MK1 AMP Drive',
-        'Pad Sensei MK1 Suitcase Vintage': 'Pad Sensei MK1 AMP Vintage',
-        'Rhodes Suitcase Clean':           'Pad Sensei MK1 AMP Clean',
-        'Rhodes Suitcase Drive':           'Pad Sensei MK1 AMP Drive',
-        'Rhodes Suitcase Vintage':         'Pad Sensei MK1 AMP Vintage'
+        'Pad Sensei MK1 Stage':                'Pad Sensei MK1 DI Clean',
+        'Rhodes Stage':                        'Pad Sensei MK1 DI Clean',
+        'Pad Sensei MK1 Suitcase Clean':       'Pad Sensei MK1 AMP Clean',
+        'Pad Sensei MK1 Suitcase Drive':       'Pad Sensei MK1 AMP Drive',
+        'Pad Sensei MK1 Suitcase Vintage':     'Pad Sensei MK1 AMP Vintage',
+        'Pad Sensei MK1 Suitcase Vintage Envelope Filter': 'Pad Sensei MK1 AMP Vintage Envelope Filter',
+        'Rhodes Suitcase Clean':               'Pad Sensei MK1 AMP Clean',
+        'Rhodes Suitcase Drive':               'Pad Sensei MK1 AMP Drive',
+        'Rhodes Suitcase Vintage':             'Pad Sensei MK1 AMP Vintage',
+        'Rhodes Suitcase Vintage Envelope Filter': 'Pad Sensei MK1 AMP Vintage Envelope Filter'
       };
       entries.forEach(function(e) {
         var opt = document.createElement('option');
@@ -495,8 +497,9 @@ if (typeof window.audioCoreConfig === 'undefined') {
     return true;
   };
 
-  // 2026-04-27 urinami 画像 #13 baseline (Pad Sensei MK1 AMP Clean = Suitcase
-  // Clean 経路)。Model dropdown で AMP Clean 選択時に setPreset → snapshot 上書き。
+  // 2026-04-27 urinami 画像 #14 baseline (Pad Sensei Keys 実機で歪まない値)。
+  // AMP Clean = Suitcase Clean 経路。Model dropdown 切替時 setPreset →
+  // applyAmpCleanSnapshot で host 上書き。
   window.PAD_SENSEI_AMP_CLEAN_SNAPSHOT = {
     audioState_preset: 'Rhodes Suitcase Clean',
     appState: {
@@ -505,26 +508,185 @@ if (typeof window.audioCoreConfig === 'undefined') {
       fNewEnabled: true,
       puPosBassDriveEnabled: false,
       velThreshold: 0,
-      velDrive: 30,            // DRIVE +4.7
-      velCompand: -14,         // COMP -2.2
-      velRange: 121
+      velDrive: 1,             // DRIVE +0.2
+      velCompand: 0,
+      velRange: 127
     },
     epMixer: {
       rhodesLevel: 1.0,        // PU LEVEL 10.0
-      pickupSymmetry: 0.58,    // VOICING 5.8
-      attackNoise: 0.0,        // MECHANICAL 0.00
+      pickupSymmetry: 0.30,    // COLOR 3.0
+      attackNoise: 0.0,        // MECHANICAL 0.0
       releaseNoise: 0.0,
       releaseRing: 0.0,
-      tonestackBass: 0.37,     // BASS 3.7
-      tonestackTreble: 0.54,   // TREBLE 5.4
-      tremoloDepth: 0.75,      // TREM 7.5
-      tremoloFreq: 4.4,        // T.SPD 4.4 Hz
+      tonestackBass: 0.5,      // BASS 5.0
+      tonestackTreble: 0.5,    // TREBLE 5.0
+      tremoloDepth: 0.42,      // TREM 4.2
+      tremoloFreq: 3.4,        // T.SPD 3.4 Hz
       tremoloOn: true,
       reverbType: 'spring',    // TYPE Spring
-      springReverbMix: 0.14,   // AMOUNT 1.9 knob → (1.9-1)/9*1.4
-      springFeedbackScale: 0.491, // DECAY 3.5 knob → 0.3+(3.5-1)/9*0.69
+      springReverbMix: 0.124,  // AMOUNT 1.8 knob → (1.8-1)/9*1.4
+      springFeedbackScale: 0.898, // DECAY 8.8 knob → 0.3+(8.8-1)/9*0.69
       springStereoEnabled: true
+    },
+    voicingLab: {
+      gePreampDrive: 1.50,     // DRIVE 1.50
+      gePreampGain: 1.30,      // MAKEUP 1.30
+      suitcasePreFxTrim: 0.50, // PRE-TRIM 0.50
+      jaWetMix: 0.00           // J-A MIX 0.00
     }
+  };
+
+  // 2026-04-27 urinami 画像 #15 baseline (Pad Sensei Keys 確定値)。AMP Drive
+  // = Suitcase Drive 経路。Bass Drive=On が特徴 (DI でも AMP でも使う前提)。
+  window.PAD_SENSEI_AMP_DRIVE_SNAPSHOT = {
+    audioState_preset: 'Rhodes Suitcase Drive',
+    appState: {
+      toneBalanceDb: [6, 6, 0, 0, 0, 0, 6],   // E0/E1/E6 +6dB
+      gapVoicing: 'dyno',
+      fNewEnabled: true,
+      puPosBassDriveEnabled: true,            // ★Bass Drive=On
+      velThreshold: 0,
+      velDrive: 1,                            // DRIVE +0.2
+      velCompand: 0,
+      velRange: 127
+    },
+    epMixer: {
+      rhodesLevel: 1.0,        // PU LEVEL 10.0
+      pickupSymmetry: 0.5,     // COLOR 5.0
+      attackNoise: 0.0,        // MECHANICAL 0.0
+      releaseNoise: 0.0,
+      releaseRing: 0.0,
+      tonestackBass: 0.45,     // BASS 4.5
+      tonestackTreble: 0.81,   // TREBLE 8.1
+      tremoloDepth: 1.0,       // TREM 10.0
+      tremoloFreq: 2.6,        // T.SPD 2.6 Hz
+      tremoloOn: true,
+      reverbType: 'plate',     // TYPE Plate
+      springReverbMix: 0.1089, // AMOUNT 1.7 knob → (1.7-1)/9*1.4
+      springFeedbackScale: 0.898, // DECAY 8.8 knob
+      springStereoEnabled: true
+    },
+    voicingLab: {
+      gePreampDrive: 2.50,     // DRIVE 2.50
+      gePreampGain: 0.76,      // MAKEUP 0.76
+      suitcasePreFxTrim: 0.42, // PRE-TRIM 0.42
+      jaWetMix: 0.00           // J-A MIX 0.00
+    }
+  };
+
+  // applyAmpCleanSnapshot / applyAmpDriveSnapshot の共通ロジック
+  window.applyAmpSnapshot = function(snap) {
+    if (!snap || !snap.epMixer) return false;
+    if (snap.audioState_preset && typeof setPreset === 'function'
+        && typeof AudioState !== 'undefined' && AudioState.engine
+        && AudioState.engine.presets && AudioState.engine.presets[snap.audioState_preset]) {
+      setPreset(snap.audioState_preset);
+    }
+    var em = snap.epMixer;
+    if (typeof EpState !== 'undefined') {
+      Object.keys(em).forEach(function(k) { EpState[k] = em[k]; });
+      if (snap.appState) {
+        EpState.gapVoicing = snap.appState.gapVoicing;
+        EpState.fNewEnabled = snap.appState.fNewEnabled;
+        EpState.puPosBassDriveEnabled = snap.appState.puPosBassDriveEnabled;
+      }
+    }
+    if (window.AppState && snap.appState) {
+      Object.keys(snap.appState).forEach(function(k) { window.AppState[k] = snap.appState[k]; });
+    }
+    var revKnob = 1 + (em.springReverbMix / 1.4) * 9;
+    var decayKnob = 1 + ((em.springFeedbackScale - 0.3) / 0.69) * 9;
+    var domMap = {
+      'ep-rhodes':       em.rhodesLevel,
+      'ep-pu-sym':       em.pickupSymmetry,
+      'ep-mechanical':   em.attackNoise,
+      'ep-eq-bass':      em.tonestackBass,
+      'ep-eq-treble':    em.tonestackTreble,
+      'snd-tremolo':     em.tremoloDepth,
+      'snd-tremolo-spd': em.tremoloFreq,
+      'ep-rev':          revKnob,
+      'ep-decay':        decayKnob
+    };
+    Object.keys(domMap).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.value = domMap[id];
+        try { el.dispatchEvent(new Event('input')); } catch (_) {}
+      }
+    });
+    var rev = document.getElementById('ep-reverb-type');
+    if (rev && rev.value !== em.reverbType) {
+      rev.value = em.reverbType;
+      try { rev.dispatchEvent(new Event('change')); } catch (_) {}
+    }
+    var stereo = document.getElementById('ep-stereo');
+    if (stereo) {
+      var newChecked = !!em.springStereoEnabled;
+      if (stereo.checked !== newChecked) {
+        stereo.checked = newChecked;
+        try { stereo.dispatchEvent(new Event('change')); } catch (_) {}
+      }
+    }
+    if (snap.voicingLab) {
+      window.EpVoicingLab = window.EpVoicingLab || {};
+      Object.keys(snap.voicingLab).forEach(function(k) {
+        window.EpVoicingLab[k] = snap.voicingLab[k];
+      });
+      if (typeof window._epwSendVoicingLabParams === 'function') {
+        try { window._epwSendVoicingLabParams(window.EpVoicingLab); } catch (_) {}
+      }
+    }
+    if (typeof _epwSendParams === 'function') {
+      try { _epwSendParams(); } catch (_) {}
+    }
+    if (typeof saveSoundSettings === 'function') {
+      try { saveSoundSettings(); } catch (_) {}
+    }
+    return true;
+  };
+  window.applyAmpDriveSnapshot = function() {
+    return window.applyAmpSnapshot(window.PAD_SENSEI_AMP_DRIVE_SNAPSHOT);
+  };
+
+  // 2026-04-27 urinami 画像 #16 baseline (Pad Sensei Keys 確定値)。AMP Vintage
+  // = Suitcase Vintage 経路。TB Flat / STEREO OFF / TREM 控えめ / 低 voicing。
+  window.PAD_SENSEI_AMP_VINTAGE_SNAPSHOT = {
+    audioState_preset: 'Rhodes Suitcase Vintage',
+    appState: {
+      toneBalanceDb: [0, 0, 0, 0, 0, 0, 0],   // TB Flat
+      gapVoicing: 'dyno',
+      fNewEnabled: true,
+      puPosBassDriveEnabled: false,
+      velThreshold: 0,
+      velDrive: 1,                            // DRIVE +0.2
+      velCompand: 0,
+      velRange: 127
+    },
+    epMixer: {
+      rhodesLevel: 1.0,        // PU LEVEL 10.0
+      pickupSymmetry: 0.19,    // COLOR 1.9
+      attackNoise: 0.0,        // MECHANICAL 0.0
+      releaseNoise: 0.0,
+      releaseRing: 0.0,
+      tonestackBass: 0.29,     // BASS 2.9
+      tonestackTreble: 0.5,    // TREBLE 5.0
+      tremoloDepth: 0.22,      // TREM 2.2
+      tremoloFreq: 1.0,        // T.SPD 1.0 Hz
+      tremoloOn: true,
+      reverbType: 'plate',     // TYPE Plate
+      springReverbMix: 0.2178, // AMOUNT 2.4 knob → (2.4-1)/9*1.4
+      springFeedbackScale: 0.7293, // DECAY 6.6 knob → 0.3+(6.6-1)/9*0.69
+      springStereoEnabled: false  // ★STEREO OFF
+    },
+    voicingLab: {
+      gePreampDrive: 1.35,     // DRIVE 1.35
+      gePreampGain: 0.61,      // MAKEUP 0.61
+      suitcasePreFxTrim: 0.35, // PRE-TRIM 0.35
+      jaWetMix: 0.00           // J-A MIX 0.00
+    }
+  };
+  window.applyAmpVintageSnapshot = function() {
+    return window.applyAmpSnapshot(window.PAD_SENSEI_AMP_VINTAGE_SNAPSHOT);
   };
 
   window.applyAmpCleanSnapshot = function() {
@@ -581,6 +743,16 @@ if (typeof window.audioCoreConfig === 'undefined') {
         try { stereo.dispatchEvent(new Event('change')); } catch (_) {}
       }
     }
+    // 2026-04-27 urinami 画像 #14: voicingLab を内部 state に書き込み + worklet 反映
+    if (snap.voicingLab) {
+      window.EpVoicingLab = window.EpVoicingLab || {};
+      Object.keys(snap.voicingLab).forEach(function(k) {
+        window.EpVoicingLab[k] = snap.voicingLab[k];
+      });
+      if (typeof window._epwSendVoicingLabParams === 'function') {
+        try { window._epwSendVoicingLabParams(window.EpVoicingLab); } catch (_) {}
+      }
+    }
     if (typeof saveSoundSettings === 'function') {
       try { saveSoundSettings(); } catch (_) {}
     }
@@ -607,10 +779,22 @@ if (typeof window.audioCoreConfig === 'undefined') {
           if (typeof window.applyMK1DICleanSnapshot === 'function') {
             window.applyMK1DICleanSnapshot();
           }
+        } else if (/Rhodes Suitcase Clean$/.test(presetKey)) {
+          // 2026-04-27 urinami 画像 #14: keys 確定 voicing で歪まない baseline。
+          if (typeof window.applyAmpCleanSnapshot === 'function') {
+            window.applyAmpCleanSnapshot();
+          }
+        } else if (/Rhodes Suitcase Drive$/.test(presetKey)) {
+          // 2026-04-27 urinami 画像 #15: keys 確定 voicing。Bass Drive=On 特徴。
+          if (typeof window.applyAmpDriveSnapshot === 'function') {
+            window.applyAmpDriveSnapshot();
+          }
+        } else if (/Rhodes Suitcase Vintage$/.test(presetKey)) {
+          // 2026-04-27 urinami 画像 #16: keys 確定 voicing。TB Flat / STEREO OFF。
+          if (typeof window.applyAmpVintageSnapshot === 'function') {
+            window.applyAmpVintageSnapshot();
+          }
         }
-        // AMP 系 (Clean/Drive/Vintage) は Pad Sensei EP (keys plugin 移植)
-        // で voicing 確定後、audio-core EP_AMP_PRESETS に焼き込み → 64PE bump
-        // で反映する経路。host snapshot apply / 個別 fix は保留。
       }, 50);
     });
   });

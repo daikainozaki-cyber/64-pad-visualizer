@@ -3,16 +3,16 @@ window.__64PE_UPDATE__ = {
   schemaVersion: 2,
   notices: [
     {
-      id: "desktop-1.6.5-release",
+      id: "desktop-1.6.6-release",
       target: "desktop",
-      latestVersion: "1.6.5",
+      latestVersion: "1.6.6",
       title: {
-        ja: "64Pad Explorer Desktop v1.6.5",
-        en: "64Pad Explorer Desktop v1.6.5"
+        ja: "64Pad Explorer Desktop v1.6.6",
+        en: "64Pad Explorer Desktop v1.6.6"
       },
       message: {
-        ja: "Push 3 入力、To DAW のベース音域、Mac版インストーラーの表示を改善しました。",
-        en: "Improved Push 3 input, To DAW slash-bass range handling, and Mac installer package display."
+        ja: "サステインペダル入力と、Pad Sensei 音源プラグインの読み込みを改善しました。",
+        en: "Improved sustain pedal input and Pad Sensei instrument plug-in loading."
       },
       url: "https://padsensei.gumroad.com/l/bklonh",
       cta: {

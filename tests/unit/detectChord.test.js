@@ -155,6 +155,17 @@ describe('detectChord', () => {
       expect(results.length).toBeGreaterThan(0);
       expect(results[0].name).toBe('C6(9,#11)');
     });
+
+    it('detects add chords beyond add9 on major triads', () => {
+      expect(detectChord([60, 64, 67, 77])[0].name).toBe('Cadd11');
+      expect(detectChord([60, 64, 67, 78])[0].name).toBe('Cadd#11');
+      expect(detectChord([60, 64, 67, 68])[0].name).toBe('Caddb13');
+    });
+
+    it('detects add chords beyond add9 on minor triads', () => {
+      expect(detectChord([60, 63, 67, 77])[0].name).toBe('Cmadd11');
+      expect(detectChord([60, 63, 67, 78])[0].name).toBe('Cmadd#11');
+    });
   });
 
   describe('inversions (slash chords)', () => {

@@ -11,6 +11,7 @@ Web / Standalone は同じ通知データを読み、表示面は `#update-notic
 - ブログの最新記事、HPSの最新記事、Pad Senseiの最新記事、各プロダクトの公開中アップデートが同じ通知フィードへ入る。
 - Web と Standalone は、形態に合う項目だけを一つの通知面に表示する。
 - 新しい記事の公開とアプリのリリースは、互いに別の作業として更新できる。記事更新のためにアプリ本体をcommit / deployしない。
+- Gumroadの購入者メールやcontent updateの送信成否に関係なく、公開済みプロダクト更新は通知フィードから必ず到達できる。
 - 通知は販売導線として常に辿れる。閉じる操作は当セッションだけの折りたたみにし、永続的に全通知を消さない。
 - 古い固定文言、過去バージョン、存在しない製品名は表示されない。
 
@@ -58,7 +59,7 @@ https://murinaikurashi.com/pad-sensei/notification-feed.json
 
 - フィード全体は `generatedAt`、`items`、`sources` を持つ。`sources.<channel>` は `status`（`healthy | warning | stale`）、毎回の試行時刻 `attemptedAt`、最後の成功時刻 `lastSuccessAt`、`consecutiveFailures` を持つ。画面側は、項目の公開日時と取得の健全性を区別して扱う。
 - RSS項目はbuilderが取得する。
-- プロダクト項目は、各リリース手順が更新する共通のプロダクト更新台帳を正とする。GumroadやアプリHTMLを正本にしない。
+- プロダクト項目は、各リリース手順が更新する共通のプロダクト更新台帳を正とする。GumroadやアプリHTMLを正本にせず、Gumroadの通知送信成否をフィード掲載の条件にしない。
 - `id` は不変にし、題名を直しても既読判定が壊れないようにする。
 
 ### 運用責務と鮮度保証
@@ -68,14 +69,14 @@ https://murinaikurashi.com/pad-sensei/notification-feed.json
 - builderは毎時実行する。全sourceの取得と検証が成功した時だけ、新しい `items` を含む正常スナップショットを原子的に公開する。
 - 1系統でもRSS取得が失敗した時は、部分取得の項目を混ぜない。直前の正常スナップショットの `items` を維持しつつ、失敗channelの `attemptedAt` を今回の試行時刻に、`consecutiveFailures` を `+ 1` にする状態JSONを原子的に公開する。最初の失敗は `warning`、`consecutiveFailures >= 2` または `lastSuccessAt` から2時間超は `stale` とする。
 - `warning` / `stale` のchannelの既存項目は画面に表示しない。通知面には、そのchannelが一時的に取得確認中であることだけを短く示す。失敗が `stale` に達した時点で運用者へ通知する。全sourceが成功して `healthy` に戻るまで、健全な更新として扱わない。
-- プロダクト更新台帳の追加は、当該リリース手順の完了条件にする。台帳への反映が成功して公開JSONに現れた時だけ、通知導線まで含むリリース完了とする。
+- プロダクト更新台帳の追加は、当該リリース手順の完了条件にする。台帳への反映が成功して公開JSONに現れた時だけ、通知導線まで含むリリース完了とする。Gumroadの購入者メールやcontent updateは補助的な販促であり、その送信成否はこの完了判定に使わない。
 
 ## 表示規約
 
 - 表示コンテナは `#update-notice` だけ。
 - 常時表示する内容は、ブログ最新1件、HPS最新1件、Pad Sensei最新1件、公開中プロダクト更新を同じ行に並べる。横幅が足りない時は横スクロールまたは「すべての更新」への導線を使い、二段目の固定バナーを作らない。
 - Webは `scope: all | web`、Standaloneは `scope: all | standalone` を読む。
-- プロダクト更新は、製品の購入・マニュアル・更新履歴へ直接進めるURLを持つ。
+- プロダクト更新は、Gumroadではなく製品の購入・マニュアル・更新履歴へ直接進める安定URLを持つ。Gumroad通知が届かない既存購入者も、アプリを開けば同じ更新情報と更新履歴に到達できる。
 - Closeはこの起動中だけ折りたたむ。ヘッダーの通知入口で再表示できる。新しい項目の追加は自動で再表示する。
 - `#sales-banner` は廃止する。販売導線は通知フィード内のプロダクト項目として表現する。
 

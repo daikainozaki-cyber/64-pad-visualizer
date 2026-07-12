@@ -3,16 +3,16 @@ window.__64PE_UPDATE__ = {
   schemaVersion: 2,
   notices: [
     {
-      id: "desktop-1.6.8-release",
+      id: "desktop-1.6.9-release",
       target: "desktop",
-      latestVersion: "1.6.8",
+      latestVersion: "1.6.9",
       title: {
-        ja: "64Pad Explorer Desktop v1.6.8",
-        en: "64Pad Explorer Desktop v1.6.8"
+        ja: "64Pad Explorer Desktop v1.6.9",
+        en: "64Pad Explorer Desktop v1.6.9"
       },
       message: {
-        ja: "Push 3 のコード表示と sus 系の表示を改善しました。",
-        en: "Improved Push 3 chord display and suspended chord display."
+        ja: "一部のMIDI機器で入力できない場合を修正しました。",
+        en: "Fixed an issue that could prevent MIDI input from some devices."
       },
       url: "https://padsensei.gumroad.com/l/bklonh",
       cta: {

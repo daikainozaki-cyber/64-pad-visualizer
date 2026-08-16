@@ -1,14 +1,15 @@
-# Example only: copy this file into a PUBLIC personal repository as
-# .github/workflows/dojo-v035-windows-executor.yml.
+# DRAFT - not yet pushed. Revision of dojo-v035-windows-executor.yml.
 #
-# Purpose: use the personal repository's GitHub-hosted Windows allowance only
-# as an execution surface. pad-sensei/dojo remains the product SSOT.
+# Why this differs from the verbatim PR #128 template:
+#   pad-sensei/dojo has deploy keys DISABLED at the org level (verified 2026-08-16,
+#   HTTP 422 "Deploy keys are disabled for this repository"), and DESKTOP_DISPATCH_TOKEN
+#   cannot read it (HTTP 403). Source is therefore taken from the SHA-preserving personal
+#   mirror daikainozaki-cyber/dojo-ci. Git is content-addressed, so commit
+#   42abd8c... in the mirror is byte-identical to the same commit in pad-sensei/dojo,
+#   and the exact-SHA verification below still proves it.
 #
-# Known personal repo candidate: daikainozaki-cyber/64-pad-visualizer.
-# It already has DESKTOP_DISPATCH_TOKEN for cross-repository operations.
-# First try that existing secret. If it cannot read the private DOJO/MK1 repos,
-# replace only the secret value with a read-only token; do not copy DOJO source
-# into the personal repository.
+# Product SSOT remains pad-sensei/dojo. Every verification step (exact SHA, version,
+# clean tree, MK1 SHA, AMD64 PE machine, manifest validation, ctest) is unchanged.
 
 name: Build DOJO v0.35 Windows x64 from personal Actions
 
@@ -38,15 +39,35 @@ jobs:
 
     steps:
       - name: Checkout exact private DOJO candidate
-        uses: actions/checkout@v4
-        with:
-          repository: pad-sensei/dojo
-          ref: ${{ env.DOJO_SOURCE_SHA }}
-          token: ${{ secrets.DESKTOP_DISPATCH_TOKEN }}
-          path: dojo
-          fetch-depth: 0
-          submodules: recursive
-          persist-credentials: false
+        # Private parent over SSH (repo-scoped read-only deploy key). Public submodules
+        # are fetched separately over https so the repo-scoped key is never used for a
+        # repository it does not cover.
+        shell: bash
+        env:
+          DOJO_SOURCE_DEPLOY_KEY: ${{ secrets.DOJO_SOURCE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DOJO_SOURCE_DEPLOY_KEY}" ]; then
+            echo "::error::secret DOJO_SOURCE_DEPLOY_KEY is not set"
+            exit 1
+          fi
+          temp_posix="$(cygpath -u "${RUNNER_TEMP}")"
+          key_dir="${temp_posix}/dojo-ssh"
+          mkdir -p "${key_dir}"
+          trap 'rm -f "${key_dir}/id_ed25519"' EXIT
+          printf '%s\n' "${DOJO_SOURCE_DEPLOY_KEY}" > "${key_dir}/id_ed25519"
+          chmod 600 "${key_dir}/id_ed25519"
+
+          git init -q dojo
+          git -C dojo remote add origin git@github.com:daikainozaki-cyber/dojo-ci.git
+          GIT_SSH_COMMAND="ssh -i ${key_dir}/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+            git -C dojo fetch --no-tags origin "${DOJO_SOURCE_SHA}"
+          git -C dojo checkout -q FETCH_HEAD
+          rm -f "${key_dir}/id_ed25519"
+
+          # Submodules are all public (JUCE / pad-core / pad-progression / signalsmith x2).
+          # No credential is used here; https anonymous access is sufficient.
+          git -C dojo submodule update --init --recursive --depth 1
 
       - name: Verify exact DOJO source
         shell: pwsh
@@ -61,16 +82,31 @@ jobs:
           Write-Host "DOJO_SOURCE_SHA=$actual"
 
       - name: Checkout exact private MK1 DSP
-        uses: actions/checkout@v4
-        with:
-          repository: daikainozaki-cyber/pad-sensei-mk1-plugin
-          ref: ${{ env.MK1_PINNED_SHA }}
-          token: ${{ secrets.DESKTOP_DISPATCH_TOKEN }}
-          path: mk1-plugin
-          fetch-depth: 1
-          sparse-checkout: |
-            Source
-          persist-credentials: false
+        shell: bash
+        env:
+          MK1_SOURCE_DEPLOY_KEY: ${{ secrets.MK1_SOURCE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MK1_SOURCE_DEPLOY_KEY}" ]; then
+            echo "::error::secret MK1_SOURCE_DEPLOY_KEY is not set"
+            exit 1
+          fi
+          temp_posix="$(cygpath -u "${RUNNER_TEMP}")"
+          key_dir="${temp_posix}/mk1-ssh"
+          mkdir -p "${key_dir}"
+          trap 'rm -f "${key_dir}/id_ed25519"' EXIT
+          printf '%s\n' "${MK1_SOURCE_DEPLOY_KEY}" > "${key_dir}/id_ed25519"
+          chmod 600 "${key_dir}/id_ed25519"
+
+          git init -q mk1-plugin
+          git -C mk1-plugin remote add origin git@github.com:daikainozaki-cyber/pad-sensei-mk1-plugin.git
+          git -C mk1-plugin config core.sparseCheckout true
+          git -C mk1-plugin sparse-checkout init --cone
+          git -C mk1-plugin sparse-checkout set Source
+          GIT_SSH_COMMAND="ssh -i ${key_dir}/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+            git -C mk1-plugin fetch --depth=1 --no-tags origin "${MK1_PINNED_SHA}"
+          git -C mk1-plugin checkout -q FETCH_HEAD
+          rm -f "${key_dir}/id_ed25519"
 
       - name: Verify MK1 source identity
         shell: pwsh

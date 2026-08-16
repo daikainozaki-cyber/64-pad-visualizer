@@ -1,0 +1,175 @@
+# Example only: copy this file into a PUBLIC personal repository as
+# .github/workflows/dojo-v035-windows-executor.yml.
+#
+# Purpose: use the personal repository's GitHub-hosted Windows allowance only
+# as an execution surface. pad-sensei/dojo remains the product SSOT.
+#
+# Known personal repo candidate: daikainozaki-cyber/64-pad-visualizer.
+# It already has DESKTOP_DISPATCH_TOKEN for cross-repository operations.
+# First try that existing secret. If it cannot read the private DOJO/MK1 repos,
+# replace only the secret value with a read-only token; do not copy DOJO source
+# into the personal repository.
+
+name: Build DOJO v0.35 Windows x64 from personal Actions
+
+on:
+  push:
+    branches:
+      - infra/dojo-v035-windows-executor
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dojo-v035-windows-personal-executor
+  cancel-in-progress: false
+
+env:
+  DOJO_SOURCE_SHA: 42abd8c732dd0562c89376259554a95216491752
+  MK1_PINNED_SHA: b335be092aa2f4b2b8ae90cd02052c59ee5f63ae
+
+jobs:
+  build:
+    # Keep this executor in a public personal repository so the standard
+    # GitHub-hosted runner does not consume the private organization budget.
+    runs-on: windows-2022
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout exact private DOJO candidate
+        uses: actions/checkout@v4
+        with:
+          repository: pad-sensei/dojo
+          ref: ${{ env.DOJO_SOURCE_SHA }}
+          token: ${{ secrets.DESKTOP_DISPATCH_TOKEN }}
+          path: dojo
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Verify exact DOJO source
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $actual = (git rev-parse HEAD).Trim()
+          if ($actual -ne $env:DOJO_SOURCE_SHA) { throw "DOJO SHA mismatch: $actual" }
+          $version = (Select-String -Path CMakeLists.txt -Pattern 'project\(DOJO VERSION ([0-9.]+)\)').Matches[0].Groups[1].Value
+          if ($version -ne '0.35.0') { throw "Expected DOJO 0.35.0, got $version" }
+          if ((git status --porcelain).Length -ne 0) { throw 'DOJO checkout is dirty' }
+          Write-Host "DOJO_SOURCE_SHA=$actual"
+
+      - name: Checkout exact private MK1 DSP
+        uses: actions/checkout@v4
+        with:
+          repository: daikainozaki-cyber/pad-sensei-mk1-plugin
+          ref: ${{ env.MK1_PINNED_SHA }}
+          token: ${{ secrets.DESKTOP_DISPATCH_TOKEN }}
+          path: mk1-plugin
+          fetch-depth: 1
+          sparse-checkout: |
+            Source
+          persist-credentials: false
+
+      - name: Verify MK1 source identity
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $actual = (git -C mk1-plugin rev-parse HEAD).Trim()
+          if ($actual -ne $env:MK1_PINNED_SHA) { throw "MK1 SHA mismatch: $actual" }
+          foreach ($file in @('Source/EPianoEngine.cpp','Source/EPianoWorkletProcessor.cpp')) {
+            if (-not (Test-Path (Join-Path 'mk1-plugin' $file))) { throw "Missing MK1 source: $file" }
+          }
+          Write-Host "MK1_SHA=$actual"
+
+      - name: Install WebView2 package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          nuget install Microsoft.Web.WebView2 `
+            -Version 1.0.3485.44 `
+            -OutputDirectory "$env:RUNNER_TEMP\nuget" `
+            -ExcludeVersion
+          "WEBVIEW2_DIR=$env:RUNNER_TEMP\nuget" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Configure x64 Release
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $mk1 = (Resolve-Path '..\mk1-plugin').Path
+          cmake -S . -B build-windows-v035 -G "Visual Studio 17 2022" -A x64 `
+            -DBUILD_TESTING=ON `
+            -DJUCE_WEBVIEW2_PACKAGE_LOCATION="$env:WEBVIEW2_DIR" `
+            -DPAD_SENSEI_MK1_SOURCE_DIR="$mk1" `
+            -DDOJO_REQUIRE_MK1=ON
+
+      - name: Build app and every native test target
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          cmake --build build-windows-v035 --config Release --parallel
+          cmake --build build-windows-v035 --config Release --target dojo-tests --parallel
+
+      - name: Run Windows native tests
+        shell: pwsh
+        working-directory: dojo
+        run: ctest --test-dir build-windows-v035 -C Release --output-on-failure --no-tests=error
+
+      - name: Verify AMD64 PE and emit exact build manifest
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = 'build-windows-v035\DOJO_artefacts\Release\DOJO.exe'
+          if (-not (Test-Path $exe)) { throw "DOJO.exe not found: $exe" }
+
+          $bytes = [System.IO.File]::ReadAllBytes($exe)
+          if ($bytes.Length -lt 256) { throw 'DOJO.exe is too small to be a valid PE image' }
+          $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
+          if ($peOffset -lt 0 -or ($peOffset + 6) -ge $bytes.Length) { throw 'Invalid PE header offset' }
+          if ($bytes[$peOffset] -ne 0x50 -or $bytes[$peOffset + 1] -ne 0x45 -or $bytes[$peOffset + 2] -ne 0 -or $bytes[$peOffset + 3] -ne 0) { throw 'PE signature missing' }
+          $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+          if ($machine -ne 0x8664) { throw ('Expected AMD64 PE machine 0x8664, got 0x{0:X4}' -f $machine) }
+
+          $sha = (Get-FileHash -Algorithm SHA256 -Path $exe).Hash.ToLower()
+          $embedded = @()
+          Get-Content 'packaging\alpha-release\material-collections.txt' | ForEach-Object {
+            $line = $_.Trim()
+            if ($line -and -not $line.StartsWith('#')) {
+              $parts = $line.Split('|')
+              if ($parts.Count -ne 2) { throw "Invalid material policy line: $line" }
+              if ($parts[1].Trim() -eq 'repo') { $embedded += $parts[0].Trim() }
+            }
+          }
+          if ($embedded.Count -eq 0) { throw 'No repo-mode embedded collection in release policy' }
+
+          New-Item -ItemType Directory -Force dist-windows-build | Out-Null
+          Copy-Item $exe 'dist-windows-build\DOJO.exe'
+          $manifest = [ordered]@{
+            schema               = 'dojo-windows-build-v1'
+            git_head_sha         = $env:DOJO_SOURCE_SHA
+            dojo_version         = '0.35.0'
+            architecture         = 'x86_64'
+            exe_sha256           = $sha
+            mk1_sha              = $env:MK1_PINNED_SHA
+            with_mk1             = $true
+            embedded_collections = $embedded
+          }
+          ($manifest | ConvertTo-Json -Depth 4) | Set-Content -Path 'dist-windows-build\build-manifest.json' -Encoding utf8
+          python packaging/alpha-release/validate-windows-build-manifest.py `
+            dist-windows-build/build-manifest.json `
+            dist-windows-build/DOJO.exe
+          Write-Host "WINDOWS_EXE_SHA256=$sha"
+          Write-Host 'WINDOWS_PE_MACHINE=0x8664'
+          Get-Content 'dist-windows-build\build-manifest.json'
+
+      - name: Upload exact Windows build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: DOJO-v0.35.0-Windows-x64-build
+          path: |
+            dojo/dist-windows-build/DOJO.exe
+            dojo/dist-windows-build/build-manifest.json
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,196 @@
+# Windows compile gate for DOJO.
+#
+# Why this exists (verified 2026-08-16):
+#   pad-sensei/dojo has three workflows. pr-verification.yml and release-macos-r2.yml
+#   both run on [self-hosted, macOS, ARM64, dojo-audio]. windows-alpha-build.yml asks for
+#   [self-hosted, Windows, X64, dojo-windows], and no runner carrying that label is
+#   registered on the repository (the only runner is dojo-mac-local, macOS ARM64).
+#   The "Windows" checks inside pr-verification.yml are shell contract tests that run
+#   on the mac runner; they never invoke a Windows compiler.
+#
+#   Net effect: MSVC never compiled DOJO in CI. Windows-only compile errors stayed
+#   invisible until someone manually ran a full release build, which costs 45-75 minutes
+#   and has failed 10+ times historically. The v0.35.0 candidate died this way.
+#
+#   うりなみさん has no Windows machine, so a self-hosted Windows runner is not an option,
+#   and a private repository would burn paid Actions minutes. A public personal repository
+#   gets unlimited free GitHub-hosted minutes, so the gate lives here.
+#
+# Scope: compile only. No ctest, no packaging, no artifact. This catches the compile
+# class (C3493 lambda parser, C2026 string literal limit, MSVC syntax). It does NOT
+# catch the runtime class (stack exhaustion SEGFAULT, unescaped JSON paths) - those
+# need the full build with ctest, which is what dojo-v035-windows-executor.yml does.
+#
+# Source comes from the SHA-preserving personal mirror, for the same reason as the
+# executor workflow: deploy keys are disabled org-side on pad-sensei/dojo and
+# DESKTOP_DISPATCH_TOKEN cannot read it. Product SSOT remains pad-sensei/dojo.
+
+name: DOJO Windows compile gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      dojo_ref:
+        description: 'Ref (branch or commit SHA) to compile from the dojo-ci mirror'
+        required: false
+        default: 'main'
+      mk1_ref:
+        description: 'MK1 commit SHA to build against'
+        required: false
+        default: 'b335be092aa2f4b2b8ae90cd02052c59ee5f63ae'
+  schedule:
+    # Nightly at 18:00 UTC (03:00 JST). Catches Windows-only compile breakage
+    # within a day instead of at release time.
+    - cron: '0 18 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dojo-windows-compile-gate
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    runs-on: windows-2022
+    timeout-minutes: 90
+
+    env:
+      DOJO_REF: ${{ github.event.inputs.dojo_ref || 'main' }}
+      MK1_REF: ${{ github.event.inputs.mk1_ref || 'b335be092aa2f4b2b8ae90cd02052c59ee5f63ae' }}
+
+    steps:
+      - name: Checkout DOJO from mirror
+        shell: bash
+        env:
+          DOJO_SOURCE_DEPLOY_KEY: ${{ secrets.DOJO_SOURCE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DOJO_SOURCE_DEPLOY_KEY}" ]; then
+            echo "::error::secret DOJO_SOURCE_DEPLOY_KEY is not set"
+            exit 1
+          fi
+          temp_posix="$(cygpath -u "${RUNNER_TEMP}")"
+          key_dir="${temp_posix}/dojo-ssh"
+          mkdir -p "${key_dir}"
+          trap 'rm -f "${key_dir}/id_ed25519"' EXIT
+          printf '%s\n' "${DOJO_SOURCE_DEPLOY_KEY}" > "${key_dir}/id_ed25519"
+          chmod 600 "${key_dir}/id_ed25519"
+
+          git init -q dojo
+          git -C dojo remote add origin git@github.com:daikainozaki-cyber/dojo-ci.git
+          export GIT_SSH_COMMAND="ssh -i ${key_dir}/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
+          # A bare commit SHA can be rejected with "upload-pack: not our ref" when it is
+          # not reachable from any ref on the remote (this is exactly how the MK1 pin
+          # failed on 2026-08-16). Branch names always work. Try the ref as given, then
+          # fall back to fetching all branches and resolving locally. Both paths fail
+          # loudly; neither can silently compile the wrong tree.
+          if ! git -C dojo fetch --no-tags --depth=1 origin "${DOJO_REF}"; then
+            echo "::warning::direct fetch of '${DOJO_REF}' failed; retrying via full branch fetch"
+            git -C dojo fetch --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
+            git -C dojo checkout -q "${DOJO_REF}"
+          else
+            git -C dojo checkout -q FETCH_HEAD
+          fi
+          rm -f "${key_dir}/id_ed25519"
+
+          # Submodules are all public. No credential is used here.
+          git -C dojo submodule update --init --recursive --depth 1
+
+      - name: Report what is being compiled
+        shell: bash
+        working-directory: dojo
+        run: |
+          set -euo pipefail
+          head_sha="$(git rev-parse HEAD)"
+          head_date="$(git log -1 --format=%cI)"
+          age_days=$(( ( $(date -u +%s) - $(git log -1 --format=%ct) ) / 86400 ))
+          echo "DOJO_REF=${DOJO_REF}"
+          echo "DOJO_HEAD=${head_sha}"
+          echo "DOJO_HEAD_DATE=${head_date} (${age_days} days old)"
+          grep -E 'project\(DOJO VERSION' CMakeLists.txt
+
+          # KNOWN LIMITATION - read this before trusting a green run.
+          # This gate compiles the mirror daikainozaki-cyber/dojo-ci, not pad-sensei/dojo,
+          # because deploy keys are disabled org-side on the SSOT repo. The gate therefore
+          # CANNOT verify that the mirror is up to date - it has no read access to compare
+          # against. If mirror sync stops, this gate keeps compiling stale code and keeps
+          # reporting green, which is worse than having no gate at all.
+          # Until mirror sync is automated, treat the age below as the trust boundary.
+          if [ "${age_days}" -gt 14 ]; then
+            echo "::warning::mirror HEAD is ${age_days} days old - verify that dojo-ci is still being synced from pad-sensei/dojo"
+          fi
+
+      - name: Checkout MK1 DSP
+        shell: bash
+        env:
+          MK1_SOURCE_DEPLOY_KEY: ${{ secrets.MK1_SOURCE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MK1_SOURCE_DEPLOY_KEY}" ]; then
+            echo "::error::secret MK1_SOURCE_DEPLOY_KEY is not set"
+            exit 1
+          fi
+          temp_posix="$(cygpath -u "${RUNNER_TEMP}")"
+          key_dir="${temp_posix}/mk1-ssh"
+          mkdir -p "${key_dir}"
+          trap 'rm -f "${key_dir}/id_ed25519"' EXIT
+          printf '%s\n' "${MK1_SOURCE_DEPLOY_KEY}" > "${key_dir}/id_ed25519"
+          chmod 600 "${key_dir}/id_ed25519"
+
+          git init -q mk1-plugin
+          git -C mk1-plugin remote add origin git@github.com:daikainozaki-cyber/pad-sensei-mk1-plugin.git
+          git -C mk1-plugin config core.sparseCheckout true
+          git -C mk1-plugin sparse-checkout init --cone
+          git -C mk1-plugin sparse-checkout set Source
+          GIT_SSH_COMMAND="ssh -i ${key_dir}/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+            git -C mk1-plugin fetch --depth=1 --no-tags origin "${MK1_REF}"
+          git -C mk1-plugin checkout -q FETCH_HEAD
+          rm -f "${key_dir}/id_ed25519"
+
+      - name: Install WebView2 package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          nuget install Microsoft.Web.WebView2 `
+            -Version 1.0.3485.44 `
+            -OutputDirectory "$env:RUNNER_TEMP\nuget" `
+            -ExcludeVersion
+          # nuget.exe is a native command: a non-zero exit does not throw. Without this
+          # check a failed WebView2 fetch would be masked by the succeeding Out-File and
+          # the failure would resurface later as a confusing configure error.
+          if ($LASTEXITCODE -ne 0) { throw "nuget install WebView2 failed ($LASTEXITCODE)" }
+          "WEBVIEW2_DIR=$env:RUNNER_TEMP\nuget" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Configure x64 Release
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          # $ErrorActionPreference only governs PowerShell cmdlets. A native
+          # executable (cmake.exe) returning non-zero does NOT throw, so every
+          # native call is followed by an explicit $LASTEXITCODE check. Without
+          # them a failing command can be masked by a later succeeding one and
+          # the gate reports green while the build is broken - which would make
+          # this gate worse than useless. (Antigravity audit 2026-08-16)
+          $ErrorActionPreference = 'Stop'
+          $mk1 = (Resolve-Path '..\mk1-plugin').Path
+          cmake -S . -B build-gate -G "Visual Studio 17 2022" -A x64 `
+            -DBUILD_TESTING=ON `
+            -DJUCE_WEBVIEW2_PACKAGE_LOCATION="$env:WEBVIEW2_DIR" `
+            -DPAD_SENSEI_MK1_SOURCE_DIR="$mk1" `
+            -DDOJO_REQUIRE_MK1=ON
+          if ($LASTEXITCODE -ne 0) { throw "cmake configure failed ($LASTEXITCODE)" }
+
+      - name: Compile app and every native test target
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # StopOnFirstFailure is a best-effort speedup so a compile error ends the job
+          # near the moment it is emitted rather than after every other project finishes.
+          # The gate's correctness does not depend on it; the $LASTEXITCODE checks do.
+          cmake --build build-gate --config Release --parallel -- /p:StopOnFirstFailure=true
+          if ($LASTEXITCODE -ne 0) { throw "app compile failed ($LASTEXITCODE)" }
+          cmake --build build-gate --config Release --target dojo-tests --parallel -- /p:StopOnFirstFailure=true
+          if ($LASTEXITCODE -ne 0) { throw "dojo-tests compile failed ($LASTEXITCODE)" }

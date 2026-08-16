@@ -27,7 +27,10 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DOJO_SOURCE_SHA: 42abd8c732dd0562c89376259554a95216491752
+  # cad95da = 42abd8c (the original v0.35.0 candidate) + the MSVC /Zc:lambda fix.
+  # 42abd8c cannot compile on Windows: MSVC's legacy lambda parser raises C3493 in
+  # tests/test_backing_engine.cpp. Verified by the failed build on 2026-08-16.
+  DOJO_SOURCE_SHA: cad95dad379a42ef3a8a6f018e887416369399a0
   MK1_PINNED_SHA: b335be092aa2f4b2b8ae90cd02052c59ee5f63ae
 
 jobs:
@@ -127,30 +130,47 @@ jobs:
             -Version 1.0.3485.44 `
             -OutputDirectory "$env:RUNNER_TEMP\nuget" `
             -ExcludeVersion
+          # nuget.exe is a native command: a non-zero exit does not throw. Without this
+          # check a failed WebView2 fetch would be masked by the succeeding Out-File and
+          # the failure would resurface later as a confusing configure error.
+          if ($LASTEXITCODE -ne 0) { throw "nuget install WebView2 failed ($LASTEXITCODE)" }
           "WEBVIEW2_DIR=$env:RUNNER_TEMP\nuget" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Configure x64 Release
         shell: pwsh
         working-directory: dojo
         run: |
+          # $ErrorActionPreference only governs PowerShell cmdlets. A native
+          # executable (cmake.exe) returning non-zero does NOT throw, so every
+          # native call below is followed by an explicit $LASTEXITCODE check.
+          # Without them a failing command can be masked by a later succeeding
+          # one and the step reports success. (Antigravity audit 2026-08-16)
+          $ErrorActionPreference = 'Stop'
           $mk1 = (Resolve-Path '..\mk1-plugin').Path
           cmake -S . -B build-windows-v035 -G "Visual Studio 17 2022" -A x64 `
             -DBUILD_TESTING=ON `
             -DJUCE_WEBVIEW2_PACKAGE_LOCATION="$env:WEBVIEW2_DIR" `
             -DPAD_SENSEI_MK1_SOURCE_DIR="$mk1" `
             -DDOJO_REQUIRE_MK1=ON
+          if ($LASTEXITCODE -ne 0) { throw "cmake configure failed ($LASTEXITCODE)" }
 
       - name: Build app and every native test target
         shell: pwsh
         working-directory: dojo
         run: |
+          $ErrorActionPreference = 'Stop'
           cmake --build build-windows-v035 --config Release --parallel
+          if ($LASTEXITCODE -ne 0) { throw "app build failed ($LASTEXITCODE)" }
           cmake --build build-windows-v035 --config Release --target dojo-tests --parallel
+          if ($LASTEXITCODE -ne 0) { throw "dojo-tests build failed ($LASTEXITCODE)" }
 
       - name: Run Windows native tests
         shell: pwsh
         working-directory: dojo
-        run: ctest --test-dir build-windows-v035 -C Release --output-on-failure --no-tests=error
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ctest --test-dir build-windows-v035 -C Release --output-on-failure --no-tests=error
+          if ($LASTEXITCODE -ne 0) { throw "ctest failed ($LASTEXITCODE)" }
 
       - name: Verify AMD64 PE and emit exact build manifest
         shell: pwsh
@@ -196,6 +216,9 @@ jobs:
           python packaging/alpha-release/validate-windows-build-manifest.py `
             dist-windows-build/build-manifest.json `
             dist-windows-build/DOJO.exe
+          # Native command: $ErrorActionPreference does not catch a non-zero exit,
+          # so without this check a failing release-gate validation would pass.
+          if ($LASTEXITCODE -ne 0) { throw "manifest validation failed ($LASTEXITCODE)" }
           Write-Host "WINDOWS_EXE_SHA256=$sha"
           Write-Host 'WINDOWS_PE_MACHINE=0x8664'
           Get-Content 'dist-windows-build\build-manifest.json'

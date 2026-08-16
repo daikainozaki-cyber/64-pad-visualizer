@@ -213,22 +213,77 @@ jobs:
           }
           Write-Host "(expected 8388608 = 8.00 MB if CMakeLists /STACK:8388608 reached the link)"
 
+          # The 8.00 MB above refutes stack exhaustion for the failing tests, so the
+          # SEGFAULTs need a different explanation. Windows encodes the reason in the
+          # process exit code, so ask for it instead of inferring from the 0.02s timing.
+          #   0xC00000FD STATUS_STACK_OVERFLOW   -> stack after all
+          #   0xC0000005 STATUS_ACCESS_VIOLATION -> null / invalid dereference
+          #   0xC0000409 STATUS_STACK_BUFFER_OVERRUN (/GS)
+          #   0xC000001D / 0xC000008C etc         -> illegal instruction / array bounds
+          Write-Host ""
+          Write-Host "===== why the three tests actually die ====="
+          function Show-Crash([string]$exe) {
+            $name = Split-Path $exe -Leaf
+            if (-not (Test-Path $exe)) { Write-Host ("{0,-34} MISSING" -f $name); return }
+            $p = Start-Process -FilePath $exe -PassThru -Wait -NoNewWindow `
+                   -RedirectStandardOutput "$env:RUNNER_TEMP\$name.out" `
+                   -RedirectStandardError  "$env:RUNNER_TEMP\$name.err"
+            $code = [uint32]([int64]$p.ExitCode -band 0xFFFFFFFF)
+            $label = switch ($code) {
+              0xC00000FD { 'STATUS_STACK_OVERFLOW' }
+              0xC0000005 { 'STATUS_ACCESS_VIOLATION' }
+              0xC0000409 { 'STATUS_STACK_BUFFER_OVERRUN' }
+              0xC000001D { 'STATUS_ILLEGAL_INSTRUCTION' }
+              0          { 'clean exit' }
+              default    { 'other' }
+            }
+            Write-Host ("{0,-34} exit 0x{1:X8}  {2}" -f $name, $code, $label)
+            # Whether anything reached stdout separates "died in main's prologue"
+            # from "ran, then crashed" (build.md's 切り分け表).
+            $out = Get-Content "$env:RUNNER_TEMP\$name.out" -ErrorAction SilentlyContinue
+            $err = Get-Content "$env:RUNNER_TEMP\$name.err" -ErrorAction SilentlyContinue
+            Write-Host ("  stdout lines: {0}, stderr lines: {1}" -f @($out).Count, @($err).Count)
+            if (@($out).Count) { @($out) | Select-Object -First 3 | ForEach-Object { Write-Host "    out> $_" } }
+            if (@($err).Count) { @($err) | Select-Object -First 5 | ForEach-Object { Write-Host "    err> $_" } }
+          }
+          Show-Crash 'build-windows-v035\Release\DojoMk1Tests.exe'
+          Show-Crash 'build-windows-v035\Release\DojoPluginRoutingTests.exe'
+          Show-Crash 'build-windows-v035\Release\DojoTrackSoundRoutingTests.exe'
+
           Write-Host ""
           Write-Host "===== Japanese argv path ====="
-          Write-Host "active code page:"
+          # chcp reports the CONSOLE code page. The CRT builds argv from the process
+          # ANSI code page (GetACP), which chcp does not change. If GetACP is not 65001
+          # then 第4回 cannot survive the wide->ANSI conversion into argv[1], and
+          # juce::String::fromUTF8(argv[1]) rebuilds a path that does not exist.
+          Add-Type -Name Cp -Namespace Win -MemberDefinition '[DllImport("kernel32.dll")] public static extern uint GetACP();' -ErrorAction SilentlyContinue
+          try { Write-Host ("GetACP() (used for argv)  : {0}" -f [Win.Cp]::GetACP()) } catch { Write-Host "GetACP() : unavailable" }
+          Write-Host "chcp (console only)       :"
           chcp
+
           $dir = 'packaging\alpha-release\materials\HPS第4回'
+          $exe = 'build-windows-v035\Release\DojoHps4RecordingFormContractTests.exe'
           Write-Host "Test-Path from PowerShell : $(Test-Path -LiteralPath $dir)"
           Write-Host "child directories seen    : $((Get-ChildItem -LiteralPath $dir -Directory -ErrorAction SilentlyContinue).Count)"
 
-          # Run the failing test directly so its own stderr is visible. ctest only
-          # reported the CHECK line; this shows what the binary actually received.
-          $exe = 'build-windows-v035\Release\DojoHps4RecordingFormContractTests.exe'
           if (Test-Path $exe) {
             $full = (Resolve-Path -LiteralPath $dir).Path
-            Write-Host "invoking with            : $full"
+            Write-Host ""
+            Write-Host "--- A. same path, non-ASCII name (expected to fail today) ---"
             & $exe $full 2>&1 | ForEach-Object { Write-Host "  test> $_" }
-            Write-Host "exit code                : $LASTEXITCODE"
+            Write-Host "exit code : $LASTEXITCODE"
+
+            # Decisive control: identical bytes on disk, ASCII-only directory name.
+            # If A fails and B passes, the non-ASCII argv is proven to be the cause
+            # without touching product code or reading argv byte by byte.
+            Write-Host ""
+            Write-Host "--- B. identical content, ASCII name (control) ---"
+            $ascii = Join-Path $env:RUNNER_TEMP 'hps4_ascii'
+            if (Test-Path $ascii) { Remove-Item -Recurse -Force $ascii }
+            Copy-Item -LiteralPath $full -Destination $ascii -Recurse
+            Write-Host "invoking with : $ascii"
+            & $exe $ascii 2>&1 | ForEach-Object { Write-Host "  test> $_" }
+            Write-Host "exit code : $LASTEXITCODE"
           }
 
       - name: Run Windows native tests

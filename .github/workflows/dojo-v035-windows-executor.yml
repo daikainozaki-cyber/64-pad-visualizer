@@ -27,10 +27,17 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # cad95da = 42abd8c (the original v0.35.0 candidate) + the MSVC /Zc:lambda fix.
-  # 42abd8c cannot compile on Windows: MSVC's legacy lambda parser raises C3493 in
-  # tests/test_backing_engine.cpp. Verified by the failed build on 2026-08-16.
-  DOJO_SOURCE_SHA: cad95dad379a42ef3a8a6f018e887416369399a0
+  # 3181e7c = 42abd8c (the original v0.35.0 candidate) + four Windows fixes, each
+  # measured rather than guessed on 2026-08-16:
+  #   cad95da  /Zc:lambda      - 42abd8c cannot compile: MSVC's legacy lambda parser
+  #                              raises C3493 in tests/test_backing_engine.cpp
+  #   532ac5a  heap engines    - three tests died with 0xC00000FD STATUS_STACK_OVERFLOW
+  #                              despite an 8MB reserve; sizeof(Mk1AudioEngine) is 894KB
+  #   a13cac7  UTF-8 code page - GetACP() was 1252, so "HPS第4回" was destroyed on its
+  #                              way into argv[1] (chcp 65001 does not change GetACP)
+  #   3181e7c  app stack       - DOJO.exe itself still carried the 1MB Windows default
+  # Version stays 0.35.0, so the verification step below is unchanged.
+  DOJO_SOURCE_SHA: 3181e7c87acee8e51f5b8b4f9f8b4fafe629d973
   MK1_PINNED_SHA: b335be092aa2f4b2b8ae90cd02052c59ee5f63ae
 
 jobs:

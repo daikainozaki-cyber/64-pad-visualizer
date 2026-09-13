@@ -1,5 +1,8 @@
 name: Build DOJO v0.35.7 Windows x64 candidate
 on:
+  push:
+    branches:
+      - infra/dojo-v035-windows-executor
   workflow_dispatch:
 permissions:
   contents: read

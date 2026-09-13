@@ -82,7 +82,7 @@ jobs:
           $required=@('DojoPushDisplayRendererTests','DojoPushFeedbackPresentTests','DojoPushDisplayTransportTests','DojoPushDisplayUsbWindowsTests','DojoPushMappingTests','DojoPushReconnectTests','DojoPluginSandboxProbeTests','DojoPluginHostTests','DojoAppStateTests','DojoPluginRoutingTests','DojoTrackSoundRoutingTests','DojoPluginFileScanQueueTests','DojoAssertionsEnabledTests','DojoMk1Tests')
           $registered=& ctest --test-dir build-windows-v0357 -C Release -N
           if($LASTEXITCODE){throw "ctest enumeration failed ($LASTEXITCODE)"}
-          foreach($name in $required){if(-not ($registered -match ('^\s*Test #\s*[0-9]+:\s*'+[regex]::Escape($name)+'\s*$'))){throw "required CTest is not registered: $name"}}
+          foreach($name in $required){if(-not ($registered -match ('^\s*Test\s+#\s*[0-9]+:\s*'+[regex]::Escape($name)+'\s*$'))){throw "required CTest is not registered: $name"}}
           ctest --test-dir build-windows-v0357 -C Release --output-on-failure --no-tests=error -R "^(DojoPushDisplayRendererTests|DojoPushFeedbackPresentTests|DojoPushDisplayTransportTests|DojoPushDisplayUsbWindowsTests|DojoPushMappingTests|DojoPushReconnectTests|DojoPluginSandboxProbeTests|DojoPluginHostTests|DojoAppStateTests|DojoPluginRoutingTests|DojoTrackSoundRoutingTests|DojoPluginFileScanQueueTests|DojoAssertionsEnabledTests|DojoMk1Tests)$" --output-junit windows-required-ctest.xml
           if($LASTEXITCODE){throw "required ctest matrix failed ($LASTEXITCODE)"}
       - name: Run full Windows CTest with JUnit

@@ -1,0 +1,31 @@
+name: Auto-dispatch DOJO v0.35.7 Windows repair full gate
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/dojo-v0357-windows-repair-full.yml
+      - .github/workflows/dojo-v0357-windows-repair-auto.yml
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: dojo-v0357-windows-repair-auto-dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch-full-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch pinned Windows full gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run dojo-v0357-windows-repair-full.yml \
+            --repo "${GITHUB_REPOSITORY}" \
+            --ref main

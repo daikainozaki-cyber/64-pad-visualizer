@@ -125,7 +125,7 @@ jobs:
           New-Item -ItemType Directory -Force $env:BUILD_DIR,$env:EVIDENCE_DIR,$env:DIST_DIR | Out-Null
           cmake -S . -B $env:BUILD_DIR -G "Visual Studio 17 2022" -A x64 -DBUILD_TESTING=ON -DJUCE_WEBVIEW2_PACKAGE_LOCATION="$env:WEBVIEW2_DIR" -DPAD_SENSEI_MK1_SOURCE_DIR="$env:MK1_SOURCE_DIR" -DDOJO_REQUIRE_MK1=ON
           if($LASTEXITCODE){throw "configure failed ($LASTEXITCODE)"}
-          cmake --build $env:BUILD_DIR --config Release --parallel --target DOJO dojo-tests DojoPushDisplayRendererTests DojoPushFeedbackPresentTests DojoPushDisplayTransportTests DojoPushDisplayUsbWindowsTests DojoPushMappingTests DojoPushReconnectTests DojoPluginSandboxProbeTests DojoPluginHostTests DojoAppStateTests DojoPluginRoutingTests DojoTrackSoundRoutingTests DojoPluginFileScanQueueTests DojoAssertionsEnabledTests DojoMk1Tests
+          cmake --build $env:BUILD_DIR --config Release --parallel --target DOJO dojo-tests DojoDrumRenderTool DojoPushDisplayRendererTests DojoPushFeedbackPresentTests DojoPushDisplayTransportTests DojoPushDisplayUsbWindowsTests DojoPushMappingTests DojoPushReconnectTests DojoPluginSandboxProbeTests DojoPluginHostTests DojoAppStateTests DojoPluginRoutingTests DojoTrackSoundRoutingTests DojoPluginFileScanQueueTests DojoAssertionsEnabledTests DojoMk1Tests
           if($LASTEXITCODE){throw "build failed ($LASTEXITCODE)"}
 
       - name: Run required fourteen native tests with JUnit

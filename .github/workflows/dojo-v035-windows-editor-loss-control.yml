@@ -9,9 +9,9 @@ concurrency:
   group: dojo-v0357-windows-editor-loss-control
   cancel-in-progress: false
 env:
-  DOJO_SOURCE_REF: verify/v0357-windows-editor-loss
-  DOJO_SOURCE_SHA: 6ac7c7b68a0442b990c25517076c7a3851a615ab
-  DOJO_SOURCE_TREE: b113db248e338ada32bc10598aaf756eb45468bb
+  DOJO_SOURCE_REF: verify/v0357-windows-editor-loss-passive
+  DOJO_SOURCE_SHA: d96bc4bb8a7235a25f3ba2d85c8dd764e96f5752
+  DOJO_SOURCE_TREE: 75ee0df96fde695f6150c71c4856fd549a9a4bfd
   DOJO_BASE_SHA: 045d1109e03a03e9e8ef77a8e40c42b318ed6a59
   DOJO_BASE_TREE: 7348230a0b6d0040fed43941bdf5faca7f6aa6da
   DOJO_VERSION: 0.35.7
@@ -56,7 +56,8 @@ jobs:
           foreach($f in @('Source/EPianoEngine.cpp','Source/EPianoWorkletProcessor.cpp','Source/AudioReverb.cpp','Source/Mk1ParameterModel.cpp','Source/Mk1Instrument.cpp','cmake/PadSenseiKeysMK1Core.cmake')) { if (!(Test-Path "third_party\pad-sensei-keys-mk1\$f")) { throw "missing vendored MK1 $f" } }
           "MK1_SHA=$mk1" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
           "MK1_SOURCE_DIR=$((Resolve-Path third_party\pad-sensei-keys-mk1).Path)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
-          @{source_ref=$env:DOJO_SOURCE_REF; source_sha=$head; source_tree=$tree; base_sha=$parent; base_tree=$parentTree; dojo_version=$env:DOJO_VERSION; runner_os=$env:RUNNER_OS; workflow_run_id=$env:GITHUB_RUN_ID} | ConvertTo-Json -Depth 3 | Set-Content focused-windows-provenance.json -Encoding utf8
+          $provenance=Join-Path $env:RUNNER_TEMP 'dojo-v0357-editor-loss-focused-provenance.json'
+          @{source_ref=$env:DOJO_SOURCE_REF; source_sha=$head; source_tree=$tree; base_sha=$parent; base_tree=$parentTree; dojo_version=$env:DOJO_VERSION; runner_os=$env:RUNNER_OS; workflow_run_id=$env:GITHUB_RUN_ID} | ConvertTo-Json -Depth 3 | Set-Content $provenance -Encoding utf8
 
       - name: Guard repaired mirror ref before build
         shell: bash
@@ -100,6 +101,8 @@ jobs:
             $junit="windows-DojoPluginHostTests-$i.xml"
             ctest --test-dir build-windows-v0357 -C Release --output-on-failure --no-tests=error -R '^DojoPluginHostTests$' --output-junit $junit
             $exit=$LASTEXITCODE
+            $buildJunit="build-windows-v0357/$junit"
+            if(Test-Path $buildJunit){Copy-Item $buildJunit $junit -Force}
             $lastTest='build-windows-v0357/Testing/Temporary/LastTest.log'
             if(Test-Path $lastTest){Copy-Item $lastTest "windows-DojoPluginHostTests-$i-LastTest.log" -Force}
             if($exit){throw "focused DojoPluginHostTests run $i failed ($exit)"}
@@ -137,8 +140,9 @@ jobs:
         with:
           name: DOJO-v0.35.7-Windows-editor-loss-focused-diagnostics
           path: |
-            dojo/focused-windows-provenance.json
+            ${{ runner.temp }}/dojo-v0357-editor-loss-focused-provenance.json
             dojo/windows-DojoPluginHostTests-*.xml
+            dojo/build-windows-v0357/windows-DojoPluginHostTests-*.xml
             dojo/windows-DojoPluginHostTests-*-LastTest.log
           if-no-files-found: ignore
           retention-days: 14

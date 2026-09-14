@@ -1,0 +1,204 @@
+name: Verify DOJO v0.35.7 Windows repair full gate
+
+on:
+  push:
+    branches:
+      - codex/dojo-v0357-windows-repair-full
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dojo-v0357-windows-repair-full-control
+  cancel-in-progress: false
+
+env:
+  DOJO_SOURCE_REF: verify/v0357-windows-editor-loss-passive
+  DOJO_SOURCE_SHA: d96bc4bb8a7235a25f3ba2d85c8dd764e96f5752
+  DOJO_SOURCE_TREE: 75ee0df96fde695f6150c71c4856fd549a9a4bfd
+  DOJO_SOURCE_BASE_SHA: 045d1109e03a03e9e8ef77a8e40c42b318ed6a59
+  DOJO_SOURCE_BASE_TREE: 7348230a0b6d0040fed43941bdf5faca7f6aa6da
+  DOJO_VERSION: 0.35.7
+  WEBVIEW2_VERSION: 1.0.3485.44
+
+jobs:
+  repair-full-gate:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - name: Checkout exact repaired source from private mirror
+        shell: bash
+        env:
+          DOJO_SOURCE_DEPLOY_KEY: ${{ secrets.DOJO_SOURCE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${DOJO_SOURCE_DEPLOY_KEY}"
+          key_dir="$(cygpath -u "${RUNNER_TEMP}")/dojo-ssh"; mkdir -p "${key_dir}"
+          trap 'rm -f "${key_dir}/id_ed25519"' EXIT
+          printf '%s\n' "${DOJO_SOURCE_DEPLOY_KEY}" > "${key_dir}/id_ed25519"; chmod 600 "${key_dir}/id_ed25519"
+          git init -q dojo
+          git -C dojo remote add origin git@github.com:daikainozaki-cyber/dojo-ci.git
+          GIT_SSH_COMMAND="ssh -i ${key_dir}/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" git -C dojo fetch --no-tags origin "refs/heads/${DOJO_SOURCE_REF}"
+          git -C dojo checkout -q FETCH_HEAD
+          git -C dojo submodule update --init --recursive --depth 1
+
+      - name: Verify repaired source, direct base, and vendored MK1
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference = 'Stop'
+          function Assert-ExactSource {
+            $head=(git rev-parse HEAD).Trim(); $tree=(git rev-parse 'HEAD^{tree}').Trim()
+            $parent=(git rev-parse 'HEAD^').Trim(); $parentTree=(git rev-parse 'HEAD^^{tree}').Trim()
+            if ($head -ne $env:DOJO_SOURCE_SHA -or $tree -ne $env:DOJO_SOURCE_TREE -or $parent -ne $env:DOJO_SOURCE_BASE_SHA -or $parentTree -ne $env:DOJO_SOURCE_BASE_TREE) { throw "source provenance drift: $head $tree $parent $parentTree" }
+            $paths=@(git diff --name-only $env:DOJO_SOURCE_BASE_SHA HEAD)
+            if ($paths.Count -ne 1 -or $paths[0] -ne 'tests/test_plugin_host_sandbox_worker_transport.cpp') { throw "repair scope drift: $($paths -join ',')" }
+            if ((git status --porcelain).Length -ne 0) { throw 'source checkout is dirty' }
+            $submoduleStatus=@(git submodule status --recursive)
+            if ($submoduleStatus | Where-Object { $_ -match '^[\-\+U]' }) { throw 'submodule status drift' }
+            git submodule foreach --recursive 'git diff --quiet && git diff --cached --quiet'
+            if ($LASTEXITCODE) { throw "submodule checkout dirty ($LASTEXITCODE)" }
+          }
+          Assert-ExactSource
+          $version=(Select-String CMakeLists.txt -Pattern 'project\(DOJO VERSION ([0-9.]+)\)').Matches[0].Groups[1].Value
+          if ($version -ne $env:DOJO_VERSION) { throw "version drift: $version" }
+          $mk1=(Get-Content third_party\pad-sensei-keys-mk1\UPSTREAM_SHA).Trim()
+          if ($mk1 -ne '2325c445d5f35be7fefa0aa0601fd0e894896820') { throw "MK1 drift: $mk1" }
+          foreach($f in @('Source/EPianoEngine.cpp','Source/EPianoWorkletProcessor.cpp','Source/AudioReverb.cpp','Source/Mk1ParameterModel.cpp','Source/Mk1Instrument.cpp','cmake/PadSenseiKeysMK1Core.cmake')) { if (!(Test-Path "third_party\pad-sensei-keys-mk1\$f")) { throw "missing vendored MK1 $f" } }
+          "MK1_SHA=$mk1" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "MK1_SOURCE_DIR=$((Resolve-Path third_party\pad-sensei-keys-mk1).Path)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "BUILD_DIR=$env:RUNNER_TEMP\dojo-v0357-windows-repair-full-build" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "EVIDENCE_DIR=$env:RUNNER_TEMP\dojo-v0357-windows-repair-full-evidence" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "DIST_DIR=$env:RUNNER_TEMP\dojo-v0357-windows-repair-full-dist" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Guard mirror ref before verification
+        shell: bash
+        env:
+          DOJO_SOURCE_DEPLOY_KEY: ${{ secrets.DOJO_SOURCE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          key_dir="$(cygpath -u "${RUNNER_TEMP}")/dojo-ref-guard-before"; mkdir -p "${key_dir}"
+          trap 'rm -f "${key_dir}/id_ed25519"' EXIT
+          printf '%s\n' "${DOJO_SOURCE_DEPLOY_KEY}" > "${key_dir}/id_ed25519"; chmod 600 "${key_dir}/id_ed25519"
+          actual="$(GIT_SSH_COMMAND="ssh -i ${key_dir}/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" git ls-remote git@github.com:daikainozaki-cyber/dojo-ci.git "refs/heads/${DOJO_SOURCE_REF}" | awk '{print $1}')"
+          test "${actual}" = "${DOJO_SOURCE_SHA}"
+
+      - name: Prepare full-checkout JavaScript test root
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: dojo/package-lock.json
+
+      - name: Run root JavaScript and pad-core tests outside source checkout
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference='Stop'
+          $webRoot="$env:RUNNER_TEMP\dojo-v0357-web-tests"; $npmCache="$env:RUNNER_TEMP\npm-cache"
+          Remove-Item -Recurse -Force $webRoot -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force $webRoot,$npmCache | Out-Null
+          robocopy . $webRoot /E /XD .git /XF .git
+          if ($LASTEXITCODE -ge 8) { throw "robocopy failed ($LASTEXITCODE)" }; $global:LASTEXITCODE=0
+          Push-Location $webRoot
+          try {
+            npm ci --cache $npmCache; if($LASTEXITCODE){throw "npm ci failed ($LASTEXITCODE)"}
+            npm test; if($LASTEXITCODE){throw "npm test failed ($LASTEXITCODE)"}
+            npm run test:pad-core; if($LASTEXITCODE){throw "pad-core test failed ($LASTEXITCODE)"}
+          } finally { Pop-Location }
+
+      - name: Install pinned WebView2 outside source checkout
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $webViewRoot="$env:RUNNER_TEMP\nuget"
+          nuget install Microsoft.Web.WebView2 -Version $env:WEBVIEW2_VERSION -OutputDirectory $webViewRoot -ExcludeVersion
+          if($LASTEXITCODE){throw "WebView2 install failed ($LASTEXITCODE)"}
+          "WEBVIEW2_DIR=$webViewRoot" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Configure and build full native Windows matrix outside source checkout
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference='Stop'
+          New-Item -ItemType Directory -Force $env:BUILD_DIR,$env:EVIDENCE_DIR,$env:DIST_DIR | Out-Null
+          cmake -S . -B $env:BUILD_DIR -G "Visual Studio 17 2022" -A x64 -DBUILD_TESTING=ON -DJUCE_WEBVIEW2_PACKAGE_LOCATION="$env:WEBVIEW2_DIR" -DPAD_SENSEI_MK1_SOURCE_DIR="$env:MK1_SOURCE_DIR" -DDOJO_REQUIRE_MK1=ON
+          if($LASTEXITCODE){throw "configure failed ($LASTEXITCODE)"}
+          cmake --build $env:BUILD_DIR --config Release --parallel --target DOJO dojo-tests DojoPushDisplayRendererTests DojoPushFeedbackPresentTests DojoPushDisplayTransportTests DojoPushDisplayUsbWindowsTests DojoPushMappingTests DojoPushReconnectTests DojoPluginSandboxProbeTests DojoPluginHostTests DojoAppStateTests DojoPluginRoutingTests DojoTrackSoundRoutingTests DojoPluginFileScanQueueTests DojoAssertionsEnabledTests DojoMk1Tests
+          if($LASTEXITCODE){throw "build failed ($LASTEXITCODE)"}
+
+      - name: Run required fourteen native tests with JUnit
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference='Stop'
+          $required=@('DojoPushDisplayRendererTests','DojoPushFeedbackPresentTests','DojoPushDisplayTransportTests','DojoPushDisplayUsbWindowsTests','DojoPushMappingTests','DojoPushReconnectTests','DojoPluginSandboxProbeTests','DojoPluginHostTests','DojoAppStateTests','DojoPluginRoutingTests','DojoTrackSoundRoutingTests','DojoPluginFileScanQueueTests','DojoAssertionsEnabledTests','DojoMk1Tests')
+          $registered=& ctest --test-dir $env:BUILD_DIR -C Release -N
+          if($LASTEXITCODE){throw "ctest enumeration failed ($LASTEXITCODE)"}
+          foreach($name in $required){if(-not ($registered -match ('^\s*Test\s+#\s*[0-9]+:\s*'+[regex]::Escape($name)+'\s*$'))){throw "required CTest is not registered: $name"}}
+          ctest --test-dir $env:BUILD_DIR -C Release --output-on-failure --no-tests=error -R "^(DojoPushDisplayRendererTests|DojoPushFeedbackPresentTests|DojoPushDisplayTransportTests|DojoPushDisplayUsbWindowsTests|DojoPushMappingTests|DojoPushReconnectTests|DojoPluginSandboxProbeTests|DojoPluginHostTests|DojoAppStateTests|DojoPluginRoutingTests|DojoTrackSoundRoutingTests|DojoPluginFileScanQueueTests|DojoAssertionsEnabledTests|DojoMk1Tests)$" --output-junit "$env:EVIDENCE_DIR\windows-required-ctest.xml"
+          $code=$LASTEXITCODE; $last=Join-Path $env:BUILD_DIR 'Testing\Temporary\LastTest.log'; if(Test-Path $last){Copy-Item $last "$env:EVIDENCE_DIR\windows-required-LastTest.log" -Force}; if($code){throw "required ctest matrix failed ($code)"}
+
+      - name: Run full native CTest with JUnit
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference='Stop'
+          ctest --test-dir $env:BUILD_DIR -C Release --output-on-failure --no-tests=error --output-junit "$env:EVIDENCE_DIR\windows-full-ctest.xml"
+          $code=$LASTEXITCODE; $last=Join-Path $env:BUILD_DIR 'Testing\Temporary\LastTest.log'; if(Test-Path $last){Copy-Item $last "$env:EVIDENCE_DIR\windows-full-LastTest.log" -Force}; if($code){throw "full ctest failed ($code)"}
+
+      - name: Smoke startup and produce repair-full artifact manifest
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference='Stop'; $exe=Join-Path $env:BUILD_DIR 'DOJO_artefacts\Release\DOJO.exe'
+          $p=$null; try {$p=Start-Process -FilePath (Resolve-Path $exe) -WorkingDirectory (Split-Path $exe) -PassThru; Start-Sleep -Seconds 10;if($p.HasExited){throw "DOJO exited during startup smoke ($($p.ExitCode))"}} finally {if($null -ne $p -and !$p.HasExited){Stop-Process -Id $p.Id -Force}}
+          $b=[IO.File]::ReadAllBytes($exe); $pe=[BitConverter]::ToInt32($b,0x3c); if($b[$pe]-ne 0x50 -or $b[$pe+1]-ne 0x45 -or [BitConverter]::ToUInt16($b,$pe+4)-ne 0x8664){throw 'Expected AMD64 PE'}
+          New-Item -ItemType Directory -Force $env:DIST_DIR | Out-Null; Copy-Item $exe (Join-Path $env:DIST_DIR 'DOJO.exe')
+          $runtime=[ordered]@{}; foreach($n in @('libusb-1.0.dll','libusb-LICENSE.txt','libusb-NOTICE.txt')){$runtimePath=Join-Path (Split-Path $exe) $n;if(!(Test-Path $runtimePath)){throw "missing $n"};Copy-Item $runtimePath (Join-Path $env:DIST_DIR $n);$runtime[$n]=(Get-FileHash $runtimePath -Algorithm SHA256).Hash.ToLower()}
+          $embedded=@(Get-Content packaging\alpha-release\material-collections.txt|?{$_.Trim() -and !$_.Trim().StartsWith('#')}|%{$x=$_.Trim().Split('|');if($x.Count-ne 2){throw 'invalid materials policy'};if($x[1].Trim()-eq'repo'){$x[0].Trim()}});if(!$embedded.Count){throw 'no embedded collection'}
+          $m=[ordered]@{schema='dojo-windows-build-v1';git_head_sha=$env:DOJO_SOURCE_SHA;product_source_ref=$env:DOJO_SOURCE_REF;product_tree=$env:DOJO_SOURCE_TREE;base_source_sha=$env:DOJO_SOURCE_BASE_SHA;base_source_tree=$env:DOJO_SOURCE_BASE_TREE;repair_scope='test-contract-only';dojo_version=$env:DOJO_VERSION;architecture='x86_64';exe_sha256=(Get-FileHash (Join-Path $env:DIST_DIR 'DOJO.exe') -Algorithm SHA256).Hash.ToLower();mk1_sha=$env:MK1_SHA;with_mk1=$true;asio_enabled=$false;wasapi_enabled=$true;libusb_version='1.0.30';runtime_files=$runtime;embedded_collections=$embedded;webview2_version=$env:WEBVIEW2_VERSION;runner_os=$env:RUNNER_OS;workflow_run_id=$env:GITHUB_RUN_ID;control_sha=$env:GITHUB_SHA}
+          $m|ConvertTo-Json -Depth 5|Set-Content (Join-Path $env:DIST_DIR 'build-manifest.json') -Encoding utf8
+          python packaging/alpha-release/validate-windows-build-manifest.py (Join-Path $env:DIST_DIR 'build-manifest.json') (Join-Path $env:DIST_DIR 'DOJO.exe');if($LASTEXITCODE){throw "manifest failed ($LASTEXITCODE)"}
+
+      - name: Final source guard and emit provenance
+        if: always()
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference='Stop'; New-Item -ItemType Directory -Force $env:EVIDENCE_DIR | Out-Null
+          $head=(git rev-parse HEAD).Trim(); $tree=(git rev-parse 'HEAD^{tree}').Trim(); $parent=(git rev-parse 'HEAD^').Trim(); $parentTree=(git rev-parse 'HEAD^^{tree}').Trim(); $paths=@(git diff --name-only $env:DOJO_SOURCE_BASE_SHA HEAD)
+          if ($head -ne $env:DOJO_SOURCE_SHA -or $tree -ne $env:DOJO_SOURCE_TREE -or $parent -ne $env:DOJO_SOURCE_BASE_SHA -or $parentTree -ne $env:DOJO_SOURCE_BASE_TREE -or $paths.Count -ne 1 -or $paths[0] -ne 'tests/test_plugin_host_sandbox_worker_transport.cpp' -or (git status --porcelain).Length -ne 0) { throw 'final source provenance drift' }
+          $submoduleStatus=@(git submodule status --recursive); if ($submoduleStatus | Where-Object { $_ -match '^[\-\+U]' }) { throw 'final submodule status drift' }; git submodule foreach --recursive 'git diff --quiet && git diff --cached --quiet'; if($LASTEXITCODE){throw "final submodule checkout dirty ($LASTEXITCODE)"}
+          [ordered]@{source_ref=$env:DOJO_SOURCE_REF;source_sha=$env:DOJO_SOURCE_SHA;source_tree=$env:DOJO_SOURCE_TREE;base_sha=$env:DOJO_SOURCE_BASE_SHA;base_tree=$env:DOJO_SOURCE_BASE_TREE;changed_path='tests/test_plugin_host_sandbox_worker_transport.cpp';repair_scope='test-contract-only';dojo_version=$env:DOJO_VERSION;mk1_sha=$env:MK1_SHA;webview2_version=$env:WEBVIEW2_VERSION;runner_os=$env:RUNNER_OS;control_sha=$env:GITHUB_SHA;workflow_run_id=$env:GITHUB_RUN_ID}|ConvertTo-Json|Set-Content (Join-Path $env:EVIDENCE_DIR 'repair-full-provenance.json') -Encoding utf8
+
+      - name: Final mirror ref guard
+        if: always()
+        shell: bash
+        env:
+          DOJO_SOURCE_DEPLOY_KEY: ${{ secrets.DOJO_SOURCE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          key_dir="$(cygpath -u "${RUNNER_TEMP}")/dojo-ref-guard-after"; mkdir -p "${key_dir}"
+          trap 'rm -f "${key_dir}/id_ed25519"' EXIT
+          printf '%s\n' "${DOJO_SOURCE_DEPLOY_KEY}" > "${key_dir}/id_ed25519"; chmod 600 "${key_dir}/id_ed25519"
+          actual="$(GIT_SSH_COMMAND="ssh -i ${key_dir}/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" git ls-remote git@github.com:daikainozaki-cyber/dojo-ci.git "refs/heads/${DOJO_SOURCE_REF}" | awk '{print $1}')"
+          test "${actual}" = "${DOJO_SOURCE_SHA}"
+
+      - name: Upload repair-full build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DOJO-v0.35.7-Windows-x64-repair-full-gate-${{ github.run_id }}
+          path: ${{ runner.temp }}/dojo-v0357-windows-repair-full-dist
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload repair-full diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DOJO-v0.35.7-Windows-repair-full-gate-diagnostics-${{ github.run_id }}
+          path: ${{ runner.temp }}/dojo-v0357-windows-repair-full-evidence
+          if-no-files-found: ignore
+          retention-days: 14

@@ -7,6 +7,7 @@ on:
     paths-ignore:
       - '.github/workflows/deploy.yml'
       - '.github/workflows/dojo-v0357-windows-repair-full.yml'
+      - '.github/workflows/dojo-v0357-windows-repair-auto.yml'
 
 jobs:
   test:

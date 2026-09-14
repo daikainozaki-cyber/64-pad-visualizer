@@ -84,9 +84,10 @@ jobs:
         working-directory: dojo
         run: |
           $ErrorActionPreference='Stop'
-          cmake -S . -B build-windows-v0357 -G "Visual Studio 17 2022" -A x64 -DBUILD_TESTING=ON -DJUCE_WEBVIEW2_PACKAGE_LOCATION="$env:WEBVIEW2_DIR" -DPAD_SENSEI_MK1_SOURCE_DIR="$env:MK1_SOURCE_DIR" -DDOJO_REQUIRE_MK1=ON
+          $buildDir=Join-Path $env:RUNNER_TEMP 'dojo-v0357-editor-loss-build'
+          cmake -S . -B $buildDir -G "Visual Studio 17 2022" -A x64 -DBUILD_TESTING=ON -DJUCE_WEBVIEW2_PACKAGE_LOCATION="$env:WEBVIEW2_DIR" -DPAD_SENSEI_MK1_SOURCE_DIR="$env:MK1_SOURCE_DIR" -DDOJO_REQUIRE_MK1=ON
           if($LASTEXITCODE){throw "configure failed ($LASTEXITCODE)"}
-          cmake --build build-windows-v0357 --config Release --parallel --target DojoPluginHostTests
+          cmake --build $buildDir --config Release --parallel --target DojoPluginHostTests
           if($LASTEXITCODE){throw "focused build failed ($LASTEXITCODE)"}
 
       - name: Run focused DojoPluginHostTests three times
@@ -94,17 +95,19 @@ jobs:
         working-directory: dojo
         run: |
           $ErrorActionPreference='Stop'
-          $registered=& ctest --test-dir build-windows-v0357 -C Release -N
+          $evidenceDir=Join-Path $env:RUNNER_TEMP 'dojo-v0357-editor-loss-focused'
+          $buildDir=Join-Path $env:RUNNER_TEMP 'dojo-v0357-editor-loss-build'
+          New-Item -ItemType Directory -Force $evidenceDir | Out-Null
+          $registered=& ctest --test-dir $buildDir -C Release -N
           if($LASTEXITCODE){throw "ctest enumeration failed ($LASTEXITCODE)"}
           if(-not ($registered -match '^\s*Test\s+#\s*[0-9]+:\s*DojoPluginHostTests\s*$')){throw 'focused CTest is not registered: DojoPluginHostTests'}
           for($i=1; $i -le 3; $i++) {
-            $junit="windows-DojoPluginHostTests-$i.xml"
-            ctest --test-dir build-windows-v0357 -C Release --output-on-failure --no-tests=error -R '^DojoPluginHostTests$' --output-junit $junit
+            $junitName="windows-DojoPluginHostTests-$i.xml"
+            $junit=Join-Path $evidenceDir $junitName
+            ctest --test-dir $buildDir -C Release --output-on-failure --no-tests=error -R '^DojoPluginHostTests$' --output-junit $junit
             $exit=$LASTEXITCODE
-            $buildJunit="build-windows-v0357/$junit"
-            if(Test-Path $buildJunit){Copy-Item $buildJunit $junit -Force}
-            $lastTest='build-windows-v0357/Testing/Temporary/LastTest.log'
-            if(Test-Path $lastTest){Copy-Item $lastTest "windows-DojoPluginHostTests-$i-LastTest.log" -Force}
+            $lastTest=Join-Path $buildDir 'Testing\Temporary\LastTest.log'
+            if(Test-Path $lastTest){Copy-Item $lastTest (Join-Path $evidenceDir "windows-DojoPluginHostTests-$i-LastTest.log") -Force}
             if($exit){throw "focused DojoPluginHostTests run $i failed ($exit)"}
           }
 
@@ -141,8 +144,7 @@ jobs:
           name: DOJO-v0.35.7-Windows-editor-loss-focused-diagnostics
           path: |
             ${{ runner.temp }}/dojo-v0357-editor-loss-focused-provenance.json
-            dojo/windows-DojoPluginHostTests-*.xml
-            dojo/build-windows-v0357/windows-DojoPluginHostTests-*.xml
-            dojo/windows-DojoPluginHostTests-*-LastTest.log
+            ${{ runner.temp }}/dojo-v0357-editor-loss-focused/windows-DojoPluginHostTests-*.xml
+            ${{ runner.temp }}/dojo-v0357-editor-loss-focused/windows-DojoPluginHostTests-*-LastTest.log
           if-no-files-found: ignore
           retention-days: 14

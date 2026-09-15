@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: dojo-v0357-windows-installer-candidate
@@ -24,6 +25,10 @@ env:
   DOJO_PRODUCT_HEAD_SHA: 302ba4d6493706fdf02e38ca3c88cca020d5f797
   DOJO_VERSION: 0.35.7
   WEBVIEW2_VERSION: 1.0.3485.44
+  FULL_GATE_RUN_ID: '34931396488'
+  FULL_GATE_CONTROL_SHA: 6eb2067cd3ed7c4b972c4daf8e4b2d78f43b21a5
+  FULL_GATE_ARTIFACT: DOJO-v0.35.7-Windows-x64-repair-full-gate-34931396488
+  FULL_GATE_APP_SHA256: 54e330356ac7cc904a30774c7a061b47cf6009f19de7830a8f3ba67c014c3e12
 
 jobs:
   build-installer:
@@ -72,12 +77,12 @@ jobs:
           $mk1=(Get-Content third_party\pad-sensei-keys-mk1\UPSTREAM_SHA).Trim()
           if($mk1 -ne '2325c445d5f35be7fefa0aa0601fd0e894896820'){ throw "MK1 drift: $mk1" }
           "MK1_SHA=$mk1" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
-          "MK1_SOURCE_DIR=$((Resolve-Path third_party\pad-sensei-keys-mk1).Path)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
-          "BUILD_DIR=$env:RUNNER_TEMP\dojo-v0357-installer-build" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
           "STAGE_DIR=$env:RUNNER_TEMP\dojo-v0357-installer-stage" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
           "OUT_DIR=$env:RUNNER_TEMP\dojo-v0357-installer-out" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "FULL_GATE_DIR=$env:RUNNER_TEMP\dojo-v0357-full-gate-payload" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "INSTALL_TEST_DIR=$env:RUNNER_TEMP\dojo-v0357-installed" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Guard mirror ref before build
+      - name: Guard mirror ref before packaging
         shell: bash
         env:
           DOJO_SOURCE_DEPLOY_KEY: ${{ secrets.DOJO_SOURCE_DEPLOY_KEY }}
@@ -91,46 +96,55 @@ jobs:
           actual="$(GIT_SSH_COMMAND="ssh -i ${key_dir}/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" git ls-remote git@github.com:daikainozaki-cyber/dojo-ci.git "refs/heads/${DOJO_SOURCE_REF}" | awk '{print $1}')"
           test "${actual}" = "${DOJO_SOURCE_SHA}"
 
-      - name: Install pinned WebView2 SDK
+      - name: Download exact machine-green Windows payload
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           $ErrorActionPreference='Stop'
-          $webViewRoot="$env:RUNNER_TEMP\nuget"
-          nuget install Microsoft.Web.WebView2 -Version $env:WEBVIEW2_VERSION -OutputDirectory $webViewRoot -ExcludeVersion
-          if($LASTEXITCODE){ throw "WebView2 install failed ($LASTEXITCODE)" }
-          "WEBVIEW2_DIR=$webViewRoot" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          New-Item -ItemType Directory -Force $env:FULL_GATE_DIR,$env:STAGE_DIR,$env:OUT_DIR | Out-Null
+          gh run download $env:FULL_GATE_RUN_ID --repo $env:GITHUB_REPOSITORY --name $env:FULL_GATE_ARTIFACT --dir $env:FULL_GATE_DIR
+          if($LASTEXITCODE){ throw "full-gate artifact download failed ($LASTEXITCODE)" }
 
-      - name: Configure and build exact Windows x64 Release app
+      - name: Validate full-gate manifest and stage exact tested payload
         shell: pwsh
         working-directory: dojo
         run: |
           $ErrorActionPreference='Stop'
-          New-Item -ItemType Directory -Force $env:BUILD_DIR,$env:STAGE_DIR,$env:OUT_DIR | Out-Null
-          cmake -S . -B $env:BUILD_DIR -G "Visual Studio 17 2022" -A x64 -DBUILD_TESTING=OFF -DJUCE_WEBVIEW2_PACKAGE_LOCATION="$env:WEBVIEW2_DIR" -DPAD_SENSEI_MK1_SOURCE_DIR="$env:MK1_SOURCE_DIR" -DDOJO_REQUIRE_MK1=ON
-          if($LASTEXITCODE){ throw "configure failed ($LASTEXITCODE)" }
-          cmake --build $env:BUILD_DIR --config Release --parallel --target DOJO
-          if($LASTEXITCODE){ throw "build failed ($LASTEXITCODE)" }
+          $manifestPath=Join-Path $env:FULL_GATE_DIR 'build-manifest.json'
+          if(!(Test-Path $manifestPath)){ throw 'full-gate build-manifest.json missing' }
+          $m=Get-Content $manifestPath -Raw | ConvertFrom-Json
+          if($m.schema -ne 'dojo-windows-build-v1'){ throw "manifest schema drift: $($m.schema)" }
+          if($m.git_head_sha -ne $env:DOJO_SOURCE_SHA){ throw "manifest source SHA drift: $($m.git_head_sha)" }
+          if($m.product_tree -ne $env:DOJO_SOURCE_TREE){ throw "manifest tree drift: $($m.product_tree)" }
+          if($m.base_source_sha -ne $env:DOJO_SOURCE_BASE_SHA -or $m.base_source_tree -ne $env:DOJO_SOURCE_BASE_TREE){ throw 'manifest base provenance drift' }
+          if($m.dojo_version -ne $env:DOJO_VERSION -or $m.architecture -ne 'x86_64'){ throw 'manifest version/architecture drift' }
+          if(-not $m.with_mk1 -or $m.mk1_sha -ne $env:MK1_SHA){ throw 'manifest MK1 drift' }
+          if($m.webview2_version -ne $env:WEBVIEW2_VERSION){ throw 'manifest WebView2 drift' }
+          if([string]$m.workflow_run_id -ne $env:FULL_GATE_RUN_ID -or $m.control_sha -ne $env:FULL_GATE_CONTROL_SHA){ throw 'manifest full-gate run/control drift' }
+          if(-not ($m.embedded_collections -contains 'HPS第4回')){ throw 'HPS第4回 missing from embedded collections' }
 
-      - name: Stage runtime and verify AMD64 payload
-        shell: pwsh
-        working-directory: dojo
-        run: |
-          $ErrorActionPreference='Stop'
-          $appDir=Join-Path $env:BUILD_DIR 'DOJO_artefacts\Release'
-          $exe=Join-Path $appDir 'DOJO.exe'
-          if(!(Test-Path $exe)){ throw 'DOJO.exe missing' }
+          $exe=Join-Path $env:FULL_GATE_DIR 'DOJO.exe'
+          if(!(Test-Path $exe)){ throw 'full-gate DOJO.exe missing' }
+          $exeHash=(Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          if($exeHash -ne $m.exe_sha256 -or $exeHash -ne $env:FULL_GATE_APP_SHA256){ throw "full-gate executable hash drift: $exeHash" }
           $b=[IO.File]::ReadAllBytes($exe); $pe=[BitConverter]::ToInt32($b,0x3c)
           if($b[$pe]-ne 0x50 -or $b[$pe+1]-ne 0x45 -or [BitConverter]::ToUInt16($b,$pe+4)-ne 0x8664){ throw 'Expected AMD64 PE' }
+
           foreach($n in @('DOJO.exe','libusb-1.0.dll','libusb-LICENSE.txt','libusb-NOTICE.txt')){
-            $src=Join-Path $appDir $n
-            if(!(Test-Path $src)){ throw "missing runtime file $n" }
+            $src=Join-Path $env:FULL_GATE_DIR $n
+            if(!(Test-Path $src)){ throw "full-gate runtime file missing: $n" }
+            if($n -ne 'DOJO.exe'){
+              $hash=(Get-FileHash $src -Algorithm SHA256).Hash.ToLower()
+              if($hash -ne $m.runtime_files.$n){ throw "runtime hash drift for $n" }
+            }
             Copy-Item $src (Join-Path $env:STAGE_DIR $n) -Force
           }
           foreach($n in @('はじめに-windows.txt','音源について.md')){
             $src=Join-Path 'packaging\alpha-release' $n
             if(Test-Path $src){ Copy-Item $src (Join-Path $env:STAGE_DIR $n) -Force }
           }
-          "APP_SHA256=$((Get-FileHash (Join-Path $env:STAGE_DIR 'DOJO.exe') -Algorithm SHA256).Hash.ToLower())" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "APP_SHA256=$exeHash" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Install Inno Setup compiler if needed
         shell: pwsh
@@ -149,7 +163,7 @@ jobs:
           if(!$iscc){ throw 'ISCC.exe not found' }
           "ISCC_EXE=$iscc" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Build unsigned per-user Setup.exe
+      - name: Build unsigned per-user Setup.exe from exact tested payload
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
@@ -194,12 +208,39 @@ jobs:
           "SETUP_PATH=$setup" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
           "SETUP_SHA256=$((Get-FileHash $setup -Algorithm SHA256).Hash.ToLower())" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
 
+      - name: Silent install, launch smoke, and uninstall round trip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          Remove-Item -Recurse -Force $env:INSTALL_TEST_DIR -ErrorAction SilentlyContinue
+          & $env:SETUP_PATH /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$env:INSTALL_TEST_DIR"
+          if($LASTEXITCODE){ throw "silent install failed ($LASTEXITCODE)" }
+          $installedExe=Join-Path $env:INSTALL_TEST_DIR 'DOJO.exe'
+          if(!(Test-Path $installedExe)){ throw 'installed DOJO.exe missing' }
+          $installedHash=(Get-FileHash $installedExe -Algorithm SHA256).Hash.ToLower()
+          if($installedHash -ne $env:FULL_GATE_APP_SHA256){ throw "installed binary hash drift: $installedHash" }
+          foreach($n in @('libusb-1.0.dll','libusb-LICENSE.txt','libusb-NOTICE.txt')){ if(!(Test-Path (Join-Path $env:INSTALL_TEST_DIR $n))){ throw "installed runtime missing: $n" } }
+          $p=$null
+          try {
+            $p=Start-Process -FilePath $installedExe -WorkingDirectory $env:INSTALL_TEST_DIR -PassThru
+            Start-Sleep -Seconds 10
+            if($p.HasExited){ throw "installed DOJO exited during startup smoke ($($p.ExitCode))" }
+          } finally {
+            if($null -ne $p -and !$p.HasExited){ Stop-Process -Id $p.Id -Force }
+          }
+          $uninstaller=Join-Path $env:INSTALL_TEST_DIR 'unins000.exe'
+          if(!(Test-Path $uninstaller)){ throw 'uninstaller missing' }
+          & $uninstaller /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+          if($LASTEXITCODE){ throw "silent uninstall failed ($LASTEXITCODE)" }
+          Start-Sleep -Seconds 2
+          if(Test-Path $installedExe){ throw 'DOJO.exe remained after uninstall' }
+
       - name: Emit installer provenance manifest
         shell: pwsh
         run: |
           $ErrorActionPreference='Stop'
           $manifest=[ordered]@{
-            schema='dojo-windows-installer-candidate-v1'
+            schema='dojo-windows-installer-candidate-v2'
             dojo_version=$env:DOJO_VERSION
             architecture='x86_64'
             product_head_sha=$env:DOJO_PRODUCT_HEAD_SHA
@@ -207,11 +248,16 @@ jobs:
             mirror_ref=$env:DOJO_SOURCE_REF
             mirror_sha=$env:DOJO_SOURCE_SHA
             mirror_base_sha=$env:DOJO_SOURCE_BASE_SHA
-            app_sha256=$env:APP_SHA256
+            source_full_gate_run_id=$env:FULL_GATE_RUN_ID
+            source_full_gate_control_sha=$env:FULL_GATE_CONTROL_SHA
+            source_full_gate_artifact=$env:FULL_GATE_ARTIFACT
+            tested_app_sha256=$env:APP_SHA256
+            app_rebuilt_for_installer=$false
             installer_sha256=$env:SETUP_SHA256
             installer_signed=$false
             install_scope='per-user'
             default_install_dir='%LocalAppData%\Programs\Pad Sensei\DOJO'
+            install_round_trip_verified=$true
             local_sidecar_materials_included=$false
             mk1_sha=$env:MK1_SHA
             webview2_sdk_version=$env:WEBVIEW2_VERSION

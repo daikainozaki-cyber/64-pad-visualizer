@@ -1,0 +1,100 @@
+name: Prepare exact DOJO v0.35.7 final mirror
+
+on:
+  push:
+    branches:
+      - ci/prepare-dojo-v0357-final-8955de42-mirror
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prepare-dojo-v0357-final-8955de42-mirror
+  cancel-in-progress: false
+
+env:
+  BASE_REF: verify/v0357-final-3ab6a8ec
+  BASE_SHA: 2903897f77bdfb938bbb4d313e43396f13492af3
+  BASE_TREE: bd0ff2e3ed657cbd502c73a4963379d6dbbe3dc4
+  TARGET_REF: verify/v0357-final-8955de42
+  TARGET_TREE: 87ea47f28673d8b400c2de5cc39d96599612d3e1
+
+jobs:
+  prepare-mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Clone exact previous mirror
+        shell: bash
+        env:
+          DOJO_SOURCE_DEPLOY_KEY: ${{ secrets.DOJO_SOURCE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$DOJO_SOURCE_DEPLOY_KEY"
+          mkdir -p "$RUNNER_TEMP/dojo-ssh"
+          printf '%s\n' "$DOJO_SOURCE_DEPLOY_KEY" > "$RUNNER_TEMP/dojo-ssh/id_ed25519"
+          chmod 600 "$RUNNER_TEMP/dojo-ssh/id_ed25519"
+          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/dojo-ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git init -q dojo
+          git -C dojo remote add origin git@github.com:daikainozaki-cyber/dojo-ci.git
+          git -C dojo fetch --no-tags origin "refs/heads/$BASE_REF"
+          git -C dojo checkout -q FETCH_HEAD
+          test "$(git -C dojo rev-parse HEAD)" = "$BASE_SHA"
+          test "$(git -C dojo rev-parse 'HEAD^{tree}')" = "$BASE_TREE"
+
+      - name: Apply exact audited delta
+        shell: bash
+        working-directory: dojo
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          src = Path('Source/EmbeddedMaterials.cpp')
+          s = src.read_text()
+          old = '''    juce::StringArray actual;\n    for (const auto& child : collectionFolder.findChildFiles (juce::File::findDirectories, false))\n'''
+          new = '''    // A collection with no scene folders cannot be identified as one of our\n    // legacy installs. Empty-set equality must never adopt a user-owned folder.\n    if (expected.isEmpty())\n        return false;\n\n    juce::StringArray actual;\n    for (const auto& child : collectionFolder.findChildFiles (juce::File::findDirectories, false))\n'''
+          if s.count(old) != 1:
+              raise SystemExit('Source anchor drift')
+          src.write_text(s.replace(old, new, 1))
+
+          test = Path('tests/test_embedded_materials.cpp')
+          t = test.read_text()
+          anchor = '''    std::printf ("testDoesNotAdoptWhenSceneFoldersDiffer passed\\n");\n}\n\nvoid testInstalledMaterialsAreFoundByTheCatalog()\n'''
+          insert = '''    std::printf ("testDoesNotAdoptWhenSceneFoldersDiffer passed\\n");\n}\n\n// Root metadata alone must never make an unmarked same-name user folder look\n// like one of our legacy scene collections. With no expected scene folders,\n// empty-set equality is not ownership evidence.\nvoid testDoesNotAdoptMetadataOnlyCollection()\n{\n    auto root = freshRoot ("legacy-metadata-only");\n    const juce::String collectionName = "MetadataOnly";\n    const auto collection = root.getChildFile (collectionName);\n    assert (collection.createDirectory().wasOk());\n    assert (collection.getChildFile ("mine.txt").replaceWithText ("mine"));\n\n    std::vector<EmbeddedMaterialFile> files;\n    files.push_back ({ collectionName + "/metadata.json",\n                       kProvenanceJson,\n                       (int) std::strlen (kProvenanceJson) });\n\n    const auto result = installEmbeddedMaterials (files, root);\n    expectInt ("metadata-only.errors", result.errors.size(), 0);\n    expectInt ("metadata-only.updated", result.updated.size(), 0);\n    expectInt ("metadata-only.skipped", result.skipped.size(), 1);\n    expectString ("metadata-only.untouched",\n                  collection.getChildFile ("mine.txt").loadFileAsString(), "mine");\n    assert (! collection.getChildFile ("metadata.json").existsAsFile());\n    expectInt ("metadata-only.backups",\n               root.getNumberOfChildFiles (juce::File::findDirectories, "_replaced-*"), 0);\n\n    std::printf ("testDoesNotAdoptMetadataOnlyCollection passed\\n");\n}\n\nvoid testInstalledMaterialsAreFoundByTheCatalog()\n'''
+          if t.count(anchor) != 1:
+              raise SystemExit('test insertion anchor drift')
+          t = t.replace(anchor, insert, 1)
+          unsafe = '''    const juce::StringArray unsafePaths {\n        "../escape/scene.json",\n        juce::String ("HPS/..") + "/../escape/scene.json",\n        "/absolute/scene.json",\n        "no_subfolder.json",\n        "HPS/../escape.json"\n    };\n'''
+          unsafe_new = '''    const juce::StringArray unsafePaths {\n        "",\n        "../escape/scene.json",\n        juce::String ("HPS/..") + "/../escape/scene.json",\n        "/absolute/scene.json",\n        "no_subfolder.json",\n        "HPS/../escape.json",\n        "HPS\\\\escape.json"\n    };\n'''
+          if t.count(unsafe) != 1:
+              raise SystemExit('unsafe anchor drift')
+          t = t.replace(unsafe, unsafe_new, 1)
+          main_anchor = '''    testAdoptsUnmarkedCollectionThatLooksLikeOurs();\n    testDoesNotAdoptWhenSceneFoldersDiffer();\n    testInstalledMaterialsAreFoundByTheCatalog();\n'''
+          main_new = '''    testAdoptsUnmarkedCollectionThatLooksLikeOurs();\n    testDoesNotAdoptWhenSceneFoldersDiffer();\n    testDoesNotAdoptMetadataOnlyCollection();\n    testInstalledMaterialsAreFoundByTheCatalog();\n'''
+          if t.count(main_anchor) != 1:
+              raise SystemExit('main anchor drift')
+          test.write_text(t.replace(main_anchor, main_new, 1))
+          PY
+          test "$(git diff --name-only | wc -l | tr -d ' ')" = "2"
+          git diff --check
+          git add Source/EmbeddedMaterials.cpp tests/test_embedded_materials.cpp
+          tree=$(git write-tree)
+          echo "prepared tree=$tree"
+          test "$tree" = "$TARGET_TREE"
+
+      - name: Commit and push exact mirror ref
+        shell: bash
+        working-directory: dojo
+        env:
+          DOJO_SOURCE_DEPLOY_KEY: ${{ secrets.DOJO_SOURCE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          git config user.name TUNER
+          git config user.email tuner@users.noreply.github.com
+          git commit -m 'mirror: DOJO v0.35.7 final candidate 8955de42'
+          test "$(git rev-parse 'HEAD^{tree}')" = "$TARGET_TREE"
+          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/dojo-ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git push origin "HEAD:refs/heads/$TARGET_REF"
+          echo "MIRROR_SHA=$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          echo "MIRROR_TREE=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_STEP_SUMMARY"

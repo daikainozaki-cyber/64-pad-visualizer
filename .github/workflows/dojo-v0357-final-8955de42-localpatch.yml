@@ -1,0 +1,235 @@
+name: Verify DOJO v0.35.7 final exact Windows gate (local patch)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dojo-v0357-final-8955de42-localpatch
+  cancel-in-progress: false
+
+env:
+  MIRROR_REF: verify/v0357-final-3ab6a8ec
+  MIRROR_SHA: 2903897f77bdfb938bbb4d313e43396f13492af3
+  MIRROR_TREE: bd0ff2e3ed657cbd502c73a4963379d6dbbe3dc4
+  PRODUCT_PR_SHA: 8955de427d9c621e09307d449a84a889fe4528cc
+  PRODUCT_TREE: 87ea47f28673d8b400c2de5cc39d96599612d3e1
+  PRODUCT_MERGED_SHA: PENDING_MERGE_SHA
+  DOJO_VERSION: 0.35.7
+  WEBVIEW2_VERSION: 1.0.3485.44
+
+jobs:
+  final-exact-windows-gate:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - name: Checkout exact prior mirror source
+        shell: bash
+        env:
+          DOJO_SOURCE_DEPLOY_KEY: ${{ secrets.DOJO_SOURCE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$DOJO_SOURCE_DEPLOY_KEY"
+          key_dir="$(cygpath -u "${RUNNER_TEMP}")/dojo-ssh"; mkdir -p "$key_dir"
+          trap 'rm -f "$key_dir/id_ed25519"' EXIT
+          printf '%s\n' "$DOJO_SOURCE_DEPLOY_KEY" > "$key_dir/id_ed25519"; chmod 600 "$key_dir/id_ed25519"
+          git init -q dojo
+          git -C dojo remote add origin git@github.com:daikainozaki-cyber/dojo-ci.git
+          GIT_SSH_COMMAND="ssh -i $key_dir/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" git -C dojo fetch --no-tags origin "refs/heads/$MIRROR_REF"
+          git -C dojo checkout -q FETCH_HEAD
+          git -C dojo submodule update --init --recursive --depth 1
+          test "$(git -C dojo rev-parse HEAD)" = "$MIRROR_SHA"
+          test "$(git -C dojo rev-parse 'HEAD^{tree}')" = "$MIRROR_TREE"
+
+      - name: Apply audited final delta and prove exact product tree
+        shell: bash
+        working-directory: dojo
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('Source/EmbeddedMaterials.cpp')
+          s = src.read_text()
+          old = '''    juce::StringArray actual;\n    for (const auto& child : collectionFolder.findChildFiles (juce::File::findDirectories, false))\n'''
+          new = '''    // A collection with no scene folders cannot be identified as one of our\n    // legacy installs. Empty-set equality must never adopt a user-owned folder.\n    if (expected.isEmpty())\n        return false;\n\n    juce::StringArray actual;\n    for (const auto& child : collectionFolder.findChildFiles (juce::File::findDirectories, false))\n'''
+          if s.count(old) != 1: raise SystemExit('Source anchor drift')
+          src.write_text(s.replace(old, new, 1))
+
+          test = Path('tests/test_embedded_materials.cpp')
+          t = test.read_text()
+          anchor = '''    std::printf ("testDoesNotAdoptWhenSceneFoldersDiffer passed\\n");\n}\n\nvoid testInstalledMaterialsAreFoundByTheCatalog()\n'''
+          insert = '''    std::printf ("testDoesNotAdoptWhenSceneFoldersDiffer passed\\n");\n}\n\n// Root metadata alone must never make an unmarked same-name user folder look\n// like one of our legacy scene collections. With no expected scene folders,\n// empty-set equality is not ownership evidence.\nvoid testDoesNotAdoptMetadataOnlyCollection()\n{\n    auto root = freshRoot ("legacy-metadata-only");\n    const juce::String collectionName = "MetadataOnly";\n    const auto collection = root.getChildFile (collectionName);\n    assert (collection.createDirectory().wasOk());\n    assert (collection.getChildFile ("mine.txt").replaceWithText ("mine"));\n\n    std::vector<EmbeddedMaterialFile> files;\n    files.push_back ({ collectionName + "/metadata.json",\n                       kProvenanceJson,\n                       (int) std::strlen (kProvenanceJson) });\n\n    const auto result = installEmbeddedMaterials (files, root);\n    expectInt ("metadata-only.errors", result.errors.size(), 0);\n    expectInt ("metadata-only.updated", result.updated.size(), 0);\n    expectInt ("metadata-only.skipped", result.skipped.size(), 1);\n    expectString ("metadata-only.untouched",\n                  collection.getChildFile ("mine.txt").loadFileAsString(), "mine");\n    assert (! collection.getChildFile ("metadata.json").existsAsFile());\n    expectInt ("metadata-only.backups",\n               root.getNumberOfChildFiles (juce::File::findDirectories, "_replaced-*"), 0);\n\n    std::printf ("testDoesNotAdoptMetadataOnlyCollection passed\\n");\n}\n\nvoid testInstalledMaterialsAreFoundByTheCatalog()\n'''
+          if t.count(anchor) != 1: raise SystemExit('test insertion anchor drift')
+          t = t.replace(anchor, insert, 1)
+          unsafe = '''    const juce::StringArray unsafePaths {\n        "../escape/scene.json",\n        juce::String ("HPS/..") + "/../escape/scene.json",\n        "/absolute/scene.json",\n        "no_subfolder.json",\n        "HPS/../escape.json"\n    };\n'''
+          unsafe_new = '''    const juce::StringArray unsafePaths {\n        "",\n        "../escape/scene.json",\n        juce::String ("HPS/..") + "/../escape/scene.json",\n        "/absolute/scene.json",\n        "no_subfolder.json",\n        "HPS/../escape.json",\n        "HPS\\\\escape.json"\n    };\n'''
+          if t.count(unsafe) != 1: raise SystemExit('unsafe anchor drift')
+          t = t.replace(unsafe, unsafe_new, 1)
+          main_anchor = '''    testAdoptsUnmarkedCollectionThatLooksLikeOurs();\n    testDoesNotAdoptWhenSceneFoldersDiffer();\n    testInstalledMaterialsAreFoundByTheCatalog();\n'''
+          main_new = '''    testAdoptsUnmarkedCollectionThatLooksLikeOurs();\n    testDoesNotAdoptWhenSceneFoldersDiffer();\n    testDoesNotAdoptMetadataOnlyCollection();\n    testInstalledMaterialsAreFoundByTheCatalog();\n'''
+          if t.count(main_anchor) != 1: raise SystemExit('main anchor drift')
+          test.write_text(t.replace(main_anchor, main_new, 1))
+          PY
+          git diff --check
+          paths="$(git diff --name-only)"
+          test "$(printf '%s\n' "$paths" | wc -l | tr -d ' ')" = "2"
+          printf '%s\n' "$paths" | grep -qx 'Source/EmbeddedMaterials.cpp'
+          printf '%s\n' "$paths" | grep -qx 'tests/test_embedded_materials.cpp'
+          git add Source/EmbeddedMaterials.cpp tests/test_embedded_materials.cpp
+          test "$(git write-tree)" = "$PRODUCT_TREE"
+          test "$(git rev-parse HEAD)" = "$MIRROR_SHA"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$MIRROR_TREE"
+
+      - name: Verify version and vendored MK1
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference='Stop'
+          if ($env:PRODUCT_MERGED_SHA -eq 'PENDING_MERGE_SHA') { throw 'Product merged SHA is not pinned' }
+          $version=(Select-String CMakeLists.txt -Pattern 'project\(DOJO VERSION ([0-9.]+)\)').Matches[0].Groups[1].Value
+          if($version -ne $env:DOJO_VERSION){throw "version drift: $version"}
+          $mk1=(Get-Content third_party\pad-sensei-keys-mk1\UPSTREAM_SHA).Trim()
+          if($mk1 -ne '2325c445d5f35be7fefa0aa0601fd0e894896820'){throw "MK1 drift: $mk1"}
+          "MK1_SHA=$mk1"|Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "MK1_SOURCE_DIR=$((Resolve-Path third_party\pad-sensei-keys-mk1).Path)"|Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "BUILD_DIR=$env:RUNNER_TEMP\dojo-v0357-final-build"|Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "EVIDENCE_DIR=$env:RUNNER_TEMP\dojo-v0357-final-evidence"|Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "DIST_DIR=$env:RUNNER_TEMP\dojo-v0357-final-dist"|Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Guard read-only mirror ref before verification
+        shell: bash
+        env:
+          DOJO_SOURCE_DEPLOY_KEY: ${{ secrets.DOJO_SOURCE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          key_dir="$(cygpath -u "${RUNNER_TEMP}")/dojo-ref-before"; mkdir -p "$key_dir"
+          trap 'rm -f "$key_dir/id_ed25519"' EXIT
+          printf '%s\n' "$DOJO_SOURCE_DEPLOY_KEY" > "$key_dir/id_ed25519"; chmod 600 "$key_dir/id_ed25519"
+          actual="$(GIT_SSH_COMMAND="ssh -i $key_dir/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" git ls-remote git@github.com:daikainozaki-cyber/dojo-ci.git "refs/heads/$MIRROR_REF" | awk '{print $1}')"
+          test "$actual" = "$MIRROR_SHA"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: dojo/package-lock.json
+
+      - name: Run WebUI and pad-core tests
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference='Stop'
+          $webRoot="$env:RUNNER_TEMP\dojo-v0357-web-tests"; $npmCache="$env:RUNNER_TEMP\npm-cache"
+          Remove-Item -Recurse -Force $webRoot -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force $webRoot,$npmCache,$env:EVIDENCE_DIR|Out-Null
+          robocopy . $webRoot /E /XD .git /XF .git
+          if($LASTEXITCODE -ge 8){throw "robocopy failed ($LASTEXITCODE)"}; $global:LASTEXITCODE=0
+          Push-Location $webRoot
+          try {
+            & npm ci --cache $npmCache 2>&1|Tee-Object -FilePath (Join-Path $env:EVIDENCE_DIR 'npm-ci.log'); if($LASTEXITCODE){throw 'npm ci failed'}
+            & npm test 2>&1|Tee-Object -FilePath (Join-Path $env:EVIDENCE_DIR 'webui-tests.log'); if($LASTEXITCODE){throw 'npm test failed'}
+            & npm run test:pad-core 2>&1|Tee-Object -FilePath (Join-Path $env:EVIDENCE_DIR 'pad-core-tests.log'); if($LASTEXITCODE){throw 'pad-core failed'}
+          } finally { Pop-Location }
+
+      - name: Install pinned WebView2
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $root="$env:RUNNER_TEMP\nuget"
+          nuget install Microsoft.Web.WebView2 -Version $env:WEBVIEW2_VERSION -OutputDirectory $root -ExcludeVersion
+          if($LASTEXITCODE){throw 'WebView2 install failed'}
+          "WEBVIEW2_DIR=$root"|Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Configure and build full native Windows matrix
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference='Stop'
+          New-Item -ItemType Directory -Force $env:BUILD_DIR,$env:EVIDENCE_DIR,$env:DIST_DIR|Out-Null
+          cmake -S . -B $env:BUILD_DIR -G "Visual Studio 17 2022" -A x64 -DBUILD_TESTING=ON -DJUCE_WEBVIEW2_PACKAGE_LOCATION="$env:WEBVIEW2_DIR" -DPAD_SENSEI_MK1_SOURCE_DIR="$env:MK1_SOURCE_DIR" -DDOJO_REQUIRE_MK1=ON
+          if($LASTEXITCODE){throw 'configure failed'}
+          cmake --build $env:BUILD_DIR --config Release --parallel --target DOJO dojo-tests DojoDrumRenderTool DojoPushDisplayRendererTests DojoPushFeedbackPresentTests DojoPushDisplayTransportTests DojoPushDisplayUsbWindowsTests DojoPushMappingTests DojoPushReconnectTests DojoPluginSandboxProbeTests DojoPluginHostTests DojoAppStateTests DojoPluginRoutingTests DojoTrackSoundRoutingTests DojoPluginFileScanQueueTests DojoAssertionsEnabledTests DojoMk1Tests
+          if($LASTEXITCODE){throw 'build failed'}
+
+      - name: Run required fourteen native tests
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference='Stop'
+          $required=@('DojoPushDisplayRendererTests','DojoPushFeedbackPresentTests','DojoPushDisplayTransportTests','DojoPushDisplayUsbWindowsTests','DojoPushMappingTests','DojoPushReconnectTests','DojoPluginSandboxProbeTests','DojoPluginHostTests','DojoAppStateTests','DojoPluginRoutingTests','DojoTrackSoundRoutingTests','DojoPluginFileScanQueueTests','DojoAssertionsEnabledTests','DojoMk1Tests')
+          $registered=& ctest --test-dir $env:BUILD_DIR -C Release -N
+          if($LASTEXITCODE){throw 'ctest enumeration failed'}
+          foreach($name in $required){if(-not($registered -match ('^\s*Test\s+#\s*[0-9]+:\s*'+[regex]::Escape($name)+'\s*$'))){throw "required CTest missing: $name"}}
+          ctest --test-dir $env:BUILD_DIR -C Release --output-on-failure --no-tests=error -R "^(DojoPushDisplayRendererTests|DojoPushFeedbackPresentTests|DojoPushDisplayTransportTests|DojoPushDisplayUsbWindowsTests|DojoPushMappingTests|DojoPushReconnectTests|DojoPluginSandboxProbeTests|DojoPluginHostTests|DojoAppStateTests|DojoPluginRoutingTests|DojoTrackSoundRoutingTests|DojoPluginFileScanQueueTests|DojoAssertionsEnabledTests|DojoMk1Tests)$" --output-junit "$env:EVIDENCE_DIR\windows-required-ctest.xml"
+          if($LASTEXITCODE){throw 'required ctest failed'}
+
+      - name: Run full native CTest
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference='Stop'
+          ctest --test-dir $env:BUILD_DIR -C Release --output-on-failure --no-tests=error --output-junit "$env:EVIDENCE_DIR\windows-full-ctest.xml"
+          $code=$LASTEXITCODE
+          $last=Join-Path $env:BUILD_DIR 'Testing\Temporary\LastTest.log'; if(Test-Path $last){Copy-Item $last "$env:EVIDENCE_DIR\windows-full-LastTest.log" -Force}
+          if($code){throw "full ctest failed ($code)"}
+
+      - name: Smoke startup and produce final manifest
+        shell: pwsh
+        working-directory: dojo
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe=Join-Path $env:BUILD_DIR 'DOJO_artefacts\Release\DOJO.exe'
+          $p=$null
+          try{$p=Start-Process -FilePath (Resolve-Path $exe) -WorkingDirectory (Split-Path $exe) -PassThru;Start-Sleep -Seconds 10;if($p.HasExited){throw "DOJO exited during startup smoke ($($p.ExitCode))"}}finally{if($null-ne$p-and!$p.HasExited){Stop-Process -Id $p.Id -Force}}
+          $b=[IO.File]::ReadAllBytes($exe);$pe=[BitConverter]::ToInt32($b,0x3c);if($b[$pe]-ne0x50-or$b[$pe+1]-ne0x45-or[BitConverter]::ToUInt16($b,$pe+4)-ne0x8664){throw 'Expected AMD64 PE'}
+          New-Item -ItemType Directory -Force $env:DIST_DIR|Out-Null;Copy-Item $exe (Join-Path $env:DIST_DIR 'DOJO.exe')
+          $runtime=[ordered]@{};foreach($n in @('libusb-1.0.dll','libusb-LICENSE.txt','libusb-NOTICE.txt')){$rp=Join-Path (Split-Path $exe) $n;if(!(Test-Path $rp)){throw "missing $n"};Copy-Item $rp (Join-Path $env:DIST_DIR $n);$runtime[$n]=(Get-FileHash $rp -Algorithm SHA256).Hash.ToLower()}
+          $embedded=@(Get-Content packaging\alpha-release\material-collections.txt|?{$_.Trim()-and!$_.Trim().StartsWith('#')}|%{$x=$_.Trim().Split('|');if($x.Count-ne2){throw 'invalid materials policy'};if($x[1].Trim()-eq'repo'){$x[0].Trim()}});if(!$embedded.Count){throw 'no embedded collection'}
+          $m=[ordered]@{schema='dojo-windows-build-v1';git_head_sha=$env:PRODUCT_MERGED_SHA;product_pr_sha=$env:PRODUCT_PR_SHA;product_tree=$env:PRODUCT_TREE;mirror_ref=$env:MIRROR_REF;mirror_sha=$env:MIRROR_SHA;mirror_tree=$env:MIRROR_TREE;dojo_version=$env:DOJO_VERSION;architecture='x86_64';exe_sha256=(Get-FileHash (Join-Path $env:DIST_DIR 'DOJO.exe') -Algorithm SHA256).Hash.ToLower();mk1_sha=$env:MK1_SHA;with_mk1=$true;asio_enabled=$false;wasapi_enabled=$true;libusb_version='1.0.30';runtime_files=$runtime;embedded_collections=$embedded;webview2_version=$env:WEBVIEW2_VERSION;runner_os=$env:RUNNER_OS;workflow_run_id=$env:GITHUB_RUN_ID;control_sha=$env:GITHUB_SHA}
+          $m|ConvertTo-Json -Depth 5|Set-Content (Join-Path $env:DIST_DIR 'build-manifest.json') -Encoding utf8
+          python packaging/alpha-release/validate-windows-build-manifest.py (Join-Path $env:DIST_DIR 'build-manifest.json') (Join-Path $env:DIST_DIR 'DOJO.exe')
+          if($LASTEXITCODE){throw 'manifest validation failed'}
+
+      - name: Final exact-tree and mirror-ref guard
+        if: always()
+        shell: bash
+        working-directory: dojo
+        env:
+          DOJO_SOURCE_DEPLOY_KEY: ${{ secrets.DOJO_SOURCE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$MIRROR_SHA"
+          test "$(git rev-parse 'HEAD^{tree}')" = "$MIRROR_TREE"
+          test "$(git write-tree)" = "$PRODUCT_TREE"
+          staged="$(git diff --cached --name-only)"
+          test "$(printf '%s\n' "$staged"|wc -l|tr -d ' ')" = 2
+          printf '%s\n' "$staged"|grep -qx 'Source/EmbeddedMaterials.cpp'
+          printf '%s\n' "$staged"|grep -qx 'tests/test_embedded_materials.cpp'
+          test -z "$(git diff --name-only)"
+          git submodule foreach --recursive 'git diff --quiet && git diff --cached --quiet'
+          key_dir="$(cygpath -u "${RUNNER_TEMP}")/dojo-ref-after";mkdir -p "$key_dir";trap 'rm -f "$key_dir/id_ed25519"' EXIT
+          printf '%s\n' "$DOJO_SOURCE_DEPLOY_KEY">"$key_dir/id_ed25519";chmod 600 "$key_dir/id_ed25519"
+          actual="$(GIT_SSH_COMMAND="ssh -i $key_dir/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" git ls-remote git@github.com:daikainozaki-cyber/dojo-ci.git "refs/heads/$MIRROR_REF"|awk '{print $1}')"
+          test "$actual" = "$MIRROR_SHA"
+          printf '{"product_merged_sha":"%s","product_pr_sha":"%s","product_tree":"%s","mirror_sha":"%s","mirror_tree":"%s","workflow_run_id":"%s"}\n' "$PRODUCT_MERGED_SHA" "$PRODUCT_PR_SHA" "$PRODUCT_TREE" "$MIRROR_SHA" "$MIRROR_TREE" "$GITHUB_RUN_ID" > "$EVIDENCE_DIR/final-exact-provenance.json"
+
+      - name: Upload final Windows candidate
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DOJO-v0.35.7-Windows-x64-final-${{ github.run_id }}
+          path: ${{ runner.temp }}/dojo-v0357-final-dist
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload final Windows diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DOJO-v0.35.7-Windows-final-diagnostics-${{ github.run_id }}
+          path: ${{ runner.temp }}/dojo-v0357-final-evidence
+          if-no-files-found: ignore
+          retention-days: 14

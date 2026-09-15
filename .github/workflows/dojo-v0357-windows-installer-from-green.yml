@@ -1,0 +1,218 @@
+name: Package machine-green DOJO v0.35.7 Windows installer
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/dojo-v0357-windows-installer-from-green.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: dojo-v0357-windows-installer-from-green
+  cancel-in-progress: false
+
+env:
+  DOJO_VERSION: 0.35.7
+  PRODUCT_HEAD_SHA: 302ba4d6493706fdf02e38ca3c88cca020d5f797
+  PRODUCT_TREE: 87ea47f28673d8b400c2de5cc39d96599612d3e1
+  MIRROR_REF: verify/v0357-final-embedded-materials-87ea47f2
+  MIRROR_SHA: f47c9c661d2835a06915675591ff22eca33c43ca
+  MIRROR_BASE_SHA: d5531fcc44631fe6368c0e16d379d8c8d0a81e55
+  MIRROR_BASE_TREE: 689e56c3a7cbc0b5349282fa0395421495e3a511
+  MK1_SHA: 2325c445d5f35be7fefa0aa0601fd0e894896820
+  WEBVIEW2_VERSION: 1.0.3485.44
+  FULL_GATE_RUN_ID: '34931396488'
+  FULL_GATE_CONTROL_SHA: 6eb2067cd3ed7c4b972c4daf8e4b2d78f43b21a5
+  FULL_GATE_ARTIFACT: DOJO-v0.35.7-Windows-x64-repair-full-gate-34931396488
+  FULL_GATE_APP_SHA256: 54e330356ac7cc904a30774c7a061b47cf6009f19de7830a8f3ba67c014c3e12
+
+jobs:
+  package-installer:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - name: Prepare directories
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          "PAYLOAD_DIR=$env:RUNNER_TEMP\dojo-v0357-green-payload" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "STAGE_DIR=$env:RUNNER_TEMP\dojo-v0357-green-installer-stage" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "OUT_DIR=$env:RUNNER_TEMP\dojo-v0357-green-installer-out" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "INSTALL_TEST_DIR=$env:RUNNER_TEMP\dojo-v0357-green-installed" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Download exact successful full-gate artifact
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference='Stop'
+          New-Item -ItemType Directory -Force $env:PAYLOAD_DIR,$env:STAGE_DIR,$env:OUT_DIR | Out-Null
+          gh run download $env:FULL_GATE_RUN_ID --repo $env:GITHUB_REPOSITORY --name $env:FULL_GATE_ARTIFACT --dir $env:PAYLOAD_DIR
+          if($LASTEXITCODE){ throw "full-gate artifact download failed ($LASTEXITCODE)" }
+
+      - name: Validate exact machine-green payload
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $manifestPath=Join-Path $env:PAYLOAD_DIR 'build-manifest.json'
+          if(!(Test-Path $manifestPath)){ throw 'build-manifest.json missing' }
+          $m=Get-Content $manifestPath -Raw | ConvertFrom-Json
+          if($m.schema -ne 'dojo-windows-build-v1'){ throw "schema drift: $($m.schema)" }
+          if($m.git_head_sha -ne $env:MIRROR_SHA -or $m.product_tree -ne $env:PRODUCT_TREE){ throw 'source/tree provenance drift' }
+          if($m.base_source_sha -ne $env:MIRROR_BASE_SHA -or $m.base_source_tree -ne $env:MIRROR_BASE_TREE){ throw 'base provenance drift' }
+          if($m.dojo_version -ne $env:DOJO_VERSION -or $m.architecture -ne 'x86_64'){ throw 'version/architecture drift' }
+          if(-not $m.with_mk1 -or $m.mk1_sha -ne $env:MK1_SHA){ throw 'MK1 provenance drift' }
+          if($m.webview2_version -ne $env:WEBVIEW2_VERSION){ throw 'WebView2 provenance drift' }
+          if([string]$m.workflow_run_id -ne $env:FULL_GATE_RUN_ID -or $m.control_sha -ne $env:FULL_GATE_CONTROL_SHA){ throw 'full-gate run/control drift' }
+          if(-not ($m.embedded_collections -contains 'HPS第4回')){ throw 'HPS第4回 missing from embedded collections' }
+          $exe=Join-Path $env:PAYLOAD_DIR 'DOJO.exe'
+          $hash=(Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          if($hash -ne $m.exe_sha256 -or $hash -ne $env:FULL_GATE_APP_SHA256){ throw "DOJO.exe hash drift: $hash" }
+          $b=[IO.File]::ReadAllBytes($exe); $pe=[BitConverter]::ToInt32($b,0x3c)
+          if($b[$pe]-ne 0x50 -or $b[$pe+1]-ne 0x45 -or [BitConverter]::ToUInt16($b,$pe+4)-ne 0x8664){ throw 'Expected AMD64 PE' }
+          foreach($n in @('DOJO.exe','libusb-1.0.dll','libusb-LICENSE.txt','libusb-NOTICE.txt')){
+            $src=Join-Path $env:PAYLOAD_DIR $n
+            if(!(Test-Path $src)){ throw "runtime missing: $n" }
+            if($n -ne 'DOJO.exe'){
+              $runtimeHash=(Get-FileHash $src -Algorithm SHA256).Hash.ToLower()
+              if($runtimeHash -ne $m.runtime_files.$n){ throw "runtime hash drift: $n" }
+            }
+            Copy-Item $src (Join-Path $env:STAGE_DIR $n) -Force
+          }
+          "APP_SHA256=$hash" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Fetch exact package readme files from mirror
+        shell: bash
+        env:
+          DOJO_SOURCE_DEPLOY_KEY: ${{ secrets.DOJO_SOURCE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${DOJO_SOURCE_DEPLOY_KEY}"
+          key_dir="$(cygpath -u "${RUNNER_TEMP}")/dojo-installer-docs-ssh"; mkdir -p "${key_dir}"
+          trap 'rm -f "${key_dir}/id_ed25519"' EXIT
+          printf '%s\n' "${DOJO_SOURCE_DEPLOY_KEY}" > "${key_dir}/id_ed25519"; chmod 600 "${key_dir}/id_ed25519"
+          git init -q docs
+          git -C docs remote add origin git@github.com:daikainozaki-cyber/dojo-ci.git
+          GIT_SSH_COMMAND="ssh -i ${key_dir}/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" git -C docs fetch --no-tags --depth 1 origin "refs/heads/${MIRROR_REF}"
+          test "$(git -C docs rev-parse FETCH_HEAD)" = "${MIRROR_SHA}"
+          git -C docs checkout -q FETCH_HEAD -- 'packaging/alpha-release/はじめに-windows.txt' 'packaging/alpha-release/音源について.md'
+          cp 'docs/packaging/alpha-release/はじめに-windows.txt' "$(cygpath -u "${STAGE_DIR}")/"
+          cp 'docs/packaging/alpha-release/音源について.md' "$(cygpath -u "${STAGE_DIR}")/"
+
+      - name: Install Inno Setup compiler if needed
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $candidates=@("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe","$env:ProgramFiles\Inno Setup 6\ISCC.exe")
+          $iscc=$candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+          if(!$iscc){ choco install innosetup --no-progress -y; if($LASTEXITCODE){ throw "Inno Setup install failed ($LASTEXITCODE)" }; $iscc=$candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1 }
+          if(!$iscc){ throw 'ISCC.exe not found' }
+          "ISCC_EXE=$iscc" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Build unsigned per-user Setup.exe
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $issPath=Join-Path $env:RUNNER_TEMP 'dojo-v0357-green-installer.iss'
+          @'
+          #define MyAppName "DOJO"
+          [Setup]
+          AppId={{A3AE0A62-BC64-4B04-9FC9-49D16730A6E3}
+          AppName={#MyAppName}
+          AppVersion={#MyAppVersion}
+          AppPublisher=Pad Sensei
+          DefaultDirName={localappdata}\Programs\Pad Sensei\DOJO
+          DefaultGroupName=DOJO
+          DisableProgramGroupPage=yes
+          PrivilegesRequired=lowest
+          OutputDir={#MyOutputDir}
+          OutputBaseFilename=DOJO-v{#MyAppVersion}-Windows-x64-Setup
+          Compression=lzma2
+          SolidCompression=yes
+          WizardStyle=modern
+          UninstallDisplayIcon={app}\DOJO.exe
+          SetupLogging=yes
+          [Files]
+          Source: "{#MySourceDir}\DOJO.exe"; DestDir: "{app}"; Flags: ignoreversion
+          Source: "{#MySourceDir}\libusb-1.0.dll"; DestDir: "{app}"; Flags: ignoreversion
+          Source: "{#MySourceDir}\libusb-LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
+          Source: "{#MySourceDir}\libusb-NOTICE.txt"; DestDir: "{app}"; Flags: ignoreversion
+          Source: "{#MySourceDir}\はじめに-windows.txt"; DestDir: "{app}"; Flags: ignoreversion
+          Source: "{#MySourceDir}\音源について.md"; DestDir: "{app}"; Flags: ignoreversion
+          [Icons]
+          Name: "{group}\DOJO"; Filename: "{app}\DOJO.exe"
+          [Run]
+          Filename: "{app}\DOJO.exe"; Description: "DOJO を起動"; Flags: nowait postinstall skipifsilent
+          '@ | Set-Content -Path $issPath -Encoding utf8
+          & $env:ISCC_EXE "/DMyAppVersion=$env:DOJO_VERSION" "/DMySourceDir=$env:STAGE_DIR" "/DMyOutputDir=$env:OUT_DIR" $issPath
+          if($LASTEXITCODE){ throw "ISCC failed ($LASTEXITCODE)" }
+          $setup=Join-Path $env:OUT_DIR "DOJO-v$env:DOJO_VERSION-Windows-x64-Setup.exe"
+          if(!(Test-Path $setup)){ throw 'Setup.exe missing' }
+          "SETUP_PATH=$setup" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+          "SETUP_SHA256=$((Get-FileHash $setup -Algorithm SHA256).Hash.ToLower())" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Silent install, startup smoke, and uninstall round trip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          Remove-Item -Recurse -Force $env:INSTALL_TEST_DIR -ErrorAction SilentlyContinue
+          $installArgs=@('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$env:INSTALL_TEST_DIR")
+          $installer=Start-Process -FilePath $env:SETUP_PATH -ArgumentList $installArgs -Wait -PassThru
+          if($installer.ExitCode -ne 0){ throw "silent install failed ($($installer.ExitCode))" }
+          $installedExe=Join-Path $env:INSTALL_TEST_DIR 'DOJO.exe'
+          if(!(Test-Path $installedExe)){ throw 'installed DOJO.exe missing' }
+          $installedHash=(Get-FileHash $installedExe -Algorithm SHA256).Hash.ToLower()
+          if($installedHash -ne $env:FULL_GATE_APP_SHA256){ throw "installed binary hash drift: $installedHash" }
+          foreach($n in @('libusb-1.0.dll','libusb-LICENSE.txt','libusb-NOTICE.txt','はじめに-windows.txt','音源について.md')){ if(!(Test-Path (Join-Path $env:INSTALL_TEST_DIR $n))){ throw "installed file missing: $n" } }
+          $p=$null
+          try { $p=Start-Process -FilePath $installedExe -WorkingDirectory $env:INSTALL_TEST_DIR -PassThru; Start-Sleep -Seconds 10; if($p.HasExited){ throw "installed DOJO exited during startup smoke ($($p.ExitCode))" } }
+          finally { if($null -ne $p -and !$p.HasExited){ Stop-Process -Id $p.Id -Force } }
+          $uninstaller=Join-Path $env:INSTALL_TEST_DIR 'unins000.exe'
+          if(!(Test-Path $uninstaller)){ throw 'uninstaller missing' }
+          $uninstall=Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if($uninstall.ExitCode -ne 0){ throw "silent uninstall failed ($($uninstall.ExitCode))" }
+          Start-Sleep -Seconds 2
+          if(Test-Path $installedExe){ throw 'DOJO.exe remained after uninstall' }
+
+      - name: Emit candidate provenance manifest
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          [ordered]@{
+            schema='dojo-windows-installer-candidate-v2'
+            dojo_version=$env:DOJO_VERSION
+            architecture='x86_64'
+            product_head_sha=$env:PRODUCT_HEAD_SHA
+            product_tree=$env:PRODUCT_TREE
+            mirror_ref=$env:MIRROR_REF
+            mirror_sha=$env:MIRROR_SHA
+            mirror_base_sha=$env:MIRROR_BASE_SHA
+            source_full_gate_run_id=$env:FULL_GATE_RUN_ID
+            source_full_gate_control_sha=$env:FULL_GATE_CONTROL_SHA
+            source_full_gate_artifact=$env:FULL_GATE_ARTIFACT
+            tested_app_sha256=$env:APP_SHA256
+            app_rebuilt_for_installer=$false
+            installer_sha256=$env:SETUP_SHA256
+            installer_signed=$false
+            install_scope='per-user'
+            default_install_dir='%LocalAppData%\Programs\Pad Sensei\DOJO'
+            install_round_trip_verified=$true
+            local_sidecar_materials_included=$false
+            mk1_sha=$env:MK1_SHA
+            webview2_sdk_version=$env:WEBVIEW2_VERSION
+            workflow_run_id=$env:GITHUB_RUN_ID
+            control_sha=$env:GITHUB_SHA
+          } | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $env:OUT_DIR 'installer-manifest.json') -Encoding utf8
+
+      - name: Upload validated installer candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: DOJO-v0.35.7-Windows-x64-installer-from-green-${{ github.run_id }}
+          path: ${{ runner.temp }}/dojo-v0357-green-installer-out
+          if-no-files-found: error
+          retention-days: 14
